@@ -59,8 +59,9 @@ class GameplayScene(BaseScene):
         self.pausado = False
         self.game_over = False
 
-        # Flag de auto-fire (padrão ligado)
-        self.auto_fire_ativo = True
+        # Input buffer e efeitos visuais
+        self.buffer_tiro = 0.0
+        self.efeitos_melee: list[dict] = []
 
     @classmethod
     def _carregar_assets_cenario(cls):
@@ -135,6 +136,9 @@ class GameplayScene(BaseScene):
         # =========================================================================
         # 2. DISPARO DE ARMAS (PISTOLA E MELEE)
         # =========================================================================
+        # =========================================================================
+        # 2. DISPARO DE ARMAS (PISTOLA E MELEE COM BUFFER DE INPUT)
+        # =========================================================================
         centro_jogador_x = self.jogador.x + self.jogador.largura / 2.0
         centro_jogador_y = self.jogador.y + self.jogador.altura / 2.0
 
@@ -153,33 +157,56 @@ class GameplayScene(BaseScene):
                 self.pausado = True
                 return
 
-        # Disparo exclusivamente via clique explícito do mouse (pygame.MOUSEBUTTONDOWN / button_down)
-        disparar_agora = self.mouse.button_down(1)
+        # Input buffer: se o mouse estiver pressionado neste frame, alimenta o buffer
+        mouse_pressionado = pygame.mouse.get_pressed()[0]
+        if mouse_pressionado:
+            self.buffer_tiro = 0.15  # Buffer de 150ms para garantir que cliques rápidos nunca sejam perdidos
+        else:
+            self.buffer_tiro = max(0.0, self.buffer_tiro - dt)
+
+        disparar_agora = (self.buffer_tiro > 0.0)
 
         if disparar_agora and self.jogador.vivo:
             arma_ativa = self.jogador.obter_arma_ativa()
             if arma_ativa is not None:
                 if isinstance(arma_ativa, Pistola):
-                    novos_tiros = arma_ativa.disparar(
-                        centro_jogador_x, centro_jogador_y,
-                        mouse_mundo_x, mouse_mundo_y
-                    )
-                    if novos_tiros:
-                        self.projeteis.extend(novos_tiros)
-                elif isinstance(arma_ativa, Melee):
-                    arma_ativa.executar_ataque(
-                        centro_jogador_x, centro_jogador_y,
-                        self.inimigos
-                    )
-                else:
-                    # Para outras armas compatíveis (ex: shotgun, minigun, etc.)
-                    if hasattr(arma_ativa, "disparar"):
+                    if arma_ativa.pode_atirar():
                         novos_tiros = arma_ativa.disparar(
                             centro_jogador_x, centro_jogador_y,
                             mouse_mundo_x, mouse_mundo_y
                         )
                         if novos_tiros:
                             self.projeteis.extend(novos_tiros)
+                            self.buffer_tiro = 0.0
+                elif isinstance(arma_ativa, Melee):
+                    if arma_ativa.pode_atirar():
+                        afetados = arma_ativa.executar_ataque(
+                            centro_jogador_x, centro_jogador_y,
+                            self.inimigos
+                        )
+                        self.buffer_tiro = 0.0
+                        self.efeitos_melee.append({
+                            "x": centro_jogador_x,
+                            "y": centro_jogador_y,
+                            "alcance": arma_ativa.alcance,
+                            "tempo": 0.15,
+                            "tempo_total": 0.15
+                        })
+                else:
+                    if hasattr(arma_ativa, "pode_atirar") and arma_ativa.pode_atirar():
+                        if hasattr(arma_ativa, "disparar"):
+                            novos_tiros = arma_ativa.disparar(
+                                centro_jogador_x, centro_jogador_y,
+                                mouse_mundo_x, mouse_mundo_y
+                            )
+                            if novos_tiros:
+                                self.projeteis.extend(novos_tiros)
+                                self.buffer_tiro = 0.0
+
+        # Atualiza o tempo de vida dos efeitos visuais de Melee
+        for ef in self.efeitos_melee:
+            ef["tempo"] -= dt
+        self.efeitos_melee = [ef for ef in self.efeitos_melee if ef["tempo"] > 0]
 
         # =========================================================================
         # 3. SPAWNER DE INIMIGOS
@@ -284,6 +311,31 @@ class GameplayScene(BaseScene):
         borda_x1 = self.camera.transform_x(self.largura_arena)
         borda_y1 = self.camera.transform_y(self.altura_arena)
         pygame.draw.rect(screen, AZUL_CIANO, (borda_x0, borda_y0, self.largura_arena, self.altura_arena), width=3)
+
+        # Indicador de alcance Melee quando empunhada (Antes do golpe)
+        arma_ativa = self.jogador.obter_arma_ativa()
+        if isinstance(arma_ativa, Melee) and self.jogador.vivo:
+            raio = int(arma_ativa.alcance)
+            cx = int(self.camera.transform_x(self.jogador.x + self.jogador.largura / 2.0))
+            cy = int(self.camera.transform_y(self.jogador.y + self.jogador.altura / 2.0))
+            surf_alcance = pygame.Surface((raio * 2 + 4, raio * 2 + 4), pygame.SRCALPHA)
+            pygame.draw.circle(surf_alcance, (0, 220, 255, 20), (raio + 2, raio + 2), raio)
+            pygame.draw.circle(surf_alcance, (0, 220, 255, 70), (raio + 2, raio + 2), raio, width=1)
+            screen.blit(surf_alcance, (cx - raio - 2, cy - raio - 2))
+
+        # Efeitos visuais de golpe Melee (Depois / Durante o golpe)
+        for ef in self.efeitos_melee:
+            raio = int(ef["alcance"])
+            cx = int(self.camera.transform_x(ef["x"]))
+            cy = int(self.camera.transform_y(ef["y"]))
+            progresso = 1.0 - max(0.0, ef["tempo"] / ef["tempo_total"])
+            alpha = int(220 * (1.0 - progresso))
+            
+            surf_golpe = pygame.Surface((raio * 2 + 8, raio * 2 + 8), pygame.SRCALPHA)
+            raio_atual = int(raio * (0.5 + 0.5 * progresso))
+            pygame.draw.circle(surf_golpe, (255, 215, 0, alpha // 4), (raio + 4, raio + 4), raio_atual)
+            pygame.draw.circle(surf_golpe, (255, 255, 255, alpha), (raio + 4, raio + 4), raio_atual, width=3)
+            screen.blit(surf_golpe, (cx - raio - 4, cy - raio - 4))
 
         # Inimigos
         for inimigo in self.inimigos:

@@ -20,7 +20,7 @@ class Melee(ArmaBase):
         self,
         dano: int = 20,
         cooldown: float = 0.6,
-        alcance: float = 70.0,
+        alcance: float = 140.0,
         knockback_forca: float = 180.0,
         max_alvos_knockback: int = 2
     ):
@@ -44,11 +44,21 @@ class Melee(ArmaBase):
         """
         Executa o golpe corpo-a-corpo: causa dano a todos os inimigos no raio de alcance
         e aplica knockback aos 2 mais próximos.
+        Retorna a lista de inimigos atingidos.
         """
         if not self.pode_atirar():
             return []
 
         self.tempo_recarga_restante = self.cooldown
+
+        # Efeito sonoro do golpe (sempre que desfere o ataque)
+        try:
+            from PPlay.sound import Sound
+            sfx_path = obter_caminho_asset("sfx_ataque_melee")
+            sfx = Sound(sfx_path)
+            sfx.play()
+        except Exception:
+            pass
 
         atingidos = []
         for inimigo in lista_inimigos:
@@ -81,14 +91,5 @@ class Melee(ArmaBase):
                     dir_x = 1.0
                 if hasattr(inimigo, "aplicar_knockback"):
                     inimigo.aplicar_knockback(dir_x, dir_y, self.knockback_forca)
-
-        # Efeito sonoro do golpe
-        try:
-            from PPlay.sound import Sound
-            sfx_path = obter_caminho_asset("sfx_ataque_melee")
-            sfx = Sound(sfx_path)
-            sfx.play()
-        except Exception:
-            pass
 
         return inimigos_afetados
