@@ -9,6 +9,7 @@ import pygame
 from src.utils.constantes import (
     DROP_XP_VALOR_BASE, DROP_CURA_VALOR_BASE,
     DROP_TEMPO_DESAPARECER, DROP_TEMPO_SCAVENGER_ATIVAR,
+    DROP_LARGURA, DROP_ALTURA,
     AMARELO_XP, VERDE_CURA, AZUL_CIANO, DOURADO, BRANCO
 )
 
@@ -26,8 +27,8 @@ class ItemDrop:
         valor: int = DROP_XP_VALOR_BASE,
         tempo_vida: float = DROP_TEMPO_DESAPARECER,
         tempo_scavenger: float = DROP_TEMPO_SCAVENGER_ATIVAR,
-        largura: int = 16,
-        altura: int = 16
+        largura: int = DROP_LARGURA,
+        altura: int = DROP_ALTURA
     ):
         self.x = float(x)
         self.y = float(y)
@@ -88,8 +89,8 @@ class ItemDrop:
         pulso = math.sin(self.tempo_decorrido * 6.0) * 1.5
 
         if self.tipo == "xp":
-            # Gema em forma de losango brilhante
-            r = int(6 + pulso)
+            # Gema em forma de losango brilhante grande (raio 16px)
+            r = int(16 + pulso)
             pontos = [
                 (cx, cy - r),
                 (cx + r, cy),
@@ -98,26 +99,26 @@ class ItemDrop:
             ]
             cor_corpo = AMARELO_XP if self.valor <= 15 else AZUL_CIANO
             pygame.draw.polygon(screen, cor_corpo, pontos)
-            pygame.draw.polygon(screen, BRANCO, pontos, width=1)
+            pygame.draw.polygon(screen, BRANCO, pontos, width=2)
             # Brilho central
-            pygame.draw.circle(screen, BRANCO, (cx, cy), max(1, int(2 + pulso * 0.5)))
+            pygame.draw.circle(screen, BRANCO, (cx, cy), max(2, int(5 + pulso * 0.5)))
 
         elif self.tipo == "cura":
-            # Caixa médica com cruz
-            tam = int(14 + pulso)
+            # Caixa médica com cruz (32x32px)
+            tam = int(32 + pulso)
             rect_x = cx - tam // 2
             rect_y = cy - tam // 2
-            pygame.draw.rect(screen, (30, 140, 50), (rect_x, rect_y, tam, tam), border_radius=3)
-            pygame.draw.rect(screen, (220, 255, 220), (rect_x, rect_y, tam, tam), width=1, border_radius=3)
+            pygame.draw.rect(screen, (30, 140, 50), (rect_x, rect_y, tam, tam), border_radius=6)
+            pygame.draw.rect(screen, (220, 255, 220), (rect_x, rect_y, tam, tam), width=2, border_radius=6)
             # Cruz branca
-            pygame.draw.rect(screen, BRANCO, (cx - 1, cy - 4, 3, 9))
-            pygame.draw.rect(screen, BRANCO, (cx - 4, cy - 1, 9, 3))
+            pygame.draw.rect(screen, BRANCO, (cx - 3, cy - 10, 6, 20))
+            pygame.draw.rect(screen, BRANCO, (cx - 10, cy - 3, 20, 6))
 
         elif self.tipo == "arma":
-            # Caixa de arma dourada
-            tam = int(16 + pulso)
+            # Caixa de arma dourada (34x34px)
+            tam = int(34 + pulso)
             rect_x = cx - tam // 2
             rect_y = cy - tam // 2
-            pygame.draw.rect(screen, (70, 50, 20), (rect_x, rect_y, tam, tam), border_radius=3)
-            pygame.draw.rect(screen, DOURADO, (rect_x, rect_y, tam, tam), width=2, border_radius=3)
-            pygame.draw.circle(screen, DOURADO, (cx, cy), 3)
+            pygame.draw.rect(screen, (70, 50, 20), (rect_x, rect_y, tam, tam), border_radius=6)
+            pygame.draw.rect(screen, DOURADO, (rect_x, rect_y, tam, tam), width=3, border_radius=6)
+            pygame.draw.circle(screen, DOURADO, (cx, cy), 6)

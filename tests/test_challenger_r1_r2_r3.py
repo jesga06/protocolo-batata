@@ -205,35 +205,26 @@ class TestChallengerR2DropsXP(unittest.TestCase):
 
     def test_award_500_xp_in_one_go_multi_level_progression(self):
         """
-        Awarding 500 XP from level 1:
-        Level 1: 15 XP -> remaining 485 XP (L2)
-        Level 2: 20 XP -> remaining 465 XP (L3)
-        Level 3: 25 XP -> remaining 440 XP (L4)
-        Level 4: 30 XP -> remaining 410 XP (L5)
-        Level 5: 35 XP -> remaining 375 XP (L6)
-        Level 6: 40 XP -> remaining 335 XP (L7)
-        Level 7: 45 XP -> remaining 290 XP (L8)
-        Level 8: 50 XP -> remaining 240 XP (L9)
-        Level 9: 55 XP -> remaining 185 XP (L10)
-        Level 10: 60 XP -> remaining 125 XP (L11)
-        Level 11: 65 XP -> remaining 60 XP (L12)
-        Level 12: requires 10 + 5*12 = 70 XP. 60 < 70, so stays at Level 12 with 60 leftover XP.
-        Total sum of L1..L11 = 440 XP. 440 + 60 = 500 XP total.
-        """
+        # Com a nova curva (20 + 10*lvl + 5*lvl^2):
+        # L1: 35 XP -> 465 restante (L2)
+        # L2: 60 XP -> 405 restante (L3)
+        # L3: 95 XP -> 310 restante (L4)
+        # L4: 140 XP -> 170 restante (L5)
+        # L5: requer 195 XP. 170 < 195 -> fica no L5 com 170 XP residual.
         sistema = SistemaXP(nivel_inicial=1, nivel_maximo=20)
         callback_history = []
         sistema.registrar_callback_level_up(lambda lvl: callback_history.append(lvl))
 
         niveis_ganhos = sistema.adicionar_xp(500)
 
-        expected_levels = list(range(2, 13))  # [2, 3, ..., 12]
+        expected_levels = [2, 3, 4, 5]
         self.assertEqual(niveis_ganhos, expected_levels)
         self.assertEqual(callback_history, expected_levels)
-        self.assertEqual(sistema.nivel, 12, "Player should be level 12 after 500 XP")
-        self.assertEqual(sistema.xp_atual, 60, "Residual XP must be exactly 60 without loss")
+        self.assertEqual(sistema.nivel, 5, "Player should be level 5 after 500 XP")
+        self.assertEqual(sistema.xp_atual, 170, "Residual XP must be exactly 170 without loss")
         self.assertEqual(sistema.xp_total, 500, "Total XP must be exactly 500")
-        self.assertEqual(sistema.xp_para_proximo_nivel(12), 70)
-        self.assertAlmostEqual(sistema.progresso_normalizado(), 60.0 / 70.0, places=5)
+        self.assertEqual(sistema.xp_para_proximo_nivel(5), 195)
+        self.assertAlmostEqual(sistema.progresso_normalizado(), 170.0 / 195.0, places=5)
 
     def test_drop_lifetime_9_9s_vs_10_05s(self):
         """

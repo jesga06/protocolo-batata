@@ -27,10 +27,11 @@ class SistemaXP:
     def xp_para_proximo_nivel(self, nivel: int = None) -> int:
         """
         Retorna a quantidade de XP necessária para avançar a partir do nível informado.
-        Fórmula estrita SSOT: XP_prox = 10 + 5 * level
+        Fórmula progressiva quadrática: XP_prox = 20 + 10 * level + 5 * (level ^ 2)
+        Exemplos: Lvl 1 -> 35 XP, Lvl 2 -> 60 XP, Lvl 3 -> 95 XP, Lvl 4 -> 140 XP.
         """
         lvl = self.nivel if nivel is None else int(nivel)
-        return 10 + 5 * lvl
+        return 20 + 10 * lvl + 5 * (lvl ** 2)
 
     def adicionar_xp(self, quantidade: int, mult_xp: float = 1.0) -> list[int]:
         """

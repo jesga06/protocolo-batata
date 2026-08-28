@@ -94,35 +94,35 @@ class TestXPProgressionSystem(unittest.TestCase):
     def test_xp_formula_scaling(self):
         """
         Valida a fórmula estrita SSOT: XP_prox = 10 + 5 * level
-        - Nível 1 -> 15 XP
-        - Nível 2 -> 20 XP
-        - Nível 3 -> 25 XP
-        - Nível 4 -> 30 XP
-        - Nível 19 -> 105 XP
-        """
+        # Fórmula: 20 + 10*lvl + 5*(lvl^2)
+        # - Nível 1 -> 35 XP
+        # - Nível 2 -> 60 XP
+        # - Nível 3 -> 95 XP
+        # - Nível 4 -> 140 XP
+        # - Nível 19 -> 2015 XP
         xp_sys = SistemaXP(nivel_inicial=1, nivel_maximo=20)
-        self.assertEqual(xp_sys.xp_para_proximo_nivel(1), 15)
-        self.assertEqual(xp_sys.xp_para_proximo_nivel(2), 20)
-        self.assertEqual(xp_sys.xp_para_proximo_nivel(3), 25)
-        self.assertEqual(xp_sys.xp_para_proximo_nivel(4), 30)
-        self.assertEqual(xp_sys.xp_para_proximo_nivel(19), 105)
+        self.assertEqual(xp_sys.xp_para_proximo_nivel(1), 35)
+        self.assertEqual(xp_sys.xp_para_proximo_nivel(2), 60)
+        self.assertEqual(xp_sys.xp_para_proximo_nivel(3), 95)
+        self.assertEqual(xp_sys.xp_para_proximo_nivel(4), 140)
+        self.assertEqual(xp_sys.xp_para_proximo_nivel(19), 2015)
 
     def test_multi_level_overflow_carryover(self):
         """
         Testa o transbordo de XP (multi-level overflow):
-        Jogador no nível 1 recebe 40 XP:
-        - Nível 1 custa 15 XP -> Sobe para nível 2 (restam 25 XP)
-        - Nível 2 custa 20 XP -> Sobe para nível 3 (restam 5 XP)
-        - Nível final: 3, XP atual: 5 / 25
+        Jogador no nível 1 recebe 100 XP:
+        - Nível 1 custa 35 XP -> Sobe para nível 2 (restam 65 XP)
+        - Nível 2 custa 60 XP -> Sobe para nível 3 (restam 5 XP)
+        - Nível final: 3, XP atual: 5 / 95
         """
         xp_sys = SistemaXP(nivel_inicial=1, nivel_maximo=20)
-        subidas = xp_sys.adicionar_xp(40)
+        subidas = xp_sys.adicionar_xp(100)
 
         self.assertEqual(subidas, [2, 3])
         self.assertEqual(xp_sys.nivel, 3)
         self.assertEqual(xp_sys.xp_atual, 5)
-        self.assertEqual(xp_sys.xp_total, 40)
-        self.assertEqual(xp_sys.xp_para_proximo_nivel(), 25)
+        self.assertEqual(xp_sys.xp_total, 100)
+        self.assertEqual(xp_sys.xp_para_proximo_nivel(), 95)
 
     def test_level_up_callback_notification(self):
         """Valida se o callback registrado é acionado a cada nível ganho."""
@@ -133,15 +133,15 @@ class TestXPProgressionSystem(unittest.TestCase):
             notificacoes.append(novo_nivel)
 
         xp_sys.registrar_callback_level_up(on_level_up)
-        xp_sys.adicionar_xp(15)  # Atinge nível 2
+        xp_sys.adicionar_xp(35)  # Atinge nível 2
 
         self.assertEqual(notificacoes, [2])
 
     def test_max_level_cap_at_20(self):
         """Valida que o sistema trava o nível máximo em 20."""
         xp_sys = SistemaXP(nivel_inicial=1, nivel_maximo=20)
-        # Concede XP massivo (10000 XP)
-        xp_sys.adicionar_xp(10000)
+        # Concede XP massivo (100000 XP)
+        xp_sys.adicionar_xp(100000)
 
         self.assertEqual(xp_sys.nivel, 20)
         self.assertEqual(xp_sys.progresso_normalizado(), 1.0)

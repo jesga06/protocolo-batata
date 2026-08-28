@@ -36,7 +36,7 @@ class TestInimigoPadraoIAEColisao(unittest.TestCase):
         self.assertEqual(e.dano_contato, 10)
         self.assertEqual(e.cooldown_contato_max, 0.4)
         self.assertEqual(e.cooldown_contato_atual, 0.0)
-        self.assertEqual(e.xp_valor, 10)
+        self.assertEqual(e.xp_valor, 5)
         self.assertTrue(e.vivo)
 
     def test_ia_beeline_direcao_correta(self):

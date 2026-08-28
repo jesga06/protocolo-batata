@@ -6,6 +6,11 @@ com escalonamento de densidade, taxa de spawn e teto populacional suave.
 
 import random
 from src.entidades.inimigo_padrao import InimigoPadrao
+from src.entidades.inimigo_tank import InimigoTank
+from src.entidades.inimigo_rapido import InimigoRapido
+from src.entidades.inimigo_phasing import InimigoPhasing
+from src.entidades.inimigo_blindado import InimigoBlindado
+from src.entidades.inimigo_ranged import InimigoRanged
 from src.utils.constantes import (
     SPAWN_INTERVALO_INICIAL, SPAWN_INTERVALO_MINIMO,
     SPAWN_DISTANCIA_OFFSET, LARGURA_TELA, ALTURA_TELA,
@@ -37,6 +42,40 @@ class SistemaSpawn:
         Fórmula: N_batch(t) = min(8, 1 + floor(t / 25))
         """
         return min(8, 1 + int(tempo_s // 25.0))
+
+    def escolher_arquetipo(self, tempo_s: float):
+        """
+        Seleciona a classe do inimigo a ser gerado com base no tempo de sobrevivência.
+        """
+        if tempo_s < 20.0:
+            return InimigoPadrao
+
+        r = random.random()
+        if tempo_s < 45.0:
+            # 70% Padrão, 30% Rápido
+            return InimigoRapido if r < 0.30 else InimigoPadrao
+        elif tempo_s < 75.0:
+            # 45% Padrão, 25% Rápido, 15% Phasing, 15% Blindado
+            if r < 0.25:
+                return InimigoRapido
+            elif r < 0.40:
+                return InimigoPhasing
+            elif r < 0.55:
+                return InimigoBlindado
+            return InimigoPadrao
+        else:
+            # Mistura completa com Tanques e Ranged
+            if r < 0.20:
+                return InimigoRapido
+            elif r < 0.35:
+                return InimigoPhasing
+            elif r < 0.50:
+                return InimigoBlindado
+            elif r < 0.65:
+                return InimigoTank
+            elif r < 0.80:
+                return InimigoRanged
+            return InimigoPadrao
 
     def gerar_posicao_spawn(
         self,
@@ -83,7 +122,7 @@ class SistemaSpawn:
         arena_h: float = float(ALTURA_ARENA)
     ) -> list:
         """
-        Atualiza os cronômetros e gera novos inimigos quando o intervalo é atingido.
+        Atualiza os cronômetros e gera novos inimigos com arquétipos variados.
         """
         self.tempo_decorrido += dt
         self.timer_spawn += dt
@@ -110,7 +149,8 @@ class SistemaSpawn:
                 arena_w=arena_w,
                 arena_h=arena_h
             )
-            novo = InimigoPadrao(x=sx, y=sy)
+            cls_arquetipo = self.escolher_arquetipo(self.tempo_decorrido)
+            novo = cls_arquetipo(x=sx, y=sy)
             novos_inimigos.append(novo)
 
         return novos_inimigos
