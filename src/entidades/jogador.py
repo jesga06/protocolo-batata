@@ -6,8 +6,6 @@ mira virtual, recebimento de dano, inventário de armas e renderização.
 
 import os
 import pygame
-from src.armas.melee import Melee
-from src.armas.pistola import Pistola
 from src.utils.constantes import (
     JOGADOR_HP_MAX_PADRAO, JOGADOR_VELOCIDADE_PADRAO,
     JOGADOR_LARGURA, JOGADOR_ALTURA, JOGADOR_COOLDOWN_DANO_FLASH,
@@ -48,6 +46,8 @@ class Jogador:
         self.invulnerabilidade_timer = 0.0
 
         # Inventário de armas inicial (Slot 1: Melee, Slot 2: Pistola, Slot 3: Especial)
+        from src.armas.melee import Melee
+        from src.armas.pistola import Pistola
         self.armas = [Melee(), Pistola()]
         self.arma_especial = None
         self.drone = None
@@ -62,12 +62,12 @@ class Jogador:
         """Retorna a instância da arma correspondente ao slot_ativo atual."""
         if self.slot_ativo == 1:
             for arma in self.armas:
-                if isinstance(arma, Melee) or getattr(arma, "slot", None) == 1:
+                if getattr(arma, "slot", None) == 1:
                     return arma
             return self.armas[0] if self.armas else None
         elif self.slot_ativo == 2:
             for arma in self.armas:
-                if isinstance(arma, Pistola) or getattr(arma, "slot", None) == 2:
+                if getattr(arma, "slot", None) == 2:
                     return arma
             return self.armas[1] if len(self.armas) > 1 else (self.armas[0] if self.armas else None)
         elif self.slot_ativo == 3:
@@ -112,11 +112,11 @@ class Jogador:
 
         if teclado is not None:
             # Troca de armas via teclas numéricas 1, 2 e 3
-            if teclado.key_pressed("1"):
+            if (hasattr(teclado, "key_pressed") and teclado.key_pressed("1")) or (hasattr(teclado, "key_down") and teclado.key_down("1")):
                 self.selecionar_slot(1)
-            elif teclado.key_pressed("2"):
+            elif (hasattr(teclado, "key_pressed") and teclado.key_pressed("2")) or (hasattr(teclado, "key_down") and teclado.key_down("2")):
                 self.selecionar_slot(2)
-            elif teclado.key_pressed("3"):
+            elif (hasattr(teclado, "key_pressed") and teclado.key_pressed("3")) or (hasattr(teclado, "key_down") and teclado.key_down("3")):
                 self.selecionar_slot(3)
 
             # Movimento

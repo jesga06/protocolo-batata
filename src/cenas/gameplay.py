@@ -169,8 +169,8 @@ class GameplayScene(BaseScene):
         if disparar_agora and self.jogador.vivo:
             arma_ativa = self.jogador.obter_arma_ativa()
             if arma_ativa is not None:
-                if isinstance(arma_ativa, Pistola):
-                    if arma_ativa.pode_atirar():
+                if isinstance(arma_ativa, Pistola) or getattr(arma_ativa, "slot", None) == 2:
+                    if hasattr(arma_ativa, "pode_atirar") and arma_ativa.pode_atirar():
                         novos_tiros = arma_ativa.disparar(
                             centro_jogador_x, centro_jogador_y,
                             mouse_mundo_x, mouse_mundo_y
@@ -178,17 +178,22 @@ class GameplayScene(BaseScene):
                         if novos_tiros:
                             self.projeteis.extend(novos_tiros)
                             self.buffer_tiro = 0.0
-                elif isinstance(arma_ativa, Melee):
-                    if arma_ativa.pode_atirar():
+                elif isinstance(arma_ativa, Melee) or getattr(arma_ativa, "slot", None) == 1:
+                    if hasattr(arma_ativa, "pode_atirar") and arma_ativa.pode_atirar():
                         afetados = arma_ativa.executar_ataque(
                             centro_jogador_x, centro_jogador_y,
                             self.inimigos
                         )
+                        if isinstance(afetados, (list, tuple)):
+                            for inim in afetados:
+                                if not getattr(inim, "vivo", True):
+                                    self.abates += 1
+                                    self.pontos += getattr(inim, "score_valor", 100)
                         self.buffer_tiro = 0.0
                         self.efeitos_melee.append({
                             "x": centro_jogador_x,
                             "y": centro_jogador_y,
-                            "alcance": arma_ativa.alcance,
+                            "alcance": getattr(arma_ativa, "alcance", 140.0),
                             "tempo": 0.15,
                             "tempo_total": 0.15
                         })
@@ -314,8 +319,8 @@ class GameplayScene(BaseScene):
 
         # Indicador de alcance Melee quando empunhada (Antes do golpe)
         arma_ativa = self.jogador.obter_arma_ativa()
-        if isinstance(arma_ativa, Melee) and self.jogador.vivo:
-            raio = int(arma_ativa.alcance)
+        if (isinstance(arma_ativa, Melee) or getattr(arma_ativa, "slot", None) == 1) and self.jogador.vivo:
+            raio = int(getattr(arma_ativa, "alcance", 140))
             cx = int(self.camera.transform_x(self.jogador.x + self.jogador.largura / 2.0))
             cy = int(self.camera.transform_y(self.jogador.y + self.jogador.altura / 2.0))
             surf_alcance = pygame.Surface((raio * 2 + 4, raio * 2 + 4), pygame.SRCALPHA)
