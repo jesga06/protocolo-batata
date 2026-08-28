@@ -46,9 +46,9 @@ class TestAssetsExistenciaEDimensoes(unittest.TestCase):
 
     def test_dimensoes_sprites_jogador(self):
         caminhos_esperados = {
-            "sprites/jogador/batata_idle.png": (32, 32),
-            "sprites/jogador/batata_walk_sheet.png": (128, 32),
-            "sprites/jogador/batata_dano.png": (32, 32),
+            "sprites/jogador/batata_idle.png": (42, 42),
+            "sprites/jogador/batata_walk_sheet.png": (168, 42),
+            "sprites/jogador/batata_dano.png": (42, 42),
         }
         for rel_path, dim_esperada in caminhos_esperados.items():
             abs_path = os.path.join(ASSETS_DIR, rel_path)
@@ -58,12 +58,12 @@ class TestAssetsExistenciaEDimensoes(unittest.TestCase):
 
     def test_dimensoes_sprites_inimigos(self):
         caminhos_esperados = {
-            "sprites/inimigos/inimigo_padrao.png": (32, 32),
-            "sprites/inimigos/inimigo_tank.png": (48, 48),
-            "sprites/inimigos/inimigo_rapido.png": (24, 24),
-            "sprites/inimigos/inimigo_phasing.png": (32, 32),
-            "sprites/inimigos/inimigo_blindado.png": (36, 36),
-            "sprites/inimigos/inimigo_ranged.png": (32, 32),
+            "sprites/inimigos/inimigo_padrao.png": (42, 42),
+            "sprites/inimigos/inimigo_tank.png": (62, 62),
+            "sprites/inimigos/inimigo_rapido.png": (31, 31),
+            "sprites/inimigos/inimigo_phasing.png": (42, 42),
+            "sprites/inimigos/inimigo_blindado.png": (47, 47),
+            "sprites/inimigos/inimigo_ranged.png": (42, 42),
         }
         for rel_path, dim_esperada in caminhos_esperados.items():
             abs_path = os.path.join(ASSETS_DIR, rel_path)

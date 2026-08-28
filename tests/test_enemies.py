@@ -30,8 +30,8 @@ class TestInimigoPadraoIAEColisao(unittest.TestCase):
 
     def test_estatisticas_iniciais_inimigo_padrao(self):
         e = InimigoPadrao(x=100.0, y=100.0)
-        self.assertEqual(e.hp, 25)
-        self.assertEqual(e.hp_max, 25)
+        self.assertEqual(e.hp, INIMIGO_PADRAO_HP)
+        self.assertEqual(e.hp_max, INIMIGO_PADRAO_HP)
         self.assertEqual(e.velocidade, 100.0)
         self.assertEqual(e.dano_contato, 10)
         self.assertEqual(e.cooldown_contato_max, 0.4)
@@ -95,14 +95,14 @@ class TestInimigoPadraoIAEColisao(unittest.TestCase):
 
     def test_dano_e_morte_do_inimigo(self):
         e = InimigoPadrao(x=100, y=100)
-        self.assertEqual(e.hp, 25)
+        self.assertEqual(e.hp, INIMIGO_PADRAO_HP)
 
-        e.receber_dano(10)
-        self.assertEqual(e.hp, 15)
+        e.receber_dano(20)
+        self.assertEqual(e.hp, 30)
         self.assertTrue(e.vivo)
         self.assertGreater(e.flash_timer, 0.0)
 
-        e.receber_dano(15)
+        e.receber_dano(30)
         self.assertEqual(e.hp, 0)
         self.assertFalse(e.vivo)
 

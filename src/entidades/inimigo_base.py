@@ -7,7 +7,7 @@ recebimento de dano, knockback e renderização.
 
 import os
 import pygame
-from src.utils.constantes import ASSETS_DIR, ASSET_PATHS, obter_caminho_asset
+from src.utils.constantes import ASSETS_DIR, ASSET_PATHS, obter_caminho_asset, INIMIGO_PADRAO_HP
 from src.utils.math_utils import vetor_direcao, colisao_aabb, lerp
 
 
@@ -21,7 +21,7 @@ class InimigoBase:
         self,
         x: float,
         y: float,
-        hp: int = 25,
+        hp: int = INIMIGO_PADRAO_HP,
         velocidade: float = 100.0,
         dano_contato: int = 10,
         cooldown_contato: float = 0.4,

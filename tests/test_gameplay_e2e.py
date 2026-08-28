@@ -128,12 +128,12 @@ class TestGameplayE2ESimulation(unittest.TestCase):
             cena.spawner.timer_spawn = 0.0
             cena.loop()
 
-        # O inimigo sofreu dano da pistola (12 dano de 25 HP)
-        self.assertLess(inimigo.hp, 25)
+        # O inimigo sofreu dano da pistola (17 dano de 50 HP)
+        self.assertLess(inimigo.hp, 50)
 
-        # Dispara segundo e terceiro tiro para liquidar o inimigo (12 + 12 + 12 = 36 > 25 HP)
+        # Dispara segundo e terceiro tiro para liquidar o inimigo (17 + 17 + 17 = 51 >= 50 HP)
         pistola.tempo_recarga_restante = 0.0
-        tiros_2 = pistola.disparar(416.0, 316.0, 564.0, 314.0)
+        tiros_2 = pistola.disparar(416.0, 316.0, inimigo.x + 10, inimigo.y + 10)
         cena.projeteis.extend(tiros_2)
 
         for _ in range(30):
@@ -142,7 +142,7 @@ class TestGameplayE2ESimulation(unittest.TestCase):
 
         if inimigo in cena.inimigos and inimigo.vivo:
             pistola.tempo_recarga_restante = 0.0
-            tiros_3 = pistola.disparar(416.0, 316.0, 564.0, 314.0)
+            tiros_3 = pistola.disparar(416.0, 316.0, inimigo.x + 10, inimigo.y + 10)
             cena.projeteis.extend(tiros_3)
             for _ in range(30):
                 cena.spawner.timer_spawn = 0.0
@@ -177,7 +177,7 @@ class TestGameplayE2ESimulation(unittest.TestCase):
         inimigo_teste = InimigoPadrao(0, 0)
         inimigo_teste.update(0.1, (100, 100))
         self.assertGreater(inimigo_teste.x, 0)
-        inimigo_teste.receber_dano(25)
+        inimigo_teste.receber_dano(50)
         self.assertFalse(inimigo_teste.vivo)
 
 

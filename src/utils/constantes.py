@@ -63,7 +63,7 @@ JOGADOR_INVULNERABILIDADE_TEMPO = 0.2  # segundos mínimos entre frames de dano
 # =============================================================================
 
 # Inimigo Padrão (Estagiário)
-INIMIGO_PADRAO_HP = 25
+INIMIGO_PADRAO_HP = 50
 INIMIGO_PADRAO_VELOCIDADE = 100.0
 INIMIGO_PADRAO_DANO = 10
 INIMIGO_PADRAO_COOLDOWN_ATAQUE = 0.4
@@ -121,14 +121,15 @@ LIMITE_INIMIGOS_VIVOS = 120
 # =============================================================================
 
 # Slot 1: Melee (Chave de Manutenção)
-MELEE_DANO = 15
+MELEE_DANO = 10
 MELEE_COOLDOWN = 0.6
-MELEE_ALCANCE = 60.0
-MELEE_KNOCKBACK = 200.0
+MELEE_ALCANCE = 84.0
+MELEE_KNOCKBACK = 360.0
 MELEE_ALVOS_MAX = 2
+MELEE_ARCO_GRAUS = 45.0
 
 # Slot 2: Pistola (Padrão de Fábrica)
-PISTOLA_DANO = 12
+PISTOLA_DANO = 17
 PISTOLA_COOLDOWN = 0.35
 PISTOLA_VELOCIDADE_PROJETIL = 450.0
 PISTOLA_ALCANCE_MAX = 800.0

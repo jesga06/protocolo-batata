@@ -410,14 +410,14 @@ class TestProjectileEnemyCollisions(unittest.TestCase):
         self.scene.inimigos.append(inimigo)
 
         # Create bullet overlapping enemy
-        proj = Projetil(x=450.0, y=300.0, dir_x=1.0, dir_y=0.0, dano=12, velocidade=400.0)
+        proj = Projetil(x=450.0, y=300.0, dir_x=1.0, dir_y=0.0, dano=17, velocidade=400.0)
         self.scene.projeteis.append(proj)
 
         # Run 1 physics loop step
         self.scene.loop()
 
-        # Enemy took 12 damage: 25 - 12 = 13 HP
-        self.assertEqual(inimigo.hp, 13)
+        # Enemy took 17 damage: 50 - 17 = 33 HP
+        self.assertEqual(inimigo.hp, 33)
         self.assertTrue(inimigo.vivo)
         # Bullet was destroyed and removed from active list
         self.assertNotIn(proj, self.scene.projeteis)
@@ -425,10 +425,10 @@ class TestProjectileEnemyCollisions(unittest.TestCase):
 
     def test_multi_bullet_cumulative_destruction(self):
         """
-        Three consecutive bullets of damage 12 hit an enemy with 25 HP:
-        Hit 1: HP 25 -> 13
-        Hit 2: HP 13 -> 1
-        Hit 3: HP 1 -> <= 0 (Dead, Kill count +1, Score +100)
+        Three consecutive bullets of damage 17 hit an enemy with 50 HP:
+        Hit 1: HP 50 -> 33
+        Hit 2: HP 33 -> 16
+        Hit 3: HP 16 -> <= 0 (Dead, Kill count +1, Score +100)
         """
         inimigo = InimigoPadrao(x=450.0, y=300.0)
         self.scene.inimigos.append(inimigo)
@@ -437,23 +437,23 @@ class TestProjectileEnemyCollisions(unittest.TestCase):
         pontos_init = self.scene.pontos
 
         # Shot 1
-        b1 = Projetil(x=450.0, y=300.0, dir_x=1.0, dir_y=0.0, dano=12)
+        b1 = Projetil(x=450.0, y=300.0, dir_x=1.0, dir_y=0.0, dano=17)
         self.scene.projeteis.append(b1)
         self.scene.loop()
-        self.assertEqual(inimigo.hp, 13)
+        self.assertEqual(inimigo.hp, 33)
         self.assertTrue(inimigo.vivo)
         self.assertEqual(self.scene.abates, abates_init)
 
         # Shot 2
-        b2 = Projetil(x=450.0, y=300.0, dir_x=1.0, dir_y=0.0, dano=12)
+        b2 = Projetil(x=450.0, y=300.0, dir_x=1.0, dir_y=0.0, dano=17)
         self.scene.projeteis.append(b2)
         self.scene.loop()
-        self.assertEqual(inimigo.hp, 1)
+        self.assertEqual(inimigo.hp, 16)
         self.assertTrue(inimigo.vivo)
         self.assertEqual(self.scene.abates, abates_init)
 
         # Shot 3 (Lethal hit with overkill)
-        b3 = Projetil(x=450.0, y=300.0, dir_x=1.0, dir_y=0.0, dano=12)
+        b3 = Projetil(x=450.0, y=300.0, dir_x=1.0, dir_y=0.0, dano=17)
         self.scene.projeteis.append(b3)
         self.scene.loop()
         self.assertLessEqual(inimigo.hp, 0)
@@ -471,14 +471,14 @@ class TestProjectileEnemyCollisions(unittest.TestCase):
         e2 = InimigoPadrao(x=450.0, y=300.0)
         self.scene.inimigos = [e1, e2]
 
-        proj = Projetil(x=450.0, y=300.0, dir_x=1.0, dir_y=0.0, dano=12)
+        proj = Projetil(x=450.0, y=300.0, dir_x=1.0, dir_y=0.0, dano=17)
         self.scene.projeteis = [proj]
 
         self.scene.loop()
 
-        # Exactly one enemy must have taken damage (HP=13) and the other must be untouched (HP=25)
+        # Exactly one enemy must have taken damage (HP=33) and the other must be untouched (HP=50)
         hps = sorted([e1.hp, e2.hp])
-        self.assertEqual(hps, [13, 25], "Single bullet improperly pierced multiple overlapping enemies!")
+        self.assertEqual(hps, [33, 50], "Single bullet improperly pierced multiple overlapping enemies!")
         self.assertEqual(len(self.scene.projeteis), 0, "Bullet was not deactivated upon collision!")
 
     def test_overkill_and_dead_enemy_hit_rejection(self):
@@ -515,7 +515,7 @@ class TestProjectileEnemyCollisions(unittest.TestCase):
             ex = 100.0 + i * 20.0
             ey = 100.0 + i * 20.0
             e = InimigoPadrao(x=ex, y=ey)
-            b = Projetil(x=ex, y=ey, dir_x=1.0, dir_y=0.0, dano=25)  # 1-shot lethal
+            b = Projetil(x=ex, y=ey, dir_x=1.0, dir_y=0.0, dano=50)  # 1-shot lethal
             enemies.append(e)
             bullets.append(b)
 

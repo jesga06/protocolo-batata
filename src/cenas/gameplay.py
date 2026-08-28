@@ -4,6 +4,7 @@ Gerencia o loop completo do jogo: jogador, câmera 2D com letterbox, armas,
 projéteis, hordas de inimigos, colisões, HUD in-world e HUD em screen-space.
 """
 
+import math
 import os
 import pygame
 from src.cenas.base_scene import BaseScene
@@ -13,6 +14,9 @@ from src.entidades.projetil import Projetil
 from src.armas.pistola import Pistola
 from src.armas.melee import Melee
 from src.sistemas.sistema_spawn import SistemaSpawn
+from src.sistemas.sistema_drops import SistemaDrops
+from src.sistemas.sistema_scavenger import SistemaScavenger
+from src.ui.hud import HUD
 from PPlay.camera import Camera
 from PPlay.scenemanager import SceneManager
 from src.utils.constantes import (
@@ -47,8 +51,11 @@ class GameplayScene(BaseScene):
         self.camera = Camera(LARGURA_TELA, ALTURA_TELA)
         self.camera.set_world_bounds(self.largura_arena, self.altura_arena)
 
-        # Sistemas de combate e spawn
+        # Sistemas de combate, spawn, drops e progressão
         self.spawner = SistemaSpawn(max_ativos=60)
+        self.sistema_drops = SistemaDrops()
+        self.sistema_scavenger = SistemaScavenger()
+        self.hud = HUD()
         self.projeteis: list[Projetil] = []
         self.inimigos: list[InimigoBase] = []
 
@@ -180,20 +187,31 @@ class GameplayScene(BaseScene):
                             self.buffer_tiro = 0.0
                 elif isinstance(arma_ativa, Melee) or getattr(arma_ativa, "slot", None) == 1:
                     if hasattr(arma_ativa, "pode_atirar") and arma_ativa.pode_atirar():
+                        ang_mira = math.atan2(mouse_mundo_y - centro_jogador_y, mouse_mundo_x - centro_jogador_x)
                         afetados = arma_ativa.executar_ataque(
                             centro_jogador_x, centro_jogador_y,
-                            self.inimigos
+                            self.inimigos,
+                            mira_x=mouse_mundo_x,
+                            mira_y=mouse_mundo_y,
+                            angulo_mira=ang_mira
                         )
                         if isinstance(afetados, (list, tuple)):
                             for inim in afetados:
                                 if not getattr(inim, "vivo", True):
                                     self.abates += 1
                                     self.pontos += getattr(inim, "score_valor", 100)
+                                    self.sistema_drops.gerar_drop_morte_inimigo(
+                                        inim.x + getattr(inim, "largura", 28) / 2.0,
+                                        inim.y + getattr(inim, "altura", 28) / 2.0,
+                                        xp_base=getattr(inim, "xp_valor", 10)
+                                    )
                         self.buffer_tiro = 0.0
                         self.efeitos_melee.append({
                             "x": centro_jogador_x,
                             "y": centro_jogador_y,
-                            "alcance": getattr(arma_ativa, "alcance", 140.0),
+                            "angulo": ang_mira,
+                            "alcance": getattr(arma_ativa, "alcance", 84.0),
+                            "arco_graus": getattr(arma_ativa, "arco_graus", 45.0),
                             "tempo": 0.15,
                             "tempo_total": 0.15
                         })
@@ -266,12 +284,29 @@ class GameplayScene(BaseScene):
                     if not inimigo.vivo:
                         self.abates += 1
                         self.pontos += inimigo.score_valor
+                        self.sistema_drops.gerar_drop_morte_inimigo(
+                            inimigo.x + inimigo.largura / 2.0,
+                            inimigo.y + inimigo.altura / 2.0,
+                            xp_base=getattr(inimigo, "xp_valor", 10)
+                        )
 
                     break
 
         # Limpeza de entidades destruídas / inativas
         self.projeteis = [p for p in self.projeteis if p.ativo]
         self.inimigos = [e for e in self.inimigos if e.vivo]
+
+        # =========================================================================
+        # 7. SISTEMA DE DROPS E PROGRESSÃO DE XP
+        # =========================================================================
+        self.sistema_drops.update(dt)
+        eventos_coleta = self.sistema_drops.coletar_jogador(self.jogador)
+        for ev in eventos_coleta:
+            if ev["tipo"] == "xp":
+                self.jogador.ganhar_xp(ev["valor"])
+
+        # Atualiza IA do Scavenger se houver drops elegíveis
+        self.sistema_scavenger.update(dt, self.inimigos, self.sistema_drops.drops)
 
         # Verifica morte do jogador
         if not self.jogador.vivo:
@@ -317,30 +352,76 @@ class GameplayScene(BaseScene):
         borda_y1 = self.camera.transform_y(self.altura_arena)
         pygame.draw.rect(screen, AZUL_CIANO, (borda_x0, borda_y0, self.largura_arena, self.altura_arena), width=3)
 
-        # Indicador de alcance Melee quando empunhada (Antes do golpe)
+        # Posição virtual do cursor do mouse em coordenadas de mundo
+        try:
+            mx, my = self.mouse.get_position()
+        except Exception:
+            mx, my = (LARGURA_TELA / 2.0, ALTURA_TELA / 2.0)
+        mouse_mundo_x = mx + self.camera.x
+        mouse_mundo_y = my + self.camera.y
+
+        # Indicador de alcance Melee quando empunhada (Antes do golpe - Cone direcional de 45°)
         arma_ativa = self.jogador.obter_arma_ativa()
         if (isinstance(arma_ativa, Melee) or getattr(arma_ativa, "slot", None) == 1) and self.jogador.vivo:
-            raio = int(getattr(arma_ativa, "alcance", 140))
-            cx = int(self.camera.transform_x(self.jogador.x + self.jogador.largura / 2.0))
-            cy = int(self.camera.transform_y(self.jogador.y + self.jogador.altura / 2.0))
-            surf_alcance = pygame.Surface((raio * 2 + 4, raio * 2 + 4), pygame.SRCALPHA)
-            pygame.draw.circle(surf_alcance, (0, 220, 255, 20), (raio + 2, raio + 2), raio)
-            pygame.draw.circle(surf_alcance, (0, 220, 255, 70), (raio + 2, raio + 2), raio, width=1)
-            screen.blit(surf_alcance, (cx - raio - 2, cy - raio - 2))
+            raio = getattr(arma_ativa, "alcance", 84.0)
+            arco = getattr(arma_ativa, "arco_graus", 45.0)
+            cx_mundo = self.jogador.x + self.jogador.largura / 2.0
+            cy_mundo = self.jogador.y + self.jogador.altura / 2.0
+            cx_tela = int(self.camera.transform_x(cx_mundo))
+            cy_tela = int(self.camera.transform_y(cy_mundo))
 
-        # Efeitos visuais de golpe Melee (Depois / Durante o golpe)
+            ang_centro = math.atan2(mouse_mundo_y - cy_mundo, mouse_mundo_x - cx_mundo)
+            meio_arco = math.radians(arco / 2.0)
+
+            surf_dim = int(raio * 2 + 16)
+            surf_alcance = pygame.Surface((surf_dim, surf_dim), pygame.SRCALPHA)
+            s_cx = surf_dim // 2
+            s_cy = surf_dim // 2
+
+            pontos_setor = [(s_cx, s_cy)]
+            num_seg = 12
+            for step in range(num_seg + 1):
+                ang = ang_centro - meio_arco + (2.0 * meio_arco * step / num_seg)
+                px = s_cx + math.cos(ang) * raio
+                py = s_cy + math.sin(ang) * raio
+                pontos_setor.append((px, py))
+
+            pygame.draw.polygon(surf_alcance, (0, 220, 255, 25), pontos_setor)
+            pygame.draw.polygon(surf_alcance, (0, 220, 255, 80), pontos_setor, width=1)
+            screen.blit(surf_alcance, (cx_tela - s_cx, cy_tela - s_cy))
+
+        # Efeitos visuais de golpe Melee (Depois / Durante o golpe - Slash Fan de 45°)
         for ef in self.efeitos_melee:
-            raio = int(ef["alcance"])
-            cx = int(self.camera.transform_x(ef["x"]))
-            cy = int(self.camera.transform_y(ef["y"]))
+            raio_base = ef["alcance"]
+            arco = ef.get("arco_graus", 45.0)
+            ang_centro = ef.get("angulo", 0.0)
+            cx_tela = int(self.camera.transform_x(ef["x"]))
+            cy_tela = int(self.camera.transform_y(ef["y"]))
+
             progresso = 1.0 - max(0.0, ef["tempo"] / ef["tempo_total"])
-            alpha = int(220 * (1.0 - progresso))
-            
-            surf_golpe = pygame.Surface((raio * 2 + 8, raio * 2 + 8), pygame.SRCALPHA)
-            raio_atual = int(raio * (0.5 + 0.5 * progresso))
-            pygame.draw.circle(surf_golpe, (255, 215, 0, alpha // 4), (raio + 4, raio + 4), raio_atual)
-            pygame.draw.circle(surf_golpe, (255, 255, 255, alpha), (raio + 4, raio + 4), raio_atual, width=3)
-            screen.blit(surf_golpe, (cx - raio - 4, cy - raio - 4))
+            alpha = int(240 * (1.0 - progresso))
+            raio_atual = raio_base * (0.4 + 0.6 * progresso)
+            meio_arco = math.radians(arco / 2.0)
+
+            surf_dim = int(raio_base * 2 + 16)
+            surf_golpe = pygame.Surface((surf_dim, surf_dim), pygame.SRCALPHA)
+            s_cx = surf_dim // 2
+            s_cy = surf_dim // 2
+
+            pontos_fan = [(s_cx, s_cy)]
+            num_seg = 12
+            for step in range(num_seg + 1):
+                ang = ang_centro - meio_arco + (2.0 * meio_arco * step / num_seg)
+                px = s_cx + math.cos(ang) * raio_atual
+                py = s_cy + math.sin(ang) * raio_atual
+                pontos_fan.append((px, py))
+
+            pygame.draw.polygon(surf_golpe, (255, 215, 0, alpha // 3), pontos_fan)
+            pygame.draw.polygon(surf_golpe, (255, 255, 255, alpha), pontos_fan, width=2)
+            screen.blit(surf_golpe, (cx_tela - s_cx, cy_tela - s_cy))
+
+        # Drops de itens e gemas de XP no chão da arena
+        self.sistema_drops.desenhar(self.janela, self.camera)
 
         # Inimigos
         for inimigo in self.inimigos:
@@ -450,7 +531,11 @@ class GameplayScene(BaseScene):
         abates_rect = abates_surf.get_rect(centerx=LARGURA_TELA // 2, top=40)
         screen.blit(abates_surf, abates_rect)
 
-        # 3. Botão de Engrenagem e FPS (Top-Right)
+        # 3. Barra de Progresso de XP (Top-Center: top=62, 360x10 px)
+        if hasattr(self, "hud") and self.hud is not None:
+            self.hud.desenhar_barra_xp(screen, self.jogador.sistema_xp)
+
+        # 4. Botão de Engrenagem e FPS (Top-Right)
         fps_val = int(self.janela.get_fps())
         fonte_fps = pygame.font.SysFont("Arial", 14)
         fps_surf = fonte_fps.render(f"FPS: {fps_val}", True, AZUL_CIANO)

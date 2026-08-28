@@ -48,10 +48,36 @@ class Jogador:
         # Inventário de armas inicial (Slot 1: Melee, Slot 2: Pistola, Slot 3: Especial)
         from src.armas.melee import Melee
         from src.armas.pistola import Pistola
+        from src.sistemas.sistema_xp import SistemaXP
         self.armas = [Melee(), Pistola()]
         self.arma_especial = None
         self.drone = None
         self.slot_ativo = 2  # Padrão: Slot 2 (Pistola)
+        self.sistema_xp = SistemaXP()
+
+    @property
+    def xp(self) -> int:
+        return self.sistema_xp.xp_atual
+
+    @xp.setter
+    def xp(self, valor: int):
+        self.sistema_xp.xp_atual = int(valor)
+
+    @property
+    def nivel(self) -> int:
+        return self.sistema_xp.nivel
+
+    @nivel.setter
+    def nivel(self, valor: int):
+        self.sistema_xp.nivel = int(valor)
+
+    @property
+    def xp_proximo(self) -> int:
+        return self.sistema_xp.xp_para_proximo_nivel()
+
+    def ganhar_xp(self, quantidade: int, mult_xp: float = 1.0) -> list[int]:
+        """Adiciona XP ao jogador e retorna lista de níveis subidos."""
+        return self.sistema_xp.adicionar_xp(quantidade, mult_xp)
 
     def selecionar_slot(self, slot: int):
         """Alterna a arma ativa para o slot 1, 2 ou 3."""

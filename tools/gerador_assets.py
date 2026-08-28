@@ -101,20 +101,23 @@ def desenhar_batata(draw: ImageDraw.ImageDraw, ox: int, oy: int, dano: bool = Fa
 
 
 def gerar_sprites_jogador():
-    # 1. Idle (32x32)
+    # 1. Idle (32x32 -> 42x42 [+30%])
     img_idle, draw_idle = criar_imagem_transparente(32, 32)
     desenhar_batata(draw_idle, 0, 0, dano=False, frame_walk=0)
+    img_idle = img_idle.resize((42, 42), Image.Resampling.NEAREST)
     salvar_png(img_idle, "sprites/jogador/batata_idle.png")
 
-    # 2. Walk Spritesheet (128x32 - 4 frames de 32x32)
+    # 2. Walk Spritesheet (128x32 -> 168x42 [4 frames de 42x42, +30%])
     img_walk, draw_walk = criar_imagem_transparente(128, 32)
     for frame in range(4):
         desenhar_batata(draw_walk, frame * 32, 0, dano=False, frame_walk=frame)
+    img_walk = img_walk.resize((168, 42), Image.Resampling.NEAREST)
     salvar_png(img_walk, "sprites/jogador/batata_walk_sheet.png")
 
-    # 3. Dano (32x32)
+    # 3. Dano (32x32 -> 42x42 [+30%])
     img_dano, draw_dano = criar_imagem_transparente(32, 32)
     desenhar_batata(draw_dano, 0, 0, dano=True, frame_walk=0)
+    img_dano = img_dano.resize((42, 42), Image.Resampling.NEAREST)
     salvar_png(img_dano, "sprites/jogador/batata_dano.png")
 
 
@@ -123,7 +126,7 @@ def gerar_sprites_jogador():
 # =============================================================================
 
 def gerar_sprites_inimigos():
-    # 1. Inimigo Padrão / Estagiário (32x32) - Robô azul com visor vermelho e garras
+    # 1. Inimigo Padrão / Estagiário (32x32 -> 42x42 [+30%]) - Robô azul com visor vermelho e garras
     img, draw = criar_imagem_transparente(32, 32)
     # Corpo
     draw.rectangle([7, 8, 24, 25], fill=(60, 120, 210, 255), outline=(20, 40, 90, 255))
@@ -138,9 +141,10 @@ def gerar_sprites_inimigos():
     # Pernas mecânicas
     draw.line([10, 25, 8, 30], fill=(40, 45, 60, 255), width=2)
     draw.line([21, 25, 23, 30], fill=(40, 45, 60, 255), width=2)
+    img = img.resize((42, 42), Image.Resampling.NEAREST)
     salvar_png(img, "sprites/inimigos/inimigo_padrao.png")
 
-    # 2. Inimigo Tanque / Geladeira Industrial (48x48) - Pesado, blindado
+    # 2. Inimigo Tanque / Geladeira Industrial (48x48 -> 62x62 [+30%]) - Pesado, blindado
     img, draw = criar_imagem_transparente(48, 48)
     # Corpo volumoso
     draw.rectangle([8, 8, 39, 41], fill=(100, 115, 130, 255), outline=(30, 35, 45, 255))
@@ -158,9 +162,10 @@ def gerar_sprites_inimigos():
     # Esteiras pesadas
     draw.rectangle([4, 12, 8, 38], fill=(50, 55, 65, 255), outline=(20, 25, 30, 255))
     draw.rectangle([39, 12, 43, 38], fill=(50, 55, 65, 255), outline=(20, 25, 30, 255))
+    img = img.resize((62, 62), Image.Resampling.NEAREST)
     salvar_png(img, "sprites/inimigos/inimigo_tank.png")
 
-    # 3. Inimigo Rápido / Viciado em Cafeína (24x24) - Pequeno, neon verde/amarelo
+    # 3. Inimigo Rápido / Viciado em Cafeína (24x24 -> 31x31 [+30%]) - Pequeno, neon verde/amarelo
     img, draw = criar_imagem_transparente(24, 24)
     # Corpo aerodinâmico em cunha
     draw.polygon([(12, 2), (21, 19), (3, 19)], fill=(180, 255, 0, 255), outline=(50, 90, 0, 255))
@@ -171,9 +176,10 @@ def gerar_sprites_inimigos():
     # Raios / Faíscas
     draw.line([12, 19, 10, 23], fill=(0, 255, 220, 255), width=1)
     draw.line([12, 19, 14, 23], fill=(0, 255, 220, 255), width=1)
+    img = img.resize((31, 31), Image.Resampling.NEAREST)
     salvar_png(img, "sprites/inimigos/inimigo_rapido.png")
 
-    # 4. Inimigo Phasing / Fantasma Tecnológico (32x32) - Semi-transparente ciano
+    # 4. Inimigo Phasing / Fantasma Tecnológico (32x32 -> 42x42 [+30%]) - Semi-transparente ciano
     img, draw = criar_imagem_transparente(32, 32)
     cor_phasing = (0, 240, 255, 160)
     cor_phasing_brilho = (180, 255, 255, 220)
@@ -182,9 +188,10 @@ def gerar_sprites_inimigos():
     # Olhos brilhantes
     draw.ellipse([10, 11, 14, 15], fill=cor_phasing_brilho)
     draw.ellipse([18, 11, 22, 15], fill=cor_phasing_brilho)
+    img = img.resize((42, 42), Image.Resampling.NEAREST)
     salvar_png(img, "sprites/inimigos/inimigo_phasing.png")
 
-    # 5. Inimigo Blindado / Ballistic Enthusiast (36x36) - Casca de titânio
+    # 5. Inimigo Blindado / Ballistic Enthusiast (36x36 -> 47x47 [+30%]) - Casca de titânio
     img, draw = criar_imagem_transparente(36, 36)
     # Escudo frontal resistente
     draw.rounded_rectangle([4, 4, 31, 31], radius=6, fill=(120, 130, 145, 255), outline=(40, 45, 55, 255), width=2)
@@ -193,9 +200,10 @@ def gerar_sprites_inimigos():
     draw.line([27, 8, 8, 27], fill=(70, 75, 85, 255), width=2)
     # Fenda de visão estreita
     draw.rectangle([10, 16, 25, 19], fill=(255, 80, 0, 255), outline=(0, 0, 0, 255))
+    img = img.resize((47, 47), Image.Resampling.NEAREST)
     salvar_png(img, "sprites/inimigos/inimigo_blindado.png")
 
-    # 6. Inimigo Ranged / Atirador Blaster (32x32) - Laranja/ferrugem com canhão
+    # 6. Inimigo Ranged / Atirador Blaster (32x32 -> 42x42 [+30%]) - Laranja/ferrugem com canhão
     img, draw = criar_imagem_transparente(32, 32)
     # Corpo
     draw.rectangle([8, 9, 23, 24], fill=(230, 110, 25, 255), outline=(80, 30, 0, 255))
@@ -208,6 +216,7 @@ def gerar_sprites_inimigos():
     draw.line([9, 24, 5, 30], fill=(50, 55, 60, 255), width=2)
     draw.line([16, 24, 16, 30], fill=(50, 55, 60, 255), width=2)
     draw.line([22, 24, 26, 30], fill=(50, 55, 60, 255), width=2)
+    img = img.resize((42, 42), Image.Resampling.NEAREST)
     salvar_png(img, "sprites/inimigos/inimigo_ranged.png")
 
 
@@ -216,7 +225,7 @@ def gerar_sprites_inimigos():
 # =============================================================================
 
 def gerar_sprites_armas():
-    # 1. Arma Melee / Chave Inglesa (24x24)
+    # 1. Arma Melee / Chave Inglesa (24x24 -> 31x31 [+30%])
     img, draw = criar_imagem_transparente(24, 24)
     # Cabo diagonal
     draw.line([5, 19, 15, 9], fill=(160, 170, 180, 255), width=3)
@@ -224,9 +233,10 @@ def gerar_sprites_armas():
     # Cabeça da chave inglesa
     draw.polygon([(14, 10), (19, 5), (22, 8), (17, 13)], fill=(190, 200, 215, 255), outline=(80, 90, 100, 255))
     draw.polygon([(17, 7), (20, 4), (22, 6), (19, 9)], fill=(0, 0, 0, 0)) # Vão da chave
+    img = img.resize((31, 31), Image.Resampling.NEAREST)
     salvar_png(img, "sprites/armas/arma_melee.png")
 
-    # 2. Arma Pistola (24x24)
+    # 2. Arma Pistola (24x24 -> 31x31 [+30%])
     img, draw = criar_imagem_transparente(24, 24)
     # Slide / Cano
     draw.rectangle([6, 7, 20, 12], fill=(140, 150, 165, 255), outline=(40, 45, 55, 255))
@@ -234,9 +244,10 @@ def gerar_sprites_armas():
     draw.polygon([(8, 12), (13, 12), (11, 20), (6, 20)], fill=(70, 50, 35, 255), outline=(30, 20, 10, 255))
     # Gatilho
     draw.line([13, 14, 13, 16], fill=(200, 200, 200, 255), width=1)
+    img = img.resize((31, 31), Image.Resampling.NEAREST)
     salvar_png(img, "sprites/armas/arma_pistola.png")
 
-    # 3. Arma Minigun (32x32)
+    # 3. Arma Minigun (32x32 -> 42x42 [+30%])
     img, draw = criar_imagem_transparente(32, 32)
     # Tambor de munição
     draw.ellipse([4, 14, 14, 24], fill=(50, 55, 65, 255), outline=(20, 20, 25, 255))
@@ -246,9 +257,10 @@ def gerar_sprites_armas():
     for y in [12, 15, 18]:
         draw.line([20, y, 30, y], fill=(170, 180, 190, 255), width=2)
     draw.line([29, 11, 29, 20], fill=(40, 45, 50, 255), width=1)
+    img = img.resize((42, 42), Image.Resampling.NEAREST)
     salvar_png(img, "sprites/armas/arma_minigun.png")
 
-    # 4. Arma Shotgun (32x32)
+    # 4. Arma Shotgun (32x32 -> 42x42 [+30%])
     img, draw = criar_imagem_transparente(32, 32)
     # Coronha de madeira
     draw.polygon([(2, 18), (10, 14), (10, 19), (2, 22)], fill=(120, 70, 35, 255), outline=(50, 30, 15, 255))
@@ -258,9 +270,10 @@ def gerar_sprites_armas():
     draw.rectangle([18, 12, 30, 16], fill=(160, 170, 180, 255), outline=(40, 45, 50, 255))
     # Guarda-mão / Bomba
     draw.rectangle([17, 16, 23, 19], fill=(120, 70, 35, 255), outline=(50, 30, 15, 255))
+    img = img.resize((42, 42), Image.Resampling.NEAREST)
     salvar_png(img, "sprites/armas/arma_shotgun.png")
 
-    # 5. Arma Rifle de Assalto (32x32)
+    # 5. Arma Rifle de Assalto (32x32 -> 42x42 [+30%])
     img, draw = criar_imagem_transparente(32, 32)
     # Coronha
     draw.rectangle([3, 14, 9, 18], fill=(60, 65, 70, 255), outline=(20, 25, 30, 255))
@@ -271,9 +284,10 @@ def gerar_sprites_armas():
     # Cano e mira
     draw.rectangle([21, 13, 30, 16], fill=(140, 150, 160, 255), outline=(30, 35, 40, 255))
     draw.rectangle([13, 9, 18, 12], fill=(40, 45, 50, 255)) # Mira óptica
+    img = img.resize((42, 42), Image.Resampling.NEAREST)
     salvar_png(img, "sprites/armas/arma_rifle.png")
 
-    # 6. Arma Lança-Foguetes (32x32)
+    # 6. Arma Lança-Foguetes (32x32 -> 42x42 [+30%])
     img, draw = criar_imagem_transparente(32, 32)
     # Tubo de lançamento verde-oliva
     draw.rectangle([4, 11, 28, 20], fill=(75, 95, 55, 255), outline=(30, 45, 20, 255))
@@ -284,9 +298,10 @@ def gerar_sprites_armas():
     # Empunhadura dupla
     draw.rectangle([10, 20, 13, 26], fill=(40, 40, 45, 255))
     draw.rectangle([18, 20, 21, 26], fill=(40, 40, 45, 255))
+    img = img.resize((42, 42), Image.Resampling.NEAREST)
     salvar_png(img, "sprites/armas/arma_foguetes.png")
 
-    # 7. Arma Lança-Granadas (32x32)
+    # 7. Arma Lança-Granadas (32x32 -> 42x42 [+30%])
     img, draw = criar_imagem_transparente(32, 32)
     # Coronha
     draw.line([3, 20, 10, 15], fill=(50, 55, 60, 255), width=3)
@@ -295,6 +310,7 @@ def gerar_sprites_armas():
     # Cano grosso
     draw.rectangle([20, 11, 29, 18], fill=(70, 75, 80, 255), outline=(25, 30, 35, 255))
     draw.ellipse([27, 11, 30, 18], fill=(30, 30, 35, 255))
+    img = img.resize((42, 42), Image.Resampling.NEAREST)
     salvar_png(img, "sprites/armas/arma_granadas.png")
 
 
