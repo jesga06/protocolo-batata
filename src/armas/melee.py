@@ -87,7 +87,7 @@ class Melee(ArmaBase):
 
         atingidos = []
         for inimigo in lista_inimigos:
-            if not getattr(inimigo, "vivo", True):
+            if not getattr(inimigo, "vivo", True) or getattr(inimigo, "em_fase", False):
                 continue
 
             centro_e_x = inimigo.x + getattr(inimigo, "largura", 28) / 2.0

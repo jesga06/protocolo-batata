@@ -289,6 +289,10 @@ class GameplayScene(BaseScene):
                     proj.x, proj.y, proj.largura, proj.altura,
                     inimigo.x, inimigo.y, inimigo.largura, inimigo.altura
                 ):
+                    # Projéteis atravessam inimigos intangíveis em fase
+                    if getattr(inimigo, "em_fase", False):
+                        continue
+
                     inimigo.receber_dano(proj.dano)
                     proj.ativo = False
 
