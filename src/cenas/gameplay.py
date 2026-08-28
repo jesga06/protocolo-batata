@@ -70,6 +70,17 @@ class GameplayScene(BaseScene):
         self.buffer_tiro = 0.0
         self.efeitos_melee: list[dict] = []
 
+        # Inicialização da trilha sonora em loop contínuo
+        try:
+            caminho_musica = obter_caminho_asset("musica_fase")
+            if os.path.isfile(caminho_musica):
+                if not pygame.mixer.music.get_busy():
+                    pygame.mixer.music.load(caminho_musica)
+                    pygame.mixer.music.set_volume(0.4)
+                    pygame.mixer.music.play(-1)
+        except Exception:
+            pass
+
     @classmethod
     def _carregar_assets_cenario(cls):
         if cls._tile_piso is None:

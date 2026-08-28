@@ -4,11 +4,13 @@ Tela inicial do jogo com opções de Jogar, Configurações, Créditos e Sair.
 """
 
 import sys
+import os
 import pygame
 from src.cenas.base_scene import BaseScene
 from src.utils.constantes import (
     LARGURA_TELA, ALTURA_TELA, TITULO_JOGO,
-    BRANCO, AZUL_CIANO, AMARELO_XP, CINZA_PAINEL, DOURADO
+    BRANCO, AZUL_CIANO, AMARELO_XP, CINZA_PAINEL, DOURADO,
+    obter_caminho_asset
 )
 
 
@@ -18,6 +20,17 @@ class MenuPrincipalScene(BaseScene):
         self.tempo_acumulado = 0.0
         self.opcao_selecionada = 0
         self.opcoes = ["JOGAR [ENTER]", "CONFIGURAÇÕES [C]", "CRÉDITOS [K]", "SAIR [ESC]"]
+
+        # Inicia a trilha sonora em loop contínuo
+        try:
+            caminho_musica = obter_caminho_asset("musica_fase")
+            if os.path.isfile(caminho_musica):
+                if not pygame.mixer.music.get_busy():
+                    pygame.mixer.music.load(caminho_musica)
+                    pygame.mixer.music.set_volume(0.4)
+                    pygame.mixer.music.play(-1)
+        except Exception:
+            pass
 
     def loop(self):
         dt = self.janela.delta_time()

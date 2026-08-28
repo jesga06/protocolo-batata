@@ -717,7 +717,7 @@ ASSET_PATHS = {
     "sfx_btn_click": "audio/sfx/btn_click.wav",
 
     # Música
-    "musica_fase": "audio/musica/musica_fase.wav"
+    "musica_fase": "audio/musica/heavy is the bit.wav"
 }
 
 
