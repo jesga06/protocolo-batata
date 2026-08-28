@@ -205,12 +205,13 @@ class TestChallengerR2DropsXP(unittest.TestCase):
 
     def test_award_500_xp_in_one_go_multi_level_progression(self):
         """
-        # Com a nova curva (20 + 10*lvl + 5*lvl^2):
-        # L1: 35 XP -> 465 restante (L2)
-        # L2: 60 XP -> 405 restante (L3)
-        # L3: 95 XP -> 310 restante (L4)
-        # L4: 140 XP -> 170 restante (L5)
-        # L5: requer 195 XP. 170 < 195 -> fica no L5 com 170 XP residual.
+        Com a nova curva (20 + 10*lvl + 5*lvl^2):
+        L1: 35 XP -> 465 restante (L2)
+        L2: 60 XP -> 405 restante (L3)
+        L3: 95 XP -> 310 restante (L4)
+        L4: 140 XP -> 170 restante (L5)
+        L5: requer 195 XP. 170 < 195 -> fica no L5 com 170 XP residual.
+        """
         sistema = SistemaXP(nivel_inicial=1, nivel_maximo=20)
         callback_history = []
         sistema.registrar_callback_level_up(lambda lvl: callback_history.append(lvl))

@@ -93,13 +93,13 @@ class TestXPProgressionSystem(unittest.TestCase):
 
     def test_xp_formula_scaling(self):
         """
-        Valida a fórmula estrita SSOT: XP_prox = 10 + 5 * level
-        # Fórmula: 20 + 10*lvl + 5*(lvl^2)
-        # - Nível 1 -> 35 XP
-        # - Nível 2 -> 60 XP
-        # - Nível 3 -> 95 XP
-        # - Nível 4 -> 140 XP
-        # - Nível 19 -> 2015 XP
+        Valida a nova fórmula: XP_prox = 20 + 10*level + 5*(level^2)
+        - Nível 1 -> 35 XP
+        - Nível 2 -> 60 XP
+        - Nível 3 -> 95 XP
+        - Nível 4 -> 140 XP
+        - Nível 19 -> 2015 XP
+        """
         xp_sys = SistemaXP(nivel_inicial=1, nivel_maximo=20)
         self.assertEqual(xp_sys.xp_para_proximo_nivel(1), 35)
         self.assertEqual(xp_sys.xp_para_proximo_nivel(2), 60)
