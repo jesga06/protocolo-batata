@@ -8,6 +8,7 @@ Implementa o comportamento da regra #15 (Coleta Inimiga):
 
 import random
 from src.utils.math_utils import distancia, vetor_direcao, colisao_aabb
+from src.utils.constantes import DROP_TEMPO_SCAVENGER_ATIVAR
 
 
 class SistemaScavenger:
@@ -39,12 +40,12 @@ class SistemaScavenger:
         self.scavenger_atual = None
         self.drop_alvo = None
 
-        # Encontra drops elegíveis (tempo decorrido >= 1.0s e ativos)
+        # Encontra drops elegíveis (tempo decorrido >= 5.0s e ativos)
         drops_elegiveis = [
             d for d in lista_drops
             if getattr(d, "ativo", False) and not getattr(d, "coletado", False) and (
                 (hasattr(d, "elegivel_scavenger") and d.elegivel_scavenger()) or
-                (getattr(d, "tempo_decorrido", 0.0) >= getattr(d, "tempo_scavenger", 1.0))
+                (getattr(d, "tempo_decorrido", 0.0) >= getattr(d, "tempo_scavenger", DROP_TEMPO_SCAVENGER_ATIVAR))
             )
         ]
 
@@ -59,24 +60,22 @@ class SistemaScavenger:
             # Filtra inimigos vivos e calcula distância
             candidatos = []
             for inimigo in lista_inimigos:
-                if not getattr(inimigo, "vivo", True):
+                if not getattr(inimigo, "vivo", False):
                     continue
 
                 e_cx = inimigo.x + getattr(inimigo, "largura", 28) / 2.0
                 e_cy = inimigo.y + getattr(inimigo, "altura", 28) / 2.0
-                dist = distancia(d_cx, d_cy, e_cx, e_cy)
+                dist = distancia(e_cx, e_cy, d_cx, d_cy)
 
                 if dist <= self.dist_maxima:
                     candidatos.append((inimigo, dist))
 
-            # Se não houver inimigos suficientes além dos 3 mais próximos, continua
+            # Exclui os 3 mais próximos (devem ser pelo menos 4 candidatos)
             if len(candidatos) <= 3:
                 continue
 
-            # Ordena por distância do drop
-            candidatos.sort(key=lambda c: c[1])
-
-            # Exclui os 3 mais próximos
+            # Ordena por proximidade
+            candidatos.sort(key=lambda item: item[1])
             candidatos_validos = [c[0] for c in candidatos[3:]]
 
             if candidatos_validos:
@@ -90,6 +89,17 @@ class SistemaScavenger:
                 return escolhido
 
         return None
+
+    def desativar(self, lista_inimigos: list = None):
+        """Limpa as referências de scavenger e cancela o override de alvo nos inimigos."""
+        if self.scavenger_atual is not None:
+            self.scavenger_atual.pos_alvo_override = None
+        self.scavenger_atual = None
+        self.drop_alvo = None
+        if lista_inimigos:
+            for inimigo in lista_inimigos:
+                if hasattr(inimigo, "pos_alvo_override") and inimigo.pos_alvo_override is not None:
+                    inimigo.pos_alvo_override = None
 
     def update(self, dt: float, lista_inimigos: list, lista_drops: list):
         """
@@ -136,4 +146,3 @@ class SistemaScavenger:
         vel = getattr(s, "velocidade", 100.0)
         s.x += dir_x * vel * dt
         s.y += dir_y * vel * dt
-

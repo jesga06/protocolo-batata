@@ -350,11 +350,11 @@ class ModalLevelUp:
         self.config_pity_buffer: Optional[ConfiguracaoDef] = None
 
         # Configuração visual das 3 cartas centralizadas na tela de 800x600
-        # Largura: 160px, Altura: 230px, Espaçamento: 24px
-        self.card_largura = 160
-        self.card_altura = 230
-        self.card_y = 190
-        self.card_xs = [136, 320, 504]
+        # Largura: 210px, Altura: 330px, Espaçamento: 30px
+        self.card_largura = 210
+        self.card_altura = 330
+        self.card_y = 150
+        self.card_xs = [55, 295, 535]
         self.card_rects = [
             pygame.Rect(x, self.card_y, self.card_largura, self.card_altura)
             for x in self.card_xs
@@ -362,7 +362,9 @@ class ModalLevelUp:
 
         self.card_hovered: int = -1
         self._ultimo_hover: int = -1
-        self._mouse_pressionado_anterior: bool = False
+        self._mouse_pressionado_anterior: bool = True  # Inicia True para ignorar clique que causou level up
+        self.tempo_transicao_entrada: float = 0.35  # 350ms de transição com input bloqueado
+        self.tempo_transicao_saida: float = 0.0
 
         # Fontes de texto
         self._fonte_titulo = None
@@ -438,13 +440,16 @@ class ModalLevelUp:
             self.abrir(self.nivel_atual_draw)
 
     def abrir(self, nivel: int = None):
-        """Ativa o modal e sorteia a primeira trinca de cartas."""
+        """Ativa o modal e sorteia a primeira trinca de cartas com transição suave."""
         if nivel is not None:
             self.nivel_atual_draw = int(nivel)
         elif self.jogador is not None:
             self.nivel_atual_draw = int(self.jogador.nivel)
 
         self.ativo = True
+        self.tempo_transicao_entrada = 0.35
+        self.tempo_transicao_saida = 0.0
+        self._mouse_pressionado_anterior = True
         self._gerar_cards(self.nivel_atual_draw)
         self._tocar_som("sfx_levelup")
 
@@ -546,9 +551,11 @@ class ModalLevelUp:
                 if self.jogador.arma_especial:
                     self.jogador.arma_especial.dano = max(1, int(round(self.jogador.arma_especial.dano * mult_dano)))
 
-        # 2. Atualiza modificadores na cena vinculada
+        # 2. Atualiza modificadores na cena vinculada e reseta buffer de tiro
         if self.cena and hasattr(self.cena, "aplicar_modificadores"):
             self.cena.aplicar_modificadores()
+        if self.cena and hasattr(self.cena, "buffer_tiro"):
+            self.cena.buffer_tiro = 0.0
 
         # 3. Trata a fila de level-ups
         self.fila_level_ups = max(0, self.fila_level_ups - 1)
@@ -557,11 +564,15 @@ class ModalLevelUp:
             # Sorteia para o próximo nível acumulado
             if self.jogador:
                 self.nivel_atual_draw = self.jogador.nivel
+            self.tempo_transicao_entrada = 0.25
+            self._mouse_pressionado_anterior = True
             self._gerar_cards(self.nivel_atual_draw)
             self._tocar_som("sfx_levelup")
         else:
             # Fila concluída -> fecha modal
             self.ativo = False
+            if self.cena and hasattr(self.cena, "pausado"):
+                self.cena.pausado = False
 
         return True
 
@@ -569,6 +580,12 @@ class ModalLevelUp:
         """Processa inputs de teclado (1, 2, 3) e mouse para seleção de cartas."""
         if not self.ativo:
             return
+
+        # Decrementa o tempo de transição inicial onde os cliques acidentais são bloqueados
+        if self.tempo_transicao_entrada > 0.0:
+            self.tempo_transicao_entrada = max(0.0, self.tempo_transicao_entrada - dt)
+            if self.tempo_transicao_entrada > 0.0:
+                return
 
         # 1. Inputs de Teclado (1, 2, 3)
         if teclado is not None:
@@ -630,7 +647,7 @@ class ModalLevelUp:
                 self._tocar_som("sfx_btn_hover")
             self._ultimo_hover = self.card_hovered
 
-        # Se clicou sobre um card, seleciona
+        # Processa clique do mouse
         if mouse_clicado and self.card_hovered != -1:
             self.selecionar_card(self.card_hovered)
 
@@ -651,7 +668,7 @@ class ModalLevelUp:
 
         # 2. Título Centralizado: LEVEL UP!
         tit_surf = self._fonte_titulo.render("LEVEL UP!", True, DOURADO)
-        tit_rect = tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=80)
+        tit_rect = tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=45)
         tit_sombra = self._fonte_titulo.render("LEVEL UP!", True, (0, 0, 0))
         screen.blit(tit_sombra, (tit_rect.x + 2, tit_rect.y + 2))
         screen.blit(tit_surf, tit_rect)
@@ -659,14 +676,14 @@ class ModalLevelUp:
         # 3. Subtítulo
         sub_texto = "ESCOLHA UM UPGRADE DO SISTEMA"
         sub_surf = self._fonte_sub.render(sub_texto, True, AZUL_CIANO)
-        sub_rect = sub_surf.get_rect(centerx=LARGURA_TELA // 2, top=125)
+        sub_rect = sub_surf.get_rect(centerx=LARGURA_TELA // 2, top=85)
         screen.blit(sub_surf, sub_rect)
 
         # Indicador de Níveis na Fila (se > 1)
         if self.fila_level_ups > 1:
             fila_texto = f"+{self.fila_level_ups - 1} UPGRADE(S) RESTANTE(S) NA FILA"
             fila_surf = self._fonte_sub.render(fila_texto, True, LARANJA_ALERTA)
-            fila_rect = fila_surf.get_rect(centerx=LARGURA_TELA // 2, top=155)
+            fila_rect = fila_surf.get_rect(centerx=LARGURA_TELA // 2, top=115)
             pill_rect = pygame.Rect(fila_rect.x - 12, fila_rect.y - 3, fila_rect.width + 24, fila_rect.height + 6)
             pygame.draw.rect(screen, (40, 20, 15), pill_rect, border_radius=4)
             pygame.draw.rect(screen, LARANJA_ALERTA, pill_rect, width=1, border_radius=4)
@@ -682,7 +699,8 @@ class ModalLevelUp:
 
             # 4.1 Fundo do Card (Sprite ou Fallback Vetorial)
             if self._card_bg_img is not None:
-                screen.blit(self._card_bg_img, (rect.x, rect.y))
+                bg_scaled = pygame.transform.scale(self._card_bg_img, (rect.width, rect.height))
+                screen.blit(bg_scaled, (rect.x, rect.y))
             else:
                 cor_bg = (32, 38, 52) if not is_hovered else (45, 54, 75)
                 pygame.draw.rect(screen, cor_bg, rect, border_radius=6)
@@ -715,7 +733,7 @@ class ModalLevelUp:
             screen.blit(cat_surf, (rect.x + 8, rect.top + 10))
 
             # 4.5 Nome da Configuração / Consumível (Wrap de 1-2 linhas)
-            nome_linhas = _formatar_texto_wrap(card["nome"], max_chars_por_linha=16)
+            nome_linhas = _formatar_texto_wrap(card["nome"], max_chars_por_linha=20)
             offset_y_nome = rect.top + 28
             for linha in nome_linhas[:2]:
                 cor_tit = DOURADO if (is_hovered or card["tipo"] == "config") else BRANCO
@@ -739,41 +757,41 @@ class ModalLevelUp:
                 pygame.draw.circle(screen, cor_ph, (icone_cx, icone_cy), 12, width=2)
 
             # Linha divisória horizontal
-            div_y = rect.top + 104
+            div_y = rect.top + 106
             pygame.draw.line(screen, (45, 55, 75), (rect.x + 10, div_y), (rect.right - 10, div_y), 1)
 
-            # 4.7 Seção de Benefícios (▲ BUFFS em Verde/Amarelo)
-            y_cursor = div_y + 4
+            # 4.7 Seção de Benefícios (▲ BENEFÍCIOS em Verde)
+            y_cursor = div_y + 6
             buff_header_surf = self._fonte_card_sec.render("▲ BENEFÍCIOS:", True, VERDE_CURA)
             screen.blit(buff_header_surf, (rect.x + 8, y_cursor))
-            y_cursor += 12
+            y_cursor += 14
 
             buffs = card.get("buffs", ["Nenhum"])
             for b_txt in buffs[:2]:
-                linhas_buff = _formatar_texto_wrap(b_txt, max_chars_por_linha=20)
+                linhas_buff = _formatar_texto_wrap(b_txt, max_chars_por_linha=25)
                 for bl in linhas_buff[:2]:
                     b_surf = self._fonte_card_corpo.render(f"+ {bl}", True, (160, 240, 170))
                     screen.blit(b_surf, (rect.x + 10, y_cursor))
-                    y_cursor += 11
+                    y_cursor += 13
 
-            # 4.8 Seção de Sacrifícios / Nerfs (▼ SACRIFÍCIO em Laranja/Vermelho)
-            y_cursor = max(y_cursor + 2, div_y + 58)
+            # 4.8 Seção de Sacrifícios / Nerfs (▼ SACRIFÍCIO em Laranja)
+            y_cursor = max(y_cursor + 4, div_y + 88)
             nerf_header_surf = self._fonte_card_sec.render("▼ SACRIFÍCIO:", True, LARANJA_ALERTA)
             screen.blit(nerf_header_surf, (rect.x + 8, y_cursor))
-            y_cursor += 12
+            y_cursor += 14
 
             nerfs = card.get("nerfs", ["Nenhum"])
             for n_txt in nerfs[:2]:
-                linhas_nerf = _formatar_texto_wrap(n_txt, max_chars_por_linha=20)
+                linhas_nerf = _formatar_texto_wrap(n_txt, max_chars_por_linha=25)
                 for nl in linhas_nerf[:2]:
                     cor_n = (255, 180, 140) if nl != "Nenhum" and nl != "Nenhum sacrifício" else (130, 140, 155)
                     n_surf = self._fonte_card_corpo.render(f"- {nl}", True, cor_n)
                     screen.blit(n_surf, (rect.x + 10, y_cursor))
-                    y_cursor += 11
+                    y_cursor += 13
 
             # 4.9 Prompt de Clique no Rodapé do Card
             prompt_surf = self._fonte_card_cat.render(f"Pressione [{i + 1}]", True, (110, 130, 155) if not is_hovered else DOURADO)
-            prompt_rect = prompt_surf.get_rect(centerx=rect.centerx, bottom=rect.bottom - 6)
+            prompt_rect = prompt_surf.get_rect(centerx=rect.centerx, bottom=rect.bottom - 8)
             screen.blit(prompt_surf, prompt_rect)
 
         # 5. Rodapé Geral com Instruções de Controle

@@ -140,7 +140,7 @@ class TestModalLevelUpInteractionAndQueue(unittest.TestCase):
         mock_teclado.key_down.side_effect = lambda k: k == "1"
         mock_teclado.key_pressed.side_effect = lambda k: False
 
-        self.modal.update(0.016, teclado=mock_teclado, mouse=None)
+        self.modal.update(0.5, teclado=mock_teclado, mouse=None)
         self.assertFalse(self.modal.ativo, "Modal deveria fechar após selecionar card 1")
 
     def test_multi_level_queue_handling(self):

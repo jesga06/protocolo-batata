@@ -65,7 +65,7 @@ class GameplayScene(BaseScene):
 
         # Sistemas de combate, spawn, drops e progressão
         self.config_sistema = self.gerenciador_config
-        self.spawner = SistemaSpawn(max_ativos=60)
+        self.spawner = SistemaSpawn(max_ativos=400)
         self.sistema_drops = SistemaDrops()
         self.sistema_scavenger = SistemaScavenger()
         self.hud = HUD()
@@ -78,6 +78,12 @@ class GameplayScene(BaseScene):
         self.pontos = 0
         self.pausado = False
         self.game_over = False
+
+        # Toasts de itens coletados, Screen Shake e Efeitos
+        self.toasts_coleta: list[dict] = []
+        self._fonte_toast = None
+        self.shake_intensidade: float = 0.0
+        self.shake_timer: float = 0.0
 
         # Input buffer e efeitos visuais
         self.buffer_tiro = 0.0
@@ -97,6 +103,22 @@ class GameplayScene(BaseScene):
         except Exception:
             pass
 
+    _icones_slots: dict = {}
+
+    @classmethod
+    def _obter_sprite_icone(cls, chave: str):
+        if chave not in cls._icones_slots:
+            caminho = obter_caminho_asset(chave)
+            if caminho and os.path.isfile(caminho):
+                try:
+                    img = pygame.image.load(caminho).convert_alpha()
+                    cls._icones_slots[chave] = pygame.transform.scale(img, (26, 26))
+                except Exception:
+                    cls._icones_slots[chave] = None
+            else:
+                cls._icones_slots[chave] = None
+        return cls._icones_slots.get(chave)
+
     @classmethod
     def _carregar_assets_cenario(cls):
         if cls._tile_piso is None:
@@ -113,6 +135,7 @@ class GameplayScene(BaseScene):
                 if os.path.isfile(caminho):
                     cls._btn_gear_img = pygame.image.load(caminho).convert_alpha()
             except Exception:
+                cls._btn_gear_img = None
                 cls._btn_gear_img = None
 
         if cls._slot_inv_img is None:
@@ -203,6 +226,12 @@ class GameplayScene(BaseScene):
         # =========================================================================
         self.tempo_sobrevivencia += dt
 
+        # Atualiza e limpa toasts de coleta
+        for t in self.toasts_coleta:
+            t["tempo"] -= dt
+            t["y"] -= 22.0 * dt
+        self.toasts_coleta = [t for t in self.toasts_coleta if t["tempo"] > 0]
+
         self.jogador.processar_input(
             self.teclado,
             self.mouse,
@@ -281,7 +310,7 @@ class GameplayScene(BaseScene):
                                     self.sistema_drops.gerar_drop_morte_inimigo(
                                         inim.x + getattr(inim, "largura", 28) / 2.0,
                                         inim.y + getattr(inim, "altura", 28) / 2.0,
-                                        xp_base=getattr(inim, "xp_valor", 10)
+                                        xp_base=getattr(inim, "xp_valor", 5)
                                     )
                         self.buffer_tiro = 0.0
                         self.efeitos_melee.append({
@@ -400,7 +429,7 @@ class GameplayScene(BaseScene):
                             self.sistema_drops.gerar_drop_morte_inimigo(
                                 inim.x + getattr(inim, "largura", 28) / 2.0,
                                 inim.y + getattr(inim, "altura", 28) / 2.0,
-                                xp_base=getattr(inim, "xp_valor", 10),
+                                xp_base=getattr(inim, "xp_valor", 5),
                                 loot_enriquecido=(getattr(inim, "loot_enriquecido", False) or getattr(mods, "loot_enriquecido", False)),
                                 chance_arma=getattr(inim, "chance_drop_arma", None),
                                 chance_equipamento=getattr(inim, "chance_drop_equipamento", None)
@@ -439,7 +468,7 @@ class GameplayScene(BaseScene):
                             self.sistema_drops.gerar_drop_morte_inimigo(
                                 inimigo.x + getattr(inimigo, "largura", 28) / 2.0,
                                 inimigo.y + getattr(inimigo, "altura", 28) / 2.0,
-                                xp_base=getattr(inimigo, "xp_valor", 10),
+                                xp_base=getattr(inimigo, "xp_valor", 5),
                                 loot_enriquecido=(getattr(inimigo, "loot_enriquecido", False) or getattr(mods, "loot_enriquecido", False)),
                                 chance_arma=getattr(inimigo, "chance_drop_arma", None),
                                 chance_equipamento=getattr(inimigo, "chance_drop_equipamento", None)
@@ -469,6 +498,25 @@ class GameplayScene(BaseScene):
         for ev in eventos_coleta:
             if ev["tipo"] == "xp":
                 self.jogador.ganhar_xp(ev["valor"])
+                self.toasts_coleta.append({
+                    "texto": f"+{ev['valor']} XP",
+                    "cor": AMARELO_XP,
+                    "x": self.jogador.x + 16,
+                    "y": self.jogador.y - 10,
+                    "tempo": 1.1,
+                    "tempo_max": 1.1
+                })
+            elif ev["tipo"] == "cura":
+                val_cura = ev.get("valor", 35)
+                self.jogador.curar(val_cura)
+                self.toasts_coleta.append({
+                    "texto": f"+{val_cura} HP",
+                    "cor": VERDE_CURA,
+                    "x": self.jogador.x + 16,
+                    "y": self.jogador.y - 10,
+                    "tempo": 1.4,
+                    "tempo_max": 1.4
+                })
             elif ev["tipo"] == "arma":
                 import random
                 from src.armas.minigun import Minigun
@@ -476,13 +524,22 @@ class GameplayScene(BaseScene):
                 from src.armas.rifle_assalto import RifleAssalto
                 from src.armas.lanca_foguetes import LancaFoguetes
                 from src.armas.lanca_granadas import LancaGranadas
-                armas_cls = [Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas]
+                from src.armas.railgun import Railgun
+                armas_cls = [Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas, Railgun]
                 arma_sorteada = random.choice(armas_cls)()
                 if ev.get("mult_drop", 1.0) == 2.0 or mult_drops == 2.0:
                     arma_sorteada.municao_max *= 2
                     arma_sorteada.municao_atual = arma_sorteada.municao_max
                 self.jogador.arma_especial = arma_sorteada
                 self.jogador.selecionar_slot(3)
+                self.toasts_coleta.append({
+                    "texto": f"{arma_sorteada.nome} ({arma_sorteada.municao_max})",
+                    "cor": DOURADO,
+                    "x": self.jogador.x + 16,
+                    "y": self.jogador.y - 15,
+                    "tempo": 1.8,
+                    "tempo_max": 1.8
+                })
             elif ev["tipo"] == "equipamento":
                 import random
                 from src.equipamentos.drone_cura import DroneCura
@@ -494,9 +551,22 @@ class GameplayScene(BaseScene):
                     drone_sorteado.tempo_vida = 60.0
                     drone_sorteado.tempo_restante = 60.0
                 self.jogador.drone = drone_sorteado
+                self.toasts_coleta.append({
+                    "texto": f"{drone_sorteado.nome} (30s)",
+                    "cor": (255, 160, 50),
+                    "x": self.jogador.x + 16,
+                    "y": self.jogador.y - 15,
+                    "tempo": 1.8,
+                    "tempo_max": 1.8
+                })
 
-        # Atualiza IA do Scavenger se houver drops elegíveis
-        self.sistema_scavenger.update(dt, self.inimigos, self.sistema_drops.drops)
+        # Atualiza IA do Scavenger APENAS se a configuração "coleta_inimiga" estiver desbloqueada e ligada
+        mods = self.config_sistema.obter_modificadores() if hasattr(self, "config_sistema") and self.config_sistema else None
+        coleta_ativa = getattr(mods, "coleta_inimiga", False) or (self.config_sistema.obter_valor("coleta_inimiga") in [True, "Ligado", "true", "1"] if hasattr(self, "config_sistema") and self.config_sistema else False)
+        if coleta_ativa:
+            self.sistema_scavenger.update(dt, self.inimigos, self.sistema_drops.drops)
+        else:
+            self.sistema_scavenger.desativar(self.inimigos)
 
         # Verifica morte do jogador
         if not self.jogador.vivo:
@@ -671,48 +741,87 @@ class GameplayScene(BaseScene):
         pygame.draw.rect(self.janela.screen, (20, 20, 20), (bar_x, bar_y, bar_w, bar_h), width=1, border_radius=2)
 
     def _desenhar_hud_tela(self, hud_visivel: bool = True):
-        """Renderiza o HUD fixo na tela: inventário, métricas e botão de engrenagem."""
+        """Renderiza o HUD fixo na tela: inventário com ícones/munição, métricas e botão de configurações."""
         screen = self.janela.screen
 
         if hud_visivel:
-            # 1. Slots de inventário (Top-Left: 16, 16) com destaque para o slot ativo
-            slot_tam = 38
+            # 1. Slots de inventário (Top-Left: 16, 14) com destaque para o slot ativo
+            slot_tam = 42
             slot_ativo = getattr(self.jogador, "slot_ativo", 2)
 
-            fonte_slots = pygame.font.SysFont("Arial", 10, bold=True)
+            fonte_slots = pygame.font.SysFont("Arial", 9, bold=True)
+            fonte_municao = pygame.font.SysFont("Arial", 10, bold=True)
+
             for i in range(4):
                 sx = 16 + i * (slot_tam + 6)
-                sy = 16
+                sy = 14
                 slot_num = i + 1
                 is_ativo = (slot_num == slot_ativo)
 
-                # Cor de fundo e borda destacada para o slot selecionado
-                bg_cor = (40, 50, 70) if is_ativo else (25, 30, 42)
+                bg_cor = (40, 50, 70) if is_ativo else (22, 28, 38)
                 borda_cor = DOURADO if is_ativo else CINZA_BORDA
-                borda_largura = 3 if is_ativo else 2
+                borda_largura = 2 if is_ativo else 1
 
                 pygame.draw.rect(screen, bg_cor, (sx, sy, slot_tam, slot_tam), border_radius=4)
                 pygame.draw.rect(screen, borda_cor, (sx, sy, slot_tam, slot_tam), width=borda_largura, border_radius=4)
 
-                # Rótulo de cada slot
+                # Número do slot no canto superior esquerdo
+                num_surf = fonte_slots.render(str(slot_num), True, DOURADO if is_ativo else (140, 150, 170))
+                screen.blit(num_surf, (sx + 3, sy + 2))
+
+                # Ícone do slot
+                icone_img = None
+                texto_badge = None
+                cor_badge = BRANCO
+
                 if i == 0:
-                    texto_slot = "1:Melee"
-                    cor_slot = DOURADO if is_ativo else CINZA_BORDA
+                    icone_img = self._obter_sprite_icone("arma_melee")
                 elif i == 1:
-                    texto_slot = "2:Pistol"
-                    cor_slot = DOURADO if is_ativo else CINZA_BORDA
+                    icone_img = self._obter_sprite_icone("arma_pistola")
                 elif i == 2:
-                    texto_slot = "3:Espec"
-                    cor_slot = DOURADO if is_ativo else (80, 90, 110)
+                    if self.jogador.arma_especial:
+                        nome_arma = getattr(self.jogador.arma_especial, "nome", "")
+                        if "Minigun" in nome_arma:
+                            icone_img = self._obter_sprite_icone("arma_minigun")
+                        elif "Escopeta" in nome_arma or "Shotgun" in nome_arma:
+                            icone_img = self._obter_sprite_icone("arma_shotgun")
+                        elif "Rifle" in nome_arma:
+                            icone_img = self._obter_sprite_icone("arma_rifle")
+                        elif "Foguetes" in nome_arma:
+                            icone_img = self._obter_sprite_icone("arma_foguetes")
+                        elif "Granadas" in nome_arma:
+                            icone_img = self._obter_sprite_icone("arma_granadas")
+                        elif "Railgun" in nome_arma:
+                            icone_img = self._obter_sprite_icone("arma_rifle")
+
+                        mun = getattr(self.jogador.arma_especial, "municao_atual", 0)
+                        texto_badge = str(mun)
+                        cor_badge = AMARELO_XP if mun > 5 else VERMELHO_HP
                 elif i == 3:
-                    texto_slot = "4:Drone"
-                    cor_slot = (80, 90, 110)
+                    if self.jogador.drone:
+                        nome_d = getattr(self.jogador.drone, "nome", "")
+                        if "Cura" in nome_d:
+                            icone_img = self._obter_sprite_icone("drone_cura")
+                        elif "Combate" in nome_d:
+                            icone_img = self._obter_sprite_icone("drone_combate")
+                        else:
+                            icone_img = self._obter_sprite_icone("drone_suporte")
 
-                lbl_surf = fonte_slots.render(texto_slot, True, cor_slot)
-                lbl_rect = lbl_surf.get_rect(centerx=sx + slot_tam // 2, centery=sy + slot_tam // 2)
-                screen.blit(lbl_surf, lbl_rect)
+                        tempo_d = int(getattr(self.jogador.drone, "tempo_restante", 0))
+                        texto_badge = f"{tempo_d}s"
+                        cor_badge = AZUL_CIANO
 
-            # 2. Cronômetro de Sobrevivência e Contador de Abates (Top-Center) perfeitamente centralizados
+                if icone_img is not None:
+                    screen.blit(icone_img, (sx + (slot_tam - 26) // 2, sy + (slot_tam - 26) // 2))
+
+                if texto_badge is not None:
+                    badge_surf = fonte_municao.render(texto_badge, True, cor_badge)
+                    badge_rect = badge_surf.get_rect(right=sx + slot_tam - 2, bottom=sy + slot_tam - 1)
+                    sombra_b = fonte_municao.render(texto_badge, True, (0, 0, 0))
+                    screen.blit(sombra_b, (badge_rect.x + 1, badge_rect.y + 1))
+                    screen.blit(badge_surf, badge_rect)
+
+            # 2. Cronômetro de Sobrevivência e Contador de Abates (Top-Center)
             minutos = int(self.tempo_sobrevivencia // 60)
             segundos = int(self.tempo_sobrevivencia % 60)
             texto_tempo = f"{minutos:02d}:{segundos:02d}"
@@ -732,7 +841,25 @@ class GameplayScene(BaseScene):
             if hasattr(self, "hud") and self.hud is not None:
                 self.hud.desenhar_barra_xp(screen, self.jogador.sistema_xp)
 
-        # 4. Botão de Engrenagem e FPS (Top-Right) — Sempre visíveis mesmo com HUD desligado
+        # 4. Toasts de Coleta Flutuantes
+        if self._fonte_toast is None:
+            self._fonte_toast = pygame.font.SysFont("Arial", 12, bold=True)
+
+        for t in self.toasts_coleta:
+            tx_tela = self.camera.transform_x(t["x"])
+            ty_tela = self.camera.transform_y(t["y"])
+            alpha = int(clamp((t["tempo"] / max(0.01, t["tempo_max"])) * 255, 0, 255))
+
+            txt_surf = self._fonte_toast.render(t["texto"], True, t["cor"])
+            txt_sombra = self._fonte_toast.render(t["texto"], True, (0, 0, 0))
+            txt_surf.set_alpha(alpha)
+            txt_sombra.set_alpha(alpha)
+
+            rect = txt_surf.get_rect(centerx=int(tx_tela), centery=int(ty_tela))
+            screen.blit(txt_sombra, (rect.x + 1, rect.y + 1))
+            screen.blit(txt_surf, rect)
+
+        # 5. Botão de Configurações e FPS (Top-Right)
         fps_val = int(self.janela.get_fps())
         fonte_fps = pygame.font.SysFont("Arial", 14)
         fps_surf = fonte_fps.render(f"FPS: {fps_val}", True, AZUL_CIANO)
@@ -743,9 +870,38 @@ class GameplayScene(BaseScene):
             screen.blit(self._btn_gear_img, (752, 16))
         else:
             pygame.draw.rect(screen, (45, 55, 75), (752, 16, 32, 32), border_radius=4)
-            gear_surf = fonte_fps.render("[⚙]", True, DOURADO)
+            gear_surf = fonte_fps.render("[C]", True, DOURADO)
             gear_rect = gear_surf.get_rect(centerx=768, centery=32)
             screen.blit(gear_surf, gear_rect)
+
+        # 6. Efeitos Visuais de Configurações em Tempo Real (Post-Processing)
+        # 6.1 Iluminação Dinâmica / Fog of War (Config 18)
+        val_ilum = self.config_sistema.obter_valor("iluminacao")
+        if val_ilum in (True, "Ligado", "ligado", "1"):
+            fog = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
+            fog.fill((8, 10, 15, 235))
+            pj_cx = int(self.camera.transform_x(self.jogador.x + 16))
+            pj_cy = int(self.camera.transform_y(self.jogador.y + 16))
+            pygame.draw.circle(fog, (0, 0, 0, 0), (pj_cx, pj_cy), 170)
+            pygame.draw.circle(fog, (0, 0, 0, 80), (pj_cx, pj_cy), 195)
+            screen.blit(fog, (0, 0))
+
+        # 6.2 Cores Invertidas (Config 17)
+        val_cores = self.config_sistema.obter_valor("cores_invertidas")
+        if val_cores in (True, "Ligado", "ligado", "1"):
+            inv_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA))
+            inv_surf.fill((255, 255, 255))
+            inv_surf.blit(screen, (0, 0), special_flags=pygame.BLEND_SUB)
+            screen.blit(inv_surf, (0, 0))
+
+        # 6.3 Resolução / Pixelation (Config 3)
+        val_res = str(self.config_sistema.obter_valor("resolucao"))
+        if val_res in ("75%", "50%", "25%"):
+            fator = 0.75 if val_res == "75%" else (0.50 if val_res == "50%" else 0.25)
+            small_w = max(10, int(LARGURA_TELA * fator))
+            small_h = max(10, int(ALTURA_TELA * fator))
+            small_surf = pygame.transform.scale(screen, (small_w, small_h))
+            pygame.transform.scale(small_surf, (LARGURA_TELA, ALTURA_TELA), screen)
 
     def _desenhar_overlay_pausa(self):
         """Overlay modal de pausa com textos perfeitamente centralizados."""

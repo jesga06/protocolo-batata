@@ -10,7 +10,8 @@ from src.utils.constantes import (
     DROP_XP_VALOR_BASE, DROP_CURA_VALOR_BASE,
     DROP_TEMPO_DESAPARECER, DROP_TEMPO_SCAVENGER_ATIVAR,
     DROP_LARGURA, DROP_ALTURA,
-    AMARELO_XP, VERDE_CURA, AZUL_CIANO, DOURADO, BRANCO
+    AMARELO_XP, VERDE_CURA, AZUL_CIANO, DOURADO, BRANCO,
+    ASSETS_DIR
 )
 
 
@@ -67,14 +68,39 @@ class ItemDrop:
     def get_rect(self) -> tuple[float, float, int, int]:
         return (self.x, self.y, self.largura, self.altura)
 
+    _sprites: dict = {}
+
+    @classmethod
+    def _obter_sprite(cls, tipo: str, largura: int, altura: int):
+        chave = (tipo, largura, altura)
+        if chave not in cls._sprites:
+            import os
+            mapa_arquivos = {
+                "xp": "drop_xp.png",
+                "cura": "drop_cura.png",
+                "arma": "drop_arma.png",
+                "equipamento": "drop_equipamento.png",
+                "config": "drop_config.png"
+            }
+            nome_arquivo = mapa_arquivos.get(tipo, "drop_xp.png")
+            caminho = os.path.join(ASSETS_DIR, "sprites", "drops", nome_arquivo)
+            if os.path.isfile(caminho):
+                try:
+                    img = pygame.image.load(caminho).convert_alpha()
+                    cls._sprites[chave] = pygame.transform.scale(img, (largura, altura))
+                except Exception:
+                    cls._sprites[chave] = None
+            else:
+                cls._sprites[chave] = None
+        return cls._sprites[chave]
+
     def desenhar(self, janela, camera=None):
-        """Renderiza o item com efeitos visuais e piscamento nos últimos segundos."""
+        """Renderiza o item utilizando seu sprite PNG autêntico com pulso sutil e efeito de piscar ao expirar."""
         if not self.ativo or self.coletado:
             return
 
-        # Efeito de piscar quando restam menos de 2.5s
-        if self.tempo_restante < 2.5:
-            # Pisca a cada 120ms
+        # Efeito de piscar quando restam menos de 4.0s
+        if self.tempo_restante < 4.0:
             if int(self.tempo_decorrido * 8) % 2 == 0:
                 return
 
@@ -85,49 +111,20 @@ class ItemDrop:
         cx = int(draw_x + self.largura / 2.0)
         cy = int(draw_y + self.altura / 2.0)
 
-        # Pulso sutil de tamanho/brilho
-        pulso = math.sin(self.tempo_decorrido * 6.0) * 1.5
+        # Pulso sutil de tamanho
+        pulso = int(math.sin(self.tempo_decorrido * 5.0) * 2.0)
+        largura_render = max(8, self.largura + pulso)
+        altura_render = max(8, self.altura + pulso)
 
-        if self.tipo == "xp":
-            # Gema em forma de losango brilhante grande (raio 16px)
-            r = int(16 + pulso)
-            pontos = [
-                (cx, cy - r),
-                (cx + r, cy),
-                (cx, cy + r),
-                (cx - r, cy)
-            ]
-            cor_corpo = AMARELO_XP if self.valor <= 15 else AZUL_CIANO
-            pygame.draw.polygon(screen, cor_corpo, pontos)
-            pygame.draw.polygon(screen, BRANCO, pontos, width=2)
-            # Brilho central
-            pygame.draw.circle(screen, BRANCO, (cx, cy), max(2, int(5 + pulso * 0.5)))
-
-        elif self.tipo == "cura":
-            # Caixa médica com cruz (32x32px)
-            tam = int(32 + pulso)
+        sprite = self._obter_sprite(self.tipo, largura_render, altura_render)
+        if sprite is not None:
+            rect_x = cx - largura_render // 2
+            rect_y = cy - altura_render // 2
+            screen.blit(sprite, (rect_x, rect_y))
+        else:
+            # Fallback seguro
+            tam = largura_render
             rect_x = cx - tam // 2
             rect_y = cy - tam // 2
-            pygame.draw.rect(screen, (30, 140, 50), (rect_x, rect_y, tam, tam), border_radius=6)
-            pygame.draw.rect(screen, (220, 255, 220), (rect_x, rect_y, tam, tam), width=2, border_radius=6)
-            # Cruz branca
-            pygame.draw.rect(screen, BRANCO, (cx - 3, cy - 10, 6, 20))
-            pygame.draw.rect(screen, BRANCO, (cx - 10, cy - 3, 20, 6))
-
-        elif self.tipo == "arma":
-            # Caixa de arma dourada (34x34px)
-            tam = int(34 + pulso)
-            rect_x = cx - tam // 2
-            rect_y = cy - tam // 2
-            pygame.draw.rect(screen, (70, 50, 20), (rect_x, rect_y, tam, tam), border_radius=6)
-            pygame.draw.rect(screen, DOURADO, (rect_x, rect_y, tam, tam), width=3, border_radius=6)
-            pygame.draw.circle(screen, DOURADO, (cx, cy), 6)
-
-        elif self.tipo == "equipamento":
-            # Caixa de equipamento laranja (34x34px)
-            tam = int(34 + pulso)
-            rect_x = cx - tam // 2
-            rect_y = cy - tam // 2
-            pygame.draw.rect(screen, (75, 40, 15), (rect_x, rect_y, tam, tam), border_radius=6)
-            pygame.draw.rect(screen, (255, 140, 0), (rect_x, rect_y, tam, tam), width=3, border_radius=6)
-            pygame.draw.circle(screen, (255, 180, 50), (cx, cy), 6)
+            cor = AMARELO_XP if self.tipo == "xp" else (220, 40, 40)
+            pygame.draw.rect(screen, cor, (rect_x, rect_y, tam, tam), border_radius=4)

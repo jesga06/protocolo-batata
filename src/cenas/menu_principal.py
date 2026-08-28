@@ -21,7 +21,7 @@ class MenuPrincipalScene(BaseScene):
         super().__init__()
         self.tempo_acumulado = 0.0
         self.opcao_selecionada = 0
-        self.opcoes = ["JOGAR [ENTER]", "CONFIGURAÇÕES [C]", "CRÉDITOS [K]", "SAIR [ESC]"]
+        self.opcoes = ["JOGAR [ENTER]", "CONFIGURAÇÕES [C]", "TUTORIAL [T]", "SAIR [ESC]"]
 
         # Sistema de configurações e Menu de Configurações
         self.gerenciador_config = GerenciadorConfiguracoes()
@@ -54,6 +54,12 @@ class MenuPrincipalScene(BaseScene):
             self.menu_configs.abrir()
             return
 
+        # Atalho direto para Tutorial via tecla 'T'
+        if (hasattr(self.teclado, "key_down") and (self.teclado.key_down("t") or self.teclado.key_down("T"))) or \
+           (hasattr(self.teclado, "key_pressed") and (self.teclado.key_pressed("t") or self.teclado.key_pressed("T"))):
+            self.abrir_tutorial()
+            return
+
         # Navegação com Teclado
         if self.teclado.key_down("UP") or self.teclado.key_down("w"):
             self.opcao_selecionada = (self.opcao_selecionada - 1) % len(self.opcoes)
@@ -66,11 +72,18 @@ class MenuPrincipalScene(BaseScene):
                 self.iniciar_jogo()
             elif self.opcao_selecionada == 1:
                 self.menu_configs.abrir()
+            elif self.opcao_selecionada == 2:
+                self.abrir_tutorial()
             elif self.opcao_selecionada == 3:
                 self.sair_jogo()
 
         if self.teclado.key_down("ESC"):
             self.sair_jogo()
+
+    def abrir_tutorial(self):
+        from PPlay.scenemanager import SceneManager
+        from src.cenas.tutorial import TutorialScene
+        SceneManager.change_scene(TutorialScene())
 
     def draw(self):
         screen = self.janela.screen

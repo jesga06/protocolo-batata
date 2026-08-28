@@ -66,10 +66,9 @@ class MenuConfigs:
         self.ativo: bool = False
         self.aba_atual: int = 0  # 0 = Gameplay, 1 = Sistema
 
-        # Filtro de categoria na Aba de Gameplay (None = Todas)
-        self.categoria_filtro: Optional[str] = None
+        # Filtro de categoria na Aba de Gameplay
+        self.categoria_filtro: str = "Performance"
         self.categorias_lista = [
-            "TODAS",
             "Performance",
             "Interface",
             "Controles",
@@ -437,7 +436,7 @@ class MenuConfigs:
         sub_surf = self._fonte_sub.render(sub_txt, True, (150, 165, 185))
         screen.blit(sub_surf, (50, 52))
 
-        # 4. Barra de Abas [ 🎮 GAMEPLAY ] e [ ⚙️ SISTEMA ]
+        # 4. Barra de Abas [ GAMEPLAY ] e [ SISTEMA ]
         aba0_rect = pygame.Rect(50, 68, 200, 32)
         aba1_rect = pygame.Rect(260, 68, 200, 32)
         btn_fechar_rect = pygame.Rect(650, 68, 105, 32)
@@ -447,7 +446,7 @@ class MenuConfigs:
         cor_borda0 = DOURADO if self.aba_atual == 0 else (50, 60, 80)
         pygame.draw.rect(screen, cor_aba0, aba0_rect, border_radius=4)
         pygame.draw.rect(screen, cor_borda0, aba0_rect, width=2 if self.aba_atual == 0 else 1, border_radius=4)
-        t_aba0 = self._fonte_aba.render("🎮 GAMEPLAY (20)", True, DOURADO if self.aba_atual == 0 else BRANCO)
+        t_aba0 = self._fonte_aba.render("GAMEPLAY (20)", True, DOURADO if self.aba_atual == 0 else BRANCO)
         screen.blit(t_aba0, t_aba0.get_rect(center=aba0_rect.center))
 
         # Aba 1: Sistema
@@ -455,7 +454,7 @@ class MenuConfigs:
         cor_borda1 = DOURADO if self.aba_atual == 1 else (50, 60, 80)
         pygame.draw.rect(screen, cor_aba1, aba1_rect, border_radius=4)
         pygame.draw.rect(screen, cor_borda1, aba1_rect, width=2 if self.aba_atual == 1 else 1, border_radius=4)
-        t_aba1 = self._fonte_aba.render("⚙️ SISTEMA & ACESSO", True, DOURADO if self.aba_atual == 1 else BRANCO)
+        t_aba1 = self._fonte_aba.render("SISTEMA & ACESSO", True, DOURADO if self.aba_atual == 1 else BRANCO)
         screen.blit(t_aba1, t_aba1.get_rect(center=aba1_rect.center))
 
         # Botão Fechar [ESC]
@@ -580,7 +579,7 @@ class MenuConfigs:
                     screen.blit(self._fonte_btn.render(">", True, AZUL_CIANO), self._fonte_btn.render(">", True, AZUL_CIANO).get_rect(center=btn_next.center))
             else:
                 # Bloqueado
-                lbl_bloq = self._fonte_btn.render("[🔒 BLOQUEADO]", True, (110, 115, 130))
+                lbl_bloq = self._fonte_btn.render("[BLOQUEADO]", True, (110, 115, 130))
                 lbl_rect = lbl_bloq.get_rect(right=440, centery=item_y + 24)
                 screen.blit(lbl_bloq, lbl_rect)
 
@@ -609,7 +608,7 @@ class MenuConfigs:
         screen.blit(cat_surf, (rect.x + 12, rect.y + 32))
 
         # Status Badge
-        status_txt = "STATUS: DESBLOQUEADA" if is_desbloqueada else "STATUS: 🔒 BLOQUEADA"
+        status_txt = "STATUS: DESBLOQUEADA" if is_desbloqueada else "STATUS: BLOQUEADA"
         status_cor = VERDE_CURA if is_desbloqueada else LARANJA_ALERTA
         status_surf = self._fonte_cat.render(status_txt, True, status_cor)
         screen.blit(status_surf, (rect.x + 12, rect.y + 48))

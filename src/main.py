@@ -18,7 +18,15 @@ from src.cenas.menu_principal import MenuPrincipalScene
 
 
 def inicializar_jogo():
-    """Cria a janela do PPlay e configura a cena inicial."""
+    """Cria a janela do PPlay na resolução máxima da tela com escalonamento nítido."""
+    import pygame
+    if not pygame.get_init():
+        pygame.init()
+
+    info = pygame.display.Info()
+    largura_monitor = info.current_w if info.current_w > 0 else LARGURA_TELA
+    altura_monitor = info.current_h if info.current_h > 0 else ALTURA_TELA
+
     janela = Window(
         largura_virtual=LARGURA_TELA,
         altura_virtual=ALTURA_TELA,
@@ -26,6 +34,13 @@ def inicializar_jogo():
         resizavel=True,
         pixel_art=True
     )
+    # Ajusta o tamanho da janela real para as dimensões máximas do monitor
+    try:
+        flags = pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.RESIZABLE
+        janela.real_screen = pygame.display.set_mode((largura_monitor, altura_monitor), flags)
+    except Exception:
+        pass
+
     janela.set_background_color((18, 22, 30))
 
     cena_inicial = MenuPrincipalScene()

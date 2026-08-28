@@ -25,7 +25,7 @@ class InimigoBase:
         velocidade: float = 100.0,
         dano_contato: int = 10,
         cooldown_contato: float = 0.4,
-        xp_valor: int = 10,
+        xp_valor: int = 5,
         score_valor: int = 100,
         largura: int = 28,
         altura: int = 28,

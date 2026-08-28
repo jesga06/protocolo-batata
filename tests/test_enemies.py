@@ -23,7 +23,7 @@ from src.sistemas.sistema_spawn import SistemaSpawn
 from src.utils.constantes import (
     INIMIGO_PADRAO_HP, INIMIGO_PADRAO_VELOCIDADE,
     INIMIGO_PADRAO_DANO, INIMIGO_PADRAO_COOLDOWN_ATAQUE,
-    LARGURA_ARENA, ALTURA_ARENA
+    LARGURA_ARENA, ALTURA_ARENA, SPAWN_DISTANCIA_OFFSET
 )
 
 
@@ -115,22 +115,22 @@ class TestSistemaSpawn(unittest.TestCase):
     def test_escalonamento_intervalo_e_lote(self):
         spawner = SistemaSpawn()
         # t = 0s
-        self.assertAlmostEqual(spawner.intervalo_spawn(0.0), 2.0)
+        self.assertAlmostEqual(spawner.intervalo_spawn(0.0), 3.0)
         self.assertEqual(spawner.tamanho_lote(0.0), 1)
 
-        # t = 50s -> 2.0 - 0.012 * 50 = 1.40s, lote = min(8, 1 + 2) = 3
-        self.assertAlmostEqual(spawner.intervalo_spawn(50.0), 1.40)
+        # t = 50s -> 3.0 - 0.012 * 50 = 2.40s, lote = min(8, 1 + 2) = 3
+        self.assertAlmostEqual(spawner.intervalo_spawn(50.0), 2.40)
         self.assertEqual(spawner.tamanho_lote(50.0), 3)
 
-        # t = 100s -> 2.0 - 0.012 * 100 = 0.80s, lote = min(8, 1 + 4) = 5
-        self.assertAlmostEqual(spawner.intervalo_spawn(100.0), 0.80)
+        # t = 100s -> 3.0 - 0.012 * 100 = 1.80s, lote = min(8, 1 + 4) = 5
+        self.assertAlmostEqual(spawner.intervalo_spawn(100.0), 1.80)
         self.assertEqual(spawner.tamanho_lote(100.0), 5)
 
     def test_spawner_gera_inimigos_e_respeita_teto(self):
         spawner = SistemaSpawn(max_ativos=5)
-        # Avança 2.1s para disparar o primeiro pulso
+        # Avança 3.1s para disparar o primeiro pulso (intervalo inicial 3.0s)
         gerados = spawner.update(
-            dt=2.1,
+            dt=3.1,
             camera_x=0.0,
             camera_y=0.0,
             total_inimigos_vivos=0
@@ -138,11 +138,11 @@ class TestSistemaSpawn(unittest.TestCase):
         self.assertGreaterEqual(len(gerados), 1)
         for inim in gerados:
             self.assertIsInstance(inim, InimigoBase)
-            # Verifica que foram gerados dentro dos limites da arena
-            self.assertGreaterEqual(inim.x, 0.0)
-            self.assertLessEqual(inim.x, LARGURA_ARENA - inim.largura)
-            self.assertGreaterEqual(inim.y, 0.0)
-            self.assertLessEqual(inim.y, ALTURA_ARENA - inim.altura)
+            # Verifica que foram gerados com coordenadas válidas (incluindo margem de offset fora da tela)
+            self.assertGreaterEqual(inim.x, -SPAWN_DISTANCIA_OFFSET - 50)
+            self.assertLessEqual(inim.x, LARGURA_ARENA + SPAWN_DISTANCIA_OFFSET + 50)
+            self.assertGreaterEqual(inim.y, -SPAWN_DISTANCIA_OFFSET - 50)
+            self.assertLessEqual(inim.y, ALTURA_ARENA + SPAWN_DISTANCIA_OFFSET + 50)
 
         # Se total_vivos >= max_ativos, spawner não deve gerar ninguém
         gerados_bloqueados = spawner.update(
@@ -188,7 +188,7 @@ class TestSistemaSpawn(unittest.TestCase):
     def test_spawner_tempo_extremo(self):
         """Verifica que tempo extremo (ex: 30 minutos) não estoura limites."""
         spawner = SistemaSpawn(max_ativos=60)
-        self.assertEqual(spawner.intervalo_spawn(1800.0), 0.50)
+        self.assertEqual(spawner.intervalo_spawn(1800.0), 0.75)
         self.assertEqual(spawner.tamanho_lote(1800.0), 8)
 
 
