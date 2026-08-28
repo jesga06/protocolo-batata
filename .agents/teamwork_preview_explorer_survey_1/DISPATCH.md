@@ -1,16 +1,20 @@
-## 2026-08-28T14:49:14Z
-You are Explorer 1 (Archetype: teamwork_preview_explorer).
-Working directory: c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\teamwork_preview_explorer_survey_1
-Project root: c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata
-Original Request: c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\ORIGINAL_REQUEST.md
-Architecture Cache: c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\architecture_cache.md
+## 2026-08-28T15:45:21Z
+<USER_REQUEST>
+You are Explorer 1 for the Scavenger Enemy and Drop Logic task in Protocolo: Batata.
 
-Task:
-Read `ORIGINAL_REQUEST.md`, `architecture_cache.md`, `CONFIGURACOES.md`, `GDD.md`, `gdd lab batata.md`, and any `s1.md` to `s6.md` in the project root.
-Investigate and extract the comprehensive feature inventory, gameplay specifications, and exact requirements for:
-1. Phase 0: Base architecture, module layout, window setup, entry point (`src/main.py`), game loop, scene management.
-2. Phase 1: Player entity (potato avatar, stats, HP, speed), movement mechanics (WASD/arrows/keybinds support), weapon/shooting mechanics (projectiles, cooldown, auto-fire, collision detection), and standard enemy spawning & behavior (beeline movement towards player, collision damage, death on 0 HP).
+MANDATORY INPUTS:
+- Read ORIGINAL_REQUEST.md at: c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\ORIGINAL_REQUEST.md
+- Read architecture cache at: c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\architecture_cache.md
+- Read CONFIGURACOES.md at: c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\CONFIGURACOES.md (especially #15 coleta_inimiga if relevant)
 
-Deliver a detailed analysis and handoff report in:
-`c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\teamwork_preview_explorer_survey_1\handoff.md`
-Remember: You are read-only. Do not write or modify source code. Send a message to parent when done.
+YOUR WORKING DIRECTORY:
+c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\teamwork_preview_explorer_survey_1
+
+OBJECTIVE:
+Investigate the existing codebase structure around `src/`, `src/sistemas/`, `src/entidades/`, and see what data structures/constants/math utilities exist. Check how drops or enemies are represented or intended to be represented.
+Survey the exact constraints:
+- DO NOT touch src/main.py or core entity files.
+- We need to create `src/sistemas/sistema_scavenger.py` and `src/sistemas/sistema_drops.py` as pure decoupled logic classes.
+
+Produce a detailed report in `c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\teamwork_preview_explorer_survey_1\handoff.md` and send a message when done.
+</USER_REQUEST>

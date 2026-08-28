@@ -1,14 +1,12 @@
-# Progress: Phase 0 & Phase 1 Survey
+# Progress
 
-Last visited: 2026-08-28T14:50:00Z
-Status: In Progress
+Last visited: 2026-08-28T15:45:30Z
+Status: Initializing investigation
 
-## Tasks
 - [x] Initialized DISPATCH.md and BRIEFING.md
-- [ ] Read ORIGINAL_REQUEST.md and architecture_cache.md
-- [ ] Read CONFIGURACOES.md, GDD.md, gdd lab batata.md
-- [ ] Read s1.md to s6.md
-- [ ] Synthesize Phase 0 specifications (Base architecture, module layout, window setup, entry point, game loop, scene management)
-- [ ] Synthesize Phase 1 specifications (Player entity, stats/HP/speed, movement, weapon/shooting, enemy spawning/behavior)
-- [ ] Compile comprehensive handoff report (`handoff.md`)
-- [ ] Update BRIEFING.md and notify parent agent
+- [ ] Read mandatory input documents (ORIGINAL_REQUEST.md, architecture_cache.md, CONFIGURACOES.md)
+- [ ] Survey codebase directory structure and existing files in `src/`, `src/sistemas/`, `src/entidades/`
+- [ ] Analyze math/constants/utility modules
+- [ ] Analyze existing enemy classes, drops, item logic, spatial partitioning, configs
+- [ ] Synthesize requirements for `sistema_scavenger.py` and `sistema_drops.py`
+- [ ] Write handoff.md report

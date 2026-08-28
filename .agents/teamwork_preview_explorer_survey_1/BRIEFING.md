@@ -1,33 +1,33 @@
-# BRIEFING — 2026-08-28T14:49:14Z
+# BRIEFING — 2026-08-28T15:45:26Z
 
 ## Mission
-Extract comprehensive feature inventory, gameplay specifications, and exact architectural requirements for Phase 0 (Base architecture, module layout, window setup, entry point, game loop, scene management) and Phase 1 (Player entity, movement, weapon/shooting, standard enemy spawning & behavior) by surveying all project design documentation.
+Investigate codebase structure around `src/`, `src/sistemas/`, `src/entidades/`, existing data structures, constants, math utilities, and drop/enemy representation for Scavenger Enemy and Drop Logic design.
 
 ## 🔒 My Identity
-- Archetype: teamwork_preview_explorer
-- Roles: survey, analysis, synthesis
+- Archetype: Explorer
+- Roles: [Codebase investigation, Architecture survey, Read-only synthesis]
 - Working directory: c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\teamwork_preview_explorer_survey_1
-- Original parent: 6022ad1f-0955-4bbb-b7ef-0d4169e1437a
-- Milestone: Phase 0 & Phase 1 Survey & Requirements Extraction
+- Original parent: 21fb4cb2-d6fa-4593-9395-4d1409debecc
+- Milestone: Scavenger and Drops Survey
 
 ## 🔒 Key Constraints
-- Read-only investigation — do NOT implement or modify source code
-- Strictly adhere to Evidence Taxonomy (Observed, Verified, Inferred, Speculative)
-- 5-Component Handoff Report structure (Observation, Logic Chain, Caveats, Conclusion, Verification Method)
-- Communicate results via send_message to parent
+- Read-only investigation — do NOT implement or modify core files (DO NOT touch src/main.py or core entity files).
+- Plan for pure decoupled logic classes: `src/sistemas/sistema_scavenger.py` and `src/sistemas/sistema_drops.py`.
 
 ## Current Parent
-- Conversation ID: 6022ad1f-0955-4bbb-b7ef-0d4169e1437a
-- Updated: not yet
+- Conversation ID: 21fb4cb2-d6fa-4593-9395-4d1409debecc
+- Updated: 2026-08-28T15:45:26Z
 
 ## Investigation State
-- **Explored paths**: None yet
-- **Key findings**: In progress
-- **Unexplored areas**: ORIGINAL_REQUEST.md, architecture_cache.md, CONFIGURACOES.md, GDD.md, gdd lab batata.md, s1.md to s6.md
+- **Explored paths**: [TBD]
+- **Key findings**: [TBD]
+- **Unexplored areas**: [TBD]
 
 ## Key Decisions Made
-- Survey all markdown files thoroughly to extract complete specs for Phase 0 and Phase 1.
+- Starting survey of mandatory inputs (ORIGINAL_REQUEST.md, architecture_cache.md, CONFIGURACOES.md) and codebase.
 
 ## Artifact Index
-- .agents/teamwork_preview_explorer_survey_1/handoff.md — Final survey & handoff report
-- .agents/teamwork_preview_explorer_survey_1/progress.md — Liveness & progress tracking
+- DISPATCH.md — Initial dispatch message
+- BRIEFING.md — Persistent working state
+- progress.md — Liveness heartbeat
+- handoff.md — Final investigation report
