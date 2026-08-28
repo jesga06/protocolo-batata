@@ -1,0 +1,211 @@
+"""
+Testes Unitários de Armas Especiais (Slot 3) — Protocolo: Batata
+Valida Minigun, Shotgun, Rifle de Assalto, Lança-Foguetes, Lança-Granadas,
+esgotamento de munição, descarte automático, troca para Slot 2 e modificadores da Config 5.
+"""
+
+import os
+import sys
+import math
+import unittest
+
+os.environ["SDL_VIDEODRIVER"] = "dummy"
+os.environ["SDL_AUDIODRIVER"] = "dummy"
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from src.armas import (
+    ArmaBase, Pistola, Melee,
+    Minigun, Shotgun, RifleAssalto,
+    LancaFoguetes, LancaGranadas
+)
+from src.entidades.jogador import Jogador
+from src.entidades.inimigo_padrao import InimigoPadrao
+from src.entidades.drop import ItemDrop
+from src.sistemas.sistema_drops import SistemaDrops
+from src.sistemas.config_sistema import GerenciadorConfiguracoes
+
+
+class TestMinigun(unittest.TestCase):
+    """Testa a Minigun (150 munições, 0.08s cooldown, dano 6, alta cadência)."""
+
+    def test_minigun_inicializacao_e_atributos(self):
+        m = Minigun()
+        self.assertEqual(m.nome, "Minigun")
+        self.assertEqual(m.dano, 6)
+        self.assertEqual(m.cooldown, 0.08)
+        self.assertEqual(m.municao_max, 150)
+        self.assertEqual(m.municao_atual, 150)
+        self.assertFalse(m.municao_infinita)
+        self.assertEqual(m.slot, 3)
+
+    def test_minigun_disparo_consumo_e_esgotamento(self):
+        m = Minigun()
+        # Dispara 150 vezes com update de cooldown entre disparos
+        for i in range(150):
+            self.assertTrue(m.pode_atirar())
+            tiros = m.disparar(100.0, 100.0, 300.0, 100.0)
+            self.assertEqual(len(tiros), 1)
+            self.assertEqual(tiros[0].dano, 6)
+            self.assertEqual(tiros[0].sprite_key, "projetil_minigun")
+            self.assertEqual(m.municao_atual, 150 - (i + 1))
+            m.update(0.08)
+
+        # Munição zerada: não pode mais atirar
+        self.assertEqual(m.municao_atual, 0)
+        self.assertFalse(m.pode_atirar())
+        tiros_bloqueados = m.disparar(100.0, 100.0, 300.0, 100.0)
+        self.assertEqual(len(tiros_bloqueados), 0)
+
+
+class TestShotgun(unittest.TestCase):
+    """Testa a Escopeta (30 cartuchos, 0.70s cooldown, 5 pellets em leque de 0.35 rad, dano 10/pellet)."""
+
+    def test_shotgun_inicializacao_e_atributos(self):
+        s = Shotgun()
+        self.assertEqual(s.nome, "Escopeta")
+        self.assertEqual(s.dano, 10)
+        self.assertEqual(s.cooldown, 0.70)
+        self.assertEqual(s.municao_max, 30)
+        self.assertEqual(s.municao_atual, 30)
+        self.assertEqual(s.pellets, 9)
+        self.assertAlmostEqual(s.spread_angulo, 0.45)
+
+    def test_shotgun_disparo_9_pellets_simetricos(self):
+        s = Shotgun()
+        self.assertTrue(s.pode_atirar())
+
+        # Disparo horizontal para a direita: (100, 100) -> (300, 100)
+        tiros = s.disparar(100.0, 100.0, 300.0, 100.0)
+        self.assertEqual(len(tiros), 9)
+        self.assertEqual(s.municao_atual, 29)
+
+        # Valida que todos os pellets têm dano 10 e sprite correto
+        for proj in tiros:
+            self.assertEqual(proj.dano, 10)
+            self.assertEqual(proj.sprite_key, "projetil_shotgun")
+
+        # Valida dispersão angular simétrica
+        angulos = [math.atan2(p.dir_y, p.dir_x) for p in tiros]
+        self.assertAlmostEqual(min(angulos), -0.225, places=3)
+        self.assertAlmostEqual(max(angulos), 0.225, places=3)
+        self.assertAlmostEqual(angulos[4], 0.0, places=3)
+
+
+class TestRifleAssalto(unittest.TestCase):
+    """Testa o Rifle de Assalto (60 tiros, 0.18s cooldown, dano 18, 650 px/s)."""
+
+    def test_rifle_inicializacao_e_disparo_preciso(self):
+        r = RifleAssalto()
+        self.assertEqual(r.dano, 18)
+        self.assertEqual(r.cooldown, 0.18)
+        self.assertEqual(r.municao_max, 60)
+        self.assertEqual(r.municao_atual, 60)
+
+        tiros = r.disparar(100.0, 200.0, 500.0, 200.0)
+        self.assertEqual(len(tiros), 1)
+        proj = tiros[0]
+        self.assertEqual(proj.dano, 18)
+        self.assertEqual(proj.velocidade, 650.0)
+        self.assertEqual(proj.sprite_key, "projetil_rifle")
+        self.assertAlmostEqual(proj.dir_x, 1.0)
+        self.assertAlmostEqual(proj.dir_y, 0.0)
+
+
+class TestArmasExplosivas(unittest.TestCase):
+    """Testa Lança-Foguetes e Lança-Granadas com dano em área (AoE) e multiplicadores."""
+
+    def test_lanca_foguetes_aoe_detonacao(self):
+        foguetes = LancaFoguetes()
+        self.assertEqual(foguetes.dano, 60)
+        self.assertEqual(foguetes.raio_explosao, 80.0)
+        self.assertEqual(foguetes.municao_max, 12)
+
+        tiros = foguetes.disparar(100.0, 100.0, 300.0, 100.0)
+        self.assertEqual(len(tiros), 1)
+        proj = tiros[0]
+        self.assertTrue(proj.explosivo)
+        self.assertEqual(proj.raio_explosao, 80.0)
+
+        # Testa detonação AoE contra 3 inimigos
+        e1 = InimigoPadrao(x=120.0, y=100.0, hp=50)   # 20px de distância (dentro de 80px)
+        e2 = InimigoPadrao(x=150.0, y=100.0, hp=50)   # 50px de distância (dentro de 80px)
+        e3 = InimigoPadrao(x=350.0, y=100.0, hp=50)   # 250px de distância (fora de 80px)
+
+        afetados = proj.explodir([e1, e2, e3])
+        self.assertEqual(len(afetados), 2)
+        self.assertIn(e1, afetados)
+        self.assertIn(e2, afetados)
+        self.assertNotIn(e3, afetados)
+        self.assertFalse(e1.vivo)
+        self.assertFalse(e2.vivo)
+        self.assertEqual(e3.hp, 50)
+
+    def test_lanca_granadas_aoe_e_config5_scaling(self):
+        granadas = LancaGranadas()
+        self.assertEqual(granadas.dano, 45)
+        self.assertEqual(granadas.raio_explosao, 65.0)
+        self.assertEqual(granadas.municao_max, 16)
+
+        tiros = granadas.disparar(100.0, 100.0, 200.0, 100.0)
+        proj = tiros[0]
+        self.assertTrue(proj.explosivo)
+
+        # Com Config 5 ativa (Tremor de Tela), dano de explosivos tem +20% (45 * 1.20 = 54)
+        e = InimigoPadrao(x=130.0, y=100.0, hp=100)
+        proj.explodir([e], mult_dano_explosivo=1.20)
+        self.assertEqual(e.hp, 100 - 54)  # 46 HP restante
+
+
+class TestSlot3LifecycleAndAmmoDepletion(unittest.TestCase):
+    """Testa coleta de drop de arma, equip no Slot 3, dobro de munição sob Config 15 e auto-swap ao zerar."""
+
+    def setUp(self):
+        self.jogador = Jogador(x=400.0, y=300.0)
+        self.sistema_drops = SistemaDrops()
+
+    def test_coleta_drop_arma_equipa_slot_3(self):
+        drop = ItemDrop(x=400.0, y=300.0, tipo="arma")
+        self.sistema_drops.drops.append(drop)
+
+        eventos = self.sistema_drops.coletar_jogador(self.jogador)
+        self.assertEqual(len(eventos), 1)
+        self.assertEqual(eventos[0]["tipo"], "arma")
+        self.assertIsNotNone(self.jogador.arma_especial)
+        self.assertEqual(self.jogador.slot_ativo, 3)
+        self.assertIsInstance(self.jogador.obter_arma_ativa(), ArmaBase)
+
+    def test_coleta_inimiga_config15_dobra_municao(self):
+        drop = ItemDrop(x=400.0, y=300.0, tipo="arma")
+        self.sistema_drops.drops.append(drop)
+
+        # Config 15 ativa: mult_valor_drop = 2.0
+        self.sistema_drops.coletar_jogador(self.jogador, mult_valor_drop=2.0)
+        arma = self.jogador.arma_especial
+        self.assertIsNotNone(arma)
+        # Se for minigun: 150 * 2 = 300; se shotgun: 30 * 2 = 60, etc.
+        self.assertGreaterEqual(arma.municao_atual, 24)
+        self.assertEqual(arma.municao_atual, arma.municao_max)
+
+    def test_esgotamento_de_municao_auto_swap_para_slot_2(self):
+        # Equipa arma com apenas 1 munição
+        arma = Minigun(municao_max=1)
+        self.jogador.arma_especial = arma
+        self.jogador.selecionar_slot(3)
+        self.assertEqual(self.jogador.slot_ativo, 3)
+
+        # Dispara o último tiro
+        arma.disparar(400.0, 300.0, 500.0, 300.0)
+        self.assertEqual(arma.municao_atual, 0)
+
+        # Update do jogador deve detectar munição zero, descartar a arma e retornar ao Slot 2 (Pistola)
+        self.jogador.update(dt=0.016)
+        self.assertIsNone(self.jogador.arma_especial)
+        self.assertEqual(self.jogador.slot_ativo, 2)
+        self.assertIsInstance(self.jogador.obter_arma_ativa(), Pistola)
+
+
+if __name__ == "__main__":
+    unittest.main()

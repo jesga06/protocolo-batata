@@ -16,14 +16,17 @@ from src.armas.melee import Melee
 from src.sistemas.sistema_spawn import SistemaSpawn
 from src.sistemas.sistema_drops import SistemaDrops
 from src.sistemas.sistema_scavenger import SistemaScavenger
+from src.sistemas.config_sistema import GerenciadorConfiguracoes
 from src.ui.hud import HUD
+from src.ui.modal_level_up import ModalLevelUp
+from src.ui.menu_configs import MenuConfigs
 from PPlay.camera import Camera
 from PPlay.scenemanager import SceneManager
 from src.utils.constantes import (
     LARGURA_TELA, ALTURA_TELA, LARGURA_ARENA, ALTURA_ARENA,
     BRANCO, PRETO, CINZA_FUNDO, CINZA_PAINEL, CINZA_BORDA,
     VERMELHO_HP, VERDE_CURA, AMARELO_XP, AZUL_CIANO, DOURADO,
-    obter_caminho_asset
+    obter_caminho_asset, SAVE_FILE_PATH
 )
 from src.utils.math_utils import colisao_aabb, clamp
 
@@ -51,7 +54,17 @@ class GameplayScene(BaseScene):
         self.camera = Camera(LARGURA_TELA, ALTURA_TELA)
         self.camera.set_world_bounds(self.largura_arena, self.altura_arena)
 
+        # Sistema de Configurações e Modificadores
+        self.gerenciador_config = GerenciadorConfiguracoes()
+        self.gerenciador_config.carregar_arquivo(SAVE_FILE_PATH)
+        self.modal_level_up = ModalLevelUp(self.gerenciador_config, self.jogador, cena=self)
+        self.menu_configs = MenuConfigs(self.gerenciador_config, em_jogo=True, cena=self)
+
+        # Registra callback de level-up no SistemaXP do jogador
+        self.jogador.sistema_xp.registrar_callback_level_up(self._ao_subir_nivel)
+
         # Sistemas de combate, spawn, drops e progressão
+        self.config_sistema = self.gerenciador_config
         self.spawner = SistemaSpawn(max_ativos=60)
         self.sistema_drops = SistemaDrops()
         self.sistema_scavenger = SistemaScavenger()
@@ -69,6 +82,9 @@ class GameplayScene(BaseScene):
         # Input buffer e efeitos visuais
         self.buffer_tiro = 0.0
         self.efeitos_melee: list[dict] = []
+
+        # Aplica modificadores iniciais
+        self.aplicar_modificadores()
 
         # Inicialização da trilha sonora em loop contínuo
         try:
@@ -107,6 +123,27 @@ class GameplayScene(BaseScene):
             except Exception:
                 cls._slot_inv_img = None
 
+    def _ao_subir_nivel(self, novo_nivel: int):
+        """Callback acionado pelo SistemaXP ao subir de nível."""
+        self.modal_level_up.enfileirar_level_up(novo_nivel)
+        self.pausado = True
+
+    def aplicar_modificadores(self):
+        """Aplica os modificadores matemáticos calculados às entidades ativas."""
+        mods = self.gerenciador_config.obter_modificadores()
+        # 1. Velocidade do jogador
+        self.jogador.velocidade_atual = self.jogador.velocidade_base * mods.vel_jogador_mult
+
+        # 2. Dano das armas do jogador
+        for arma in self.jogador.armas:
+            if not hasattr(arma, "_dano_original"):
+                arma._dano_original = arma.dano
+            arma.dano = int(round(arma._dano_original * mods.dano_armas_mult))
+        if getattr(self.jogador, "arma_especial", None) is not None:
+            if not hasattr(self.jogador.arma_especial, "_dano_original"):
+                self.jogador.arma_especial._dano_original = self.jogador.arma_especial.dano
+            self.jogador.arma_especial.dano = int(round(self.jogador.arma_especial._dano_original * mods.dano_armas_mult))
+
     def loop(self):
         dt = self.janela.delta_time()
         # Se dt for 0 ou excessivamente baixo (em testes headless ultra-rápidos), usa 1/60s
@@ -115,12 +152,38 @@ class GameplayScene(BaseScene):
         # Clampa dt para evitar saltos quânticos em frames atípicos (máximo 100ms)
         dt = min(dt, 0.1)
 
-        # Controle de Pausa via Teclado (ESC)
+        # 1. Se o Modal de Level Up estiver ativo, processa seus inputs e congela o jogo
+        if self.modal_level_up.ativo:
+            self.modal_level_up.update(dt, self.teclado, self.mouse)
+            if not self.modal_level_up.ativo and not self.menu_configs.ativo:
+                self.pausado = False
+            return
+
+        # 2. Se o Menu de Configurações estiver ativo, processa seus inputs e congela o jogo
+        if self.menu_configs.ativo:
+            self.menu_configs.update(dt, self.teclado, self.mouse)
+            if not self.menu_configs.ativo and not self.modal_level_up.ativo:
+                self.pausado = False
+            return
+
+        # 3. Tecla 'C' para abrir o menu de configurações
+        if (hasattr(self.teclado, "key_down") and (self.teclado.key_down("c") or self.teclado.key_down("C"))) or \
+           (hasattr(self.teclado, "key_pressed") and (self.teclado.key_pressed("c") or self.teclado.key_pressed("C"))):
+            self.menu_configs.abrir()
+            self.pausado = True
+            return
+
+        # 4. Controle de Pausa / Menu via Teclado (ESC)
         if self.teclado.key_down("ESC"):
-            if not self.game_over:
-                self.pausado = not self.pausado
-            else:
+            if self.game_over:
                 self._voltar_menu()
+                return
+            else:
+                if not self.pausado:
+                    self.menu_configs.abrir()
+                    self.pausado = True
+                else:
+                    self.pausado = False
                 return
 
         # Comportamento no estado de Game Over
@@ -146,16 +209,19 @@ class GameplayScene(BaseScene):
             dt,
             limite_arena=(self.largura_arena, self.altura_arena)
         )
-        self.jogador.update(dt)
+        tiros_drone = self.jogador.update(
+            dt,
+            drops=self.sistema_drops.drops,
+            inimigos=self.inimigos
+        )
+        if tiros_drone:
+            self.projeteis.extend(tiros_drone)
 
         # Atualiza a posição da câmera para seguir o jogador suavemente
         self.camera.follow(self.jogador, suavizacao=0.15)
 
         # =========================================================================
-        # 2. DISPARO DE ARMAS (PISTOLA E MELEE)
-        # =========================================================================
-        # =========================================================================
-        # 2. DISPARO DE ARMAS (PISTOLA E MELEE COM BUFFER DE INPUT)
+        # 2. DISPARO DE ARMAS (PISTOLA, MELEE E ESPECIAIS COM BUFFER DE INPUT)
         # =========================================================================
         centro_jogador_x = self.jogador.x + self.jogador.largura / 2.0
         centro_jogador_y = self.jogador.y + self.jogador.altura / 2.0
@@ -172,6 +238,7 @@ class GameplayScene(BaseScene):
         # Detecta clique no botão de engrenagem (752, 16, 32x32)
         if self.mouse.button_down(1):
             if 752 <= mx <= 784 and 16 <= my <= 48:
+                self.menu_configs.abrir()
                 self.pausado = True
                 return
 
@@ -272,40 +339,122 @@ class GameplayScene(BaseScene):
         # =========================================================================
         for inimigo in self.inimigos:
             inimigo.update(dt, (centro_jogador_x, centro_jogador_y))
+            if hasattr(inimigo, "obter_projeteis_pendentes"):
+                novos_tiros = inimigo.obter_projeteis_pendentes()
+                if novos_tiros:
+                    self.projeteis.extend(novos_tiros)
             inimigo.tentar_causar_dano_contato(self.jogador)
 
         # =========================================================================
-        # 6. COLISÕES: PROJÉTEIS VS INIMIGOS
+        # 6. COLISÕES: PROJÉTEIS VS INIMIGOS E DETONAÇÃO DE EXPLOSIVOS
         # =========================================================================
+        mods = self.config_sistema.obter_modificadores() if hasattr(self, "config_sistema") and self.config_sistema else None
+        mult_explosivo = getattr(mods, "dano_explosivos_mult", 1.0) if mods else 1.0
+        auto_dano = getattr(mods, "auto_dano", False) if mods else False
+
         for proj in self.projeteis:
             if not proj.ativo:
                 continue
 
-            for inimigo in self.inimigos:
-                if not inimigo.vivo:
-                    continue
-
-                if colisao_aabb(
+            # Projéteis de inimigos causam dano ao jogador
+            if getattr(proj, "dono", "jogador") == "inimigo":
+                if getattr(self.jogador, "vivo", True) and colisao_aabb(
                     proj.x, proj.y, proj.largura, proj.altura,
-                    inimigo.x, inimigo.y, inimigo.largura, inimigo.altura
+                    self.jogador.x, self.jogador.y, self.jogador.largura, self.jogador.altura
                 ):
-                    # Projéteis atravessam inimigos intangíveis em fase
-                    if getattr(inimigo, "em_fase", False):
+                    self.jogador.receber_dano(proj.dano)
+                    proj.ativo = False
+                continue
+
+            if getattr(proj, "explosivo", False):
+                detonar = False
+                p_cx = proj.x + proj.largura / 2.0
+                p_cy = proj.y + proj.altura / 2.0
+                r_exp = getattr(proj, "raio_explosao", 80.0)
+
+                for inimigo in self.inimigos:
+                    if not inimigo.vivo or getattr(inimigo, "em_fase", False):
+                        continue
+                    e_cx = inimigo.x + getattr(inimigo, "largura", 28) / 2.0
+                    e_cy = inimigo.y + getattr(inimigo, "altura", 28) / 2.0
+                    from src.utils.math_utils import distancia
+                    if distancia(p_cx, p_cy, e_cx, e_cy) <= r_exp or colisao_aabb(
+                        proj.x, proj.y, proj.largura, proj.altura,
+                        inimigo.x, inimigo.y, inimigo.largura, inimigo.altura
+                    ):
+                        detonar = True
+                        break
+
+                if detonar or proj.tempo_vida_restante <= 0.0:
+                    proj.ativo = False
+                    afetados = proj.explodir(
+                        self.inimigos,
+                        jogador=self.jogador,
+                        config_sistema=self.config_sistema,
+                        mult_dano_explosivo=mult_explosivo
+                    )
+                    for inim in afetados:
+                        if not inim.vivo:
+                            self.abates += 1
+                            self.pontos += getattr(inim, "score_valor", 100)
+                            self.sistema_drops.gerar_drop_morte_inimigo(
+                                inim.x + getattr(inim, "largura", 28) / 2.0,
+                                inim.y + getattr(inim, "altura", 28) / 2.0,
+                                xp_base=getattr(inim, "xp_valor", 10),
+                                loot_enriquecido=(getattr(inim, "loot_enriquecido", False) or getattr(mods, "loot_enriquecido", False)),
+                                chance_arma=getattr(inim, "chance_drop_arma", None),
+                                chance_equipamento=getattr(inim, "chance_drop_equipamento", None)
+                            )
+            else:
+                for inimigo in self.inimigos:
+                    if not inimigo.vivo:
                         continue
 
-                    inimigo.receber_dano(proj.dano)
-                    proj.ativo = False
+                    if colisao_aabb(
+                        proj.x, proj.y, proj.largura, proj.altura,
+                        inimigo.x, inimigo.y, inimigo.largura, inimigo.altura
+                    ):
+                        if getattr(inimigo, "em_fase", False):
+                            continue
 
-                    if not inimigo.vivo:
-                        self.abates += 1
-                        self.pontos += inimigo.score_valor
-                        self.sistema_drops.gerar_drop_morte_inimigo(
-                            inimigo.x + inimigo.largura / 2.0,
-                            inimigo.y + inimigo.altura / 2.0,
-                            xp_base=getattr(inimigo, "xp_valor", 10)
+                        if getattr(proj, "perfurante", False):
+                            if not hasattr(proj, "alvos_atingidos"):
+                                proj.alvos_atingidos = set()
+                            if id(inimigo) in proj.alvos_atingidos:
+                                continue
+                            proj.alvos_atingidos.add(id(inimigo))
+                        else:
+                            proj.ativo = False
+
+                        inimigo.receber_dano(
+                            proj.dano,
+                            origem_x=proj.x,
+                            origem_y=proj.y,
+                            dir_ataque=(proj.dir_x, proj.dir_y)
                         )
 
-                    break
+                        if not inimigo.vivo:
+                            self.abates += 1
+                            self.pontos += getattr(inimigo, "score_valor", 100)
+                            self.sistema_drops.gerar_drop_morte_inimigo(
+                                inimigo.x + getattr(inimigo, "largura", 28) / 2.0,
+                                inimigo.y + getattr(inimigo, "altura", 28) / 2.0,
+                                xp_base=getattr(inimigo, "xp_valor", 10),
+                                loot_enriquecido=(getattr(inimigo, "loot_enriquecido", False) or getattr(mods, "loot_enriquecido", False)),
+                                chance_arma=getattr(inimigo, "chance_drop_arma", None),
+                                chance_equipamento=getattr(inimigo, "chance_drop_equipamento", None)
+                            )
+                        break
+
+                # Fogo Amigo balístico para projéteis do jogador (após carência inicial de 60ms)
+                if auto_dano and proj.ativo and getattr(proj, "dono", "jogador") == "jogador" and (proj.tempo_vida - proj.tempo_vida_restante > 0.06):
+                    if colisao_aabb(proj.x, proj.y, proj.largura, proj.altura, self.jogador.x, self.jogador.y, self.jogador.largura, self.jogador.altura):
+                        self.jogador.receber_dano(proj.dano)
+                        proj.ativo = False
+                    elif self.jogador.drone is not None and getattr(self.jogador.drone, "ativo", False):
+                        if colisao_aabb(proj.x, proj.y, proj.largura, proj.altura, self.jogador.drone.x, self.jogador.drone.y, self.jogador.drone.largura, self.jogador.drone.altura):
+                            self.jogador.drone.receber_dano(proj.dano)
+                            proj.ativo = False
 
         # Limpeza de entidades destruídas / inativas
         self.projeteis = [p for p in self.projeteis if p.ativo]
@@ -314,11 +463,37 @@ class GameplayScene(BaseScene):
         # =========================================================================
         # 7. SISTEMA DE DROPS E PROGRESSÃO DE XP
         # =========================================================================
+        mult_drops = getattr(mods, "drops_valor_mult", 1.0) if mods else 1.0
         self.sistema_drops.update(dt)
-        eventos_coleta = self.sistema_drops.coletar_jogador(self.jogador)
+        eventos_coleta = self.sistema_drops.coletar_jogador(self.jogador, mult_valor_drop=mult_drops)
         for ev in eventos_coleta:
             if ev["tipo"] == "xp":
                 self.jogador.ganhar_xp(ev["valor"])
+            elif ev["tipo"] == "arma":
+                import random
+                from src.armas.minigun import Minigun
+                from src.armas.shotgun import Shotgun
+                from src.armas.rifle_assalto import RifleAssalto
+                from src.armas.lanca_foguetes import LancaFoguetes
+                from src.armas.lanca_granadas import LancaGranadas
+                armas_cls = [Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas]
+                arma_sorteada = random.choice(armas_cls)()
+                if ev.get("mult_drop", 1.0) == 2.0 or mult_drops == 2.0:
+                    arma_sorteada.municao_max *= 2
+                    arma_sorteada.municao_atual = arma_sorteada.municao_max
+                self.jogador.arma_especial = arma_sorteada
+                self.jogador.selecionar_slot(3)
+            elif ev["tipo"] == "equipamento":
+                import random
+                from src.equipamentos.drone_cura import DroneCura
+                from src.equipamentos.drone_combate import DroneCombate
+                from src.equipamentos.drone_suporte import DroneSuporte
+                drones_cls = [DroneCura, DroneCombate, DroneSuporte]
+                drone_sorteado = random.choice(drones_cls)()
+                if ev.get("mult_drop", 1.0) == 2.0 or mult_drops == 2.0:
+                    drone_sorteado.tempo_vida = 60.0
+                    drone_sorteado.tempo_restante = 60.0
+                self.jogador.drone = drone_sorteado
 
         # Atualiza IA do Scavenger se houver drops elegíveis
         self.sistema_scavenger.update(dt, self.inimigos, self.sistema_drops.drops)
@@ -450,15 +625,21 @@ class GameplayScene(BaseScene):
             proj.desenhar(self.janela, self.camera)
 
         # Barra de HP in-world flutuando abaixo do jogador
-        self._desenhar_hp_in_world()
+        hud_visivel = (self.gerenciador_config.obter_valor("hud") != "desligado")
+        if hud_visivel:
+            self._desenhar_hp_in_world()
 
         # =========================================================================
         # CAMADA 2: ESPAÇO DA TELA (SCREEN-SPACE HUD)
         # =========================================================================
-        self._desenhar_hud_tela()
+        self._desenhar_hud_tela(hud_visivel=hud_visivel)
 
-        # Overlays modais de Pausa e Game Over
-        if self.game_over:
+        # Overlays modais de Level Up, Menu de Configurações, Game Over e Pausa
+        if self.modal_level_up.ativo:
+            self.modal_level_up.draw(screen)
+        elif self.menu_configs.ativo:
+            self.menu_configs.draw(screen)
+        elif self.game_over:
             self._desenhar_overlay_game_over()
         elif self.pausado:
             self._desenhar_overlay_pausa()
@@ -489,68 +670,69 @@ class GameplayScene(BaseScene):
         # Borda escura
         pygame.draw.rect(self.janela.screen, (20, 20, 20), (bar_x, bar_y, bar_w, bar_h), width=1, border_radius=2)
 
-    def _desenhar_hud_tela(self):
+    def _desenhar_hud_tela(self, hud_visivel: bool = True):
         """Renderiza o HUD fixo na tela: inventário, métricas e botão de engrenagem."""
         screen = self.janela.screen
 
-        # 1. Slots de inventário (Top-Left: 16, 16) com destaque para o slot ativo
-        slot_tam = 38
-        slot_ativo = getattr(self.jogador, "slot_ativo", 2)
+        if hud_visivel:
+            # 1. Slots de inventário (Top-Left: 16, 16) com destaque para o slot ativo
+            slot_tam = 38
+            slot_ativo = getattr(self.jogador, "slot_ativo", 2)
 
-        fonte_slots = pygame.font.SysFont("Arial", 10, bold=True)
-        for i in range(4):
-            sx = 16 + i * (slot_tam + 6)
-            sy = 16
-            slot_num = i + 1
-            is_ativo = (slot_num == slot_ativo)
+            fonte_slots = pygame.font.SysFont("Arial", 10, bold=True)
+            for i in range(4):
+                sx = 16 + i * (slot_tam + 6)
+                sy = 16
+                slot_num = i + 1
+                is_ativo = (slot_num == slot_ativo)
 
-            # Cor de fundo e borda destacada para o slot selecionado
-            bg_cor = (40, 50, 70) if is_ativo else (25, 30, 42)
-            borda_cor = DOURADO if is_ativo else CINZA_BORDA
-            borda_largura = 3 if is_ativo else 2
+                # Cor de fundo e borda destacada para o slot selecionado
+                bg_cor = (40, 50, 70) if is_ativo else (25, 30, 42)
+                borda_cor = DOURADO if is_ativo else CINZA_BORDA
+                borda_largura = 3 if is_ativo else 2
 
-            pygame.draw.rect(screen, bg_cor, (sx, sy, slot_tam, slot_tam), border_radius=4)
-            pygame.draw.rect(screen, borda_cor, (sx, sy, slot_tam, slot_tam), width=borda_largura, border_radius=4)
+                pygame.draw.rect(screen, bg_cor, (sx, sy, slot_tam, slot_tam), border_radius=4)
+                pygame.draw.rect(screen, borda_cor, (sx, sy, slot_tam, slot_tam), width=borda_largura, border_radius=4)
 
-            # Rótulo de cada slot
-            if i == 0:
-                texto_slot = "1:Melee"
-                cor_slot = DOURADO if is_ativo else CINZA_BORDA
-            elif i == 1:
-                texto_slot = "2:Pistol"
-                cor_slot = DOURADO if is_ativo else CINZA_BORDA
-            elif i == 2:
-                texto_slot = "3:Espec"
-                cor_slot = DOURADO if is_ativo else (80, 90, 110)
-            elif i == 3:
-                texto_slot = "4:Drone"
-                cor_slot = (80, 90, 110)
+                # Rótulo de cada slot
+                if i == 0:
+                    texto_slot = "1:Melee"
+                    cor_slot = DOURADO if is_ativo else CINZA_BORDA
+                elif i == 1:
+                    texto_slot = "2:Pistol"
+                    cor_slot = DOURADO if is_ativo else CINZA_BORDA
+                elif i == 2:
+                    texto_slot = "3:Espec"
+                    cor_slot = DOURADO if is_ativo else (80, 90, 110)
+                elif i == 3:
+                    texto_slot = "4:Drone"
+                    cor_slot = (80, 90, 110)
 
-            lbl_surf = fonte_slots.render(texto_slot, True, cor_slot)
-            lbl_rect = lbl_surf.get_rect(centerx=sx + slot_tam // 2, centery=sy + slot_tam // 2)
-            screen.blit(lbl_surf, lbl_rect)
+                lbl_surf = fonte_slots.render(texto_slot, True, cor_slot)
+                lbl_rect = lbl_surf.get_rect(centerx=sx + slot_tam // 2, centery=sy + slot_tam // 2)
+                screen.blit(lbl_surf, lbl_rect)
 
-        # 2. Cronômetro de Sobrevivência e Contador de Abates (Top-Center) perfeitamente centralizados
-        minutos = int(self.tempo_sobrevivencia // 60)
-        segundos = int(self.tempo_sobrevivencia % 60)
-        texto_tempo = f"{minutos:02d}:{segundos:02d}"
+            # 2. Cronômetro de Sobrevivência e Contador de Abates (Top-Center) perfeitamente centralizados
+            minutos = int(self.tempo_sobrevivencia // 60)
+            segundos = int(self.tempo_sobrevivencia % 60)
+            texto_tempo = f"{minutos:02d}:{segundos:02d}"
 
-        fonte_tempo = pygame.font.SysFont("Arial", 22, bold=True)
-        tempo_surf = fonte_tempo.render(texto_tempo, True, BRANCO)
-        tempo_rect = tempo_surf.get_rect(centerx=LARGURA_TELA // 2, top=14)
-        screen.blit(tempo_surf, tempo_rect)
+            fonte_tempo = pygame.font.SysFont("Arial", 22, bold=True)
+            tempo_surf = fonte_tempo.render(texto_tempo, True, BRANCO)
+            tempo_rect = tempo_surf.get_rect(centerx=LARGURA_TELA // 2, top=14)
+            screen.blit(tempo_surf, tempo_rect)
 
-        texto_abates = f"Abates: {self.abates}"
-        fonte_abates = pygame.font.SysFont("Arial", 14, bold=True)
-        abates_surf = fonte_abates.render(texto_abates, True, AMARELO_XP)
-        abates_rect = abates_surf.get_rect(centerx=LARGURA_TELA // 2, top=40)
-        screen.blit(abates_surf, abates_rect)
+            texto_abates = f"Abates: {self.abates}"
+            fonte_abates = pygame.font.SysFont("Arial", 14, bold=True)
+            abates_surf = fonte_abates.render(texto_abates, True, AMARELO_XP)
+            abates_rect = abates_surf.get_rect(centerx=LARGURA_TELA // 2, top=40)
+            screen.blit(abates_surf, abates_rect)
 
-        # 3. Barra de Progresso de XP (Top-Center: top=62, 360x10 px)
-        if hasattr(self, "hud") and self.hud is not None:
-            self.hud.desenhar_barra_xp(screen, self.jogador.sistema_xp)
+            # 3. Barra de Progresso de XP (Top-Center: top=62, 360x10 px)
+            if hasattr(self, "hud") and self.hud is not None:
+                self.hud.desenhar_barra_xp(screen, self.jogador.sistema_xp)
 
-        # 4. Botão de Engrenagem e FPS (Top-Right)
+        # 4. Botão de Engrenagem e FPS (Top-Right) — Sempre visíveis mesmo com HUD desligado
         fps_val = int(self.janela.get_fps())
         fonte_fps = pygame.font.SysFont("Arial", 14)
         fps_surf = fonte_fps.render(f"FPS: {fps_val}", True, AZUL_CIANO)
@@ -620,9 +802,15 @@ class GameplayScene(BaseScene):
         prompt_surf = fonte_prompt.render("Pressione [ENTER] para Jogar Novamente ou [ESC] para o Menu", True, DOURADO)
         screen.blit(prompt_surf, prompt_surf.get_rect(centerx=LARGURA_TELA // 2, top=420))
 
+    def _ao_subir_nivel(self, novo_nivel: int):
+        """Callback acionado quando o jogador alcança um novo nível."""
+        if hasattr(self, "modal_level_up") and self.modal_level_up is not None:
+            self.modal_level_up.abrir(novo_nivel)
+
     def _reiniciar_partida(self):
         SceneManager.change_scene(GameplayScene())
 
     def _voltar_menu(self):
         from src.cenas.menu_principal import MenuPrincipalScene
         SceneManager.change_scene(MenuPrincipalScene())
+

@@ -30,12 +30,15 @@ class SistemaDrops:
         bonus_chance_drop: float = 0.0,
         mult_chance_drop: float = 1.0,
         xp_base: int = None,
-        loot_enriquecido: bool = False
+        loot_enriquecido: bool = False,
+        chance_arma: float = None,
+        chance_equipamento: float = None
     ) -> list[ItemDrop]:
         """
         Gera os drops ao eliminar um inimigo:
         - Sempre gera ao menos 1 gema de XP.
-        - Calcula probabilidades para caixas de cura ou caixas de armas especiais.
+        - Calcula probabilidades para caixas de cura, armas especiais e equipamentos.
+        - Inimigos com loot_enriquecido (ex: Ranged) concedem 15% de chance para armas e 15% para equipamentos.
         """
         novos_drops = []
 
@@ -70,7 +73,11 @@ class SistemaDrops:
             self.drops.append(drop_cura)
 
         # 3. Chance de Drop de Arma / Caixa Especial
-        chance_arma_base = 0.15 if loot_enriquecido else 0.04
+        if chance_arma is not None:
+            chance_arma_base = float(chance_arma)
+        else:
+            chance_arma_base = 0.15 if (loot_enriquecido or tipo_inimigo == "ranged") else 0.04
+
         chance_arma_efetiva = min(1.0, (chance_arma_base + bonus_chance_drop) * mult_chance_drop)
         if random.random() < chance_arma_efetiva:
             offset_x = random.uniform(-16.0, 16.0)
@@ -85,6 +92,27 @@ class SistemaDrops:
             )
             novos_drops.append(drop_arma)
             self.drops.append(drop_arma)
+
+        # 4. Chance de Drop de Equipamento / Drone
+        if chance_equipamento is not None:
+            chance_equip_base = float(chance_equipamento)
+        else:
+            chance_equip_base = 0.15 if (loot_enriquecido or tipo_inimigo == "ranged") else 0.03
+
+        chance_equip_efetiva = min(1.0, (chance_equip_base + bonus_chance_drop) * mult_chance_drop)
+        if random.random() < chance_equip_efetiva:
+            offset_x = random.uniform(-16.0, 16.0)
+            offset_y = random.uniform(-16.0, 16.0)
+            drop_equip = ItemDrop(
+                x=x + offset_x - 8.0,
+                y=y + offset_y - 8.0,
+                tipo="equipamento",
+                valor=1,
+                tempo_vida=DROP_TEMPO_DESAPARECER,
+                tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
+            )
+            novos_drops.append(drop_equip)
+            self.drops.append(drop_equip)
 
         return novos_drops
 
@@ -118,13 +146,50 @@ class SistemaDrops:
                 drop.ativo = False
 
                 valor_efetivo = int(round(drop.valor * mult_valor_drop))
+                sfx_nome = "sfx_pickup_xp"
+
                 if drop.tipo == "cura":
+                    sfx_nome = "sfx_pickup_cura"
                     if hasattr(jogador, "curar"):
                         jogador.curar(valor_efetivo)
 
+                elif drop.tipo == "xp":
+                    sfx_nome = "sfx_pickup_xp"
+                    if hasattr(jogador, "ganhar_xp"):
+                        jogador.ganhar_xp(valor_efetivo)
+
+                elif drop.tipo == "arma":
+                    sfx_nome = "sfx_pickup_arma"
+                    from src.armas import Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas
+                    armas_especiais = [Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas]
+                    classe_arma = random.choice(armas_especiais)
+                    nova_arma = classe_arma()
+
+                    # Se Config 15 (coleta_inimiga) ativa (mult_valor_drop >= 2.0), dobra a munição
+                    if mult_valor_drop > 1.0:
+                        nova_arma.municao_max = int(round(nova_arma.municao_max * mult_valor_drop))
+                        nova_arma.municao_atual = nova_arma.municao_max
+
+                    if hasattr(jogador, "arma_especial"):
+                        jogador.arma_especial = nova_arma
+                    if hasattr(jogador, "selecionar_slot"):
+                        jogador.selecionar_slot(3)
+                    elif hasattr(jogador, "slot_ativo"):
+                        jogador.slot_ativo = 3
+
+                elif drop.tipo == "equipamento":
+                    sfx_nome = "sfx_pickup_equipamento"
+                    from src.equipamentos import DroneCura, DroneCombate, DroneSuporte
+                    drones = [DroneCura, DroneCombate, DroneSuporte]
+                    classe_drone = random.choice(drones)
+                    duracao = 30.0 * mult_valor_drop
+                    novo_drone = classe_drone(tempo_vida=duracao)
+
+                    if hasattr(jogador, "drone"):
+                        jogador.drone = novo_drone
+
                 try:
                     from PPlay.sound import Sound
-                    sfx_nome = "sfx_coleta_xp" if drop.tipo == "xp" else "sfx_pickup"
                     sfx = Sound(obter_caminho_asset(sfx_nome))
                     sfx.play()
                 except Exception:
@@ -133,7 +198,8 @@ class SistemaDrops:
                 coletados.append({
                     "tipo": drop.tipo,
                     "valor": valor_efetivo,
-                    "drop": drop
+                    "drop": drop,
+                    "mult_drop": mult_valor_drop
                 })
 
         return coletados
@@ -142,3 +208,4 @@ class SistemaDrops:
         """Renderiza todos os drops ativos."""
         for drop in self.drops:
             drop.desenhar(janela, camera)
+

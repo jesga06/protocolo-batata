@@ -13,7 +13,8 @@ from src.entidades.inimigo_blindado import InimigoBlindado
 from src.entidades.inimigo_ranged import InimigoRanged
 from src.utils.constantes import (
     SPAWN_INTERVALO_INICIAL, SPAWN_INTERVALO_MINIMO,
-    SPAWN_DISTANCIA_OFFSET, LARGURA_TELA, ALTURA_TELA,
+    SPAWN_DISTANCIA_OFFSET, SPAWN_MAX_ATIVOS,
+    LARGURA_TELA, ALTURA_TELA,
     LARGURA_ARENA, ALTURA_ARENA
 )
 from src.utils.math_utils import clamp
@@ -24,7 +25,7 @@ class SistemaSpawn:
     Controlador do surgimento de inimigos na arena ao redor do jogador.
     """
 
-    def __init__(self, max_ativos: int = 60):
+    def __init__(self, max_ativos: int = SPAWN_MAX_ATIVOS):
         self.tempo_decorrido = 0.0
         self.timer_spawn = 0.0
         self.max_ativos = int(max_ativos)

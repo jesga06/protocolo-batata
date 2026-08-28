@@ -86,6 +86,7 @@ class SistemaScavenger:
                 self.drop_alvo = drop
                 if hasattr(drop, "alvo_scavenger"):
                     drop.alvo_scavenger = True
+                escolhido.pos_alvo_override = (d_cx, d_cy)
                 return escolhido
 
         return None
@@ -104,6 +105,8 @@ class SistemaScavenger:
 
         # Verifica se o scavenger ou drop se tornaram inválidos
         if not getattr(self.scavenger_atual, "vivo", False) or not getattr(self.drop_alvo, "ativo", False):
+            if self.scavenger_atual is not None:
+                self.scavenger_atual.pos_alvo_override = None
             self.scavenger_atual = None
             self.drop_alvo = None
             return
@@ -116,17 +119,21 @@ class SistemaScavenger:
         d_cx = d.x + getattr(d, "largura", 16) / 2.0
         d_cy = d.y + getattr(d, "altura", 16) / 2.0
 
+        s.pos_alvo_override = (d_cx, d_cy)
+
         # Verifica se colidiu / alcançou o drop
-        if colisao_aabb(s.x, s.y, s.largura, s.altura, d.x, d.y, d.largura, d.altura) or distancia(s_cx, s_cy, d_cx, d_cy) <= 18.0:
+        if colisao_aabb(s.x, s.y, s.largura, s.altura, d.x, d.y, d.largura, d.altura) or distancia(s_cx, s_cy, d_cx, d_cy) <= 24.0:
             # Drop consumido pelo inimigo — sem recompensas para a batata
             d.ativo = False
             d.coletado = True
+            s.pos_alvo_override = None
             self.scavenger_atual = None
             self.drop_alvo = None
             return
 
-        # Redireciona o movimento do scavenger em direção ao drop (ajusta posição ou override de velocidade)
+        # Se chamado diretamente sem o loop de entidades, aplica o deslocamento manual
         dir_x, dir_y = vetor_direcao(s_cx, s_cy, d_cx, d_cy)
         vel = getattr(s, "velocidade", 100.0)
         s.x += dir_x * vel * dt
         s.y += dir_y * vel * dt
+

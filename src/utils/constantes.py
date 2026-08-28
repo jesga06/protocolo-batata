@@ -62,8 +62,8 @@ JOGADOR_INVULNERABILIDADE_TEMPO = 0.2  # segundos mínimos entre frames de dano
 # 5. INIMIGOS — BASELINES
 # =============================================================================
 
-# Inimigo Padrão (Estagiário)
-INIMIGO_PADRAO_HP = 50
+# Inimigo Padrão (Estagiário - 40 HP, 4 tiros de pistola ou 4 golpes melee)
+INIMIGO_PADRAO_HP = 40
 INIMIGO_PADRAO_VELOCIDADE = 100.0
 INIMIGO_PADRAO_DANO = 10
 INIMIGO_PADRAO_COOLDOWN_ATAQUE = 0.4
@@ -76,8 +76,8 @@ INIMIGO_TANK_DANO = 20
 INIMIGO_TANK_COOLDOWN_ATAQUE = 0.7
 INIMIGO_TANK_XP = 25
 
-# Inimigo Rápido (Viciado em Cafeína - 25 HP, 2 tiros de pistola)
-INIMIGO_RAPIDO_HP = 25
+# Inimigo Rápido (Viciado em Cafeína - 20 HP, 2 tiros de pistola ou 2 golpes melee)
+INIMIGO_RAPIDO_HP = 20
 INIMIGO_RAPIDO_VELOCIDADE = 180.0
 INIMIGO_RAPIDO_DANO = 8
 INIMIGO_RAPIDO_COOLDOWN_ATAQUE = 0.25
@@ -107,14 +107,13 @@ INIMIGO_RANGED_XP = 15
 INIMIGO_RANGED_DISTANCIA_TIRO = 280.0
 
 # =============================================================================
-# 6. SISTEMA DE SPAWN
+# 6. SPAWN DE INIMIGOS — CONFIGURAÇÃO
 # =============================================================================
 
-SPAWN_INTERVALO_INICIAL = 1.8
-SPAWN_INTERVALO_MINIMO = 0.4
-SPAWN_DECAIMENTO_TAXA = 0.02
-SPAWN_DISTANCIA_OFFSET = 60  # pixels fora da tela visível
-LIMITE_INIMIGOS_VIVOS = 120
+SPAWN_INTERVALO_INICIAL = 2.0
+SPAWN_INTERVALO_MINIMO = 0.50
+SPAWN_DISTANCIA_OFFSET = 80.0
+SPAWN_MAX_ATIVOS = 400
 
 # =============================================================================
 # 7. ARMAS E PROJÉTEIS — BASELINES
@@ -128,8 +127,8 @@ MELEE_KNOCKBACK = 360.0
 MELEE_ALVOS_MAX = 2
 MELEE_ARCO_GRAUS = 45.0
 
-# Slot 2: Pistola (Padrão de Fábrica)
-PISTOLA_DANO = 17
+# Slot 2: Pistola (Padrão de Fábrica - 10 Dano)
+PISTOLA_DANO = 10
 PISTOLA_COOLDOWN = 0.35
 PISTOLA_VELOCIDADE_PROJETIL = 450.0
 PISTOLA_ALCANCE_MAX = 800.0
@@ -142,9 +141,9 @@ MINIGUN_MUNICIAO_MAX = 150
 
 SHOTGUN_DANO = 10
 SHOTGUN_COOLDOWN = 0.70
-SHOTGUN_VELOCIDADE_PROJETIL = 400.0
-SHOTGUN_PELLETS = 5
-SHOTGUN_SPREAD_ANGULO = 0.35
+SHOTGUN_VELOCIDADE_PROJETIL = 420.0
+SHOTGUN_PELLETS = 9
+SHOTGUN_SPREAD_ANGULO = 0.45
 SHOTGUN_MUNICIAO_MAX = 30
 
 RIFLE_DANO = 18
@@ -163,6 +162,12 @@ GRANADAS_COOLDOWN = 0.90
 GRANADAS_VELOCIDADE_PROJETIL = 280.0
 GRANADAS_RAIO_EXPLOSAO = 65.0
 GRANADAS_MUNICIAO_MAX = 16
+
+RAILGUN_DANO = 50
+RAILGUN_COOLDOWN = 1.20
+RAILGUN_CHARGE_TIME = 1.0
+RAILGUN_VELOCIDADE_PROJETIL = 1400.0
+RAILGUN_MUNICIAO_MAX = 12
 
 # =============================================================================
 # 8. EQUIPAMENTOS (DRONES) — BASELINES

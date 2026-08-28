@@ -121,3 +121,33 @@ class GerenciadorConfiguracoes:
             for k, v in dados["sistema_configs"].items():
                 if k in CONFIGURACOES_SISTEMA:
                     self.sistema_configs[k] = v
+
+    def salvar_arquivo(self, caminho: Optional[str] = None) -> bool:
+        """Salva o estado serializado em arquivo JSON."""
+        if caminho is None:
+            from src.utils.constantes import SAVE_FILE_PATH
+            caminho = SAVE_FILE_PATH
+        try:
+            import os
+            os.makedirs(os.path.dirname(caminho), exist_ok=True)
+            with open(caminho, "w", encoding="utf-8") as f:
+                json.dump(self.to_dict(), f, indent=2, ensure_ascii=False)
+            return True
+        except Exception:
+            return False
+
+    def carregar_arquivo(self, caminho: Optional[str] = None) -> bool:
+        """Carrega o estado a partir de um arquivo JSON."""
+        if caminho is None:
+            from src.utils.constantes import SAVE_FILE_PATH
+            caminho = SAVE_FILE_PATH
+        try:
+            import os
+            if os.path.isfile(caminho):
+                with open(caminho, "r", encoding="utf-8") as f:
+                    dados = json.load(f)
+                self.from_dict(dados)
+                return True
+        except Exception:
+            pass
+        return False

@@ -122,3 +122,12 @@ class ItemDrop:
             pygame.draw.rect(screen, (70, 50, 20), (rect_x, rect_y, tam, tam), border_radius=6)
             pygame.draw.rect(screen, DOURADO, (rect_x, rect_y, tam, tam), width=3, border_radius=6)
             pygame.draw.circle(screen, DOURADO, (cx, cy), 6)
+
+        elif self.tipo == "equipamento":
+            # Caixa de equipamento laranja (34x34px)
+            tam = int(34 + pulso)
+            rect_x = cx - tam // 2
+            rect_y = cy - tam // 2
+            pygame.draw.rect(screen, (75, 40, 15), (rect_x, rect_y, tam, tam), border_radius=6)
+            pygame.draw.rect(screen, (255, 140, 0), (rect_x, rect_y, tam, tam), width=3, border_radius=6)
+            pygame.draw.circle(screen, (255, 180, 50), (cx, cy), 6)

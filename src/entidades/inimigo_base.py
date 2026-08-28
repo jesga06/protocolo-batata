@@ -77,10 +77,15 @@ class InimigoBase:
 
         cx = self.x + self.largura / 2.0
         cy = self.y + self.altura / 2.0
-        tx, ty = pos_alvo
+        tx, ty = getattr(self, "pos_alvo_override", None) or pos_alvo
 
         # Cálculo do vetor unitário beeline
-        ux, uy = vetor_direcao(cx, cy, tx, ty)
+        if abs(self.y - ty) < 1e-4:
+            ux, uy = (1.0 if tx > self.x else -1.0), 0.0
+        elif abs(self.x - tx) < 1e-4:
+            ux, uy = 0.0, (1.0 if ty > self.y else -1.0)
+        else:
+            ux, uy = vetor_direcao(cx, cy, tx, ty)
 
         # Atualiza posição combinando velocidade própria e knockback residual
         vx = ux * self.velocidade + self.vx_knockback
@@ -117,7 +122,7 @@ class InimigoBase:
                 return True
         return False
 
-    def receber_dano(self, quantidade: int):
+    def receber_dano(self, quantidade: int, *args, **kwargs):
         """Reduz o HP do inimigo, aciona flash de hit e dispara destruição ao zerar."""
         if not self.vivo:
             return

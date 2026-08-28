@@ -220,8 +220,8 @@ class Jogador:
             return
         self.hp = min(self.hp_max, self.hp + int(quantidade))
 
-    def update(self, dt: float):
-        """Atualiza timers de flash de dano e cooldowns das armas."""
+    def update(self, dt: float, drops: list = None, inimigos: list = None):
+        """Atualiza timers de flash de dano, armas e drone companheiro."""
         if self.flash_dano_timer > 0.0:
             self.flash_dano_timer = max(0.0, self.flash_dano_timer - dt)
 
@@ -233,13 +233,39 @@ class Jogador:
 
         if self.arma_especial is not None:
             self.arma_especial.update(dt)
+            # Regra de Esgotamento de Munição (Slot 3 Lifecycle)
+            if self.arma_especial.municao_atual <= 0:
+                self.arma_especial = None
+                if self.slot_ativo == 3:
+                    self.slot_ativo = 2
+
+        # Atualização do Drone Companheiro (Slot 4)
+        novos_projeteis_drone = []
+        if self.drone is not None:
+            if not getattr(self.drone, "ativo", False) or getattr(self.drone, "tempo_restante", 0.0) <= 0.0 or getattr(self.drone, "hp", 0) <= 0:
+                self.drone = None
+                self.velocidade_atual = self.velocidade_base
+            else:
+                from src.equipamentos.drone_suporte import DroneSuporte
+                if isinstance(self.drone, DroneSuporte):
+                    self.velocidade_atual = self.velocidade_base * (1.0 + self.drone.bonus_velocidade)
+                else:
+                    self.velocidade_atual = self.velocidade_base
+
+                res = self.drone.update(dt, jogador=self, drops=drops, inimigos=inimigos)
+                if isinstance(res, list):
+                    novos_projeteis_drone = res
+        else:
+            self.velocidade_atual = self.velocidade_base
+
+        return novos_projeteis_drone
 
     def get_rect(self) -> tuple[float, float, int, int]:
         """Retorna caixa delimitadora (x, y, w, h)."""
         return (self.x, self.y, self.largura, self.altura)
 
     def desenhar(self, janela, camera=None):
-        """Renderiza o avatar da batata com suporte a câmera e efeito de dano."""
+        """Renderiza o avatar da batata e seu drone com suporte a câmera e efeito de dano."""
         draw_x = camera.transform_x(self.x) if camera else self.x
         draw_y = camera.transform_y(self.y) if camera else self.y
 
@@ -263,3 +289,7 @@ class Jogador:
                 (int(draw_x), int(draw_y), self.largura, self.altura),
                 border_radius=8
             )
+
+        # Renderiza o drone companheiro se ativo
+        if self.drone is not None and getattr(self.drone, "ativo", False):
+            self.drone.desenhar(janela, camera)

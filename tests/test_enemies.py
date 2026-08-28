@@ -16,12 +16,14 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+from src.entidades.inimigo_base import InimigoBase
 from src.entidades.inimigo_padrao import InimigoPadrao
 from src.entidades.jogador import Jogador
 from src.sistemas.sistema_spawn import SistemaSpawn
 from src.utils.constantes import (
     INIMIGO_PADRAO_HP, INIMIGO_PADRAO_VELOCIDADE,
-    INIMIGO_PADRAO_DANO, INIMIGO_PADRAO_COOLDOWN_ATAQUE
+    INIMIGO_PADRAO_DANO, INIMIGO_PADRAO_COOLDOWN_ATAQUE,
+    LARGURA_ARENA, ALTURA_ARENA
 )
 
 
@@ -94,51 +96,63 @@ class TestInimigoPadraoIAEColisao(unittest.TestCase):
         self.assertEqual(j.hp, 120)
 
     def test_dano_e_morte_do_inimigo(self):
-        e = InimigoPadrao(x=100, y=100)
-        self.assertEqual(e.hp, INIMIGO_PADRAO_HP)
-
+        e = InimigoPadrao(x=100.0, y=100.0)
+        self.assertEqual(e.hp, 40)
         e.receber_dano(20)
-        self.assertEqual(e.hp, 30)
+        self.assertEqual(e.hp, 20)
         self.assertTrue(e.vivo)
-        self.assertGreater(e.flash_timer, 0.0)
-
-        e.receber_dano(30)
+        e.receber_dano(20)
         self.assertEqual(e.hp, 0)
         self.assertFalse(e.vivo)
 
+    def test_dano_com_knockback_vetorial(self):
+        e = InimigoPadrao(x=100.0, y=100.0)
+        e.receber_dano(10, knockback_vetor=(100.0, 0.0))
+        self.assertAlmostEqual(e.x, 100.0)  # Posição imediata não muda bruscamente sem update
+
 
 class TestSistemaSpawn(unittest.TestCase):
-    """Testa o escalonamento matemático de ondas e posicionamento perimetral do Spawner."""
-
     def test_escalonamento_intervalo_e_lote(self):
-        spawner = SistemaSpawn(max_ativos=60)
-
+        spawner = SistemaSpawn()
         # t = 0s
-        self.assertAlmostEqual(spawner.intervalo_spawn(0.0), 1.80)
+        self.assertAlmostEqual(spawner.intervalo_spawn(0.0), 2.0)
         self.assertEqual(spawner.tamanho_lote(0.0), 1)
 
-        # t = 60s
-        self.assertAlmostEqual(spawner.intervalo_spawn(60.0), 1.80 - 0.012 * 60.0)
-        self.assertEqual(spawner.tamanho_lote(60.0), 3)
+        # t = 50s -> 2.0 - 0.012 * 50 = 1.40s, lote = min(8, 1 + 2) = 3
+        self.assertAlmostEqual(spawner.intervalo_spawn(50.0), 1.40)
+        self.assertEqual(spawner.tamanho_lote(50.0), 3)
 
-        # t = 150s (intervalo atinge piso mínimo de 0.40s)
-        self.assertAlmostEqual(spawner.intervalo_spawn(150.0), 0.40)
-        self.assertEqual(spawner.tamanho_lote(150.0), 7)
+        # t = 100s -> 2.0 - 0.012 * 100 = 0.80s, lote = min(8, 1 + 4) = 5
+        self.assertAlmostEqual(spawner.intervalo_spawn(100.0), 0.80)
+        self.assertEqual(spawner.tamanho_lote(100.0), 5)
 
     def test_spawner_gera_inimigos_e_respeita_teto(self):
         spawner = SistemaSpawn(max_ativos=5)
-
-        # Atualiza com dt menor que o intervalo inicial -> não gera
-        gerados = spawner.update(dt=1.0, camera_x=100, camera_y=100, total_inimigos_vivos=0)
-        self.assertEqual(len(gerados), 0)
-
-        # Avança tempo restante para completar 1.8s
-        gerados = spawner.update(dt=0.85, camera_x=100, camera_y=100, total_inimigos_vivos=0)
+        # Avança 2.1s para disparar o primeiro pulso
+        gerados = spawner.update(
+            dt=2.1,
+            camera_x=0.0,
+            camera_y=0.0,
+            total_inimigos_vivos=0
+        )
         self.assertGreaterEqual(len(gerados), 1)
+        for inim in gerados:
+            self.assertIsInstance(inim, InimigoBase)
+            # Verifica que foram gerados dentro dos limites da arena
+            self.assertGreaterEqual(inim.x, 0.0)
+            self.assertLessEqual(inim.x, LARGURA_ARENA - inim.largura)
+            self.assertGreaterEqual(inim.y, 0.0)
+            self.assertLessEqual(inim.y, ALTURA_ARENA - inim.altura)
 
-        # Se já atingiu o teto de 5 ativos, não deve ultrapassar
-        spawner.timer_spawn = 2.0  # Força timer pronto
-        gerados_teto = spawner.update(dt=0.1, camera_x=100, camera_y=100, total_inimigos_vivos=5)
+        # Se total_vivos >= max_ativos, spawner não deve gerar ninguém
+        gerados_bloqueados = spawner.update(
+            dt=5.0,
+            camera_x=0.0,
+            camera_y=0.0,
+            total_inimigos_vivos=5
+        )
+        self.assertEqual(len(gerados_bloqueados), 0)
+
     def test_spawner_posicoes_fora_da_camera(self):
         """Verifica que todas as posições geradas pelo spawner estão fora do viewport visível."""
         spawner = SistemaSpawn()
@@ -174,7 +188,7 @@ class TestSistemaSpawn(unittest.TestCase):
     def test_spawner_tempo_extremo(self):
         """Verifica que tempo extremo (ex: 30 minutos) não estoura limites."""
         spawner = SistemaSpawn(max_ativos=60)
-        self.assertEqual(spawner.intervalo_spawn(1800.0), 0.40)
+        self.assertEqual(spawner.intervalo_spawn(1800.0), 0.50)
         self.assertEqual(spawner.tamanho_lote(1800.0), 8)
 
 

@@ -7,10 +7,12 @@ import sys
 import os
 import pygame
 from src.cenas.base_scene import BaseScene
+from src.sistemas.config_sistema import GerenciadorConfiguracoes
+from src.ui.menu_configs import MenuConfigs
 from src.utils.constantes import (
     LARGURA_TELA, ALTURA_TELA, TITULO_JOGO,
     BRANCO, AZUL_CIANO, AMARELO_XP, CINZA_PAINEL, DOURADO,
-    obter_caminho_asset
+    obter_caminho_asset, SAVE_FILE_PATH
 )
 
 
@@ -20,6 +22,11 @@ class MenuPrincipalScene(BaseScene):
         self.tempo_acumulado = 0.0
         self.opcao_selecionada = 0
         self.opcoes = ["JOGAR [ENTER]", "CONFIGURAÇÕES [C]", "CRÉDITOS [K]", "SAIR [ESC]"]
+
+        # Sistema de configurações e Menu de Configurações
+        self.gerenciador_config = GerenciadorConfiguracoes()
+        self.gerenciador_config.carregar_arquivo(SAVE_FILE_PATH)
+        self.menu_configs = MenuConfigs(self.gerenciador_config, em_jogo=False, cena=self)
 
         # Inicia a trilha sonora em loop contínuo
         try:
@@ -36,6 +43,17 @@ class MenuPrincipalScene(BaseScene):
         dt = self.janela.delta_time()
         self.tempo_acumulado += dt
 
+        # Se o Menu de Configurações estiver aberto, delega o loop para ele
+        if self.menu_configs.ativo:
+            self.menu_configs.update(dt, self.teclado, self.mouse)
+            return
+
+        # Atalho direto para Configurações via tecla 'C'
+        if (hasattr(self.teclado, "key_down") and (self.teclado.key_down("c") or self.teclado.key_down("C"))) or \
+           (hasattr(self.teclado, "key_pressed") and (self.teclado.key_pressed("c") or self.teclado.key_pressed("C"))):
+            self.menu_configs.abrir()
+            return
+
         # Navegação com Teclado
         if self.teclado.key_down("UP") or self.teclado.key_down("w"):
             self.opcao_selecionada = (self.opcao_selecionada - 1) % len(self.opcoes)
@@ -46,6 +64,8 @@ class MenuPrincipalScene(BaseScene):
         if self.teclado.key_down("ENTER") or self.teclado.key_down("SPACE"):
             if self.opcao_selecionada == 0:
                 self.iniciar_jogo()
+            elif self.opcao_selecionada == 1:
+                self.menu_configs.abrir()
             elif self.opcao_selecionada == 3:
                 self.sair_jogo()
 
@@ -53,8 +73,14 @@ class MenuPrincipalScene(BaseScene):
             self.sair_jogo()
 
     def draw(self):
-        # Fundo do menu com grade sutil
         screen = self.janela.screen
+
+        # Se o Menu de Configurações estiver ativo, desenha-o
+        if self.menu_configs.ativo:
+            self.menu_configs.draw(screen)
+            return
+
+        # Fundo do menu com grade sutil
         screen.fill((18, 22, 30))
 
         # Título principal perfeitamente centralizado com pygame.font e rect.centerx

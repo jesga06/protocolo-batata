@@ -88,23 +88,20 @@ class InimigoPhasing(InimigoBase):
         if self.em_fase:
             # Renderização translúcida em fase (alpha ~75) + anel etéreo ciano pulsante
             pulso = math.sin(self.timer_ciclo * 10.0) * 3.0
-            cx = int(draw_x + self.largura / 2.0)
-            cy = int(draw_y + self.altura / 2.0)
-            raio_halo = int(self.largura / 2.0 + 4 + pulso)
-            
-            surf_halo = pygame.Surface((raio_halo * 2 + 4, raio_halo * 2 + 4), pygame.SRCALPHA)
-            pygame.draw.circle(surf_halo, (0, 240, 255, 60), (raio_halo + 2, raio_halo + 2), raio_halo, width=2)
-            janela.screen.blit(surf_halo, (cx - raio_halo - 2, cy - raio_halo - 2))
-
+            # Renderização translúcida com aura ciano brilhante em fase (alpha ~90)
             if sprite is not None:
                 sprite_fase = sprite.copy()
-                sprite_fase.set_alpha(75)
+                sprite_fase.set_alpha(90)
                 janela.screen.blit(sprite_fase, (int(draw_x), int(draw_y)))
+                # Aura sutil ciano
+                aura_surf = pygame.Surface((self.largura + 6, self.altura + 6), pygame.SRCALPHA)
+                pygame.draw.rect(aura_surf, (0, 220, 255, 60), (0, 0, self.largura + 6, self.altura + 6), width=2, border_radius=4)
+                janela.screen.blit(aura_surf, (int(draw_x - 3), int(draw_y - 3)))
             else:
                 surf = pygame.Surface((self.largura, self.altura), pygame.SRCALPHA)
-                surf.fill((0, 220, 255, 75))
+                surf.fill((0, 220, 255, 90))
+                pygame.draw.rect(surf, (0, 255, 255, 160), (0, 0, self.largura, self.altura), width=2)
                 janela.screen.blit(surf, (int(draw_x), int(draw_y)))
         else:
             # Renderização padrão opaca com suporte a flash de hit
             super().desenhar(janela, camera)
-

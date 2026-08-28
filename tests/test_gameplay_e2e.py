@@ -128,25 +128,18 @@ class TestGameplayE2ESimulation(unittest.TestCase):
             cena.spawner.timer_spawn = 0.0
             cena.loop()
 
-        # O inimigo sofreu dano da pistola (17 dano de 50 HP)
-        self.assertLess(inimigo.hp, 50)
+        # O inimigo sofreu dano da pistola (10 dano de 40 HP)
+        self.assertLess(inimigo.hp, 40)
 
-        # Dispara segundo e terceiro tiro para liquidar o inimigo (17 + 17 + 17 = 51 >= 50 HP)
-        pistola.tempo_recarga_restante = 0.0
-        tiros_2 = pistola.disparar(416.0, 316.0, inimigo.x + 10, inimigo.y + 10)
-        cena.projeteis.extend(tiros_2)
-
-        for _ in range(30):
-            cena.spawner.timer_spawn = 0.0
-            cena.loop()
-
-        if inimigo in cena.inimigos and inimigo.vivo:
-            pistola.tempo_recarga_restante = 0.0
-            tiros_3 = pistola.disparar(416.0, 316.0, inimigo.x + 10, inimigo.y + 10)
-            cena.projeteis.extend(tiros_3)
-            for _ in range(30):
-                cena.spawner.timer_spawn = 0.0
-                cena.loop()
+        # Dispara tiros subsequentes até liquidar o inimigo (4 x 10 = 40 HP)
+        for _ in range(4):
+            if inimigo in cena.inimigos and inimigo.vivo:
+                pistola.tempo_recarga_restante = 0.0
+                novos_tiros = pistola.disparar(416.0, 316.0, inimigo.x + 10, inimigo.y + 10)
+                cena.projeteis.extend(novos_tiros)
+                for _ in range(30):
+                    cena.spawner.timer_spawn = 0.0
+                    cena.loop()
 
         # Verifica que o inimigo foi destruído e removido da lista ativa
         self.assertFalse(inimigo.vivo)
