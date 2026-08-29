@@ -11,7 +11,7 @@ data/save.json
 data/*.save
 
 # Local agent artifacts
-.agents/architecture_cache.md
+.agents
 
 # IDE / OS
 .vscode/
