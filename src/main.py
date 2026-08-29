@@ -64,6 +64,25 @@ def main(limite_frames: int | None = None):
         # 2. Atualiza a tela virtual e apresenta na tela real com letterbox
         janela.update()
 
+        # 3. Limita taxa de quadros conforme a configuração de fps_cap (60, 45, 30, 15)
+        cena_atual = getattr(SceneManager, "_current_scene", None)
+        fps_alvo = FPS_PADRAO
+        if cena_atual and hasattr(cena_atual, "gerenciador_config"):
+            val_fps = cena_atual.gerenciador_config.obter_valor("fps_cap")
+            try:
+                fps_alvo = int(val_fps)
+            except Exception:
+                fps_alvo = FPS_PADRAO
+        elif cena_atual and hasattr(cena_atual, "config_sistema"):
+            val_fps = cena_atual.config_sistema.obter_valor("fps_cap")
+            try:
+                fps_alvo = int(val_fps)
+            except Exception:
+                fps_alvo = FPS_PADRAO
+
+        if hasattr(janela, "_clock"):
+            janela._clock.tick(fps_alvo)
+
         frame_count += 1
         if limite_frames is not None and frame_count >= limite_frames:
             break
