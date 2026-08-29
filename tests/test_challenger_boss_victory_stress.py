@@ -68,16 +68,16 @@ class TestChallengerEliteSpawningAndCadence(unittest.TestCase):
                     elites_spawned.append((t + dt, inim))
             t += dt
 
-        # Deve ter gerado exatamente 10 elites (minutos 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-        self.assertEqual(len(elites_spawned), 10, f"Esperava 10 elites, mas obteve {len(elites_spawned)}")
+        # Deve ter gerado exatamente 4 elites em 10 minutos (1:00 / 60s, 3:30 / 210s, 6:00 / 360s, 8:30 / 510s)
+        self.assertEqual(len(elites_spawned), 4, f"Esperava 4 elites, mas obteve {len(elites_spawned)}")
 
-        # Verifica timing de cada spawn (deve ocorrer logo após o limiar do minuto)
+        # Verifica timing de cada spawn (60s, 210s, 360s, 510s)
+        horarios_esperados = [60.0, 210.0, 360.0, 510.0]
         for i, (tempo_spawn, boss) in enumerate(elites_spawned):
-            minuto_esperado = i + 1
-            limiar_segundos = minuto_esperado * 60.0
+            limiar_segundos = horarios_esperados[i]
             self.assertTrue(
                 limiar_segundos <= tempo_spawn <= limiar_segundos + 1.0,
-                f"Boss {minuto_esperado} spawnou no tempo {tempo_spawn}, fora da janela esperada [{limiar_segundos}, {limiar_segundos + 1.0}]"
+                f"Boss {i+1} spawnou no tempo {tempo_spawn}, fora da janela esperada [{limiar_segundos}, {limiar_segundos + 1.0}]"
             )
 
     def test_elite_archetype_rotation_catalog(self):

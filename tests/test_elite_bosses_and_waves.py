@@ -74,8 +74,8 @@ class TestEliteBossesAndWaves(unittest.TestCase):
         elites_depois = [e for e in novos_depois if getattr(e, "is_elite", False)]
         self.assertEqual(len(elites_depois), 0)
 
-        # Avança até 120.5s (Minuto 2) -> Spawna Mini-Boss do minuto 2 (Geladeira Turbo)
-        novos_m2 = spawner.update(50.0, camera_x=0, camera_y=0, total_inimigos_vivos=len(novos))
+        # Avança até 210.5s (3:30) -> Spawna Mini-Boss 2 (Geladeira Turbo)
+        novos_m2 = spawner.update(140.0, camera_x=0, camera_y=0, total_inimigos_vivos=len(novos))
         elites_m2 = [e for e in novos_m2 if getattr(e, "is_elite", False)]
         self.assertEqual(len(elites_m2), 1)
         self.assertEqual(spawner.ultimo_minuto_elite, 2)
