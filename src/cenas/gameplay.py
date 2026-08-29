@@ -319,7 +319,7 @@ class GameplayScene(BaseScene):
         self.sistema_particulas.update(dt)
 
         # Verificação da Condição de Vitória (600.0 segundos / 10 Minutos)
-        if self.tempo_sobrevivencia >= TEMPO_VITORIA and self.jogador.vivo and not self.vitoria:
+        if TEMPO_VITORIA is not None and self.tempo_sobrevivencia >= TEMPO_VITORIA and self.jogador.vivo and not self.vitoria:
             self.vitoria = True
             self._acionar_vitoria()
             return
