@@ -57,6 +57,11 @@ class TestGameplayE2ESimulation(unittest.TestCase):
 
     def setUp(self):
         self.janela = Window(800, 600, "Protocolo: Batata", resizavel=True, pixel_art=True)
+        # Reseta save para estado padrão neutro nos testes E2E
+        from src.sistemas.config_sistema import GerenciadorConfiguracoes
+        from src.utils.constantes import SAVE_FILE_PATH
+        g = GerenciadorConfiguracoes()
+        g.salvar_arquivo(SAVE_FILE_PATH)
 
     def test_gameplay_scene_execucao_60_frames(self):
         """Executa 60+ frames contínuos de simulação completa de gameplay."""
@@ -127,6 +132,7 @@ class TestGameplayE2ESimulation(unittest.TestCase):
         for _ in range(30):
             cena.spawner.timer_spawn = 0.0
             cena.loop()
+            self.janela.update()
 
         # O inimigo sofreu dano da pistola (10 dano de 40 HP)
         self.assertLess(inimigo.hp, 40)
@@ -140,6 +146,7 @@ class TestGameplayE2ESimulation(unittest.TestCase):
                 for _ in range(30):
                     cena.spawner.timer_spawn = 0.0
                     cena.loop()
+                    self.janela.update()
 
         # Verifica que o inimigo foi destruído e removido da lista ativa
         self.assertFalse(inimigo.vivo)

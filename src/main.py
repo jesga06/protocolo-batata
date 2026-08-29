@@ -18,9 +18,20 @@ from src.cenas.menu_principal import MenuPrincipalScene
 
 
 def inicializar_jogo():
-    """Cria a janela do jogo perfeitamente centralizada na tela com escalonamento nítido."""
+    """Cria a janela do jogo perfeitamente centralizada na tela com alta definição e suporte a High-DPI."""
     import pygame
     os.environ["SDL_VIDEO_CENTERED"] = "1"
+
+    # Habilita suporte a High-DPI no Windows para evitar borrão de DPI scaling
+    try:
+        import ctypes
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)  # Per-monitor DPI aware
+        except Exception:
+            ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:
+        pass
+
     if not pygame.get_init():
         pygame.init()
 
@@ -29,7 +40,7 @@ def inicializar_jogo():
         altura_virtual=ALTURA_TELA,
         titulo=TITULO_JOGO,
         resizavel=True,
-        pixel_art=True
+        pixel_art=False
     )
     janela.set_background_color((18, 22, 30))
 

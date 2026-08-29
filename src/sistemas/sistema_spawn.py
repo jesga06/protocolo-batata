@@ -33,49 +33,50 @@ class SistemaSpawn:
     def intervalo_spawn(self, tempo_s: float) -> float:
         """
         Calcula o intervalo de tempo entre spawns em segundos.
-        Fórmula: T_spawn(t) = max(0.40s, 1.80s - 0.012s * t)
+        Fórmula: T_spawn(t) = max(0.75s, 3.00s - 0.012s * t)
         """
-        return max(SPAWN_INTERVALO_MINIMO, SPAWN_INTERVALO_INICIAL - 0.012 * tempo_s)
+        return max(SPAWN_INTERVALO_MINIMO, SPAWN_INTERVALO_INICIAL - 0.012 * float(tempo_s))
 
     def tamanho_lote(self, tempo_s: float) -> int:
         """
         Calcula a quantidade de inimigos gerados por pulso de spawn.
         Fórmula: N_batch(t) = min(8, 1 + floor(t / 25))
         """
-        return min(8, 1 + int(tempo_s // 25.0))
+        return min(8, 1 + int(float(tempo_s) // 25.0))
 
     def escolher_arquetipo(self, tempo_s: float):
         """
         Seleciona a classe do inimigo a ser gerado com base no tempo de sobrevivência.
+        Distribuição suavizada com Tank reduzido para 5% dos spawns avançados.
         """
-        if tempo_s < 20.0:
+        if tempo_s < 25.0:
             return InimigoPadrao
 
         r = random.random()
-        if tempo_s < 45.0:
-            # 70% Padrão, 30% Rápido
-            return InimigoRapido if r < 0.30 else InimigoPadrao
-        elif tempo_s < 75.0:
-            # 45% Padrão, 25% Rápido, 15% Phasing, 15% Blindado
-            if r < 0.25:
+        if tempo_s < 55.0:
+            # 75% Padrão, 25% Rápido
+            return InimigoRapido if r < 0.25 else InimigoPadrao
+        elif tempo_s < 90.0:
+            # 40% Padrão, 30% Rápido, 15% Phasing, 15% Blindado
+            if r < 0.30:
                 return InimigoRapido
-            elif r < 0.40:
+            elif r < 0.45:
                 return InimigoPhasing
-            elif r < 0.55:
+            elif r < 0.60:
                 return InimigoBlindado
             return InimigoPadrao
         else:
-            # Mistura completa com Tanques e Ranged
-            if r < 0.20:
+            # Mistura avançada: Rápido (25%), Ranged (18%), Phasing (14%), Blindado (13%), Tank (5%), Padrão (25%)
+            if r < 0.25:
                 return InimigoRapido
-            elif r < 0.35:
-                return InimigoPhasing
-            elif r < 0.50:
-                return InimigoBlindado
-            elif r < 0.65:
-                return InimigoTank
-            elif r < 0.80:
+            elif r < 0.43:
                 return InimigoRanged
+            elif r < 0.57:
+                return InimigoPhasing
+            elif r < 0.70:
+                return InimigoBlindado
+            elif r < 0.75:
+                return InimigoTank  # Apenas 5% relativo
             return InimigoPadrao
 
     def gerar_posicao_spawn(

@@ -86,9 +86,10 @@ class MenuConfigs:
         self.lista_rect = pygame.Rect(45, 110, 435, 410)
         self.detalhes_rect = pygame.Rect(495, 110, 260, 410)
 
-        # Estado de interação do mouse
+        # Estado de interação do mouse e teclado
         self._mouse_pressionado_anterior: bool = False
         self._slider_arrastando: Optional[str] = None
+        self.cooldown_input: float = 0.0
 
         # Fontes de texto
         self._fonte_titulo = None
@@ -109,18 +110,15 @@ class MenuConfigs:
 
         img = None
         try:
-            from src.utils.constantes import ASSETS_DIR
-            direto = os.path.join(ASSETS_DIR, "ui", "icones_configs", f"icon_{chave_icone}.png")
-            if os.path.isfile(direto):
-                img = pygame.image.load(direto).convert_alpha()
+            caminho = obter_caminho_asset(chave_icone)
+            if os.path.isfile(caminho):
+                img = pygame.image.load(caminho).convert_alpha()
         except Exception:
-            img = None
-
-        if img is None:
             try:
-                caminho = obter_caminho_asset(chave_icone)
-                if os.path.isfile(caminho):
-                    img = pygame.image.load(caminho).convert_alpha()
+                from src.utils.constantes import ASSETS_DIR
+                direto = os.path.join(ASSETS_DIR, "ui", "icones_configs", f"icon_{chave_icone}.png")
+                if os.path.isfile(direto):
+                    img = pygame.image.load(direto).convert_alpha()
             except Exception:
                 img = None
 
@@ -129,23 +127,24 @@ class MenuConfigs:
         return img
 
     def _inicializar_fontes(self):
-        """Inicializa fontes sob demanda para evitar problemas antes do pygame.font.init()."""
+        """Inicializa as fontes do Pygame sob demanda."""
         if self._fonte_titulo is None:
-            self._fonte_titulo = pygame.font.SysFont("Arial", 22, bold=True)
+            self._fonte_titulo = pygame.font.SysFont("Arial", 24, bold=True)
             self._fonte_sub = pygame.font.SysFont("Arial", 12)
-            self._fonte_aba = pygame.font.SysFont("Arial", 13, bold=True)
-            self._fonte_cat = pygame.font.SysFont("Arial", 10, bold=True)
+            self._fonte_aba = pygame.font.SysFont("Arial", 14, bold=True)
+            self._fonte_cat = pygame.font.SysFont("Arial", 11, bold=True)
             self._fonte_item_tit = pygame.font.SysFont("Arial", 12, bold=True)
-            self._fonte_item_desc = pygame.font.SysFont("Arial", 10)
+            self._fonte_item_desc = pygame.font.SysFont("Arial", 9)
             self._fonte_btn = pygame.font.SysFont("Arial", 11, bold=True)
             self._fonte_det_tit = pygame.font.SysFont("Arial", 14, bold=True)
             self._fonte_det_corpo = pygame.font.SysFont("Arial", 10)
             self._fonte_rodape = pygame.font.SysFont("Arial", 12)
 
     def abrir(self):
-        """Abre o menu de configurações."""
+        """Abre o menu de configurações com cooldown de proteção contra duplo disparo."""
         self.ativo = True
         self.scroll_y = 0.0
+        self.cooldown_input = 0.25
         self._tocar_som("sfx_btn_click")
 
     def fechar(self):
@@ -227,15 +226,20 @@ class MenuConfigs:
         if not self.ativo:
             return
 
+        # Decrementa o cooldown de input inicial para prevenir fechamento no mesmo frame
+        if self.cooldown_input > 0.0:
+            self.cooldown_input = max(0.0, self.cooldown_input - dt)
+
         # 1. Inputs de Teclado
         if teclado is not None:
-            # ESC ou C para fechar o menu
-            if (hasattr(teclado, "key_pressed") and teclado.key_pressed("ESC")) or \
-               (hasattr(teclado, "key_down") and teclado.key_down("ESC")) or \
-               (hasattr(teclado, "key_pressed") and (teclado.key_pressed("c") or teclado.key_pressed("C"))) or \
-               (hasattr(teclado, "key_down") and (teclado.key_down("c") or teclado.key_down("C"))):
-                self.fechar()
-                return
+            # ESC ou C para fechar o menu (respeitando cooldown de abertura)
+            if self.cooldown_input <= 0.0:
+                if (hasattr(teclado, "key_pressed") and teclado.key_pressed("ESC")) or \
+                   (hasattr(teclado, "key_down") and teclado.key_down("ESC")) or \
+                   (hasattr(teclado, "key_pressed") and (teclado.key_pressed("c") or teclado.key_pressed("C"))) or \
+                   (hasattr(teclado, "key_down") and (teclado.key_down("c") or teclado.key_down("C"))):
+                    self.fechar()
+                    return
 
             # TAB para alternar abas
             if (hasattr(teclado, "key_pressed") and teclado.key_pressed("TAB")) or \

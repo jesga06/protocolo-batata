@@ -575,29 +575,36 @@ class ModalLevelUp:
             if self.jogador:
                 self.nivel_atual_draw = self.jogador.nivel
             self.tempo_transicao_entrada = 0.25
+            self.tempo_transicao_saida = 0.0
             self._mouse_pressionado_anterior = True
             self._gerar_cards(self.nivel_atual_draw)
             self._tocar_som("sfx_levelup")
         else:
-            # Fila concluída -> fecha modal
+            # Fila concluída -> desativa seleção e inicia fade-out visual
             self.ativo = False
+            self.tempo_transicao_saida = 0.25
             if self.cena and hasattr(self.cena, "pausado"):
                 self.cena.pausado = False
 
         return True
 
     def update(self, dt: float, teclado=None, mouse=None):
-        """Processa inputs de teclado (1, 2, 3) e mouse para seleção de cartas."""
+        """Processa inputs de teclado (1, 2, 3) e mouse para seleção de cartas e animações."""
+        # 1. Trata animação de fade-out de saída
+        if self.tempo_transicao_saida > 0.0:
+            self.tempo_transicao_saida = max(0.0, self.tempo_transicao_saida - dt)
+            return
+
         if not self.ativo:
             return
 
-        # Decrementa o tempo de transição inicial onde os cliques acidentais são bloqueados
+        # 2. Decrementa o tempo de transição inicial onde os cliques acidentais são bloqueados
         if self.tempo_transicao_entrada > 0.0:
             self.tempo_transicao_entrada = max(0.0, self.tempo_transicao_entrada - dt)
             if self.tempo_transicao_entrada > 0.0:
                 return
 
-        # 1. Inputs de Teclado (1, 2, 3)
+        # 3. Inputs de Teclado (1, 2, 3)
         if teclado is not None:
             # Tecla 1
             if (hasattr(teclado, "key_pressed") and teclado.key_pressed("1")) or \
@@ -623,7 +630,7 @@ class ModalLevelUp:
                 self.selecionar_card(2)
                 return
 
-        # 2. Inputs de Mouse
+        # 4. Inputs de Mouse
         mx, my = (400, 300)
         mouse_clicado = False
 
@@ -659,35 +666,45 @@ class ModalLevelUp:
                     return
 
     def draw(self, screen: pygame.Surface):
-        """Renderiza o modal de level-up com animação de transição, temas visuais e centralização exata."""
-        if not self.ativo or screen is None:
+        """Renderiza o modal de level-up com animação completa de fade-in e fade-out."""
+        if (not self.ativo and self.tempo_transicao_saida <= 0.0) or screen is None:
             return
 
         self._carregar_assets()
         self._inicializar_fontes()
 
-        # Animação de transição de entrada (fade e slide suave)
-        fator_entrada = clamp(1.0 - (self.tempo_transicao_entrada / 0.35), 0.0, 1.0)
-        slide_offset_y = int((1.0 - fator_entrada) * 25.0)
-        alpha_fundo = int(fator_entrada * 225)
+        # Fator de interpolação da transição (0.0 a 1.0)
+        if self.tempo_transicao_saida > 0.0:
+            fator_anim = clamp(self.tempo_transicao_saida / 0.25, 0.0, 1.0)
+        elif self.tempo_transicao_entrada > 0.0:
+            fator_anim = clamp(1.0 - (self.tempo_transicao_entrada / 0.35), 0.0, 1.0)
+        else:
+            fator_anim = 1.0
+
+        slide_offset_y = int((1.0 - fator_anim) * 25.0)
+        alpha_fundo = int(fator_anim * 225)
+        alpha_conteudo = int(fator_anim * 255)
 
         # 1. Overlay Escuro Translúcido sobre o Gameplay
         dark_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
         dark_surf.fill((10, 8, 20, alpha_fundo))
         screen.blit(dark_surf, (0, 0))
 
+        # 2. Superfície de Conteúdo com Transparência Global
+        layer_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
+
         # 2. Título Centralizado: LEVEL UP!
         tit_surf = self._fonte_titulo.render("LEVEL UP!", True, DOURADO)
         tit_rect = tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=45 + slide_offset_y)
         tit_sombra = self._fonte_titulo.render("LEVEL UP!", True, (0, 0, 0))
-        screen.blit(tit_sombra, (tit_rect.x + 2, tit_rect.y + 2))
-        screen.blit(tit_surf, tit_rect)
+        layer_surf.blit(tit_sombra, (tit_rect.x + 2, tit_rect.y + 2))
+        layer_surf.blit(tit_surf, tit_rect)
 
         # 3. Subtítulo
         sub_texto = "ESCOLHA UM UPGRADE DO SISTEMA"
         sub_surf = self._fonte_sub.render(sub_texto, True, ROXO_CLARO)
         sub_rect = sub_surf.get_rect(centerx=LARGURA_TELA // 2, top=85 + slide_offset_y)
-        screen.blit(sub_surf, sub_rect)
+        layer_surf.blit(sub_surf, sub_rect)
 
         # Indicador de Níveis na Fila (se > 1)
         if self.fila_level_ups > 1:
@@ -695,9 +712,9 @@ class ModalLevelUp:
             fila_surf = self._fonte_sub.render(fila_texto, True, LARANJA_ALERTA)
             fila_rect = fila_surf.get_rect(centerx=LARGURA_TELA // 2, top=115 + slide_offset_y)
             pill_rect = pygame.Rect(fila_rect.x - 12, fila_rect.y - 3, fila_rect.width + 24, fila_rect.height + 6)
-            pygame.draw.rect(screen, (40, 20, 15), pill_rect, border_radius=4)
-            pygame.draw.rect(screen, LARANJA_ALERTA, pill_rect, width=1, border_radius=4)
-            screen.blit(fila_surf, fila_rect)
+            pygame.draw.rect(layer_surf, (40, 20, 15), pill_rect, border_radius=4)
+            pygame.draw.rect(layer_surf, LARANJA_ALERTA, pill_rect, width=1, border_radius=4)
+            layer_surf.blit(fila_surf, fila_rect)
 
         # 4. Renderização das 3 Cartas
         for i, card in enumerate(self.cards_sorteados):
@@ -719,16 +736,16 @@ class ModalLevelUp:
                 cor_borda = ROXO_ACENTO if is_hovered else (95, 65, 135)
                 largura_borda = 2 if is_hovered else 1
 
-            pygame.draw.rect(screen, cor_bg, rect, border_radius=6)
+            pygame.draw.rect(layer_surf, cor_bg, rect, border_radius=6)
 
             # 4.2 Destaque de Hover / Borda e Glow
             if is_hovered:
                 glow_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
                 glow_cor = (255, 215, 0, 25) if is_config else (175, 75, 255, 25)
                 glow_surf.fill(glow_cor)
-                screen.blit(glow_surf, (rect.x, rect.y))
+                layer_surf.blit(glow_surf, (rect.x, rect.y))
 
-            pygame.draw.rect(screen, cor_borda, rect, width=largura_borda, border_radius=6)
+            pygame.draw.rect(layer_surf, cor_borda, rect, width=largura_borda, border_radius=6)
 
             # 4.3 Badge de Atalho do Teclado [ 1 ], [ 2 ], [ 3 ] no Top-Right
             badge_texto = f"[{i + 1}]"
@@ -736,9 +753,9 @@ class ModalLevelUp:
             badge_surf = self._fonte_card_badge.render(badge_texto, True, badge_cor)
             badge_rect = badge_surf.get_rect(right=rect.right - 12, top=rect.top + 10)
             badge_bg = pygame.Rect(badge_rect.x - 4, badge_rect.y - 2, badge_rect.width + 8, badge_rect.height + 4)
-            pygame.draw.rect(screen, (15, 12, 24), badge_bg, border_radius=3)
-            pygame.draw.rect(screen, badge_cor, badge_bg, width=1, border_radius=3)
-            screen.blit(badge_surf, badge_rect)
+            pygame.draw.rect(layer_surf, (15, 12, 24), badge_bg, border_radius=3)
+            pygame.draw.rect(layer_surf, badge_cor, badge_bg, width=1, border_radius=3)
+            layer_surf.blit(badge_surf, badge_rect)
 
             # 4.4 Tag de Categoria (ex: [CONFIGURACAO], [CONSUMIVEL])
             if is_config:
@@ -749,7 +766,7 @@ class ModalLevelUp:
                 cor_cat = ROXO_CLARO
 
             cat_surf = self._fonte_card_cat.render(cat_texto, True, cor_cat)
-            screen.blit(cat_surf, (rect.x + 12, rect.top + 12))
+            layer_surf.blit(cat_surf, (rect.x + 12, rect.top + 12))
 
             # 4.5 Nome da Configuração / Consumível (Wrap de 1-2 linhas perfeitamente centralizado)
             nome_linhas = _formatar_texto_wrap(card["nome"], max_chars_por_linha=20)
@@ -758,7 +775,7 @@ class ModalLevelUp:
                 cor_tit = DOURADO if (is_hovered or is_config) else BRANCO
                 nome_surf = self._fonte_card_tit.render(linha, True, cor_tit)
                 nome_rect = nome_surf.get_rect(centerx=rect.centerx, top=offset_y_nome)
-                screen.blit(nome_surf, nome_rect)
+                layer_surf.blit(nome_surf, nome_rect)
                 offset_y_nome += 14
 
             # 4.6 Ícone Central (32x32 perfeitamente centralizado na Moldura)
@@ -766,26 +783,26 @@ class ModalLevelUp:
             icone_cx = rect.centerx
             icone_cy = rect.top + 76
             moldura_rect = pygame.Rect(icone_cx - 20, icone_cy - 20, 40, 40)
-            pygame.draw.rect(screen, (18, 14, 28), moldura_rect, border_radius=4)
+            pygame.draw.rect(layer_surf, (18, 14, 28), moldura_rect, border_radius=4)
             cor_moldura = DOURADO if is_config else (90, 60, 130)
-            pygame.draw.rect(screen, cor_moldura, moldura_rect, width=1, border_radius=4)
+            pygame.draw.rect(layer_surf, cor_moldura, moldura_rect, width=1, border_radius=4)
 
             if icone_img is not None:
                 icon_rect = icone_img.get_rect(center=moldura_rect.center)
-                screen.blit(icone_img, icon_rect)
+                layer_surf.blit(icone_img, icon_rect)
             else:
                 cor_ph = DOURADO if is_config else ROXO_ACENTO
-                pygame.draw.circle(screen, cor_ph, (icone_cx, icone_cy), 12, width=2)
+                pygame.draw.circle(layer_surf, cor_ph, (icone_cx, icone_cy), 12, width=2)
 
             # Linha divisória horizontal
             div_y = rect.top + 106
             div_cor = (80, 65, 30) if is_config else (60, 45, 85)
-            pygame.draw.line(screen, div_cor, (rect.x + 12, div_y), (rect.right - 12, div_y), 1)
+            pygame.draw.line(layer_surf, div_cor, (rect.x + 12, div_y), (rect.right - 12, div_y), 1)
 
             # 4.7 Seção de Benefícios (BENEFICIOS em Verde)
             y_cursor = div_y + 6
             buff_header_surf = self._fonte_card_sec.render("BENEFICIOS:", True, VERDE_CURA)
-            screen.blit(buff_header_surf, (rect.x + 12, y_cursor))
+            layer_surf.blit(buff_header_surf, (rect.x + 12, y_cursor))
             y_cursor += 14
 
             buffs = card.get("buffs", ["Nenhum"])
@@ -793,13 +810,13 @@ class ModalLevelUp:
                 linhas_buff = _formatar_texto_wrap(b_txt, max_chars_por_linha=25)
                 for bl in linhas_buff[:2]:
                     b_surf = self._fonte_card_corpo.render(f"+ {bl}", True, (160, 240, 170))
-                    screen.blit(b_surf, (rect.x + 14, y_cursor))
+                    layer_surf.blit(b_surf, (rect.x + 14, y_cursor))
                     y_cursor += 13
 
             # 4.8 Seção de Sacrifícios / Nerfs (SACRIFICIO em Laranja)
             y_cursor = max(y_cursor + 4, div_y + 90)
             nerf_header_surf = self._fonte_card_sec.render("SACRIFICIO:", True, LARANJA_ALERTA)
-            screen.blit(nerf_header_surf, (rect.x + 12, y_cursor))
+            layer_surf.blit(nerf_header_surf, (rect.x + 12, y_cursor))
             y_cursor += 14
 
             nerfs = card.get("nerfs", ["Nenhum"])
@@ -808,20 +825,25 @@ class ModalLevelUp:
                 for nl in linhas_nerf[:2]:
                     cor_n = (255, 180, 140) if nl != "Nenhum" and nl != "Nenhum sacrifício" else (130, 140, 155)
                     n_surf = self._fonte_card_corpo.render(f"- {nl}", True, cor_n)
-                    screen.blit(n_surf, (rect.x + 14, y_cursor))
+                    layer_surf.blit(n_surf, (rect.x + 14, y_cursor))
                     y_cursor += 13
 
             # 4.9 Prompt de Escolha no Rodapé do Card
             prompt_cor = DOURADO if (is_hovered or is_config) else ROXO_CLARO
             prompt_surf = self._fonte_card_cat.render(f"Pressione [{i + 1}]", True, prompt_cor)
             prompt_rect = prompt_surf.get_rect(centerx=rect.centerx, bottom=rect.bottom - 12)
-            screen.blit(prompt_surf, prompt_rect)
+            layer_surf.blit(prompt_surf, prompt_rect)
 
         # 5. Rodapé Geral com Instruções de Controle
         rodape_txt = "Pressione [1], [2], [3] no teclado ou clique com o mouse para escolher"
         rodape_surf = self._fonte_rodape.render(rodape_txt, True, (170, 155, 195))
         rodape_rect = rodape_surf.get_rect(centerx=LARGURA_TELA // 2, bottom=ALTURA_TELA - 45)
-        screen.blit(rodape_surf, rodape_rect)
+        layer_surf.blit(rodape_surf, rodape_rect)
+
+        # Blit da camada com transparência de transição aplicada
+        if alpha_conteudo < 255:
+            layer_surf.set_alpha(alpha_conteudo)
+        screen.blit(layer_surf, (0, 0))
 
     def _tocar_som(self, chave_som: str):
         """Reproduz efeito sonoro de forma segura sem crash em ambiente headless."""

@@ -51,9 +51,28 @@ class Jogador:
         from src.sistemas.sistema_xp import SistemaXP
         self.armas = [Melee(), Pistola()]
         self.arma_especial = None
-        self.drone = None
+        self.drones = []
         self.slot_ativo = 2  # Padrão: Slot 2 (Pistola)
         self.sistema_xp = SistemaXP()
+
+    @property
+    def drone(self):
+        return self.drones[0] if self.drones else None
+
+    @drone.setter
+    def drone(self, val):
+        if val is None:
+            self.drones.clear()
+        else:
+            self.drones = [val]
+
+    def adicionar_drone(self, novo_drone):
+        """Adiciona um novo drone ao enxame com defasagem angular para não colidir visualmente."""
+        if novo_drone is not None:
+            import math
+            if self.drones:
+                novo_drone.angulo_orbita = (self.drones[-1].angulo_orbita + math.pi / 2.0) % (2.0 * math.pi)
+            self.drones.append(novo_drone)
 
     @property
     def xp(self) -> int:
@@ -239,24 +258,27 @@ class Jogador:
                 if self.slot_ativo == 3:
                     self.slot_ativo = 2
 
-        # Atualização do Drone Companheiro (Slot 4)
+        # Atualização dos Drones Companheiros (Slot 4 - Múltiplos Drones Simultâneos)
         novos_projeteis_drone = []
-        if self.drone is not None:
-            if not getattr(self.drone, "ativo", False) or getattr(self.drone, "tempo_restante", 0.0) <= 0.0 or getattr(self.drone, "hp", 0) <= 0:
-                self.drone = None
-                self.velocidade_atual = self.velocidade_base
-            else:
-                from src.equipamentos.drone_suporte import DroneSuporte
-                if isinstance(self.drone, DroneSuporte):
-                    self.velocidade_atual = self.velocidade_base * (1.0 + self.drone.bonus_velocidade)
-                else:
-                    self.velocidade_atual = self.velocidade_base
+        drones_vivos = []
+        mult_vel_suporte = 1.0
 
-                res = self.drone.update(dt, jogador=self, drops=drops, inimigos=inimigos)
-                if isinstance(res, list):
-                    novos_projeteis_drone = res
-        else:
-            self.velocidade_atual = self.velocidade_base
+        for d in self.drones:
+            if not getattr(d, "ativo", False) or getattr(d, "tempo_restante", 0.0) <= 0.0 or getattr(d, "hp", 0) <= 0:
+                continue
+            drones_vivos.append(d)
+
+            # Aplica bônus cumulativo de velocidade de drones de suporte
+            from src.equipamentos.drone_suporte import DroneSuporte
+            if isinstance(d, DroneSuporte):
+                mult_vel_suporte *= (1.0 + getattr(d, "bonus_velocidade", 0.15))
+
+            res = d.update(dt, jogador=self, drops=drops, inimigos=inimigos)
+            if isinstance(res, list):
+                novos_projeteis_drone.extend(res)
+
+        self.drones = drones_vivos
+        self.velocidade_atual = self.velocidade_base * mult_vel_suporte
 
         return novos_projeteis_drone
 
@@ -265,7 +287,7 @@ class Jogador:
         return (self.x, self.y, self.largura, self.altura)
 
     def desenhar(self, janela, camera=None):
-        """Renderiza o avatar da batata e seu drone com suporte a câmera e efeito de dano."""
+        """Renderiza o avatar da batata e seus drones ativos com suporte a câmera e efeito de dano."""
         draw_x = camera.transform_x(self.x) if camera else self.x
         draw_y = camera.transform_y(self.y) if camera else self.y
 
@@ -290,6 +312,7 @@ class Jogador:
                 border_radius=8
             )
 
-        # Renderiza o drone companheiro se ativo
-        if self.drone is not None and getattr(self.drone, "ativo", False):
-            self.drone.desenhar(janela, camera)
+        # Renderiza todos os drones ativos no enxame
+        for d in self.drones:
+            if getattr(d, "ativo", False):
+                d.desenhar(janela, camera)

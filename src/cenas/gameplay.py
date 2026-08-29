@@ -775,8 +775,10 @@ class GameplayScene(BaseScene):
                         texto_badge = str(mun)
                         cor_badge = AMARELO_XP if mun > 5 else VERMELHO_HP
                 elif i == 3:
-                    if self.jogador.drone:
-                        nome_d = getattr(self.jogador.drone, "nome", "")
+                    drones_ativos = getattr(self.jogador, "drones", [])
+                    if drones_ativos:
+                        primeiro_drone = drones_ativos[0]
+                        nome_d = getattr(primeiro_drone, "nome", "")
                         if "Cura" in nome_d:
                             icone_img = self._obter_sprite_icone("drone_cura")
                         elif "Combate" in nome_d:
@@ -784,8 +786,11 @@ class GameplayScene(BaseScene):
                         else:
                             icone_img = self._obter_sprite_icone("drone_suporte")
 
-                        tempo_d = int(getattr(self.jogador.drone, "tempo_restante", 0))
-                        texto_badge = f"{tempo_d}s"
+                        menor_tempo = min(int(getattr(d, "tempo_restante", 0)) for d in drones_ativos)
+                        if len(drones_ativos) > 1:
+                            texto_badge = f"x{len(drones_ativos)} ({menor_tempo}s)"
+                        else:
+                            texto_badge = f"{menor_tempo}s"
                         cor_badge = AZUL_CIANO
 
                 if icone_img is not None:

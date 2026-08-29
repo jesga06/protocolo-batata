@@ -185,7 +185,9 @@ class SistemaDrops:
                     duracao = 30.0 * mult_valor_drop
                     novo_drone = classe_drone(tempo_vida=duracao)
 
-                    if hasattr(jogador, "drone"):
+                    if hasattr(jogador, "adicionar_drone"):
+                        jogador.adicionar_drone(novo_drone)
+                    elif hasattr(jogador, "drone"):
                         jogador.drone = novo_drone
 
                 try:
