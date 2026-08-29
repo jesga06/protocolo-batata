@@ -28,6 +28,12 @@ class MenuPrincipalScene(BaseScene):
         self.gerenciador_config.carregar_arquivo(SAVE_FILE_PATH)
         self.menu_configs = MenuConfigs(self.gerenciador_config, em_jogo=False, cena=self)
 
+        # Cache de fontes para alta performance
+        self._fonte_titulo = pygame.font.SysFont("Arial", 36, bold=True)
+        self._fonte_badge = pygame.font.SysFont("Arial", 13, bold=True)
+        self._fonte_opcoes = pygame.font.SysFont("Arial", 18, bold=True)
+        self._fonte_rodape = pygame.font.SysFont("Arial", 14)
+
         # Inicia a trilha sonora em loop contínuo
         try:
             caminho_musica = obter_caminho_asset("musica_fase")
@@ -97,7 +103,7 @@ class MenuPrincipalScene(BaseScene):
         screen.fill((18, 22, 30))
 
         # Título principal perfeitamente centralizado com pygame.font e rect.centerx
-        fonte_titulo = pygame.font.SysFont("Arial", 36, bold=True)
+        fonte_titulo = self._fonte_titulo
         titulo_surf = fonte_titulo.render(TITULO_JOGO, True, DOURADO)
         titulo_rect = titulo_surf.get_rect(centerx=LARGURA_TELA // 2, top=100)
         screen.blit(titulo_surf, titulo_rect)
@@ -114,7 +120,7 @@ class MenuPrincipalScene(BaseScene):
         pygame.draw.rect(screen, (25, 32, 45), badge_rect, border_radius=6)
         pygame.draw.rect(screen, (60, 75, 95), badge_rect, width=1, border_radius=6)
 
-        fonte_badge = pygame.font.SysFont("Arial", 13, bold=True)
+        fonte_badge = self._fonte_badge
         texto_badge = f"RECORDE: {high_score:,} PTS   |   MELHOR TEMPO: {m_tempo:02d}:{s_tempo:02d}"
         badge_surf = fonte_badge.render(texto_badge, True, (215, 230, 250))
         badge_text_rect = badge_surf.get_rect(center=badge_rect.center)
@@ -123,7 +129,7 @@ class MenuPrincipalScene(BaseScene):
         # Painel central das opções
         inicio_y = 250
         espacamento = 50
-        fonte_opcoes = pygame.font.SysFont("Arial", 18, bold=True)
+        fonte_opcoes = self._fonte_opcoes
 
         for i, texto in enumerate(self.opcoes):
             y = inicio_y + i * espacamento
@@ -145,7 +151,7 @@ class MenuPrincipalScene(BaseScene):
             screen.blit(opcao_surf, opcao_rect)
 
         # Rodapé com instruções perfeitamente centralizado
-        fonte_rodape = pygame.font.SysFont("Arial", 14)
+        fonte_rodape = self._fonte_rodape
         rodape_surf = fonte_rodape.render(
             "PPlay 2.0 Engine | Use [W/S] ou [Setas] para navegar e [ENTER] para confirmar",
             True,

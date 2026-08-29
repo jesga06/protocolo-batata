@@ -23,6 +23,14 @@ class TutorialScene(BaseScene):
         self.pagina_atual = 0  # 0: Controles e HUD, 1: Drops e Armas, 2: Inimigos e Regras
         self.total_paginas = 3
 
+        # Cache de fontes para alta performance
+        self._fonte_tit = pygame.font.SysFont("Arial", 22, bold=True)
+        self._fonte_tab = pygame.font.SysFont("Arial", 12, bold=True)
+        self._fonte_sec = pygame.font.SysFont("Arial", 14, bold=True)
+        self._fonte_corpo = pygame.font.SysFont("Arial", 12)
+        self._fonte_destaque = pygame.font.SysFont("Arial", 12, bold=True)
+        self._fonte_rod = pygame.font.SysFont("Arial", 11, bold=True)
+
     def loop(self):
         dt = self.janela.delta_time()
         self.tempo_acumulado += dt
@@ -65,13 +73,13 @@ class TutorialScene(BaseScene):
         pygame.draw.rect(screen, CINZA_BORDA, painel_rect, width=2, border_radius=8)
 
         # Cabeçalho
-        fonte_tit = pygame.font.SysFont("Arial", 22, bold=True)
+        fonte_tit = self._fonte_tit
         tit_surf = fonte_tit.render("GUIA DE SOBREVIVENCIA - PROTOCOLO: BATATA", True, DOURADO)
         tit_rect = tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=45)
         screen.blit(tit_surf, tit_rect)
 
         # Indicador de abas / páginas
-        fonte_tab = pygame.font.SysFont("Arial", 12, bold=True)
+        fonte_tab = self._fonte_tab
         tabs = ["[1] CONTROLES & HUD", "[2] DROPS & ARMAS", "[3] INIMIGOS & MECÂNICAS"]
         for i, nome_tab in enumerate(tabs):
             tx = 80 + i * 220
@@ -83,9 +91,9 @@ class TutorialScene(BaseScene):
 
         pygame.draw.line(screen, (45, 55, 75), (60, 105), (740, 105), 1)
 
-        fonte_sec = pygame.font.SysFont("Arial", 14, bold=True)
-        fonte_corpo = pygame.font.SysFont("Arial", 12)
-        fonte_destaque = pygame.font.SysFont("Arial", 12, bold=True)
+        fonte_sec = self._fonte_sec
+        fonte_corpo = self._fonte_corpo
+        fonte_destaque = self._fonte_destaque
 
         if self.pagina_atual == 0:
             # Página 1: Controles e HUD
@@ -203,6 +211,6 @@ class TutorialScene(BaseScene):
 
         # Rodapé de Instruções
         rodape_txt = "Pressione [A / D] ou [SETAS] para trocar de página | Pressione [ESC] ou [ENTER] para voltar"
-        fonte_rod = pygame.font.SysFont("Arial", 11, bold=True)
+        fonte_rod = self._fonte_rod
         rod_surf = fonte_rod.render(rodape_txt, True, (150, 165, 185))
         screen.blit(rod_surf, rod_surf.get_rect(centerx=LARGURA_TELA // 2, bottom=painel_rect.bottom - 12))

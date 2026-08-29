@@ -86,9 +86,34 @@ class GameplayScene(BaseScene):
         self.partida_registrada = False
         self.estatisticas_partida_resultado = {}
 
+        # Cache de fontes para alta performance (evita lookups de SysFont em tempo de execução)
+        self._fontes = {
+            "slots": pygame.font.SysFont("Arial", 9, bold=True),
+            "municao": pygame.font.SysFont("Arial", 10, bold=True),
+            "tempo": pygame.font.SysFont("Arial", 22, bold=True),
+            "abates": pygame.font.SysFont("Arial", 14, bold=True),
+            "buff": pygame.font.SysFont("Arial", 9, bold=True),
+            "timer": pygame.font.SysFont("Arial", 9, bold=True),
+            "toast": pygame.font.SysFont("Arial", 12, bold=True),
+            "fps": pygame.font.SysFont("Arial", 14),
+            "tit_vit": pygame.font.SysFont("Arial", 24, bold=True),
+            "sub_vit": pygame.font.SysFont("Arial", 13),
+            "stat_label": pygame.font.SysFont("Arial", 14),
+            "stat_val": pygame.font.SysFont("Arial", 14, bold=True),
+            "stat_destaque": pygame.font.SysFont("Arial", 20, bold=True),
+            "btn": pygame.font.SysFont("Arial", 14, bold=True),
+            "btn_sub": pygame.font.SysFont("Arial", 13),
+            "tit_pausa": pygame.font.SysFont("Arial", 34, bold=True),
+            "sub_pausa": pygame.font.SysFont("Arial", 18, bold=True),
+            "tit_go": pygame.font.SysFont("Arial", 36, bold=True),
+            "sub_go": pygame.font.SysFont("Arial", 16),
+            "stat_go": pygame.font.SysFont("Arial", 16, bold=True),
+            "prompt_go": pygame.font.SysFont("Arial", 15, bold=True),
+        }
+        self._fonte_toast = self._fontes["toast"]
+
         # Toasts de itens coletados, Screen Shake e Efeitos
         self.toasts_coleta: list[dict] = []
-        self._fonte_toast = None
         self.shake_intensidade: float = 0.0
         self.shake_timer: float = 0.0
 
@@ -1018,8 +1043,8 @@ class GameplayScene(BaseScene):
             slot_tam = 42
             slot_ativo = getattr(self.jogador, "slot_ativo", 2)
 
-            fonte_slots = pygame.font.SysFont("Arial", 9, bold=True)
-            fonte_municao = pygame.font.SysFont("Arial", 10, bold=True)
+            fonte_slots = self._fontes["slots"]
+            fonte_municao = self._fontes["municao"]
 
             for i in range(4):
                 sx = 16 + i * (slot_tam + 6)
@@ -1100,13 +1125,13 @@ class GameplayScene(BaseScene):
             segundos = int(self.tempo_sobrevivencia % 60)
             texto_tempo = f"{minutos:02d}:{segundos:02d}"
 
-            fonte_tempo = pygame.font.SysFont("Arial", 22, bold=True)
+            fonte_tempo = self._fontes["tempo"]
             tempo_surf = fonte_tempo.render(texto_tempo, True, BRANCO)
             tempo_rect = tempo_surf.get_rect(centerx=LARGURA_TELA // 2, top=14)
             screen.blit(tempo_surf, tempo_rect)
 
             texto_abates = f"Abates: {self.abates}"
-            fonte_abates = pygame.font.SysFont("Arial", 14, bold=True)
+            fonte_abates = self._fontes["abates"]
             abates_surf = fonte_abates.render(texto_abates, True, AMARELO_XP)
             abates_rect = abates_surf.get_rect(centerx=LARGURA_TELA // 2, top=40)
             screen.blit(abates_surf, abates_rect)
@@ -1133,8 +1158,8 @@ class GameplayScene(BaseScene):
         if not buffs:
             return
 
-        fonte_buff = pygame.font.SysFont("Arial", 9, bold=True)
-        fonte_timer = pygame.font.SysFont("Arial", 9, bold=True)
+        fonte_buff = self._fontes["buff"]
+        fonte_timer = self._fontes["timer"]
 
         start_x = 16
         start_y = 62
@@ -1171,16 +1196,14 @@ class GameplayScene(BaseScene):
             start_y += badge_h + 3
 
         # 5. Toasts de Coleta Flutuantes
-        if self._fonte_toast is None:
-            self._fonte_toast = pygame.font.SysFont("Arial", 12, bold=True)
-
+        fonte_toast = self._fontes["toast"]
         for t in self.toasts_coleta:
             tx_tela = self.camera.transform_x(t["x"])
             ty_tela = self.camera.transform_y(t["y"])
             alpha = int(clamp((t["tempo"] / max(0.01, t["tempo_max"])) * 255, 0, 255))
 
-            txt_surf = self._fonte_toast.render(t["texto"], True, t["cor"])
-            txt_sombra = self._fonte_toast.render(t["texto"], True, (0, 0, 0))
+            txt_surf = fonte_toast.render(t["texto"], True, t["cor"])
+            txt_sombra = fonte_toast.render(t["texto"], True, (0, 0, 0))
             txt_surf.set_alpha(alpha)
             txt_sombra.set_alpha(alpha)
 
@@ -1190,7 +1213,7 @@ class GameplayScene(BaseScene):
 
         # 6. Botão de Configurações e FPS (Top-Right)
         fps_val = int(self.janela.get_fps())
-        fonte_fps = pygame.font.SysFont("Arial", 14)
+        fonte_fps = self._fontes["fps"]
         fps_surf = fonte_fps.render(f"FPS: {fps_val}", True, AZUL_CIANO)
         fps_rect = fps_surf.get_rect(right=LARGURA_TELA - 60, centery=32)
         screen.blit(fps_surf, fps_rect)
@@ -1310,12 +1333,12 @@ class GameplayScene(BaseScene):
         pygame.draw.rect(screen, DOURADO, painel_rect, width=2, border_radius=8)
 
         # Faixa superior de destaque
-        fonte_tit = pygame.font.SysFont("Arial", 24, bold=True)
+        fonte_tit = self._fontes["tit_vit"]
         tit_surf = fonte_tit.render("PROTOCOLO EXECUTADO COM SUCESSO", True, DOURADO)
         tit_rect = tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=60)
         screen.blit(tit_surf, tit_rect)
 
-        fonte_sub = pygame.font.SysFont("Arial", 13)
+        fonte_sub = self._fontes["sub_vit"]
         sub_surf = fonte_sub.render("A Batata superou 10 minutos de compilacao sem erros criticos.", True, (200, 220, 240))
         sub_rect = sub_surf.get_rect(centerx=LARGURA_TELA // 2, top=95)
         screen.blit(sub_surf, sub_rect)
@@ -1325,9 +1348,9 @@ class GameplayScene(BaseScene):
         pygame.draw.rect(screen, (15, 20, 30), quadro_rect, border_radius=6)
         pygame.draw.rect(screen, (45, 60, 80), quadro_rect, width=1, border_radius=6)
 
-        fonte_stat_label = pygame.font.SysFont("Arial", 14)
-        fonte_stat_val = pygame.font.SysFont("Arial", 14, bold=True)
-        fonte_stat_destaque = pygame.font.SysFont("Arial", 20, bold=True)
+        fonte_stat_label = self._fontes["stat_label"]
+        fonte_stat_val = self._fontes["stat_val"]
+        fonte_stat_destaque = self._fontes["stat_destaque"]
 
         stats_data = [
             ("Tempo de Sobrevivencia:", "10:00 (600.0s) [MAXIMO]", DOURADO),
@@ -1367,8 +1390,8 @@ class GameplayScene(BaseScene):
             screen.blit(badge_rec_surf, badge_rec_rect)
 
         # Rodapé com atalhos de navegação
-        fonte_btn = pygame.font.SysFont("Arial", 14, bold=True)
-        fonte_btn_sub = pygame.font.SysFont("Arial", 13)
+        fonte_btn = self._fontes["btn"]
+        fonte_btn_sub = self._fontes["btn_sub"]
 
         btn1_surf = fonte_btn.render("[ENTER / ESPACO] Jogar Novamente", True, DOURADO)
         screen.blit(btn1_surf, btn1_surf.get_rect(centerx=LARGURA_TELA // 2, top=430))
@@ -1386,8 +1409,8 @@ class GameplayScene(BaseScene):
         dark_surf.fill((10, 15, 22, 180))
         screen.blit(dark_surf, (0, 0))
 
-        fonte_titulo = pygame.font.SysFont("Arial", 34, bold=True)
-        fonte_sub = pygame.font.SysFont("Arial", 18, bold=True)
+        fonte_titulo = self._fontes["tit_pausa"]
+        fonte_sub = self._fontes["sub_pausa"]
 
         t_surf = fonte_titulo.render("JOGO PAUSADO", True, DOURADO)
         t_rect = t_surf.get_rect(centerx=LARGURA_TELA // 2, top=200)
@@ -1408,10 +1431,10 @@ class GameplayScene(BaseScene):
         dark_surf.fill((20, 5, 5, 210))
         screen.blit(dark_surf, (0, 0))
 
-        fonte_tit = pygame.font.SysFont("Arial", 36, bold=True)
-        fonte_sub = pygame.font.SysFont("Arial", 16)
-        fonte_stat = pygame.font.SysFont("Arial", 16, bold=True)
-        fonte_prompt = pygame.font.SysFont("Arial", 15, bold=True)
+        fonte_tit = self._fontes["tit_go"]
+        fonte_sub = self._fontes["sub_go"]
+        fonte_stat = self._fontes["stat_go"]
+        fonte_prompt = self._fontes["prompt_go"]
 
         tit_surf = fonte_tit.render("PROTOCOLO FALHOU", True, VERMELHO_HP)
         screen.blit(tit_surf, tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=130))

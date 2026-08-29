@@ -17,7 +17,9 @@ class HUD:
     """
 
     def __init__(self):
-        self._fonte_xp = None
+        self._fonte_xp = pygame.font.SysFont("Arial", 10, bold=True)
+        self._fonte_nome = pygame.font.SysFont("Arial", 11, bold=True)
+        self._fonte_hp = pygame.font.SysFont("Arial", 9, bold=True)
 
     def _obter_fonte_xp(self):
         if self._fonte_xp is None:
@@ -91,7 +93,7 @@ class HUD:
 
         # 1. Nome do Mini-Boss / Chefe (posicionado acima da barra em y=74 sem sobrepor a barra de XP)
         nome = getattr(boss, "nome_elite", "") or "MINI-BOSS ELITE"
-        fonte_nome = pygame.font.SysFont("Arial", 11, bold=True)
+        fonte_nome = self._fonte_nome
         nome_sombra = fonte_nome.render(nome, True, (10, 5, 20))
         nome_rect = nome_sombra.get_rect(centerx=LARGURA_TELA // 2 + 1, top=75)
         screen.blit(nome_sombra, nome_rect)
@@ -122,7 +124,7 @@ class HUD:
 
         # 5. Texto de HP numérico
         texto_hp = f"{hp_atual}/{hp_max} HP"
-        fonte_hp = pygame.font.SysFont("Arial", 9, bold=True)
+        fonte_hp = self._fonte_hp
         sombra_hp = fonte_hp.render(texto_hp, True, (10, 5, 20))
         sombra_rect = sombra_hp.get_rect(centerx=LARGURA_TELA // 2 + 1, centery=pos_y + altura_barra // 2 + 1)
         screen.blit(sombra_hp, sombra_rect)
