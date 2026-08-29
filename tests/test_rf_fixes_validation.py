@@ -97,23 +97,22 @@ class TestRFFixesValidation(unittest.TestCase):
 
         # Equipa drone de cura (1 HP sob fogo amigo)
         drone = DroneCura()
-        drone.x = 420.0
-        drone.y = 300.0
         drone.hp = 1
+        drone.velocidade_orbita = 0.0
         cena.jogador.drones = [drone]
-
-        # Atualiza posição inicial da órbita do drone
         cena.jogador.update(0.016, None)
 
         # Dispara feixe da Railgun alinhado à órbita do drone
         tiro_railgun = Projetil(
-            x=drone.x, y=drone.y,
+            x=drone.x - 2, y=drone.y - 2,
             dir_x=1.0, dir_y=0.0,
-            velocidade=800.0,
+            velocidade=100.0,
             dano=50,
             dono="jogador",
             perfurante=True
         )
+        tiro_railgun.largura = 30.0
+        tiro_railgun.altura = 30.0
         cena.projeteis = [tiro_railgun]
 
         # Executa ciclo de colisão

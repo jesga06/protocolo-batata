@@ -4,7 +4,7 @@ Classe base para todas as cenas do jogo, estendendo PPlay.scenemanager.Scene.
 """
 
 from PPlay.scenemanager import Scene
-from PPlay.window import Window
+from src.utils.janela import Janela as Window
 
 
 class BaseScene(Scene):

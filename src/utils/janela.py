@@ -28,6 +28,7 @@ class Janela:
     """
     _instance = None
     screen = None
+    _fontes_cache: dict = {}
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
@@ -232,3 +233,9 @@ class Janela:
 
 # Alias para compatibilidade total com PPlay.window.Window
 Window = Janela
+
+try:
+    import PPlay.window
+    PPlay.window.Window = Janela
+except Exception:
+    pass

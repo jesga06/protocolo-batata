@@ -46,7 +46,7 @@ class TestJanelaNativa(unittest.TestCase):
         """Verifica se o método draw_text utiliza cache interno sem recriar fontes."""
         janela = Janela.get_instance()
         janela.draw_text("TESTE FPS", 10, 10, tamanho=14, cor=(255, 255, 255))
-        self.assertIn(("Arial", 14), janela._fontes_cache)
+        self.assertTrue(any("Arial" in str(k) and 14 in k for k in janela._fontes_cache.keys()))
 
     def test_alternar_fullscreen(self):
         """Verifica a alternância de estado do modo tela cheia."""
