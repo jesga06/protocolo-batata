@@ -89,20 +89,72 @@ class OndaChoque:
         return max(1.0, self.raio_max * (self.progresso ** 0.5))
 
 
+class TextoDano:
+    """Representa um número flutuante de dano no espaço do mundo."""
+    def __init__(
+        self,
+        x: float,
+        y: float,
+        dano: int,
+        critico: bool = False,
+        vida_max: float = 0.65
+    ):
+        self.x = float(x)
+        self.y = float(y)
+        self.vx = random.uniform(-20.0, 20.0)
+        self.vy = random.uniform(-70.0, -100.0)
+        self.dano = int(dano)
+        self.critico = bool(critico)
+        self.vida_max = max(0.01, float(vida_max))
+        self.vida = self.vida_max
+        self.texto = f"{dano}!" if critico else f"{dano}"
+        self.cor = (255, 215, 0) if critico else (255, 255, 255)
+
+    @property
+    def viva(self) -> bool:
+        return self.vida > 0.0
+
+    @property
+    def progresso(self) -> float:
+        return 1.0 - (self.vida / self.vida_max)
+
+    def update(self, dt: float):
+        self.vida -= dt
+        self.x += self.vx * dt
+        self.y += self.vy * dt
+        self.vy += 60.0 * dt
+
+
 class SistemaParticulas:
     """
     Gerenciador global de partículas com teto rígido de instâncias e rendering otimizado.
     """
     MAX_PARTICULAS = 300
+    MAX_TEXTOS = 100
+    _fonte_dano = None
 
     def __init__(self):
         self.particulas: list[Particula] = []
         self.ondas_choque: list[OndaChoque] = []
+        self.textos_dano: list[TextoDano] = []
 
     def limpar(self):
-        """Descarta todas as partículas e ondas ativas."""
+        """Descarta todas as partículas, ondas e textos ativos."""
         self.particulas.clear()
         self.ondas_choque.clear()
+        self.textos_dano.clear()
+
+    def emitir_texto_dano(
+        self,
+        x: float,
+        y: float,
+        dano: int,
+        critico: bool = False
+    ):
+        """Emite número flutuante de dano no mundo."""
+        if len(self.textos_dano) >= self.MAX_TEXTOS:
+            self.textos_dano.pop(0)
+        self.textos_dano.append(TextoDano(x, y, dano, critico=critico))
 
     def emitir_faiscas(
         self,
@@ -229,7 +281,7 @@ class SistemaParticulas:
 
     def update(self, dt: float):
         """
-        Atualiza física e tempo de vida de todas as partículas e ondas.
+        Atualiza física e tempo de vida de todas as partículas, ondas e textos.
         """
         for p in self.particulas:
             p.update(dt)
@@ -239,9 +291,13 @@ class SistemaParticulas:
             oc.update(dt)
         self.ondas_choque = [oc for oc in self.ondas_choque if oc.viva]
 
+        for td in self.textos_dano:
+            td.update(dt)
+        self.textos_dano = [td for td in self.textos_dano if td.viva]
+
     def desenhar(self, janela, camera=None):
         """
-        Renderiza todas as partículas e ondas de choque na tela virtual.
+        Renderiza todas as partículas, ondas de choque e números de dano na tela virtual.
         """
         screen = janela.screen
 
@@ -280,3 +336,26 @@ class SistemaParticulas:
             tam = p.obter_tamanho_atual()
             if tam > 0:
                 pygame.draw.circle(screen, p.cor, (int(tx), int(ty)), max(1, int(tam)))
+
+        # 3. Renderiza números flutuantes de dano
+        if self.textos_dano:
+            if self._fonte_dano is None:
+                try:
+                    if pygame.font.get_init():
+                        self._fonte_dano = pygame.font.SysFont("arial", 16, bold=True)
+                except Exception:
+                    self._fonte_dano = None
+
+            if self._fonte_dano is not None:
+                for td in self.textos_dano:
+                    tx = camera.transform_x(td.x) if camera else td.x
+                    ty = camera.transform_y(td.y) if camera else td.y
+
+                    if tx < -40 or tx > janela.largura + 40 or ty < -40 or ty > janela.altura + 40:
+                        continue
+
+                    try:
+                        surf_t = self._fonte_dano.render(td.texto, True, td.cor)
+                        screen.blit(surf_t, (int(tx - surf_t.get_width() / 2), int(ty)))
+                    except Exception:
+                        pass

@@ -39,6 +39,13 @@ class Jogador:
         self.hp = int(hp_max)
         self.velocidade_base = float(velocidade)
         self.velocidade_atual = float(velocidade)
+        self.mult_vel_config = 1.0
+
+        self.buff_dano_timer = 0.0
+        self.buff_vel_timer = 0.0
+        self.buff_cadencia_timer = 0.0
+        self.buff_resistencia_timer = 0.0
+        self.escudo_ativo = False
 
         self.vivo = True
         self.facing_right = True
@@ -54,6 +61,17 @@ class Jogador:
         self.drones = []
         self.slot_ativo = 2  # Padrão: Slot 2 (Pistola)
         self.sistema_xp = SistemaXP()
+
+    def aplicar_pulso_magnetico(self, drops: list):
+        """Puxa instantaneamente todos os drops ativos na arena diretamente para a coordenada da Batata."""
+        if not drops:
+            return
+        cx = self.x + self.largura / 2.0
+        cy = self.y + self.altura / 2.0
+        for drop in drops:
+            if getattr(drop, "ativo", False) and not getattr(drop, "coletado", False):
+                drop.x = cx - getattr(drop, "largura", 16) / 2.0
+                drop.y = cy - getattr(drop, "altura", 16) / 2.0
 
     @property
     def drone(self):
@@ -143,10 +161,11 @@ class Jogador:
         mouse,
         dt: float,
         config_sistema=None,
-        limite_arena: tuple[float, float] = (1600.0, 1200.0)
+        limite_arena: tuple[float, float] = (1600.0, 1200.0),
+        camera=None
     ):
         """
-        Processa teclas de movimento (WASD e Setas), seleção de armas (1, 2, 3),
+        Processa teclas de movimento (WASD, Setas, Presets ou Autopilot Mouse), seleção de armas (1, 2, 3),
         normaliza movimento diagonal e restringe o jogador aos limites da arena.
         """
         if not self.vivo:
@@ -154,6 +173,17 @@ class Jogador:
 
         dx = 0.0
         dy = 0.0
+
+        # Verifica modo de movimento pelo mouse (Config 10) e Presets de teclas (Config 11)
+        mov_mouse = False
+        preset_teclas = "padrao"
+        if config_sistema is not None:
+            if hasattr(config_sistema, "obter_valor"):
+                mov_mouse = (config_sistema.obter_valor("movimento_mouse") in (True, "Ligado", "ligado", "1"))
+                preset_teclas = str(config_sistema.obter_valor("keybinds")).lower()
+            elif isinstance(config_sistema, dict):
+                mov_mouse = (config_sistema.get("movimento_mouse") in (True, "Ligado", "ligado", "1"))
+                preset_teclas = str(config_sistema.get("keybinds", "padrao")).lower()
 
         if teclado is not None:
             # Troca de armas via teclas numéricas 1, 2 e 3
@@ -164,18 +194,73 @@ class Jogador:
             elif (hasattr(teclado, "key_pressed") and teclado.key_pressed("3")) or (hasattr(teclado, "key_down") and teclado.key_down("3")):
                 self.selecionar_slot(3)
 
-            # Movimento
-            if teclado.key_pressed("a") or teclado.key_pressed("left") or teclado.key_pressed("LEFT"):
-                dx -= 1.0
-            if teclado.key_pressed("d") or teclado.key_pressed("right") or teclado.key_pressed("RIGHT"):
-                dx += 1.0
-            if teclado.key_pressed("w") or teclado.key_pressed("up") or teclado.key_pressed("UP"):
-                dy -= 1.0
-            if teclado.key_pressed("s") or teclado.key_pressed("down") or teclado.key_pressed("DOWN"):
-                dy += 1.0
+        if mov_mouse and mouse is not None:
+            try:
+                import math
+                mx, my = mouse.get_position()
+                if camera is not None:
+                    mx += camera.x
+                    my += camera.y
+                cx = self.x + self.largura / 2.0
+                cy = self.y + self.altura / 2.0
+                dist_mouse = math.hypot(mx - cx, my - cy)
+                if dist_mouse > 8.0:
+                    dx = (mx - cx) / dist_mouse
+                    dy = (my - cy) / dist_mouse
+            except Exception:
+                pass
+        elif teclado is not None:
+            if preset_teclas == "invertido":
+                if teclado.key_pressed("a") or teclado.key_pressed("left") or teclado.key_pressed("LEFT"):
+                    dx += 1.0
+                if teclado.key_pressed("d") or teclado.key_pressed("right") or teclado.key_pressed("RIGHT"):
+                    dx -= 1.0
+                if teclado.key_pressed("w") or teclado.key_pressed("up") or teclado.key_pressed("UP"):
+                    dy += 1.0
+                if teclado.key_pressed("s") or teclado.key_pressed("down") or teclado.key_pressed("DOWN"):
+                    dy -= 1.0
+            elif preset_teclas == "arrow_keys":
+                if teclado.key_pressed("left") or teclado.key_pressed("LEFT"):
+                    dx -= 1.0
+                if teclado.key_pressed("right") or teclado.key_pressed("RIGHT"):
+                    dx += 1.0
+                if teclado.key_pressed("up") or teclado.key_pressed("UP"):
+                    dy -= 1.0
+                if teclado.key_pressed("down") or teclado.key_pressed("DOWN"):
+                    dy += 1.0
+            elif preset_teclas == "uma_mao":
+                # QWER: Q (esquerda), W (cima), E (baixo), R (direita)
+                if teclado.key_pressed("q") or teclado.key_pressed("Q"):
+                    dx -= 1.0
+                if teclado.key_pressed("r") or teclado.key_pressed("R"):
+                    dx += 1.0
+                if teclado.key_pressed("w") or teclado.key_pressed("W"):
+                    dy -= 1.0
+                if teclado.key_pressed("e") or teclado.key_pressed("E"):
+                    dy += 1.0
+            elif preset_teclas == "pesadelo":
+                # IJKL: J (esquerda), L (direita), I (cima), K (baixo)
+                if teclado.key_pressed("j") or teclado.key_pressed("J"):
+                    dx -= 1.0
+                if teclado.key_pressed("l") or teclado.key_pressed("L"):
+                    dx += 1.0
+                if teclado.key_pressed("i") or teclado.key_pressed("I"):
+                    dy -= 1.0
+                if teclado.key_pressed("k") or teclado.key_pressed("K"):
+                    dy += 1.0
+            else:
+                # Padrão WASD + Setas
+                if teclado.key_pressed("a") or teclado.key_pressed("left") or teclado.key_pressed("LEFT"):
+                    dx -= 1.0
+                if teclado.key_pressed("d") or teclado.key_pressed("right") or teclado.key_pressed("RIGHT"):
+                    dx += 1.0
+                if teclado.key_pressed("w") or teclado.key_pressed("up") or teclado.key_pressed("UP"):
+                    dy -= 1.0
+                if teclado.key_pressed("s") or teclado.key_pressed("down") or teclado.key_pressed("DOWN"):
+                    dy += 1.0
 
         # Normalização diagonal exata (dx, dy * 0.7071 ou vetor unitário)
-        if dx != 0.0 and dy != 0.0:
+        if not mov_mouse and dx != 0.0 and dy != 0.0:
             dx *= 0.70710678118
             dy *= 0.70710678118
 
@@ -193,6 +278,8 @@ class Jogador:
         if mouse is not None:
             try:
                 mx, _ = mouse.get_position()
+                if camera is not None:
+                    mx += camera.x
                 # Se mouse estiver à esquerda do centro do jogador, vira para a esquerda
                 if mx < self.x + self.largura / 2.0:
                     self.facing_right = False
@@ -214,7 +301,26 @@ class Jogador:
         if not self.vivo or getattr(self, "modo_deus", False) or getattr(self, "invulneravel", False):
             return
 
-        self.hp = max(0, self.hp - int(quantidade))
+        if self.invulnerabilidade_timer > 0.0:
+            return
+
+        if self.escudo_ativo:
+            self.escudo_ativo = False
+            self.invulnerabilidade_timer = 4.0
+            self.flash_dano_timer = JOGADOR_COOLDOWN_DANO_FLASH
+            try:
+                from PPlay.sound import Sound
+                sfx = Sound(obter_caminho_asset("sfx_dano_jogador"))
+                sfx.play()
+            except Exception:
+                pass
+            return
+
+        dano_a_aplicar = int(quantidade)
+        if self.buff_resistencia_timer > 0.0:
+            dano_a_aplicar = max(1, int(round(dano_a_aplicar * 0.92)))
+
+        self.hp = max(0, self.hp - dano_a_aplicar)
         self.flash_dano_timer = JOGADOR_COOLDOWN_DANO_FLASH
 
         if self.hp <= 0:
@@ -240,18 +346,32 @@ class Jogador:
         self.hp = min(self.hp_max, self.hp + int(quantidade))
 
     def update(self, dt: float, drops: list = None, inimigos: list = None):
-        """Atualiza timers de flash de dano, armas e drone companheiro."""
+        """Atualiza timers de flash de dano, armas, buffs temporários e drone companheiro."""
         if self.flash_dano_timer > 0.0:
             self.flash_dano_timer = max(0.0, self.flash_dano_timer - dt)
 
         if self.invulnerabilidade_timer > 0.0:
             self.invulnerabilidade_timer = max(0.0, self.invulnerabilidade_timer - dt)
 
+        if self.buff_dano_timer > 0.0:
+            self.buff_dano_timer = max(0.0, self.buff_dano_timer - dt)
+
+        if self.buff_vel_timer > 0.0:
+            self.buff_vel_timer = max(0.0, self.buff_vel_timer - dt)
+
+        if self.buff_cadencia_timer > 0.0:
+            self.buff_cadencia_timer = max(0.0, self.buff_cadencia_timer - dt)
+
+        if self.buff_resistencia_timer > 0.0:
+            self.buff_resistencia_timer = max(0.0, self.buff_resistencia_timer - dt)
+
+        dt_armas = dt * (1.08 if self.buff_cadencia_timer > 0.0 else 1.0)
+
         for arma in self.armas:
-            arma.update(dt)
+            arma.update(dt_armas)
 
         if self.arma_especial is not None:
-            self.arma_especial.update(dt)
+            self.arma_especial.update(dt_armas)
             # Regra de Esgotamento de Munição (Slot 3 Lifecycle)
             if self.arma_especial.municao_atual <= 0:
                 self.arma_especial = None
@@ -278,7 +398,9 @@ class Jogador:
                 novos_projeteis_drone.extend(res)
 
         self.drones = drones_vivos
-        self.velocidade_atual = self.velocidade_base * mult_vel_suporte
+        mult_buff_vel = 1.08 if self.buff_vel_timer > 0.0 else 1.0
+        mult_config = getattr(self, "mult_vel_config", 1.0)
+        self.velocidade_atual = self.velocidade_base * mult_vel_suporte * mult_config * mult_buff_vel
 
         return novos_projeteis_drone
 

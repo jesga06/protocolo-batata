@@ -1,7 +1,7 @@
 """
 Entidade de Item Drop — Protocolo: Batata
 Representa itens e gemas de XP dropados no chão da arena após a derrota de inimigos.
-Possui tempo de vida de 10.0s e período de carência de 1.0s antes de habilitar coleta inimiga (Scavenger).
+Possui tempo de vida de 60.0s e período de carência de 10.0s antes de habilitar coleta inimiga (Scavenger).
 """
 
 import math
@@ -53,7 +53,7 @@ class ItemDrop:
         return max(0.0, self.tempo_vida - self.tempo_decorrido)
 
     def elegivel_scavenger(self) -> bool:
-        """Retorna True se o item estiver no chão há pelo menos 1s e ainda estiver ativo."""
+        """Retorna True se o item estiver no chão há pelo menos 10.0s e ainda estiver ativo."""
         return self.ativo and not self.coletado and (self.tempo_decorrido >= self.tempo_scavenger)
 
     def update(self, dt: float):

@@ -1,7 +1,7 @@
 """
 Sistema de Inimigo Scavenger — Protocolo: Batata
 Implementa o comportamento da regra #15 (Coleta Inimiga):
-- Apenas 1 inimigo globalmente pode ser designado Scavenger para disputar um drop elegível (>1s de chão).
+- Apenas 1 inimigo globalmente pode ser designado Scavenger para disputar um drop elegível (>=10.0s de chão).
 - O alvo é selecionado excluindo os 3 inimigos mais próximos ao item e excluindo inimigos > 600px de distância.
 - Se o scavenger alcançar o drop antes do jogador, o item é consumido sem recompensas.
 """
@@ -23,7 +23,7 @@ class SistemaScavenger:
 
     def selecionar_scavenger(self, lista_inimigos: list, lista_drops: list):
         """
-        Avalia se há um scavenger ativo válido. Se não houver, busca um drop elegível (>1s)
+        Avalia se há um scavenger ativo válido. Se não houver, busca um drop elegível (>=10.0s)
         e elege 1 inimigo elegível (excluindo os 3 mais próximos e os acima de 600px).
         """
         # Se já existe um scavenger vivo perseguindo um drop ativo, mantém
@@ -40,7 +40,7 @@ class SistemaScavenger:
         self.scavenger_atual = None
         self.drop_alvo = None
 
-        # Encontra drops elegíveis (tempo decorrido >= 5.0s e ativos)
+        # Encontra drops elegíveis (tempo decorrido >= 10.0s e ativos)
         drops_elegiveis = [
             d for d in lista_drops
             if getattr(d, "ativo", False) and not getattr(d, "coletado", False) and (

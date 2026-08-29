@@ -169,7 +169,9 @@ class GameplayScene(BaseScene):
         """Aplica os modificadores matemáticos calculados às entidades ativas."""
         mods = self.gerenciador_config.obter_modificadores()
         # 1. Velocidade do jogador
-        self.jogador.velocidade_atual = self.jogador.velocidade_base * mods.vel_jogador_mult
+        self.jogador.mult_vel_config = mods.vel_jogador_mult
+        mult_buff_vel = 1.08 if getattr(self.jogador, "buff_vel_timer", 0.0) > 0.0 else 1.0
+        self.jogador.velocidade_atual = self.jogador.velocidade_base * mods.vel_jogador_mult * mult_buff_vel
 
         # 2. Dano das armas do jogador
         for arma in self.jogador.armas:
@@ -292,11 +294,15 @@ class GameplayScene(BaseScene):
             t["y"] -= 22.0 * dt
         self.toasts_coleta = [t for t in self.toasts_coleta if t["tempo"] > 0]
 
+        mods = self.config_sistema.obter_modificadores() if hasattr(self, "config_sistema") and self.config_sistema else None
+
         self.jogador.processar_input(
             self.teclado,
             self.mouse,
             dt,
-            limite_arena=(self.largura_arena, self.altura_arena)
+            config_sistema=self.config_sistema,
+            limite_arena=(self.largura_arena, self.altura_arena),
+            camera=self.camera
         )
         tiros_drone = self.jogador.update(
             dt,
@@ -307,7 +313,9 @@ class GameplayScene(BaseScene):
             self.projeteis.extend(tiros_drone)
 
         # Atualiza a posição da câmera para seguir o jogador suavemente
-        self.camera.follow(self.jogador, suavizacao=0.15)
+        val_suav = self.config_sistema.obter_valor("suavizacao_camera") if hasattr(self, "config_sistema") and self.config_sistema else "ligado"
+        suavizacao_fator = 1.0 if str(val_suav).lower() in ("desligado", "0", "false") else 0.15
+        self.camera.follow(self.jogador, suavizacao=suavizacao_fator)
 
         # =========================================================================
         # 2. DISPARO DE ARMAS (PISTOLA, MELEE E ESPECIAIS COM BUFFER DE INPUT)
@@ -318,6 +326,9 @@ class GameplayScene(BaseScene):
         # Posição virtual do cursor convertida para espaço do mundo
         try:
             mx, my = self.mouse.get_position()
+            val_keybinds = str(self.config_sistema.obter_valor("keybinds")).lower() if hasattr(self, "config_sistema") and self.config_sistema else "padrao"
+            if val_keybinds == "pesadelo":
+                my = ALTURA_TELA - my
         except Exception:
             mx, my = (LARGURA_TELA / 2.0, ALTURA_TELA / 2.0)
 
@@ -331,14 +342,27 @@ class GameplayScene(BaseScene):
                 self.pausado = True
                 return
 
-        # Input buffer: se o mouse estiver pressionado neste frame, alimenta o buffer
-        mouse_pressionado = pygame.mouse.get_pressed()[0]
-        if mouse_pressionado:
-            self.buffer_tiro = 0.15  # Buffer de 150ms para garantir que cliques rápidos nunca sejam perdidos
+        # Input buffer e Auto-Fire
+        val_autofire = str(self.config_sistema.obter_valor("auto_fire")).lower() if hasattr(self, "config_sistema") and self.config_sistema else "ligado"
+        if val_autofire in ("desligado", "0", "false"):
+            disparar_agora = False
+            if hasattr(self.mouse, "button_down") and self.mouse.button_down(1):
+                disparar_agora = True
+            elif hasattr(self.mouse, "get_pressed_buttons"):
+                disparar_agora = self.mouse.get_pressed_buttons()[0] if hasattr(self.mouse, "get_pressed_buttons") else False
+            self.buffer_tiro = 0.0
         else:
-            self.buffer_tiro = max(0.0, self.buffer_tiro - dt)
+            mouse_pressionado = pygame.mouse.get_pressed()[0]
+            if mouse_pressionado:
+                self.buffer_tiro = 0.15  # Buffer de 150ms para garantir que cliques rápidos nunca sejam perdidos
+            else:
+                self.buffer_tiro = max(0.0, self.buffer_tiro - dt)
+            disparar_agora = (self.buffer_tiro > 0.0)
 
-        disparar_agora = (self.buffer_tiro > 0.0)
+        hitbox_mult = getattr(mods, "hitbox_projeteis_mult", 1.0) if mods else 1.0
+        mult_dano_buff = 1.05 if getattr(self.jogador, "buff_dano_timer", 0.0) > 0.0 else 1.0
+        crit_chance = getattr(mods, "critico_chance", 0.0) if mods else 0.0
+        crit_mult = getattr(mods, "critico_mult", 2.0) if mods else 2.0
 
         if disparar_agora and self.jogador.vivo:
             arma_ativa = self.jogador.obter_arma_ativa()
@@ -350,6 +374,14 @@ class GameplayScene(BaseScene):
                             mouse_mundo_x, mouse_mundo_y
                         )
                         if novos_tiros:
+                            for p in novos_tiros:
+                                if hitbox_mult != 1.0:
+                                    p.largura = max(2, int(round(p.largura * hitbox_mult)))
+                                    p.altura = max(2, int(round(p.altura * hitbox_mult)))
+                                    p.width = p.largura
+                                    p.height = p.altura
+                                if mult_dano_buff != 1.0:
+                                    p.dano = max(1, int(round(p.dano * mult_dano_buff)))
                             self.projeteis.extend(novos_tiros)
                             self.buffer_tiro = 0.0
                 elif isinstance(arma_ativa, Melee) or getattr(arma_ativa, "slot", None) == 1:
@@ -364,7 +396,9 @@ class GameplayScene(BaseScene):
                         )
                         if isinstance(afetados, (list, tuple)):
                             for inim in afetados:
-                                dano_melee = getattr(arma_ativa, "dano", 10)
+                                dano_base = getattr(arma_ativa, "dano", 10)
+                                is_crit = (crit_chance > 0.0 and random.random() < crit_chance)
+                                dano_melee = int(round(dano_base * mult_dano_buff * (crit_mult if is_crit else 1.0)))
                                 self.dano_total_causado += dano_melee
                                 self.sistema_particulas.emitir_faiscas(
                                     inim.x + getattr(inim, "largura", 28) / 2.0,
@@ -374,6 +408,13 @@ class GameplayScene(BaseScene):
                                     cor=(255, 240, 150),
                                     qtd=5
                                 )
+                                if hasattr(self, "config_sistema") and str(self.config_sistema.obter_valor("damage_numbers")).lower() in ("ligado", "true", "1"):
+                                    self.sistema_particulas.emitir_texto_dano(
+                                        inim.x + getattr(inim, "largura", 28) / 2.0,
+                                        inim.y,
+                                        dano_melee,
+                                        critico=is_crit
+                                    )
                                 if not getattr(inim, "vivo", True):
                                     self.abates += 1
                                     self.pontos += getattr(inim, "score_valor", 100)
@@ -383,7 +424,12 @@ class GameplayScene(BaseScene):
                                     self.sistema_drops.gerar_drop_morte_inimigo(
                                         inim.x + getattr(inim, "largura", 28) / 2.0,
                                         inim.y + getattr(inim, "altura", 28) / 2.0,
+                                        bonus_chance_drop=getattr(mods, "drop_chance_bonus", 0.0) if mods else 0.0,
+                                        mult_chance_drop=getattr(mods, "drop_chance_mult", 1.0) if mods else 1.0,
                                         xp_base=getattr(inim, "xp_valor", 5),
+                                        loot_enriquecido=(getattr(inim, "loot_enriquecido", False) or getattr(mods, "loot_enriquecido", False)),
+                                        chance_arma=getattr(inim, "chance_drop_arma", None),
+                                        chance_equipamento=getattr(inim, "chance_drop_equipamento", None),
                                         is_elite=getattr(inim, "is_elite", False)
                                     )
                         self.buffer_tiro = 0.0
@@ -404,6 +450,14 @@ class GameplayScene(BaseScene):
                                 mouse_mundo_x, mouse_mundo_y
                             )
                             if novos_tiros:
+                                for p in novos_tiros:
+                                    if hitbox_mult != 1.0:
+                                        p.largura = max(2, int(round(p.largura * hitbox_mult)))
+                                        p.altura = max(2, int(round(p.altura * hitbox_mult)))
+                                        p.width = p.largura
+                                        p.height = p.altura
+                                    if mult_dano_buff != 1.0:
+                                        p.dano = max(1, int(round(p.dano * mult_dano_buff)))
                                 self.projeteis.extend(novos_tiros)
                                 self.buffer_tiro = 0.0
 
@@ -417,6 +471,9 @@ class GameplayScene(BaseScene):
         # =========================================================================
         spawn_liberado = getattr(self.menu_debug, "spawn_natural_ativo", True) if hasattr(self, "menu_debug") else True
         if spawn_liberado:
+            permitir_ranged = (str(self.config_sistema.obter_valor("inimigos_ranged")).lower() in ("ligado", "true", "1")) if hasattr(self, "config_sistema") and self.config_sistema else False
+            hp_inim_mult = getattr(mods, "hp_inimigos_mult", 1.0) if mods else 1.0
+            vel_inim_mult = getattr(mods, "vel_inimigos_mult", 1.0) if mods else 1.0
             novos_inimigos = self.spawner.update(
                 dt=dt,
                 camera_x=self.camera.x,
@@ -425,7 +482,10 @@ class GameplayScene(BaseScene):
                 view_w=LARGURA_TELA,
                 view_h=ALTURA_TELA,
                 arena_w=self.largura_arena,
-                arena_h=self.altura_arena
+                arena_h=self.altura_arena,
+                hp_mult=hp_inim_mult,
+                vel_mult=vel_inim_mult,
+                permitir_ranged=permitir_ranged
             )
             self.inimigos.extend(novos_inimigos)
 
@@ -442,19 +502,34 @@ class GameplayScene(BaseScene):
         # =========================================================================
         # 5. IA DOS INIMIGOS E DANO DE CONTATO NO JOGADOR
         # =========================================================================
+        val_ilum = str(self.config_sistema.obter_valor("iluminacao")).lower() in ("ligado", "true", "1") if hasattr(self, "config_sistema") and self.config_sistema else False
+        mult_dano_inim_base = getattr(mods, "dano_inimigos_mult", 1.0) if mods else 1.0
+
         for inimigo in self.inimigos:
             inimigo.update(dt, (centro_jogador_x, centro_jogador_y))
             if hasattr(inimigo, "obter_projeteis_pendentes"):
                 novos_tiros = inimigo.obter_projeteis_pendentes()
                 if novos_tiros:
                     self.projeteis.extend(novos_tiros)
-            if inimigo.tentar_causar_dano_contato(self.jogador):
-                self.aplicar_shake(6.0, 0.15)
+
+            # Checa dano de contato com reduções da configuração (Iluminação fora de visão)
+            if colisao_aabb(inimigo.x, inimigo.y, inimigo.largura, inimigo.altura,
+                            self.jogador.x, self.jogador.y, self.jogador.largura, self.jogador.altura):
+                if getattr(inimigo, "cooldown_contato_atual", 0.0) <= 0.0:
+                    dano_contato_base = getattr(inimigo, "dano_contato", 10)
+                    mult_dano_inim = mult_dano_inim_base
+                    if val_ilum:
+                        dist_vis = distancia(inimigo.x + inimigo.largura / 2.0, inimigo.y + inimigo.altura / 2.0, centro_jogador_x, centro_jogador_y)
+                        if dist_vis > 195.0:
+                            mult_dano_inim *= getattr(mods, "dano_fora_visao_mult", 0.50)
+                    dano_efetivo_contato = max(1, int(round(dano_contato_base * mult_dano_inim)))
+                    self.jogador.receber_dano(dano_efetivo_contato)
+                    inimigo.cooldown_contato_atual = getattr(inimigo, "cooldown_contato_max", 0.4)
+                    self.aplicar_shake(6.0, 0.15)
 
         # =========================================================================
         # 6. COLISÕES: PROJÉTEIS VS INIMIGOS E DETONAÇÃO DE EXPLOSIVOS
         # =========================================================================
-        mods = self.config_sistema.obter_modificadores() if hasattr(self, "config_sistema") and self.config_sistema else None
         mult_explosivo = getattr(mods, "dano_explosivos_mult", 1.0) if mods else 1.0
         auto_dano = getattr(mods, "auto_dano", False) if mods else False
 
@@ -468,7 +543,13 @@ class GameplayScene(BaseScene):
                     proj.x, proj.y, proj.largura, proj.altura,
                     self.jogador.x, self.jogador.y, self.jogador.largura, self.jogador.altura
                 ):
-                    self.jogador.receber_dano(proj.dano)
+                    mult_dano_inim = mult_dano_inim_base
+                    if val_ilum:
+                        dist_vis = distancia(proj.x + proj.largura / 2.0, proj.y + proj.altura / 2.0, centro_jogador_x, centro_jogador_y)
+                        if dist_vis > 195.0:
+                            mult_dano_inim *= getattr(mods, "dano_fora_visao_mult", 0.50)
+                    dano_proj = max(1, int(round(proj.dano * mult_dano_inim)))
+                    self.jogador.receber_dano(dano_proj)
                     self.aplicar_shake(6.0, 0.15)
                     proj.ativo = False
                 continue
@@ -507,6 +588,13 @@ class GameplayScene(BaseScene):
                         dano_base_exp = int(getattr(proj, "dano", 35) * mult_explosivo)
                         dano_exp = dano_base_exp * 2 if (inim is alvo_direto) else dano_base_exp
                         self.dano_total_causado += dano_exp
+                        if hasattr(self, "config_sistema") and str(self.config_sistema.obter_valor("damage_numbers")).lower() in ("ligado", "true", "1"):
+                            self.sistema_particulas.emitir_texto_dano(
+                                inim.x + getattr(inim, "largura", 28) / 2.0,
+                                inim.y,
+                                dano_exp,
+                                critico=(inim is alvo_direto)
+                            )
                         if not inim.vivo:
                             self.abates += 1
                             self.pontos += getattr(inim, "score_valor", 100)
@@ -516,6 +604,8 @@ class GameplayScene(BaseScene):
                             self.sistema_drops.gerar_drop_morte_inimigo(
                                 inim.x + getattr(inim, "largura", 28) / 2.0,
                                 inim.y + getattr(inim, "altura", 28) / 2.0,
+                                bonus_chance_drop=getattr(mods, "drop_chance_bonus", 0.0) if mods else 0.0,
+                                mult_chance_drop=getattr(mods, "drop_chance_mult", 1.0) if mods else 1.0,
                                 xp_base=getattr(inim, "xp_valor", 5),
                                 loot_enriquecido=(getattr(inim, "loot_enriquecido", False) or getattr(mods, "loot_enriquecido", False)),
                                 chance_arma=getattr(inim, "chance_drop_arma", None),
@@ -543,7 +633,10 @@ class GameplayScene(BaseScene):
                         else:
                             proj.ativo = False
 
-                        self.dano_total_causado += proj.dano
+                        is_crit = (crit_chance > 0.0 and random.random() < crit_chance)
+                        dano_final = int(round(proj.dano * (crit_mult if is_crit else 1.0)))
+
+                        self.dano_total_causado += dano_final
                         self.sistema_particulas.emitir_faiscas(
                             proj.x, proj.y,
                             dir_x=getattr(proj, "dir_x", 0.0),
@@ -551,9 +644,16 @@ class GameplayScene(BaseScene):
                             cor=(255, 220, 100),
                             qtd=6
                         )
+                        if hasattr(self, "config_sistema") and str(self.config_sistema.obter_valor("damage_numbers")).lower() in ("ligado", "true", "1"):
+                            self.sistema_particulas.emitir_texto_dano(
+                                inimigo.x + getattr(inimigo, "largura", 28) / 2.0,
+                                inimigo.y,
+                                dano_final,
+                                critico=is_crit
+                            )
 
                         inimigo.receber_dano(
-                            proj.dano,
+                            dano_final,
                             origem_x=proj.x,
                             origem_y=proj.y,
                             dir_ataque=(getattr(proj, "dir_x", 0.0), getattr(proj, "dir_y", 0.0))
@@ -568,6 +668,8 @@ class GameplayScene(BaseScene):
                             self.sistema_drops.gerar_drop_morte_inimigo(
                                 inimigo.x + getattr(inimigo, "largura", 28) / 2.0,
                                 inimigo.y + getattr(inimigo, "altura", 28) / 2.0,
+                                bonus_chance_drop=getattr(mods, "drop_chance_bonus", 0.0) if mods else 0.0,
+                                mult_chance_drop=getattr(mods, "drop_chance_mult", 1.0) if mods else 1.0,
                                 xp_base=getattr(inimigo, "xp_valor", 5),
                                 loot_enriquecido=(getattr(inimigo, "loot_enriquecido", False) or getattr(mods, "loot_enriquecido", False)),
                                 chance_arma=getattr(inimigo, "chance_drop_arma", None),
@@ -595,8 +697,9 @@ class GameplayScene(BaseScene):
         # 7. SISTEMA DE DROPS E PROGRESSÃO DE XP
         # =========================================================================
         mult_drops = getattr(mods, "drops_valor_mult", 1.0) if mods else 1.0
+        mult_xp = getattr(mods, "xp_ganho_mult", 1.0) if mods else 1.0
         self.sistema_drops.update(dt)
-        eventos_coleta = self.sistema_drops.coletar_jogador(self.jogador, mult_valor_drop=mult_drops)
+        eventos_coleta = self.sistema_drops.coletar_jogador(self.jogador, mult_valor_drop=mult_drops, mult_xp=mult_xp)
         for ev in eventos_coleta:
             drop_x = ev.get("x", self.jogador.x + 16)
             drop_y = ev.get("y", self.jogador.y + 16)

@@ -182,7 +182,7 @@ class SistemaDrops:
 
         self.drops = [d for d in self.drops if d.ativo and not d.coletado]
 
-    def coletar_jogador(self, jogador, mult_valor_drop: float = 1.0) -> list[dict]:
+    def coletar_jogador(self, jogador, mult_valor_drop: float = 1.0, mult_xp: float = 1.0) -> list[dict]:
         """
         Testa colisão do jogador com drops ativos.
         Aplica efeitos imediatos e retorna lista de eventos de coleta ocorridos.
@@ -215,12 +215,12 @@ class SistemaDrops:
                 elif drop.tipo == "xp":
                     sfx_nome = "sfx_pickup_xp"
                     if hasattr(jogador, "ganhar_xp"):
-                        jogador.ganhar_xp(valor_efetivo)
+                        jogador.ganhar_xp(valor_efetivo, mult_xp=mult_xp)
 
                 elif drop.tipo == "arma":
                     sfx_nome = "sfx_pickup_arma"
-                    from src.armas import Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas
-                    armas_especiais = [Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas]
+                    from src.armas import Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas, Railgun
+                    armas_especiais = [Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas, Railgun]
                     classe_arma = random.choice(armas_especiais)
                     nova_arma = classe_arma()
 

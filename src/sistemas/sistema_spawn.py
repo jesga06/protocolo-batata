@@ -65,10 +65,11 @@ class SistemaSpawn:
         # Minuto 10+ ou indefinido
         return (InimigoTank, f"MINI-BOSS: OVERLORD DA MEMÓRIA MK-{minuto}")
 
-    def escolher_arquetipo(self, tempo_s: float):
+    def escolher_arquetipo(self, tempo_s: float, permitir_ranged: bool = True):
         """
         Seleciona a classe do inimigo a ser gerado com base no tempo de sobrevivência.
         Distribuição suavizada com Tank reduzido para 5% dos spawns avançados.
+        Se permitir_ranged for False, InimigoRanged é substituído por InimigoPadrao.
         """
         if tempo_s < 25.0:
             return InimigoPadrao
@@ -91,7 +92,7 @@ class SistemaSpawn:
             if r < 0.25:
                 return InimigoRapido
             elif r < 0.43:
-                return InimigoRanged
+                return InimigoRanged if permitir_ranged else InimigoPadrao
             elif r < 0.57:
                 return InimigoPhasing
             elif r < 0.70:
@@ -142,11 +143,15 @@ class SistemaSpawn:
         view_w: float = float(LARGURA_TELA),
         view_h: float = float(ALTURA_TELA),
         arena_w: float = float(LARGURA_ARENA),
-        arena_h: float = float(ALTURA_ARENA)
+        arena_h: float = float(ALTURA_ARENA),
+        hp_mult: float = 1.0,
+        vel_mult: float = 1.0,
+        permitir_ranged: bool = True
     ) -> list:
         """
         Atualiza os cronômetros e gera novos inimigos com arquétipos variados,
         além de agendar o spawn obrigatório de Mini-Bosses a cada minuto.
+        Aplica multiplicadores de HP e Velocidade da configuração ativa.
         """
         self.tempo_decorrido += dt
         novos_inimigos = []
@@ -156,6 +161,8 @@ class SistemaSpawn:
         if minuto_atual > self.ultimo_minuto_elite and minuto_atual >= 1:
             self.ultimo_minuto_elite = minuto_atual
             cls_elite, nome_elite = self.obter_arquetipo_elite(minuto_atual)
+            if not permitir_ranged and cls_elite == InimigoRanged:
+                cls_elite = InimigoPadrao
             ex, ey = self.gerar_posicao_spawn(
                 camera_x=camera_x,
                 camera_y=camera_y,
@@ -165,6 +172,11 @@ class SistemaSpawn:
                 arena_h=arena_h
             )
             boss_elite = cls_elite(x=ex, y=ey, is_elite=True, nome_elite=nome_elite)
+            if hp_mult != 1.0:
+                boss_elite.hp_max = max(1, int(round(boss_elite.hp_max * hp_mult)))
+                boss_elite.hp = boss_elite.hp_max
+            if vel_mult != 1.0:
+                boss_elite.velocidade *= float(vel_mult)
             novos_inimigos.append(boss_elite)
 
         # 2. Verificação de Lote de Inimigos Regulares
@@ -185,8 +197,13 @@ class SistemaSpawn:
                         arena_w=arena_w,
                         arena_h=arena_h
                     )
-                    cls_arquetipo = self.escolher_arquetipo(self.tempo_decorrido)
+                    cls_arquetipo = self.escolher_arquetipo(self.tempo_decorrido, permitir_ranged=permitir_ranged)
                     novo = cls_arquetipo(x=sx, y=sy)
+                    if hp_mult != 1.0:
+                        novo.hp_max = max(1, int(round(novo.hp_max * hp_mult)))
+                        novo.hp = novo.hp_max
+                    if vel_mult != 1.0:
+                        novo.velocidade *= float(vel_mult)
                     novos_inimigos.append(novo)
 
         return novos_inimigos

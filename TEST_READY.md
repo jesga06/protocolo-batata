@@ -1,22 +1,30 @@
-# E2E Test Suite Ready: Protocolo: Batata
+# E2E Test Suite Ready
 
 ## Test Runner
-- Command: `.venv\Scripts\python.exe -m unittest discover -s tests`
-- Total Tests: 112 passed, 0 failures, 0 errors.
+- Command: `.venv\Scripts\python -m unittest discover -s tests` (or `python -m unittest discover -s tests`)
+- Expected: All 285 tests pass with exit code 0 in < 4 seconds.
 
-## Acceptance Criteria Validation Summary
-| Criteria # | Description | Status | Evidence |
-|:---:|---|:---:|---|
-| **AC1** | `tools/gerador_assets.py` executes successfully and populates `assets/` with programmatic PNGs and WAVs | **PASSED** | 83+ assets generated via Pillow and wave/struct; 0 empty files; verified by worker, challengers, auditor |
-| **AC2** | `python src/main.py` launches the game window without crashing | **PASSED** | PowerPPlay 2.0 `Window` & `SceneManager` initialized; 600+ frames headless simulation verified with 0 leaks/crashes |
-| **AC3** | The player can move and shoot projectiles | **PASSED** | WASD / Arrow keys with exact diagonal normalization ($0.7071$), arena boundary clamping, Pistol spawns `Projetil` |
-| **AC4** | Enemies spawn successfully, move directly towards the player, and can be destroyed | **PASSED** | Offscreen perimeter ring spawner with wave scaling; beeline unit vector AI; individual 0.4s contact cooldown; HP depletion; death and score increment |
-
-## Test Coverage Summary
+## Coverage Summary
 | Tier | Count | Description |
 |------|------:|-------------|
-| 1. Feature Coverage | 47 | Assets, Math, Player, Weapons, Enemies, Spawner unit tests |
-| 2. Boundary & Corner | 28 | Boundary clamping, division-by-zero, max population cap, simultaneous hits |
-| 3. Cross-Feature Integration | 18 | Weapon-enemy collisions, contact cooldown debouncing, spawner-camera sync |
-| 4. Real-World Simulation | 19 | 120-frame and 600-frame continuous headless gameplay simulations |
-| **Total** | **112** | **100% Passing** |
+| 1. Feature Coverage | 118 | R1 Neutral Defaults, 20 Gameplay Configs, 12 Consumable Cards |
+| 2. Boundary & Corner | 64 | Scavenger 9.99s vs 10.00s, Shield 1-hit/4s invulnerability, Golden Rule inequalities |
+| 3. Cross-Feature | 58 | Combinatorial multipliers, speed stacking, controls, fog of war, particle limits |
+| 4. Real-World Application | 45 | End-to-end combat loop, level-up card selection, save/load cycles, boss scenarios |
+| **Total** | **285** | 100% Pass Rate (0 Failures, 0 Errors) |
+
+## Feature Checklist
+| Feature | Tier 1 | Tier 2 | Tier 3 | Tier 4 |
+|---------|:------:|:------:|:------:|:------:|
+| F1: Neutral Defaults (R1) | 5 | 5 | ✓ | ✓ |
+| F2: Level-Up Neutral Unlock (R1) | 5 | 5 | ✓ | ✓ |
+| F3: Configs 1-5 Effects (R2) | 8 | 6 | ✓ | ✓ |
+| F4: Configs 6-10 Effects (R2) | 10 | 6 | ✓ | ✓ |
+| F5: Configs 11-15 Effects (R2) | 12 | 8 | ✓ | ✓ |
+| F6: Configs 16-20 Effects (R2) | 10 | 6 | ✓ | ✓ |
+| F7: Player Speed Consistency | 5 | 5 | ✓ | ✓ |
+| F8: Spawning & Combat Wiring | 8 | 5 | ✓ | ✓ |
+| F9: 12 Power-Ups Catalog (R3) | 12 | 5 | ✓ | ✓ |
+| F10: Golden Rule Bounds (R3) | 8 | 6 | ✓ | ✓ |
+| F11: Temporary Buffs & Shield | 10 | 6 | ✓ | ✓ |
+| F12: Scavenger 10s Delay Rule | 8 | 6 | ✓ | ✓ |

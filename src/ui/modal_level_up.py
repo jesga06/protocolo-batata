@@ -87,238 +87,216 @@ def obter_tier_nivel(nivel: int) -> int:
 
 
 def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
-    """Gera lista completa de cartas consumíveis escaladas para o tier informado."""
+    """
+    Gera lista completa de cartas consumíveis escaladas para o tier informado (12 cards no total):
+    1. cura_pequena: +25 HP
+    2. cura_grande: +50 HP
+    3. xp_pequeno: +15 XP
+    4. xp_grande: +30 XP
+    5. buff_dano_temp: +5% Dano por 15s
+    6. buff_vel_temp: +8% Velocidade por 15s
+    7. buff_cadencia_temp: +8% Cadência por 15s
+    8. buff_resistencia_temp: -8% Dano Recebido por 15s
+    9. escudo: Escudo Protetor (absorve 1 hit / 4s invulnerabilidade)
+    10. pulso_magnetico: Atrai todos os drops da arena
+    11. caixa_arma: Desbloqueia/equipa arma aleatória no Slot 3
+    12. caixa_equip: Desbloqueia/equipa drone/equipamento aleatório no Slot 4
+    """
+    card_cura_pequena = {
+        "tipo": "cura",
+        "subtipo": "cura_pequena",
+        "nome": "Cura Rápida",
+        "categoria": "Consumível",
+        "icone_asset": "drop_cura",
+        "valor": 25,
+        "buffs": ["Restaura +25 HP imediatamente"],
+        "nerfs": ["Nenhum sacrifício"],
+        "flavor_text": "Curativo biológico de ação rápida."
+    }
+
+    card_cura_grande = {
+        "tipo": "cura",
+        "subtipo": "cura_grande",
+        "nome": "Cura Enriquecida",
+        "categoria": "Consumível",
+        "icone_asset": "drop_cura",
+        "valor": 50,
+        "buffs": ["Restaura +50 HP imediatamente"],
+        "nerfs": ["Nenhum sacrifício"],
+        "flavor_text": "Regenerador celular enriquecido."
+    }
+
+    card_xp_pequeno = {
+        "tipo": "xp",
+        "subtipo": "xp_pequeno",
+        "nome": "Carga de Dados",
+        "categoria": "Consumível",
+        "icone_asset": "drop_xp",
+        "valor": 15,
+        "buffs": ["+15 XP instantâneo para progressão"],
+        "nerfs": ["Nenhum sacrifício"],
+        "flavor_text": "Pequeno cluster de dados brutos."
+    }
+
+    card_xp_grande = {
+        "tipo": "xp",
+        "subtipo": "xp_grande",
+        "nome": "Surto de Dados",
+        "categoria": "Consumível",
+        "icone_asset": "drop_xp",
+        "valor": 30,
+        "buffs": ["+30 XP instantâneo para progressão"],
+        "nerfs": ["Nenhum sacrifício"],
+        "flavor_text": "Banco de dados concentrado descompactado."
+    }
+
+    card_buff_dano = {
+        "tipo": "buff_dano_temp",
+        "subtipo": "buff_dano_temp",
+        "nome": "Calibração Térmica",
+        "categoria": "Consumível",
+        "icone_asset": "mira_crosshair",
+        "valor": 0.05,
+        "duracao": 15.0,
+        "buffs": ["+5% Dano em todas as armas por 15s"],
+        "nerfs": ["Duração temporária (15 segundos)"],
+        "flavor_text": "Ajuste fino nos percursores de tiro."
+    }
+
+    card_buff_vel = {
+        "tipo": "buff_vel_temp",
+        "subtipo": "buff_vel_temp",
+        "nome": "Sobrecarga de Passos",
+        "categoria": "Consumível",
+        "icone_asset": "icon_vsync",
+        "valor": 0.08,
+        "duracao": 15.0,
+        "buffs": ["+8% Velocidade de movimento por 15s"],
+        "nerfs": ["Duração temporária (15 segundos)"],
+        "flavor_text": "Lubrificação de emergência nas esteiras."
+    }
+
+    card_buff_cadencia = {
+        "tipo": "buff_cadencia_temp",
+        "subtipo": "buff_cadencia_temp",
+        "nome": "Acelerador de Gatilho",
+        "categoria": "Consumível",
+        "icone_asset": "icon_auto_fire",
+        "valor": 0.08,
+        "duracao": 15.0,
+        "buffs": ["+8% Cadência de Tiro (-8% Cooldown) por 15s"],
+        "nerfs": ["Duração temporária (15 segundos)"],
+        "flavor_text": "Mecanismo de repetição acelerado."
+    }
+
+    card_buff_resistencia = {
+        "tipo": "buff_resistencia_temp",
+        "subtipo": "buff_resistencia_temp",
+        "nome": "Matriz Protetora",
+        "categoria": "Consumível",
+        "icone_asset": "icon_fps_cap",
+        "valor": 0.08,
+        "duracao": 15.0,
+        "buffs": ["-8% Dano Recebido por 15s"],
+        "nerfs": ["Duração temporária (15 segundos)"],
+        "flavor_text": "Campos de dispersão de impacto."
+    }
+
+    card_escudo = {
+        "tipo": "escudo",
+        "subtipo": "escudo",
+        "nome": "Escudo Biológico",
+        "categoria": "Consumível",
+        "icone_asset": "drone_suporte",
+        "valor": 1,
+        "buffs": ["Absorve 1 hit / 4s invulnerabilidade ao quebrar"],
+        "nerfs": ["Uso único"],
+        "flavor_text": "Película bioenergética repelente."
+    }
+
+    card_pulso = {
+        "tipo": "pulso_magnetico",
+        "subtipo": "pulso_magnetico",
+        "nome": "Pulso Magnético",
+        "categoria": "Consumível",
+        "icone_asset": "drop_xp",
+        "valor": 1,
+        "buffs": ["Atrai instantaneamente todos os drops da arena"],
+        "nerfs": ["Uso instantâneo"],
+        "flavor_text": "Pulso eletromagnético sintonizado na frequência dos drops."
+    }
+
+    card_caixa_arma = {
+        "tipo": "caixa_arma",
+        "subtipo": "caixa_arma",
+        "nome": "Remessa Bélica",
+        "categoria": "Consumível",
+        "icone_asset": "drop_arma",
+        "valor": 1,
+        "buffs": ["Equipa arma especial aleatória no Slot 3"],
+        "nerfs": ["Até esgotar munição"],
+        "flavor_text": "Suprimento tático direto das fábricas."
+    }
+
+    card_caixa_equip = {
+        "tipo": "caixa_equip",
+        "subtipo": "caixa_equip",
+        "nome": "Drone Utilitário",
+        "categoria": "Consumível",
+        "icone_asset": "drop_equipamento",
+        "valor": 1,
+        "buffs": ["Spawna drone companheiro aleatório no Slot 4 (30s)"],
+        "nerfs": ["Duração de 30 segundos"],
+        "flavor_text": "Unidade orbital autônoma de assistência."
+    }
+
     if tier == 1:
         return [
-            {
-                "tipo": "cura",
-                "subtipo": "cura_leve",
-                "nome": "Cura Leve",
-                "categoria": "Consumível",
-                "icone_asset": "drop_cura",
-                "valor": 30,
-                "buffs": ["Restaura +30 HP imediatamente"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Curativo biológico de ação rápida."
-            },
-            {
-                "tipo": "vitalidade",
-                "subtipo": "vit_basica",
-                "nome": "Vitalidade Básica",
-                "categoria": "Consumível",
-                "icone_asset": "drop_cura",
-                "valor": 10,
-                "buffs": ["+10 Max HP permanente", "Cura +10 HP"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Reforço sutil nas fibras da batata."
-            },
-            {
-                "tipo": "xp_burst",
-                "subtipo": "xp_impulso",
-                "nome": "Impulso de XP",
-                "categoria": "Consumível",
-                "icone_asset": "drop_xp",
-                "valor": 20,
-                "buffs": ["+20 XP instantâneo para progressão"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Cristal de dados concentrado."
-            },
-            {
-                "tipo": "velocidade",
-                "subtipo": "vel_agilidade",
-                "nome": "Agilidade Básica",
-                "categoria": "Consumível",
-                "icone_asset": "icon_vsync",
-                "valor": 0.05,
-                "buffs": ["+5% Velocidade de movimento"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Lubrificação nas esteiras mecânicas."
-            },
-            {
-                "tipo": "potencia_dano",
-                "subtipo": "dano_calibracao",
-                "nome": "Calibração de Mira",
-                "categoria": "Consumível",
-                "icone_asset": "mira_crosshair",
-                "valor": 0.05,
-                "buffs": ["+5% Dano em todas as armas"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Ajuste fino nos percursores de tiro."
-            }
+            card_cura_pequena,
+            card_xp_pequeno,
+            card_buff_dano,
+            card_buff_vel,
+            card_buff_cadencia,
+            card_buff_resistencia
         ]
     elif tier == 2:
         return [
-            {
-                "tipo": "cura",
-                "subtipo": "cura_moderada",
-                "nome": "Cura Moderada",
-                "categoria": "Consumível",
-                "icone_asset": "drop_cura",
-                "valor": 55,
-                "buffs": ["Restaura +55 HP imediatamente"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Regenerador celular enriquecido."
-            },
-            {
-                "tipo": "vitalidade",
-                "subtipo": "vit_robusta",
-                "nome": "Vitalidade Robusta",
-                "categoria": "Consumível",
-                "icone_asset": "drop_cura",
-                "valor": 20,
-                "buffs": ["+20 Max HP permanente", "Cura +20 HP"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Casca de batata revestida em liga leve."
-            },
-            {
-                "tipo": "xp_burst",
-                "subtipo": "xp_carga",
-                "nome": "Carga de XP",
-                "categoria": "Consumível",
-                "icone_asset": "drop_xp",
-                "valor": 50,
-                "buffs": ["+50 XP instantâneo para progressão"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Banco de dados descompactado."
-            },
-            {
-                "tipo": "velocidade",
-                "subtipo": "vel_otimizada",
-                "nome": "Agilidade Otimizada",
-                "categoria": "Consumível",
-                "icone_asset": "icon_vsync",
-                "valor": 0.08,
-                "buffs": ["+8% Velocidade de movimento"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Motores de passo de alta frequência."
-            },
-            {
-                "tipo": "potencia_dano",
-                "subtipo": "dano_enriquecido",
-                "nome": "Munição Enriquecida",
-                "categoria": "Consumível",
-                "icone_asset": "mira_crosshair",
-                "valor": 0.10,
-                "buffs": ["+10% Dano em todas as armas"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Ogivas com ponta de tungstênio."
-            }
+            card_cura_pequena,
+            card_cura_grande,
+            card_xp_pequeno,
+            card_xp_grande,
+            card_buff_dano,
+            card_buff_vel,
+            card_buff_cadencia,
+            card_buff_resistencia,
+            card_escudo,
+            card_pulso
         ]
     elif tier == 3:
         return [
-            {
-                "tipo": "cura",
-                "subtipo": "cura_avancada",
-                "nome": "Cura Avançada",
-                "categoria": "Consumível",
-                "icone_asset": "drop_cura",
-                "valor": 85,
-                "buffs": ["Restaura +85 HP imediatamente"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Nanomáquinas de restauração tecidual."
-            },
-            {
-                "tipo": "vitalidade",
-                "subtipo": "vit_blindada",
-                "nome": "Vitalidade Blindada",
-                "categoria": "Consumível",
-                "icone_asset": "drop_cura",
-                "valor": 35,
-                "buffs": ["+35 Max HP permanente", "Cura +35 HP"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Revestimento de nanotubos de carbono."
-            },
-            {
-                "tipo": "xp_burst",
-                "subtipo": "xp_sobrecarga",
-                "nome": "Sobrecarga de XP",
-                "categoria": "Consumível",
-                "icone_asset": "drop_xp",
-                "valor": 100,
-                "buffs": ["+100 XP instantâneo"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Sobrecarga de conhecimento na memória cache."
-            },
-            {
-                "tipo": "velocidade",
-                "subtipo": "vel_turbo",
-                "nome": "Turbo Propulsor",
-                "categoria": "Consumível",
-                "icone_asset": "icon_vsync",
-                "valor": 0.12,
-                "buffs": ["+12% Velocidade de movimento"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Propulsores iônicos acoplados."
-            },
-            {
-                "tipo": "potencia_dano",
-                "subtipo": "dano_belico",
-                "nome": "Sobrecarga Bélica",
-                "categoria": "Consumível",
-                "icone_asset": "mira_crosshair",
-                "valor": 0.15,
-                "buffs": ["+15% Dano em todas as armas"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Cargas explosivas de precisão militar."
-            }
+            card_cura_grande,
+            card_xp_grande,
+            card_buff_dano,
+            card_buff_vel,
+            card_buff_cadencia,
+            card_buff_resistencia,
+            card_escudo,
+            card_pulso,
+            card_caixa_arma,
+            card_caixa_equip
         ]
     else:  # Tier 4 (Níveis 15-20+)
         return [
-            {
-                "tipo": "cura",
-                "subtipo": "cura_total",
-                "nome": "Cura Total",
-                "categoria": "Consumível",
-                "icone_asset": "drop_cura",
-                "valor": 999,
-                "buffs": ["Restaura 100% do HP (Vida máxima)"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Restauração total instantânea de integridade."
-            },
-            {
-                "tipo": "vitalidade",
-                "subtipo": "vit_titanica",
-                "nome": "Vitalidade Titânica",
-                "categoria": "Consumível",
-                "icone_asset": "drop_cura",
-                "valor": 50,
-                "buffs": ["+50 Max HP permanente", "Cura +50 HP"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Blindagem de titânio coloidal aeroespacial."
-            },
-            {
-                "tipo": "xp_burst",
-                "subtipo": "xp_quantico",
-                "nome": "Surto Quântico de XP",
-                "categoria": "Consumível",
-                "icone_asset": "drop_xp",
-                "valor": 200,
-                "buffs": ["+200 XP instantâneo para progressão"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Acesso root completo à matriz do sistema."
-            },
-            {
-                "tipo": "velocidade",
-                "subtipo": "vel_hiper",
-                "nome": "Hipervelocidade",
-                "categoria": "Consumível",
-                "icone_asset": "icon_vsync",
-                "valor": 0.18,
-                "buffs": ["+18% Velocidade de movimento"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Motores de dobra quântica portáteis."
-            },
-            {
-                "tipo": "potencia_dano",
-                "subtipo": "dano_maximo",
-                "nome": "Potência Máxima",
-                "categoria": "Consumível",
-                "icone_asset": "mira_crosshair",
-                "valor": 0.25,
-                "buffs": ["+25% Dano em todas as armas"],
-                "nerfs": ["Nenhum sacrifício"],
-                "flavor_text": "Armamento com aceleração de partículas."
-            }
+            card_cura_grande,
+            card_xp_grande,
+            card_buff_dano,
+            card_buff_vel,
+            card_buff_cadencia,
+            card_buff_resistencia,
+            card_escudo,
+            card_pulso,
+            card_caixa_arma,
+            card_caixa_equip
         ]
 
 
@@ -524,13 +502,7 @@ class ModalLevelUp:
         if card["tipo"] == "config":
             cid = card["config_id"]
             self.gerenciador_config.desbloquear_config(cid)
-            cdef = CONFIGURACOES_GAMEPLAY.get(cid)
-            if cdef and cdef.opcoes:
-                opcoes_disponiveis = [k for k in cdef.opcoes.keys() if k != str(cdef.valor_padrao)]
-                if opcoes_disponiveis:
-                    self.gerenciador_config.definir_valor(cid, opcoes_disponiveis[0])
-                elif "ligado" in cdef.opcoes:
-                    self.gerenciador_config.definir_valor(cid, "ligado")
+            # Mantém a configuração em seu valor padrão neutro (R1)
             self.gerenciador_config.salvar_arquivo(SAVE_FILE_PATH)
             self.config_pity_buffer = None
         elif card["tipo"] == "cura":
@@ -538,16 +510,55 @@ class ModalLevelUp:
                 if card.get("subtipo") == "cura_total":
                     self.jogador.curar(self.jogador.hp_max)
                 else:
-                    self.jogador.curar(card.get("valor", 30))
+                    self.jogador.curar(card.get("valor", 25))
+        elif card["tipo"] in ("xp", "xp_burst"):
+            if self.jogador:
+                val = card.get("valor", 15)
+                self.jogador.ganhar_xp(val)
+        elif card["tipo"] == "buff_dano_temp":
+            if self.jogador:
+                self.jogador.buff_dano_timer = float(card.get("duracao", 15.0))
+        elif card["tipo"] == "buff_vel_temp":
+            if self.jogador:
+                self.jogador.buff_vel_timer = float(card.get("duracao", 15.0))
+        elif card["tipo"] == "buff_cadencia_temp":
+            if self.jogador:
+                self.jogador.buff_cadencia_timer = float(card.get("duracao", 15.0))
+        elif card["tipo"] == "buff_resistencia_temp":
+            if self.jogador:
+                self.jogador.buff_resistencia_timer = float(card.get("duracao", 15.0))
+        elif card["tipo"] in ("escudo", "escudo_protetor"):
+            if self.jogador:
+                self.jogador.escudo_ativo = True
+        elif card["tipo"] == "pulso_magnetico":
+            if self.jogador:
+                drops_lista = []
+                if self.cena and hasattr(self.cena, "sistema_drops") and hasattr(self.cena.sistema_drops, "drops"):
+                    drops_lista = self.cena.sistema_drops.drops
+                self.jogador.aplicar_pulso_magnetico(drops_lista)
+        elif card["tipo"] == "caixa_arma":
+            if self.jogador:
+                from src.armas import Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas, Railgun
+                armas_especiais = [Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas, Railgun]
+                classe_arma = random.choice(armas_especiais)
+                nova_arma = classe_arma()
+                self.jogador.arma_especial = nova_arma
+                self.jogador.selecionar_slot(3)
+        elif card["tipo"] in ("caixa_equip", "caixa_equipamento"):
+            if self.jogador:
+                from src.equipamentos import DroneCura, DroneCombate, DroneSuporte
+                drones_classes = [DroneCura, DroneCombate, DroneSuporte]
+                classe_drone = random.choice(drones_classes)
+                novo_drone = classe_drone(tempo_vida=30.0)
+                if hasattr(self.jogador, "adicionar_drone"):
+                    self.jogador.adicionar_drone(novo_drone)
+                else:
+                    self.jogador.drone = novo_drone
         elif card["tipo"] == "vitalidade":
             if self.jogador:
                 val = card.get("valor", 10)
                 self.jogador.hp_max += val
                 self.jogador.curar(val)
-        elif card["tipo"] == "xp_burst":
-            if self.jogador:
-                val = card.get("valor", 20)
-                self.jogador.ganhar_xp(val)
         elif card["tipo"] == "velocidade":
             if self.jogador:
                 mult_vel = 1.0 + float(card.get("valor", 0.05))
