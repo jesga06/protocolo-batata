@@ -16,14 +16,17 @@ from src.sistemas.sistema_particulas import SistemaParticulas
 from src.sistemas.config_sistema import GerenciadorConfiguracoes
 from src.ui.hud import HUD
 from src.ui.modal_level_up import ModalLevelUp
+from src.ui.modal_overclock import ModalOverclock
 from src.ui.menu_configs import MenuConfigs
+from src.entidades.geladeira_tsunami import GeladeiraTsunami
 from PPlay.camera import Camera
 from PPlay.scenemanager import SceneManager
 from src.utils.constantes import (
     LARGURA_TELA, ALTURA_TELA, LARGURA_ARENA, ALTURA_ARENA,
     BRANCO, PRETO, CINZA_FUNDO, CINZA_PAINEL, CINZA_BORDA,
-    VERMELHO_HP, VERDE_CURA, AMARELO_XP, AZUL_CIANO, DOURADO,
-    TEMPO_VITORIA,
+    VERMELHO_HP, VERDE_CURA, AMARELO_XP, AZUL_CIANO, DOURADO, LARANJA_ALERTA,
+    ROXO_ACENTO, ROXO_CLARO, ROXO_ESCURO,
+    BOSS_GELADEIRA_LARGURA, BOSS_GELADEIRA_ALTURA,
     obter_caminho_asset, SAVE_FILE_PATH
 )
 from src.utils.math_utils import colisao_aabb, clamp, distancia, vetor_direcao
@@ -56,10 +59,20 @@ class GameplayScene(BaseScene):
         self.gerenciador_config = GerenciadorConfiguracoes()
         self.gerenciador_config.carregar_arquivo(SAVE_FILE_PATH)
         self.modal_level_up = ModalLevelUp(self.gerenciador_config, self.jogador, cena=self)
+        self.modal_overclock = ModalOverclock(self.jogador, cena=self)
         self.menu_configs = MenuConfigs(self.gerenciador_config, em_jogo=True, cena=self)
 
         # Registra callback de level-up no SistemaXP do jogador
         self.jogador.sistema_xp.registrar_callback_level_up(self._ao_subir_nivel)
+
+        # Chefe Final e Cutscene de Transição
+        self.chefe_final = None
+        self.boss_cutscene_ativa = False
+        self.boss_cutscene_fase = "none"
+        self.boss_cutscene_timer = 0.0
+        self.overlay_cutscene_alpha = 0.0
+        self.overlay_cutscene_cor = (255, 255, 255)
+        self.tiros_echo_pendentes = []
 
         # Sistemas de combate, spawn, drops, partículas e progressão
         self.config_sistema = self.gerenciador_config
@@ -219,13 +232,53 @@ class GameplayScene(BaseScene):
                 self.jogador.arma_especial._dano_original = self.jogador.arma_especial.dano
             self.jogador.arma_especial.dano = int(round(self.jogador.arma_especial._dano_original * mods.dano_armas_mult))
 
-    def loop(self):
-        dt = self.janela.delta_time()
-        # Em testes unitários headless ou loops ultra-rápidos (<10ms), avança 1 frame padrão a 60 FPS
-        if dt < 0.010:
-            dt = 1.0 / 60.0
-        # Clampa dt para evitar saltos quânticos em frames atípicos (máximo 100ms)
-        dt = min(dt, 0.1)
+    def iniciar_boss_cutscene(self):
+        """Inicia a sequência cinematográfica de introdução do Chefe Final (Geladeira Tsunami)."""
+        if self.boss_cutscene_ativa or (self.chefe_final is not None and self.chefe_final.vivo):
+            return
+        self.boss_cutscene_ativa = True
+        self.boss_cutscene_fase = "whiteout"
+        self.boss_cutscene_timer = 0.0
+        self.overlay_cutscene_cor = (255, 255, 255)
+        self.overlay_cutscene_alpha = 0.0
+        self.projeteis.clear()
+        try:
+            pygame.mixer.music.fadeout(2000)
+        except Exception:
+            pass
+
+    def spawn_direto_boss(self):
+        """Spawna diretamente a Geladeira Tsunami pronta para combate (atalho de debug)."""
+        self.inimigos = [e for e in self.inimigos if getattr(e, "is_boss_final", False)]
+        self.chefe_final = GeladeiraTsunami(
+            self.largura_arena / 2.0 - BOSS_GELADEIRA_LARGURA / 2.0,
+            self.altura_arena / 2.0 - BOSS_GELADEIRA_ALTURA / 2.0 - 50
+        )
+        self.chefe_final.estado = "fase1"
+        self.chefe_final.sub_estado = "stalk"
+        self.chefe_final.intro_concluida = True
+        self.inimigos.append(self.chefe_final)
+        try:
+            caminho_boss_music = obter_caminho_asset("musica_boss")
+            if os.path.isfile(caminho_boss_music):
+                pygame.mixer.music.load(caminho_boss_music)
+                pygame.mixer.music.set_volume(0.4)
+                pygame.mixer.music.play(-1, fade_ms=2000)
+        except Exception:
+            pass
+
+    def update(self, dt: float = None):
+        """Atualiza a lógica da cena de gameplay."""
+        return self.loop(dt=dt)
+
+    def loop(self, dt: float = None):
+        if dt is None:
+            dt = self.janela.delta_time()
+            # Em testes unitários headless ou loops ultra-rápidos (<10ms), avança 1 frame padrão a 60 FPS
+            if dt < 0.010:
+                dt = 1.0 / 60.0
+            # Clampa dt para evitar saltos quânticos em frames atípicos (máximo 100ms)
+            dt = min(dt, 0.1)
 
         # 0. Se o Menu de Debug estiver ativo, processa seus inputs e congela o jogo
         if hasattr(self, "menu_debug"):
@@ -233,7 +286,7 @@ class GameplayScene(BaseScene):
             if self.menu_debug.ativo:
                 self.pausado = True
                 return
-            elif not self.modal_level_up.ativo and not self.menu_configs.ativo and not self.game_over and not self.vitoria:
+            elif not self.modal_level_up.ativo and not self.modal_overclock.ativo and not self.menu_configs.ativo and not self.game_over and not self.vitoria:
                 self.pausado = False
 
         # Sincroniza estado de Modo Deus e Munição Infinita
@@ -242,28 +295,35 @@ class GameplayScene(BaseScene):
             if getattr(self.menu_debug, "municao_infinita", False) and self.jogador.arma_especial:
                 self.jogador.arma_especial.municao_atual = self.jogador.arma_especial.municao_max
 
-        # 1. Se o Modal de Level Up estiver ativo, processa seus inputs e congela o jogo
+        # 1. Se o Modal de Overclock estiver ativo, processa seus inputs e congela o jogo
+        if self.modal_overclock.ativo or self.modal_overclock.tempo_transicao_saida > 0.0:
+            self.modal_overclock.update(dt, self.teclado, self.mouse)
+            if not self.modal_overclock.ativo and not self.modal_level_up.ativo and not self.menu_configs.ativo and not (hasattr(self, "menu_debug") and self.menu_debug.ativo):
+                self.pausado = False
+            return
+
+        # 2. Se o Modal de Level Up estiver ativo, processa seus inputs e congela o jogo
         if self.modal_level_up.ativo:
             self.modal_level_up.update(dt, self.teclado, self.mouse)
-            if not self.modal_level_up.ativo and not self.menu_configs.ativo and not (hasattr(self, "menu_debug") and self.menu_debug.ativo):
+            if not self.modal_level_up.ativo and not self.modal_overclock.ativo and not self.menu_configs.ativo and not (hasattr(self, "menu_debug") and self.menu_debug.ativo):
                 self.pausado = False
             return
 
-        # 2. Se o Menu de Configurações estiver ativo, processa seus inputs e congela o jogo
+        # 3. Se o Menu de Configurações estiver ativo, processa seus inputs e congela o jogo
         if self.menu_configs.ativo:
             self.menu_configs.update(dt, self.teclado, self.mouse)
-            if not self.menu_configs.ativo and not self.modal_level_up.ativo and not (hasattr(self, "menu_debug") and self.menu_debug.ativo):
+            if not self.menu_configs.ativo and not self.modal_level_up.ativo and not self.modal_overclock.ativo and not (hasattr(self, "menu_debug") and self.menu_debug.ativo):
                 self.pausado = False
             return
 
-        # 3. Tecla 'C' para abrir o menu de configurações
+        # 4. Tecla 'C' para abrir o menu de configurações
         if (hasattr(self.teclado, "key_down") and (self.teclado.key_down("c") or self.teclado.key_down("C"))) or \
            (hasattr(self.teclado, "key_pressed") and (self.teclado.key_pressed("c") or self.teclado.key_pressed("C"))):
             self.menu_configs.abrir()
             self.pausado = True
             return
 
-        # 4. Controle de Pausa / Menu via Teclado (ESC)
+        # 5. Controle de Pausa / Menu via Teclado (ESC)
         if self.teclado.key_down("ESC"):
             if self.game_over or self.vitoria:
                 self._voltar_menu()
@@ -303,7 +363,7 @@ class GameplayScene(BaseScene):
             return
 
         # =========================================================================
-        # 1. ATUALIZAÇÃO DO JOGADOR E INPUTS
+        # 1. ATUALIZAÇÃO DO JOGADOR, CUTSCENE E INPUTS
         # =========================================================================
         timer_congelado = getattr(self.menu_debug, "timer_congelado", False) if hasattr(self, "menu_debug") else False
         if not timer_congelado:
@@ -318,8 +378,62 @@ class GameplayScene(BaseScene):
         # Atualiza sistema de partículas
         self.sistema_particulas.update(dt)
 
-        # Verificação da Condição de Vitória (600.0 segundos / 10 Minutos)
-        if TEMPO_VITORIA is not None and self.tempo_sobrevivencia >= TEMPO_VITORIA and self.jogador.vivo and not self.vitoria:
+        # Processamento da Cutscene do Chefe Final (Whiteout -> Blackout -> Música Fade-In -> Subida do Boss)
+        if self.boss_cutscene_ativa:
+            self.boss_cutscene_timer += dt
+            if self.boss_cutscene_fase == "whiteout":
+                self.overlay_cutscene_cor = (255, 255, 255)
+                self.overlay_cutscene_alpha = min(255, int(255 * (self.boss_cutscene_timer / 2.0)))
+                if self.boss_cutscene_timer >= 2.0:
+                    self.boss_cutscene_fase = "blackout"
+                    self.boss_cutscene_timer = 0.0
+                    self.overlay_cutscene_cor = (0, 0, 0)
+                    self.overlay_cutscene_alpha = 255
+                    # Purga inimigos comuns e centraliza jogador
+                    self.inimigos.clear()
+                    self.projeteis.clear()
+                    self.jogador.x = self.largura_arena / 2.0 - self.jogador.largura / 2.0
+                    self.jogador.y = self.altura_arena / 2.0 - self.jogador.altura / 2.0
+            elif self.boss_cutscene_fase == "blackout":
+                self.overlay_cutscene_cor = (0, 0, 0)
+                self.overlay_cutscene_alpha = 255
+                if self.boss_cutscene_timer >= 1.0:
+                    self.boss_cutscene_fase = "musica_in"
+                    self.boss_cutscene_timer = 0.0
+                    try:
+                        caminho_boss_music = obter_caminho_asset("musica_boss")
+                        if os.path.isfile(caminho_boss_music):
+                            pygame.mixer.music.load(caminho_boss_music)
+                            pygame.mixer.music.set_volume(0.4)
+                            pygame.mixer.music.play(-1, fade_ms=5000)
+                    except Exception:
+                        pass
+                    # Spawna o Chefe Final subindo a partir da borda inferior
+                    self.chefe_final = GeladeiraTsunami(
+                        self.largura_arena / 2.0 - BOSS_GELADEIRA_LARGURA / 2.0,
+                        self.altura_arena + 60.0
+                    )
+                    self.inimigos.append(self.chefe_final)
+            elif self.boss_cutscene_fase == "musica_in":
+                fade_prog = clamp(self.boss_cutscene_timer / 1.5, 0.0, 1.0)
+                self.overlay_cutscene_alpha = int(255 * (1.0 - fade_prog))
+                if self.chefe_final is not None and getattr(self.chefe_final, "intro_concluida", False):
+                    self.boss_cutscene_ativa = False
+                    self.boss_cutscene_fase = "combate"
+                    self.overlay_cutscene_alpha = 0.0
+
+        # Processamento de disparos de eco (Multithreading Overclock)
+        novos_ecos = []
+        for echo in self.tiros_echo_pendentes:
+            echo["timer"] -= dt
+            if echo["timer"] <= 0.0:
+                self.projeteis.extend(echo["projeteis"])
+            else:
+                novos_ecos.append(echo)
+        self.tiros_echo_pendentes = novos_ecos
+
+        # Condição de vitória: disparada exclusivamente pela derrota do Chefe Final (Geladeira Tsunami)
+        if self.chefe_final is not None and not self.chefe_final.vivo and not self.vitoria and self.jogador.vivo:
             self.vitoria = True
             self._acionar_vitoria()
             return
@@ -399,6 +513,9 @@ class GameplayScene(BaseScene):
         mult_dano_buff = 1.20 if getattr(self.jogador, "buff_dano_timer", 0.0) > 0.0 else 1.0
         crit_chance = getattr(mods, "critico_chance", 0.0) if mods else 0.0
         crit_mult = getattr(mods, "critico_mult", 2.0) if mods else 2.0
+        if getattr(self.jogador, "overvolt", False):
+            crit_chance = max(crit_chance, 0.30)
+            crit_mult = max(crit_mult, 2.0)
 
         # Direção de mira do jogador
         dir_mira_x, dir_mira_y = vetor_direcao(centro_jogador_x, centro_jogador_y, mouse_mundo_x, mouse_mundo_y)
@@ -440,6 +557,22 @@ class GameplayScene(BaseScene):
                         self.projeteis.extend(novos_tiros)
                         self.aplicar_shake(12.0, 0.3)
                         self.buffer_tiro = 0.0
+
+                        if getattr(self.jogador, "multithreading", False):
+                            tiros_copia = []
+                            ang_var = random.uniform(-0.10, 0.10)
+                            cos_v, sin_v = math.cos(ang_var), math.sin(ang_var)
+                            for p in novos_tiros:
+                                vx_n = p.vx * cos_v - p.vy * sin_v
+                                vy_n = p.vx * sin_v + p.vy * cos_v
+                                tiros_copia.append(Projetil(
+                                    x=p.x, y=p.y, vx=vx_n, vy=vy_n, dano=p.dano,
+                                    tempo_vida=p.tempo_vida, dono=p.dono,
+                                    largura=p.largura, altura=p.altura, cor=p.cor,
+                                    perfurante=getattr(p, "perfurante", False),
+                                    explosivo=getattr(p, "explosivo", False)
+                                ))
+                            self.tiros_echo_pendentes.append({"timer": 0.08, "projeteis": tiros_copia})
             else:
                 if getattr(arma_ativa, "carregando", False):
                     arma_ativa.cancelar_carga()
@@ -461,6 +594,22 @@ class GameplayScene(BaseScene):
                                 p.dano = max(1, math.ceil(p.dano * mult_dano_buff))
                         self.projeteis.extend(novos_tiros)
                         self.buffer_tiro = 0.0
+
+                        if getattr(self.jogador, "multithreading", False):
+                            tiros_copia = []
+                            ang_var = random.uniform(-0.10, 0.10)
+                            cos_v, sin_v = math.cos(ang_var), math.sin(ang_var)
+                            for p in novos_tiros:
+                                vx_n = p.vx * cos_v - p.vy * sin_v
+                                vy_n = p.vx * sin_v + p.vy * cos_v
+                                tiros_copia.append(Projetil(
+                                    x=p.x, y=p.y, vx=vx_n, vy=vy_n, dano=p.dano,
+                                    tempo_vida=p.tempo_vida, dono=p.dono,
+                                    largura=p.largura, altura=p.altura, cor=p.cor,
+                                    perfurante=getattr(p, "perfurante", False),
+                                    explosivo=getattr(p, "explosivo", False)
+                                ))
+                            self.tiros_echo_pendentes.append({"timer": 0.08, "projeteis": tiros_copia})
             elif isinstance(arma_ativa, Melee) or getattr(arma_ativa, "slot", None) == 1:
                 if hasattr(arma_ativa, "pode_atirar") and arma_ativa.pode_atirar():
                     ang_mira = math.atan2(mouse_mundo_y - centro_jogador_y, mouse_mundo_x - centro_jogador_x)
@@ -492,12 +641,21 @@ class GameplayScene(BaseScene):
                                     dano_melee,
                                     critico=is_crit
                                 )
+
+                            inim.receber_dano(
+                                dano_melee,
+                                origem_x=centro_jogador_x,
+                                origem_y=centro_jogador_y,
+                                dir_ataque=(math.cos(ang_mira), math.sin(ang_mira))
+                            )
+
                             if not getattr(inim, "vivo", True):
                                 self.abates += 1
                                 self.pontos += getattr(inim, "score_valor", 100)
                                 if getattr(inim, "is_elite", False):
                                     self.aplicar_shake(14.0, 0.35)
                                     self.sistema_particulas.emitir_debris(inim.x + 14, inim.y + 14, cor=(255, 215, 0), qtd=16)
+                                is_boss_lutando = (self.chefe_final is not None and self.chefe_final.vivo)
                                 self.sistema_drops.gerar_drop_morte_inimigo(
                                     inim.x + getattr(inim, "largura", 28) / 2.0,
                                     inim.y + getattr(inim, "altura", 28) / 2.0,
@@ -507,7 +665,8 @@ class GameplayScene(BaseScene):
                                     loot_enriquecido=(getattr(inim, "loot_enriquecido", False) or getattr(mods, "loot_enriquecido", False)),
                                     chance_arma=getattr(inim, "chance_drop_arma", None),
                                     chance_equipamento=getattr(inim, "chance_drop_equipamento", None),
-                                    is_elite=getattr(inim, "is_elite", False)
+                                    is_elite=getattr(inim, "is_elite", False),
+                                    modo_boss=is_boss_lutando
                                 )
                     self.buffer_tiro = 0.0
                     self.efeitos_melee.append({
@@ -538,6 +697,22 @@ class GameplayScene(BaseScene):
                             self.projeteis.extend(novos_tiros)
                             self.buffer_tiro = 0.0
 
+                            if getattr(self.jogador, "multithreading", False):
+                                tiros_copia = []
+                                ang_var = random.uniform(-0.10, 0.10)
+                                cos_v, sin_v = math.cos(ang_var), math.sin(ang_var)
+                                for p in novos_tiros:
+                                    vx_n = p.vx * cos_v - p.vy * sin_v
+                                    vy_n = p.vx * sin_v + p.vy * cos_v
+                                    tiros_copia.append(Projetil(
+                                        x=p.x, y=p.y, vx=vx_n, vy=vy_n, dano=p.dano,
+                                        tempo_vida=p.tempo_vida, dono=p.dono,
+                                        largura=p.largura, altura=p.altura, cor=p.cor,
+                                        perfurante=getattr(p, "perfurante", False),
+                                        explosivo=getattr(p, "explosivo", False)
+                                    ))
+                                self.tiros_echo_pendentes.append({"timer": 0.08, "projeteis": tiros_copia})
+
         # Atualiza o tempo de vida dos efeitos visuais de Melee
         for ef in self.efeitos_melee:
             ef["tempo"] -= dt
@@ -547,24 +722,35 @@ class GameplayScene(BaseScene):
         # 3. SPAWNER DE INIMIGOS
         # =========================================================================
         spawn_liberado = getattr(self.menu_debug, "spawn_natural_ativo", True) if hasattr(self, "menu_debug") else True
-        if spawn_liberado:
+        if spawn_liberado and not self.boss_cutscene_ativa:
             permitir_ranged = (str(self.config_sistema.obter_valor("inimigos_ranged")).lower() in ("ligado", "true", "1")) if hasattr(self, "config_sistema") and self.config_sistema else False
             hp_inim_mult = getattr(mods, "hp_inimigos_mult", 1.0) if mods else 1.0
             vel_inim_mult = getattr(mods, "vel_inimigos_mult", 1.0) if mods else 1.0
-            novos_inimigos = self.spawner.update(
-                dt=dt,
-                camera_x=self.camera.x,
-                camera_y=self.camera.y,
-                total_inimigos_vivos=len(self.inimigos),
-                view_w=LARGURA_TELA,
-                view_h=ALTURA_TELA,
-                arena_w=self.largura_arena,
-                arena_h=self.altura_arena,
-                hp_mult=hp_inim_mult,
-                vel_mult=vel_inim_mult,
-                permitir_ranged=permitir_ranged
-            )
-            self.inimigos.extend(novos_inimigos)
+            possui_elite = any(getattr(e, "is_elite", False) and getattr(e, "vivo", True) for e in self.inimigos) or (self.chefe_final is not None and self.chefe_final.vivo)
+
+            if self.chefe_final is not None and self.chefe_final.vivo:
+                # Durante o Chefe Final: 20% de densidade com apenas InimigoPadrao e teto de 10 mobs
+                from src.entidades.inimigo_padrao import InimigoPadrao
+                mobs_comuns = [e for e in self.inimigos if e.vivo and e != self.chefe_final]
+                if len(mobs_comuns) < 10 and random.random() < 0.20 * dt * 4.0:
+                    ex, ey = self.spawner.gerar_posicao_spawn(self.camera.x, self.camera.y)
+                    self.inimigos.append(InimigoPadrao(x=ex, y=ey))
+            else:
+                novos_inimigos = self.spawner.update(
+                    dt=dt,
+                    camera_x=self.camera.x,
+                    camera_y=self.camera.y,
+                    total_inimigos_vivos=len([e for e in self.inimigos if e.vivo]),
+                    view_w=LARGURA_TELA,
+                    view_h=ALTURA_TELA,
+                    arena_w=self.largura_arena,
+                    arena_h=self.altura_arena,
+                    hp_mult=hp_inim_mult,
+                    vel_mult=vel_inim_mult,
+                    permitir_ranged=permitir_ranged,
+                    possui_elite_vivo=possui_elite
+                )
+                self.inimigos.extend(novos_inimigos)
 
         # =========================================================================
         # 4. FÍSICA DOS PROJÉTEIS
@@ -583,7 +769,19 @@ class GameplayScene(BaseScene):
         mult_dano_inim_base = getattr(mods, "dano_inimigos_mult", 1.0) if mods else 1.0
 
         for inimigo in self.inimigos:
+            if inimigo == self.chefe_final:
+                continue
             inimigo.update(dt, (centro_jogador_x, centro_jogador_y))
+            if getattr(inimigo, "superaqueceu", False) and not getattr(inimigo, "toast_superaquecimento_exibido", False):
+                inimigo.toast_superaquecimento_exibido = True
+                self.toasts_coleta.append({
+                    "texto": "O MINI-BOSS SUPERAQUECEU. VOCÊ NÃO RECEBERÁ RECOMPENSAS POR ELE.",
+                    "cor": LARANJA_ALERTA,
+                    "x": self.jogador.x + 16,
+                    "y": self.jogador.y - 25,
+                    "tempo": 4.0,
+                    "tempo_max": 4.0
+                })
             if hasattr(inimigo, "obter_projeteis_pendentes"):
                 novos_tiros = inimigo.obter_projeteis_pendentes()
                 if novos_tiros:
@@ -603,6 +801,31 @@ class GameplayScene(BaseScene):
                     self.jogador.receber_dano(dano_efetivo_contato)
                     inimigo.cooldown_contato_atual = getattr(inimigo, "cooldown_contato_max", 0.4)
                     self.aplicar_shake(6.0, 0.15)
+
+        # Atualização do Chefe Final (Geladeira Tsunami)
+        # O update() é permitido durante ESTADO_INTRO mesmo com boss_cutscene_ativa=True,
+        # pois o timer_intro precisa decrementar para que intro_concluida se torne True
+        # e a fase "musica_in" da cutscene possa concluir. Bloqueia apenas o combate ativo.
+        _boss_pode_atualizar = (
+            self.chefe_final is not None
+            and self.chefe_final.vivo
+            and (not self.boss_cutscene_ativa or self.chefe_final.estado == "intro")
+        )
+        if _boss_pode_atualizar:
+            self.chefe_final.update(dt, (centro_jogador_x, centro_jogador_y), limite_arena=(self.largura_arena, self.altura_arena))
+            novos_tiros_boss = self.chefe_final.obter_projeteis_pendentes()
+            if novos_tiros_boss:
+                self.projeteis.extend(novos_tiros_boss)
+
+        # Checa dano de contato com o Chefe Final (sempre que o chefe estiver vivo e em combate)
+        if (self.chefe_final is not None and self.chefe_final.vivo
+                and not self.boss_cutscene_ativa and not self.pausado):
+            if colisao_aabb(self.chefe_final.x, self.chefe_final.y, self.chefe_final.largura, self.chefe_final.altura,
+                            self.jogador.x, self.jogador.y, self.jogador.largura, self.jogador.altura):
+                if getattr(self.chefe_final, "cooldown_contato_atual", 0.0) <= 0.0:
+                    self.jogador.receber_dano(self.chefe_final.dano_contato)
+                    self.chefe_final.cooldown_contato_atual = getattr(self.chefe_final, "cooldown_contato_max", 0.4)
+                    self.aplicar_shake(10.0, 0.25)
 
         # =========================================================================
         # 6. COLISÕES: PROJÉTEIS VS INIMIGOS E DETONAÇÃO DE EXPLOSIVOS
@@ -678,6 +901,7 @@ class GameplayScene(BaseScene):
                             if getattr(inim, "is_elite", False):
                                 self.aplicar_shake(14.0, 0.35)
                                 self.sistema_particulas.emitir_debris(inim.x + 14, inim.y + 14, cor=(255, 215, 0), qtd=16)
+                            is_boss_lutando = (self.chefe_final is not None and self.chefe_final.vivo)
                             self.sistema_drops.gerar_drop_morte_inimigo(
                                 inim.x + getattr(inim, "largura", 28) / 2.0,
                                 inim.y + getattr(inim, "altura", 28) / 2.0,
@@ -687,7 +911,8 @@ class GameplayScene(BaseScene):
                                 loot_enriquecido=(getattr(inim, "loot_enriquecido", False) or getattr(mods, "loot_enriquecido", False)),
                                 chance_arma=getattr(inim, "chance_drop_arma", None),
                                 chance_equipamento=getattr(inim, "chance_drop_equipamento", None),
-                                is_elite=getattr(inim, "is_elite", False)
+                                is_elite=getattr(inim, "is_elite", False),
+                                modo_boss=is_boss_lutando
                             )
             else:
                 for inimigo in self.inimigos:
@@ -742,6 +967,7 @@ class GameplayScene(BaseScene):
                             if getattr(inimigo, "is_elite", False):
                                 self.aplicar_shake(14.0, 0.35)
                                 self.sistema_particulas.emitir_debris(inimigo.x + 14, inimigo.y + 14, cor=(255, 215, 0), qtd=16)
+                            is_boss_lutando = (self.chefe_final is not None and self.chefe_final.vivo)
                             self.sistema_drops.gerar_drop_morte_inimigo(
                                 inimigo.x + getattr(inimigo, "largura", 28) / 2.0,
                                 inimigo.y + getattr(inimigo, "altura", 28) / 2.0,
@@ -751,7 +977,8 @@ class GameplayScene(BaseScene):
                                 loot_enriquecido=(getattr(inimigo, "loot_enriquecido", False) or getattr(mods, "loot_enriquecido", False)),
                                 chance_arma=getattr(inimigo, "chance_drop_arma", None),
                                 chance_equipamento=getattr(inimigo, "chance_drop_equipamento", None),
-                                is_elite=getattr(inimigo, "is_elite", False)
+                                is_elite=getattr(inimigo, "is_elite", False),
+                                modo_boss=is_boss_lutando
                             )
                         break
 
@@ -787,9 +1014,10 @@ class GameplayScene(BaseScene):
         # =========================================================================
         # 7. SISTEMA DE DROPS E PROGRESSÃO DE XP
         # =========================================================================
+        is_boss_lutando = (self.chefe_final is not None and self.chefe_final.vivo)
         mult_drops = getattr(mods, "drops_valor_mult", 1.0) if mods else 1.0
         mult_xp = getattr(mods, "xp_ganho_mult", 1.0) if mods else 1.0
-        self.sistema_drops.update(dt)
+        self.sistema_drops.update(dt, pausar_despawn=is_boss_lutando)
         eventos_coleta = self.sistema_drops.coletar_jogador(self.jogador, mult_valor_drop=mult_drops, mult_xp=mult_xp)
         for ev in eventos_coleta:
             drop_x = ev.get("x", self.jogador.x + 16)
@@ -840,6 +1068,17 @@ class GameplayScene(BaseScene):
                     "tempo": 1.8,
                     "tempo_max": 1.8
                 })
+            elif ev["tipo"] == "overclock":
+                self.toasts_coleta.append({
+                    "texto": "NÚCLEO DE OVERCLOCK OBTIDO!",
+                    "cor": (215, 140, 255),
+                    "x": self.jogador.x + 16,
+                    "y": self.jogador.y - 20,
+                    "tempo": 2.5,
+                    "tempo_max": 2.5
+                })
+                self.modal_overclock.abrir()
+                self.pausado = True
 
         # Atualiza IA do Scavenger APENAS se a configuração "coleta_inimiga" estiver desbloqueada e ligada
         mods = self.config_sistema.obter_modificadores() if hasattr(self, "config_sistema") and self.config_sistema else None
@@ -991,8 +1230,10 @@ class GameplayScene(BaseScene):
         # =========================================================================
         self._desenhar_hud_tela(hud_visivel=hud_visivel)
 
-        # Overlays modais de Level Up, Menu de Configurações, Debug, Vitória, Game Over e Pausa
-        if self.modal_level_up.ativo:
+        # Overlays modais de Level Up, Overclock, Menu de Configurações, Debug, Vitória, Game Over e Pausa
+        if self.modal_overclock.ativo or self.modal_overclock.tempo_transicao_saida > 0.0:
+            self.modal_overclock.draw(screen)
+        elif self.modal_level_up.ativo:
             self.modal_level_up.draw(screen)
         elif self.menu_configs.ativo:
             self.menu_configs.draw(screen)
@@ -1004,6 +1245,13 @@ class GameplayScene(BaseScene):
             self._desenhar_overlay_game_over()
         elif self.pausado:
             self._desenhar_overlay_pausa()
+
+        # Overlay da Cutscene do Chefe Final (Whiteout / Blackout)
+        if self.boss_cutscene_ativa and self.overlay_cutscene_alpha > 0:
+            cutscene_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
+            r, g, b = self.overlay_cutscene_cor
+            cutscene_surf.fill((r, g, b, int(self.overlay_cutscene_alpha)))
+            screen.blit(cutscene_surf, (0, 0))
 
     def _desenhar_hp_in_world(self):
         """Desenha a barra de HP perfeitamente centralizada abaixo do avatar da batata."""
@@ -1120,6 +1368,46 @@ class GameplayScene(BaseScene):
                     screen.blit(sombra_b, (badge_rect.x + 1, badge_rect.y + 1))
                     screen.blit(badge_surf, badge_rect)
 
+            # Slot 3B secundário (desbloqueado com BIOS Modding)
+            if getattr(self.jogador, "bios_modding", False):
+                sx3b = 16 + 2 * (slot_tam + 6)
+                sy3b = 14 + slot_tam + 4
+                bg_cor = (35, 20, 50)
+                borda_cor = ROXO_ACENTO
+                pygame.draw.rect(screen, bg_cor, (sx3b, sy3b, slot_tam, slot_tam), border_radius=4)
+                pygame.draw.rect(screen, borda_cor, (sx3b, sy3b, slot_tam, slot_tam), width=1, border_radius=4)
+
+                num_surf = fonte_slots.render("3B", True, ROXO_CLARO)
+                screen.blit(num_surf, (sx3b + 3, sy3b + 2))
+
+                if getattr(self.jogador, "arma_especial_secundaria", None) is not None:
+                    nome_arma = getattr(self.jogador.arma_especial_secundaria, "nome", "")
+                    icone_img = None
+                    if "Minigun" in nome_arma:
+                        icone_img = self._obter_sprite_icone("arma_minigun")
+                    elif "Escopeta" in nome_arma or "Shotgun" in nome_arma:
+                        icone_img = self._obter_sprite_icone("arma_shotgun")
+                    elif "Rifle" in nome_arma:
+                        icone_img = self._obter_sprite_icone("arma_rifle")
+                    elif "Foguetes" in nome_arma:
+                        icone_img = self._obter_sprite_icone("arma_foguetes")
+                    elif "Granadas" in nome_arma:
+                        icone_img = self._obter_sprite_icone("arma_granadas")
+                    elif "Railgun" in nome_arma:
+                        icone_img = self._obter_sprite_icone("arma_rifle")
+
+                    if icone_img:
+                        screen.blit(icone_img, (sx3b + (slot_tam - 26) // 2, sy3b + (slot_tam - 26) // 2))
+
+                    mun = getattr(self.jogador.arma_especial_secundaria, "municao_atual", 0)
+                    texto_badge = str(mun)
+                    cor_badge = AMARELO_XP if mun > 5 else VERMELHO_HP
+                    badge_surf = fonte_municao.render(texto_badge, True, cor_badge)
+                    badge_rect = badge_surf.get_rect(right=sx3b + slot_tam - 2, bottom=sy3b + slot_tam - 1)
+                    sombra_b = fonte_municao.render(texto_badge, True, (0, 0, 0))
+                    screen.blit(sombra_b, (badge_rect.x + 1, badge_rect.y + 1))
+                    screen.blit(badge_surf, badge_rect)
+
             # 2. Cronômetro de Sobrevivência e Contador de Abates (Top-Center)
             minutos = int(self.tempo_sobrevivencia // 60)
             segundos = int(self.tempo_sobrevivencia % 60)
@@ -1140,9 +1428,9 @@ class GameplayScene(BaseScene):
             if hasattr(self, "hud") and self.hud is not None:
                 self.hud.desenhar_barra_xp(screen, self.jogador.sistema_xp)
 
-            # 4. Barra de Mini-Boss / Chefe Elite (Top-Center: top=78, 400x12 px)
+            # 4. Barra de Mini-Boss / Chefe Final (Top-Center: top=78, 400x12 px)
             if hasattr(self, "hud") and self.hud is not None:
-                boss_ativo = next((e for e in self.inimigos if getattr(e, "is_elite", False) and e.vivo), None)
+                boss_ativo = self.chefe_final if (self.chefe_final is not None and self.chefe_final.vivo) else next((e for e in self.inimigos if getattr(e, "is_elite", False) and e.vivo), None)
                 if boss_ativo is not None:
                     self.hud.desenhar_barra_boss(screen, boss_ativo, visivel=hud_visivel)
 
@@ -1162,7 +1450,7 @@ class GameplayScene(BaseScene):
         fonte_timer = self._fontes["timer"]
 
         start_x = 16
-        start_y = 62
+        start_y = 110 if getattr(self.jogador, "bios_modding", False) else 62
         badge_w = 112
         badge_h = 16
 
