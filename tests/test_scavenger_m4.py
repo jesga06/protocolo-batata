@@ -164,9 +164,10 @@ class TestGameplayCollisionsM4(unittest.TestCase):
         # Posiciona 2 inimigos a 30px do epicentro da explosão (dentro de 80px)
         e1 = InimigoPadrao(x=220.0, y=200.0, hp=50)
         e2 = InimigoPadrao(x=230.0, y=200.0, hp=50)
-        # Posiciona 1 inimigo distante a 300px (fora do raio de 80px)
-        e3 = InimigoPadrao(x=500.0, y=200.0, hp=50)
-
+        # Posiciona 1 inimigo distante a 400px (fora do raio de 80px)
+        e3 = InimigoPadrao(x=600.0, y=200.0, hp=50)
+        cena.jogador.x = 500.0
+        cena.jogador.y = 200.0
         cena.inimigos = [e1, e2, e3]
 
         # Projétil de Lança-Foguetes em (200, 200) com raio de explosão 80px e dano 60

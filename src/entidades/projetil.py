@@ -83,11 +83,13 @@ class Projetil:
         lista_inimigos: list,
         jogador=None,
         config_sistema=None,
-        mult_dano_explosivo: float = 1.0
+        mult_dano_explosivo: float = 1.0,
+        alvo_direto=None
     ) -> list:
         """
         Executa a detonação em área (AoE) do projétil explosivo.
-        Causa dano e knockback radial a todos os inimigos no raio de explosão.
+        O alvo de impacto direto recebe 2x de dano (Direct Hit Bonus).
+        Demais inimigos no raio de explosão recebem 1x de dano.
         Se Fogo Amigo estiver ativo, aplica dano ao jogador e/ou ao drone do jogador.
         """
         if not self.explosivo or self.raio_explosao <= 0.0:
@@ -99,14 +101,20 @@ class Projetil:
 
         inimigos_afetados = []
         for inimigo in lista_inimigos:
-            if not getattr(inimigo, "vivo", True):
+            if not getattr(inimigo, "vivo", True) or getattr(inimigo, "em_fase", False):
                 continue
 
             e_cx = inimigo.x + getattr(inimigo, "largura", 28) / 2.0
             e_cy = inimigo.y + getattr(inimigo, "altura", 28) / 2.0
             dist = distancia(centro_x, centro_y, e_cx, e_cy)
 
-            if dist <= self.raio_explosao:
+            if inimigo is alvo_direto:
+                # Bônus de impacto direto: 2x de dano
+                inimigo.receber_dano(dano_efetivo * 2)
+                inimigos_afetados.append(inimigo)
+                if hasattr(inimigo, "aplicar_knockback"):
+                    inimigo.aplicar_knockback(self.dir_x, self.dir_y, forca=350.0)
+            elif dist <= self.raio_explosao:
                 inimigo.receber_dano(dano_efetivo)
                 inimigos_afetados.append(inimigo)
 

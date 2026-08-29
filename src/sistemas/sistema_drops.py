@@ -130,11 +130,11 @@ class SistemaDrops:
             novos_drops.append(drop_cura)
             self.drops.append(drop_cura)
 
-        # 3. Chance de Drop de Arma / Caixa Especial
+        # 3. Chance de Drop de Arma / Caixa Especial (+40% de frequência)
         if chance_arma is not None:
-            chance_arma_base = float(chance_arma)
+            chance_arma_base = float(chance_arma) * 1.40
         else:
-            chance_arma_base = 0.15 if (loot_enriquecido or tipo_inimigo == "ranged") else 0.04
+            chance_arma_base = (0.15 if (loot_enriquecido or tipo_inimigo == "ranged") else 0.04) * 1.40
 
         chance_arma_efetiva = min(1.0, (chance_arma_base + bonus_chance_drop) * mult_chance_drop)
         if random.random() < chance_arma_efetiva:
@@ -151,11 +151,11 @@ class SistemaDrops:
             novos_drops.append(drop_arma)
             self.drops.append(drop_arma)
 
-        # 4. Chance de Drop de Equipamento / Drone
+        # 4. Chance de Drop de Equipamento / Drone (+40% de frequência)
         if chance_equipamento is not None:
-            chance_equip_base = float(chance_equipamento)
+            chance_equip_base = float(chance_equipamento) * 1.40
         else:
-            chance_equip_base = 0.15 if (loot_enriquecido or tipo_inimigo == "ranged") else 0.03
+            chance_equip_base = (0.15 if (loot_enriquecido or tipo_inimigo == "ranged") else 0.03) * 1.40
 
         chance_equip_efetiva = min(1.0, (chance_equip_base + bonus_chance_drop) * mult_chance_drop)
         if random.random() < chance_equip_efetiva:

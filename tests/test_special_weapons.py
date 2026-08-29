@@ -29,28 +29,28 @@ from src.sistemas.config_sistema import GerenciadorConfiguracoes
 
 
 class TestMinigun(unittest.TestCase):
-    """Testa a Minigun (150 munições, 0.08s cooldown, dano 6, alta cadência)."""
+    """Testa a Minigun (225 munições, 0.08s cooldown, dano 6, alta cadência)."""
 
     def test_minigun_inicializacao_e_atributos(self):
         m = Minigun()
         self.assertEqual(m.nome, "Minigun")
         self.assertEqual(m.dano, 6)
         self.assertEqual(m.cooldown, 0.08)
-        self.assertEqual(m.municao_max, 150)
-        self.assertEqual(m.municao_atual, 150)
+        self.assertEqual(m.municao_max, 225)
+        self.assertEqual(m.municao_atual, 225)
         self.assertFalse(m.municao_infinita)
         self.assertEqual(m.slot, 3)
 
     def test_minigun_disparo_consumo_e_esgotamento(self):
         m = Minigun()
-        # Dispara 150 vezes com update de cooldown entre disparos
-        for i in range(150):
+        # Dispara 225 vezes com update de cooldown entre disparos
+        for i in range(225):
             self.assertTrue(m.pode_atirar())
             tiros = m.disparar(100.0, 100.0, 300.0, 100.0)
             self.assertEqual(len(tiros), 1)
             self.assertEqual(tiros[0].dano, 6)
             self.assertEqual(tiros[0].sprite_key, "projetil_minigun")
-            self.assertEqual(m.municao_atual, 150 - (i + 1))
+            self.assertEqual(m.municao_atual, 225 - (i + 1))
             m.update(0.08)
 
         # Munição zerada: não pode mais atirar
@@ -61,15 +61,15 @@ class TestMinigun(unittest.TestCase):
 
 
 class TestShotgun(unittest.TestCase):
-    """Testa a Escopeta (30 cartuchos, 0.70s cooldown, 5 pellets em leque de 0.35 rad, dano 10/pellet)."""
+    """Testa a Escopeta (45 cartuchos, 0.70s cooldown, 9 pellets em leque de 0.45 rad, dano 10/pellet)."""
 
     def test_shotgun_inicializacao_e_atributos(self):
         s = Shotgun()
         self.assertEqual(s.nome, "Escopeta")
         self.assertEqual(s.dano, 10)
         self.assertEqual(s.cooldown, 0.70)
-        self.assertEqual(s.municao_max, 30)
-        self.assertEqual(s.municao_atual, 30)
+        self.assertEqual(s.municao_max, 45)
+        self.assertEqual(s.municao_atual, 45)
         self.assertEqual(s.pellets, 9)
         self.assertAlmostEqual(s.spread_angulo, 0.45)
 
@@ -80,7 +80,7 @@ class TestShotgun(unittest.TestCase):
         # Disparo horizontal para a direita: (100, 100) -> (300, 100)
         tiros = s.disparar(100.0, 100.0, 300.0, 100.0)
         self.assertEqual(len(tiros), 9)
-        self.assertEqual(s.municao_atual, 29)
+        self.assertEqual(s.municao_atual, 44)
 
         # Valida que todos os pellets têm dano 10 e sprite correto
         for proj in tiros:
@@ -95,14 +95,14 @@ class TestShotgun(unittest.TestCase):
 
 
 class TestRifleAssalto(unittest.TestCase):
-    """Testa o Rifle de Assalto (60 tiros, 0.18s cooldown, dano 18, 650 px/s)."""
+    """Testa o Rifle de Assalto (90 tiros, 0.18s cooldown, dano 18, 650 px/s)."""
 
     def test_rifle_inicializacao_e_disparo_preciso(self):
         r = RifleAssalto()
         self.assertEqual(r.dano, 18)
         self.assertEqual(r.cooldown, 0.18)
-        self.assertEqual(r.municao_max, 60)
-        self.assertEqual(r.municao_atual, 60)
+        self.assertEqual(r.municao_max, 90)
+        self.assertEqual(r.municao_atual, 90)
 
         tiros = r.disparar(100.0, 200.0, 500.0, 200.0)
         self.assertEqual(len(tiros), 1)
@@ -121,7 +121,7 @@ class TestArmasExplosivas(unittest.TestCase):
         foguetes = LancaFoguetes()
         self.assertEqual(foguetes.dano, 60)
         self.assertEqual(foguetes.raio_explosao, 80.0)
-        self.assertEqual(foguetes.municao_max, 12)
+        self.assertEqual(foguetes.municao_max, 18)
 
         tiros = foguetes.disparar(100.0, 100.0, 300.0, 100.0)
         self.assertEqual(len(tiros), 1)
@@ -147,7 +147,7 @@ class TestArmasExplosivas(unittest.TestCase):
         granadas = LancaGranadas()
         self.assertEqual(granadas.dano, 45)
         self.assertEqual(granadas.raio_explosao, 65.0)
-        self.assertEqual(granadas.municao_max, 16)
+        self.assertEqual(granadas.municao_max, 24)
 
         tiros = granadas.disparar(100.0, 100.0, 200.0, 100.0)
         proj = tiros[0]
