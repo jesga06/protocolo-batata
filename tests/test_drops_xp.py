@@ -160,7 +160,7 @@ class TestScavengerAISelector(unittest.TestCase):
         scavenger_sys = SistemaScavenger(dist_maxima=600.0)
 
         drop = ItemDrop(x=500.0, y=500.0, tipo="xp", valor=10)
-        drop.tempo_decorrido = 5.5  # Elegível (>5.0s)
+        drop.tempo_decorrido = 10.5  # Elegível (>=10.0s)
 
         # Inimigos a distâncias: 50, 100, 150 (3 mais próximos - DEVEM SER EXCLUÍDOS)
         e1 = InimigoPadrao(x=550.0 - 14, y=500.0 - 14)

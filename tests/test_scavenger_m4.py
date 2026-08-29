@@ -44,9 +44,9 @@ class TestScavengerMechanicsM4(unittest.TestCase):
         self.sistema_drops = SistemaDrops()
 
     def test_scavenger_drop_grace_period_and_target_selection(self):
-        """Drop só é elegível após 1.0s de chão e seleciona 1 inimigo elegível."""
-        drop = ItemDrop(x=400.0, y=300.0, tipo="xp", valor=10, tempo_vida=10.0, tempo_scavenger=1.0)
-        drop.tempo_decorrido = 0.5  # 0.5s < 1.0s -> Não elegível
+        """Drop só é elegível após 10.0s de chão e seleciona 1 inimigo elegível."""
+        drop = ItemDrop(x=400.0, y=300.0, tipo="xp", valor=10, tempo_vida=60.0, tempo_scavenger=10.0)
+        drop.tempo_decorrido = 5.0  # 5.0s < 10.0s -> Não elegível
 
         # 5 inimigos
         e1 = InimigoPadrao(x=420.0, y=300.0)
@@ -59,8 +59,8 @@ class TestScavengerMechanicsM4(unittest.TestCase):
         # Com drop em carência, nenhum scavenger é selecionado
         self.assertIsNone(self.scavenger_sys.selecionar_scavenger(todos, [drop]))
 
-        # Avança tempo do drop para 5.2s (> 5.0s)
-        drop.tempo_decorrido = 5.2
+        # Avança tempo do drop para 10.2s (>= 10.0s)
+        drop.tempo_decorrido = 10.2
         escolhido = self.scavenger_sys.selecionar_scavenger(todos, [drop])
 
         # Exclui e1, e2, e3 (3 mais próximos); apenas e4 ou e5 podem ser escolhidos
@@ -70,7 +70,7 @@ class TestScavengerMechanicsM4(unittest.TestCase):
     def test_scavenger_eats_drop_without_player_reward(self):
         """Quando o Scavenger alcança o drop, o item é consumido e o jogador não recebe nada."""
         drop = ItemDrop(x=200.0, y=200.0, tipo="xp", valor=10)
-        drop.tempo_decorrido = 5.5
+        drop.tempo_decorrido = 10.5
 
         # Cria inimigo muito próximo ao drop para alcançar rapidamente
         e1 = InimigoPadrao(x=205.0, y=205.0)

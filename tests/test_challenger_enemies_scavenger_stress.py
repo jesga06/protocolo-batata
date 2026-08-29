@@ -377,12 +377,12 @@ class TestChallengerScavengerAndDropStackingStress(unittest.TestCase):
 
     def test_drop_age_scavenger_selection_boundaries_099_vs_101(self):
         """
-        Verifica o período de carência do drop para seleção de scavenger (1.0s):
-        - Drop com idade 0.99s: não elegível, nenhum scavenger selecionado.
-        - Drop com idade 1.01s: elegível, scavenger selecionado entre candidatos válidos.
+        Verifica o período de carência do drop para seleção de scavenger (10.0s):
+        - Drop com idade 9.99s: não elegível, nenhum scavenger selecionado.
+        - Drop com idade 10.01s: elegível, scavenger selecionado entre candidatos válidos.
         """
-        drop = ItemDrop(x=200.0, y=200.0, tipo="xp", valor=10, tempo_scavenger=1.0)
-        drop.tempo_decorrido = 0.99
+        drop = ItemDrop(x=200.0, y=200.0, tipo="xp", valor=10, tempo_scavenger=10.0)
+        drop.tempo_decorrido = 9.99
 
         # 4 inimigos válidos
         e1 = InimigoPadrao(x=210.0, y=200.0)
@@ -391,12 +391,12 @@ class TestChallengerScavengerAndDropStackingStress(unittest.TestCase):
         e4 = InimigoPadrao(x=300.0, y=200.0)
         todos = [e1, e2, e3, e4]
 
-        # 1. Com 0.99s, nenhum scavenger é selecionado
+        # 1. Com 9.99s, nenhum scavenger é selecionado
         self.assertFalse(drop.elegivel_scavenger())
         self.assertIsNone(self.scavenger_sys.selecionar_scavenger(todos, [drop]))
 
-        # 2. Com 1.01s, drop torna-se elegível e e4 é selecionado (os 3 mais próximos e1, e2, e3 são excluídos)
-        drop.tempo_decorrido = 1.01
+        # 2. Com 10.01s, drop torna-se elegível e e4 é selecionado (os 3 mais próximos e1, e2, e3 são excluídos)
+        drop.tempo_decorrido = 10.01
         self.assertTrue(drop.elegivel_scavenger())
         escolhido = self.scavenger_sys.selecionar_scavenger(todos, [drop])
         self.assertEqual(escolhido, e4)
@@ -408,8 +408,8 @@ class TestChallengerScavengerAndDropStackingStress(unittest.TestCase):
         - Com exatamente 3 inimigos na tela: nenhum pode ser scavenger (pool restante = 0).
         - Com 4 inimigos na tela: exatamente o 4º mais distante é selecionado.
         """
-        drop = ItemDrop(x=100.0, y=100.0, tipo="xp", valor=10, tempo_scavenger=1.0)
-        drop.tempo_decorrido = 1.5
+        drop = ItemDrop(x=100.0, y=100.0, tipo="xp", valor=10, tempo_scavenger=10.0)
+        drop.tempo_decorrido = 10.5
 
         e1 = InimigoPadrao(x=120.0, y=100.0)  # dist 20px
         e2 = InimigoPadrao(x=140.0, y=100.0)  # dist 40px
@@ -429,8 +429,8 @@ class TestChallengerScavengerAndDropStackingStress(unittest.TestCase):
 
     def test_scavenger_distance_cutoff_above_600px(self):
         """Inimigos a mais de 600px de distância do drop são descartados da seleção."""
-        drop = ItemDrop(x=0.0, y=0.0, tipo="xp", valor=10, tempo_scavenger=1.0)
-        drop.tempo_decorrido = 1.5
+        drop = ItemDrop(x=0.0, y=0.0, tipo="xp", valor=10, tempo_scavenger=10.0)
+        drop.tempo_decorrido = 10.5
 
         e1 = InimigoPadrao(x=50.0, y=0.0)
         e2 = InimigoPadrao(x=100.0, y=0.0)
@@ -444,8 +444,8 @@ class TestChallengerScavengerAndDropStackingStress(unittest.TestCase):
 
     def test_scavenger_eats_drop_no_player_reward(self):
         """Quando o Scavenger alcança o drop, o item é destruído sem conceder recompensas ao jogador."""
-        drop = ItemDrop(x=200.0, y=200.0, tipo="cura", valor=35, tempo_scavenger=1.0)
-        drop.tempo_decorrido = 1.5
+        drop = ItemDrop(x=200.0, y=200.0, tipo="cura", valor=35, tempo_scavenger=10.0)
+        drop.tempo_decorrido = 10.5
 
         jogador = Jogador(x=50.0, y=50.0, hp_max=150)
         jogador.hp = 50
