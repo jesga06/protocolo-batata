@@ -63,7 +63,7 @@ class HUD:
             cor_texto = DOURADO
         else:
             proximo_custo = sistema_xp.xp_para_proximo_nivel(sistema_xp.nivel)
-            texto_str = f"Nv. {sistema_xp.nivel} — {sistema_xp.xp_atual}/{proximo_custo} XP"
+            texto_str = f"Nv. {sistema_xp.nivel} - {sistema_xp.xp_atual}/{proximo_custo} XP"
             cor_texto = BRANCO
 
         # Sombra de texto para alta legibilidade

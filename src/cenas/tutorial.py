@@ -1,4 +1,4 @@
-﻿"""
+"""
 Cena de Tutorial e Guia de Combate — Protocolo: Batata
 Explica os controles, HUD, tipos de drops, arquétipos de inimigos e mecânicas de jogo sem uso de emojis.
 """
@@ -50,7 +50,7 @@ class TutorialScene(BaseScene):
 
         # Cabeçalho
         fonte_tit = pygame.font.SysFont("Arial", 22, bold=True)
-        tit_surf = fonte_tit.render("GUIA DE SOBREVIVÊNCIA — PROTOCOLO: BATATA", True, DOURADO)
+        tit_surf = fonte_tit.render("GUIA DE SOBREVIVENCIA - PROTOCOLO: BATATA", True, DOURADO)
         tit_rect = tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=45)
         screen.blit(tit_surf, tit_rect)
 

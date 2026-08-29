@@ -305,7 +305,7 @@ class MenuConfigs:
             area_visivel_h = 370
             self.max_scroll_y = max(0.0, float(espaco_total - area_visivel_h))
 
-            # Botões de scroll ▲ e ▼
+            # Botoes de scroll para cima e para baixo
             btn_up_rect = pygame.Rect(455, 140, 20, 24)
             btn_down_rect = pygame.Rect(455, 480, 20, 24)
 
@@ -636,8 +636,8 @@ class MenuConfigs:
                 y_pos += 13
             y_pos += 6
 
-        # Seção de Benefícios Ativos (▲ BUFFS)
-        buff_header = self._fonte_cat.render("▲ BENEFÍCIOS:", True, VERDE_CURA)
+        # Seção de Benefícios Ativos (BUFFS)
+        buff_header = self._fonte_cat.render("BENEFICIOS:", True, VERDE_CURA)
         screen.blit(buff_header, (rect.x + 12, y_pos))
         y_pos += 14
 
@@ -654,8 +654,8 @@ class MenuConfigs:
 
         y_pos += 6
 
-        # Seção de Sacrifícios (▼ NERF)
-        nerf_header = self._fonte_cat.render("▼ SACRIFÍCIO / NERF:", True, LARANJA_ALERTA)
+        # Seção de Sacrifícios (NERF)
+        nerf_header = self._fonte_cat.render("SACRIFICIO / NERF:", True, LARANJA_ALERTA)
         screen.blit(nerf_header, (rect.x + 12, y_pos))
         y_pos += 14
 
@@ -678,7 +678,7 @@ class MenuConfigs:
         pygame.draw.rect(screen, (45, 55, 75), area_rect, width=1, border_radius=6)
 
         # 1. Sliders de Áudio
-        tit_audio = self._fonte_det_tit.render("🔊 ÁUDIO & MÚSICA", True, DOURADO)
+        tit_audio = self._fonte_det_tit.render("AUDIO & MUSICA", True, DOURADO)
         screen.blit(tit_audio, (70, 125))
 
         sliders_info = [
@@ -730,7 +730,7 @@ class MenuConfigs:
         pygame.draw.line(screen, (40, 50, 70), (70, 345), (730, 345), 1)
 
         # 2. Acessibilidade: S4 Filtro Daltônico
-        tit_s4 = self._fonte_det_tit.render("👁️ S4: FILTRO DALTÔNICO", True, DOURADO)
+        tit_s4 = self._fonte_det_tit.render("S4: FILTRO DALTONICO", True, DOURADO)
         screen.blit(tit_s4, (70, 360))
 
         opcoes_s4 = ["desligado", "protanopia", "deuteranopia", "tritanopia"]
@@ -749,7 +749,7 @@ class MenuConfigs:
             screen.blit(lbl_surf, lbl_surf.get_rect(center=btn_rect.center))
 
         # 3. Acessibilidade: S5 Escala Global
-        tit_s5 = self._fonte_det_tit.render("🔍 S5: ESCALA GLOBAL", True, DOURADO)
+        tit_s5 = self._fonte_det_tit.render("S5: ESCALA GLOBAL", True, DOURADO)
         screen.blit(tit_s5, (70, 425))
 
         opcoes_s5 = ["100%", "125%", "150%"]

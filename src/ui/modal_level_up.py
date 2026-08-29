@@ -760,9 +760,9 @@ class ModalLevelUp:
             div_y = rect.top + 106
             pygame.draw.line(screen, (45, 55, 75), (rect.x + 10, div_y), (rect.right - 10, div_y), 1)
 
-            # 4.7 Seção de Benefícios (▲ BENEFÍCIOS em Verde)
+            # 4.7 Seção de Benefícios (BENEFÍCIOS em Verde)
             y_cursor = div_y + 6
-            buff_header_surf = self._fonte_card_sec.render("▲ BENEFÍCIOS:", True, VERDE_CURA)
+            buff_header_surf = self._fonte_card_sec.render("BENEFICIOS:", True, VERDE_CURA)
             screen.blit(buff_header_surf, (rect.x + 8, y_cursor))
             y_cursor += 14
 
@@ -774,9 +774,9 @@ class ModalLevelUp:
                     screen.blit(b_surf, (rect.x + 10, y_cursor))
                     y_cursor += 13
 
-            # 4.8 Seção de Sacrifícios / Nerfs (▼ SACRIFÍCIO em Laranja)
+            # 4.8 Seção de Sacrifícios / Nerfs (SACRIFÍCIO em Laranja)
             y_cursor = max(y_cursor + 4, div_y + 88)
-            nerf_header_surf = self._fonte_card_sec.render("▼ SACRIFÍCIO:", True, LARANJA_ALERTA)
+            nerf_header_surf = self._fonte_card_sec.render("SACRIFICIO:", True, LARANJA_ALERTA)
             screen.blit(nerf_header_surf, (rect.x + 8, y_cursor))
             y_cursor += 14
 
