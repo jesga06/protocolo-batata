@@ -122,7 +122,7 @@ class TestEmpiricalChallengerMultipliers(unittest.TestCase):
         # Executa update do jogador
         jogador.update(0.1)
 
-        esperado_total = jogador.velocidade_base * esperado_config * 1.08 * 1.15 * 1.15
+        esperado_total = jogador.velocidade_base * esperado_config * 1.12 * 1.15 * 1.15
         self.assertAlmostEqual(jogador.velocidade_atual, esperado_total, places=3)
 
     def test_extreme_enemy_debuffs_and_scaling_combination(self):
@@ -213,8 +213,8 @@ class TestPlayerSpeedLifecycleStress(unittest.TestCase):
             jogador.update(dt)
             velocidades_registradas.append(jogador.velocidade_atual)
 
-        # Fase 1: Frames 0 a 100 (0 a ~1.66s) -> Config (1.25) + Buff (1.08) + Drone (1.15) = 1.5525
-        vel_fase1 = jogador.velocidade_base * 1.25 * 1.08 * 1.15
+        # Fase 1: Frames 0 a 100 (0 a ~1.66s) -> Config (1.25) + Buff (1.12) + Drone (1.15) = 1.61
+        vel_fase1 = jogador.velocidade_base * 1.25 * 1.12 * 1.15
         for v in velocidades_registradas[0:100]:
             self.assertAlmostEqual(v, vel_fase1, places=3)
 

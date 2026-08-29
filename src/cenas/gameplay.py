@@ -360,7 +360,7 @@ class GameplayScene(BaseScene):
             disparar_agora = (self.buffer_tiro > 0.0)
 
         hitbox_mult = getattr(mods, "hitbox_projeteis_mult", 1.0) if mods else 1.0
-        mult_dano_buff = 1.05 if getattr(self.jogador, "buff_dano_timer", 0.0) > 0.0 else 1.0
+        mult_dano_buff = 1.20 if getattr(self.jogador, "buff_dano_timer", 0.0) > 0.0 else 1.0
         crit_chance = getattr(mods, "critico_chance", 0.0) if mods else 0.0
         crit_mult = getattr(mods, "critico_mult", 2.0) if mods else 2.0
 
@@ -381,7 +381,7 @@ class GameplayScene(BaseScene):
                                     p.width = p.largura
                                     p.height = p.altura
                                 if mult_dano_buff != 1.0:
-                                    p.dano = max(1, int(round(p.dano * mult_dano_buff)))
+                                    p.dano = max(1, math.ceil(p.dano * mult_dano_buff))
                             self.projeteis.extend(novos_tiros)
                             self.buffer_tiro = 0.0
                 elif isinstance(arma_ativa, Melee) or getattr(arma_ativa, "slot", None) == 1:
@@ -398,7 +398,7 @@ class GameplayScene(BaseScene):
                             for inim in afetados:
                                 dano_base = getattr(arma_ativa, "dano", 10)
                                 is_crit = (crit_chance > 0.0 and random.random() < crit_chance)
-                                dano_melee = int(round(dano_base * mult_dano_buff * (crit_mult if is_crit else 1.0)))
+                                dano_melee = math.ceil(dano_base * mult_dano_buff * (crit_mult if is_crit else 1.0))
                                 self.dano_total_causado += dano_melee
                                 self.sistema_particulas.emitir_faiscas(
                                     inim.x + getattr(inim, "largura", 28) / 2.0,
@@ -457,7 +457,7 @@ class GameplayScene(BaseScene):
                                         p.width = p.largura
                                         p.height = p.altura
                                     if mult_dano_buff != 1.0:
-                                        p.dano = max(1, int(round(p.dano * mult_dano_buff)))
+                                        p.dano = max(1, math.ceil(p.dano * mult_dano_buff))
                                 self.projeteis.extend(novos_tiros)
                                 self.buffer_tiro = 0.0
 
@@ -1050,6 +1050,55 @@ class GameplayScene(BaseScene):
                 boss_ativo = next((e for e in self.inimigos if getattr(e, "is_elite", False) and e.vivo), None)
                 if boss_ativo is not None:
                     self.hud.desenhar_barra_boss(screen, boss_ativo, visivel=hud_visivel)
+
+            # 5. Indicadores visuais de Buffs Ativos na Tela
+            self._desenhar_buffs_ativos(screen)
+
+    def _desenhar_buffs_ativos(self, screen):
+        """Renderiza badges e indicadores com timers de todos os buffs ativos abaixo do inventário."""
+        if not hasattr(self.jogador, "obter_buffs_ativos"):
+            return
+
+        buffs = self.jogador.obter_buffs_ativos()
+        if not buffs:
+            return
+
+        fonte_buff = pygame.font.SysFont("Arial", 9, bold=True)
+        fonte_timer = pygame.font.SysFont("Arial", 9, bold=True)
+
+        start_x = 16
+        start_y = 62
+        badge_w = 112
+        badge_h = 16
+
+        for b in buffs:
+            bg_rect = (start_x, start_y, badge_w, badge_h)
+            cor_bg = b.get("cor_bg", (30, 30, 40))
+            cor_borda = b.get("cor", (255, 255, 255))
+            pygame.draw.rect(screen, cor_bg, bg_rect, border_radius=3)
+            pygame.draw.rect(screen, cor_borda, bg_rect, width=1, border_radius=3)
+
+            # Barra de progresso do timer
+            timer_val = b.get("timer", 0.0)
+            duracao_max = b.get("duracao", 15.0)
+            if duracao_max > 0.0 and timer_val < 900.0:
+                prog = clamp(timer_val / duracao_max, 0.0, 1.0)
+                bar_w = int((badge_w - 4) * prog)
+                if bar_w > 0:
+                    pygame.draw.rect(screen, cor_borda, (start_x + 2, start_y + badge_h - 2, bar_w, 1))
+
+            # Texto do nome do buff
+            nome_surf = fonte_buff.render(b["nome"], True, cor_borda)
+            screen.blit(nome_surf, (start_x + 4, start_y + 2))
+
+            # Texto do timer
+            if timer_val < 900.0:
+                timer_str = f"{timer_val:.1f}s"
+                timer_surf = fonte_timer.render(timer_str, True, BRANCO)
+                t_rect = timer_surf.get_rect(right=start_x + badge_w - 4, centery=start_y + badge_h // 2 - 1)
+                screen.blit(timer_surf, t_rect)
+
+            start_y += badge_h + 3
 
         # 5. Toasts de Coleta Flutuantes
         if self._fonte_toast is None:

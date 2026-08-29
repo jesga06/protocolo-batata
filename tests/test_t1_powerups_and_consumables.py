@@ -15,6 +15,7 @@ Valida:
 
 import os
 import sys
+import math
 import unittest
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
@@ -110,7 +111,7 @@ class TestPowerupsAndConsumablesCatalog(unittest.TestCase):
         self.assertAlmostEqual(self.jogador.buff_dano_timer, 14.0)
 
     def test_06_buff_vel_temp_15s(self):
-        """6. buff_vel_temp ativa timer de 15.0s e aplica +8% à velocidade atual."""
+        """6. buff_vel_temp ativa timer de 15.0s e aplica +12% à velocidade atual."""
         vel_base = self.jogador.velocidade_base
         card = {"tipo": "buff_vel_temp", "duracao": 15.0}
         self.modal.cards_sorteados = [card]
@@ -120,7 +121,7 @@ class TestPowerupsAndConsumablesCatalog(unittest.TestCase):
         self.assertEqual(self.jogador.buff_vel_timer, 15.0)
 
         self.jogador.update(0.1)
-        self.assertAlmostEqual(self.jogador.velocidade_atual, vel_base * 1.08)
+        self.assertAlmostEqual(self.jogador.velocidade_atual, vel_base * 1.12)
 
     def test_07_buff_cadencia_temp_15s(self):
         """7. buff_cadencia_temp ativa timer de 15.0s."""
@@ -132,7 +133,7 @@ class TestPowerupsAndConsumablesCatalog(unittest.TestCase):
         self.assertEqual(self.jogador.buff_cadencia_timer, 15.0)
 
     def test_08_buff_resistencia_temp_15s(self):
-        """8. buff_resistencia_temp reduz dano sofrido em 8%."""
+        """8. buff_resistencia_temp reduz dano sofrido em 15%."""
         card = {"tipo": "buff_resistencia_temp", "duracao": 15.0}
         self.modal.cards_sorteados = [card]
         self.modal.ativo = True
@@ -140,11 +141,11 @@ class TestPowerupsAndConsumablesCatalog(unittest.TestCase):
         self.modal.selecionar_card(0)
         self.assertEqual(self.jogador.buff_resistencia_timer, 15.0)
 
-        # Recebe 100 de dano -> sofre 92
+        # Recebe 100 de dano -> sofre 85 (redução de 15%)
         self.jogador.hp_max = 200
         self.jogador.hp = 200
         self.jogador.receber_dano(100)
-        self.assertEqual(self.jogador.hp, 200 - 92)
+        self.assertEqual(self.jogador.hp, 200 - 85)
 
     def test_09_escudo_protetor_absorbs_hit_and_grants_invulnerability(self):
         """9. escudo absorve 1 hit e concede 4.0s de invulnerabilidade."""
@@ -207,6 +208,37 @@ class TestPowerupsAndConsumablesCatalog(unittest.TestCase):
         self.assertGreaterEqual(len(self.jogador.drones), 1)
         drone = self.jogador.drones[0]
         self.assertEqual(drone.tempo_vida, 30.0)
+
+    def test_13_obter_buffs_ativos_and_hud_rendering(self):
+        """13. Jogador.obter_buffs_ativos() retorna badges formatados e renderiza no HUD."""
+        self.jogador.buff_dano_timer = 12.0
+        self.jogador.buff_cadencia_timer = 9.5
+        self.jogador.buff_vel_timer = 14.0
+        self.jogador.buff_resistencia_timer = 6.0
+        self.jogador.escudo_ativo = True
+
+        buffs = self.jogador.obter_buffs_ativos()
+        self.assertEqual(len(buffs), 5)
+        ids = [b["id"] for b in buffs]
+        self.assertIn("dano", ids)
+        self.assertIn("cadencia", ids)
+        self.assertIn("velocidade", ids)
+        self.assertIn("resistencia", ids)
+        self.assertIn("escudo", ids)
+
+        # Renderização do HUD com buffs
+        from src.cenas.gameplay import GameplayScene
+        cena = GameplayScene()
+        screen = pygame.Surface((800, 600))
+        cena.jogador = self.jogador
+        cena._desenhar_buffs_ativos(screen)
+
+    def test_14_damage_buff_math_ceil_guarantees_minimum_step(self):
+        """14. Dano com math.ceil garante aumento real em armas de 10 de dano base (10 -> 12)."""
+        base_dano = 10
+        mult_buff = 1.20
+        dano_final = math.ceil(base_dano * mult_buff)
+        self.assertEqual(dano_final, 12, "10 * 1.20 com ceil deve ser exatamente 12.")
 
 
 if __name__ == "__main__":

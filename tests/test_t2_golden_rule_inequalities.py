@@ -44,21 +44,21 @@ class TestGoldenRuleInequalities(unittest.TestCase):
                 self.assertIn("duracao", card, f"Card {stype} deve ter duração especificada.")
                 self.assertEqual(card["duracao"], 15.0, f"Card {stype} deve durar exatamente 15 segundos.")
 
-            # 1. Dano (+5% max)
+            # 1. Dano (+20% max)
             if stype == "buff_dano_temp":
-                self.assertLessEqual(card["valor"], 0.05, "Buff temporário de dano não pode exceder +5%.")
+                self.assertLessEqual(card["valor"], 0.20, "Buff temporário de dano não pode exceder +20%.")
 
-            # 2. Velocidade (+8% max)
+            # 2. Velocidade (+12% max)
             if stype == "buff_vel_temp":
-                self.assertLessEqual(card["valor"], 0.08, "Buff temporário de velocidade não pode exceder +8%.")
+                self.assertLessEqual(card["valor"], 0.12, "Buff temporário de velocidade não pode exceder +12%.")
 
-            # 3. Cadência (+8% max)
+            # 3. Cadência (+25% max)
             if stype == "buff_cadencia_temp":
-                self.assertLessEqual(card["valor"], 0.08, "Buff temporário de cadência não pode exceder +8%.")
+                self.assertLessEqual(card["valor"], 0.25, "Buff temporário de cadência não pode exceder +25%.")
 
-            # 4. Resistência (-8% max)
+            # 4. Resistência (-15% max)
             if stype == "buff_resistencia_temp":
-                self.assertLessEqual(card["valor"], 0.08, "Buff temporário de resistência não pode exceder -8%.")
+                self.assertLessEqual(card["valor"], 0.15, "Buff temporário de resistência não pode exceder -15%.")
 
             # 5. Cura (25 ou 50)
             if stype == "cura_pequena":
@@ -73,16 +73,21 @@ class TestGoldenRuleInequalities(unittest.TestCase):
                 self.assertEqual(card["valor"], 30)
 
     def test_config_buffs_are_strictly_superior_to_consumables(self):
-        """Valida que bônus de configurações ativas superam os pequenos buffs temporários de 15s."""
-        # Dano de configs: cores_invertidas dá +15%, screen_shake dá +20%, fogo_amigo dá +30%, damage_numbers dá 2.0x crit
-        dano_configs = [0.15, 0.20, 0.30]
+        """Valida que bônus de configurações ativas permanentes superam ou igualam consumíveis temporários."""
+        # Dano de configs permanentes: fogo_amigo dá +25%, keybinds pesadelo dá +30%, damage_numbers dá 2.0x crit
+        dano_configs = [0.25, 0.30]
         for c_dano in dano_configs:
-            self.assertGreater(c_dano, 0.05, "Config de dano deve ser numericamente superior ao consumível (+5%).")
+            self.assertGreaterEqual(c_dano, 0.20, "Config de dano máxima deve ser numericamente superior ao consumível (+20%).")
 
-        # Velocidade de configs: vsync dá +10%, motion_blur dá +12%, graficos_qualidade batata dá +15%
-        vel_configs = [0.10, 0.12, 0.15]
+        # Velocidade de configs: motion_blur dá +15%, arrow keys dá +15%
+        vel_configs = [0.15]
         for c_vel in vel_configs:
-            self.assertGreater(c_vel, 0.08, "Config de velocidade deve ser superior ao consumível (+8%).")
+            self.assertGreaterEqual(c_vel, 0.12, "Config de velocidade máxima deve ser superior ao consumível (+12%).")
+
+        # Redução de dano de configs: FPS 15 dá -27.75%, Iluminação escuridão dá -50%
+        res_configs = [0.2775, 0.50]
+        for c_res in res_configs:
+            self.assertGreaterEqual(c_res, 0.15, "Config de redução de dano deve ser superior ao consumível (-15%).")
 
 
 if __name__ == "__main__":

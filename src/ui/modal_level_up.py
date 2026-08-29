@@ -156,9 +156,9 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
         "nome": "Calibração Térmica",
         "categoria": "Consumível",
         "icone_asset": "mira_crosshair",
-        "valor": 0.05,
+        "valor": 0.20,
         "duracao": 15.0,
-        "buffs": ["+5% Dano em todas as armas por 15s"],
+        "buffs": ["+20% Dano em todas as armas por 15s"],
         "nerfs": ["Duração temporária (15 segundos)"],
         "flavor_text": "Ajuste fino nos percursores de tiro."
     }
@@ -169,9 +169,9 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
         "nome": "Sobrecarga de Passos",
         "categoria": "Consumível",
         "icone_asset": "icon_vsync",
-        "valor": 0.08,
+        "valor": 0.12,
         "duracao": 15.0,
-        "buffs": ["+8% Velocidade de movimento por 15s"],
+        "buffs": ["+12% Velocidade de movimento por 15s"],
         "nerfs": ["Duração temporária (15 segundos)"],
         "flavor_text": "Lubrificação de emergência nas esteiras."
     }
@@ -182,9 +182,9 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
         "nome": "Acelerador de Gatilho",
         "categoria": "Consumível",
         "icone_asset": "icon_auto_fire",
-        "valor": 0.08,
+        "valor": 0.25,
         "duracao": 15.0,
-        "buffs": ["+8% Cadência de Tiro (-8% Cooldown) por 15s"],
+        "buffs": ["+25% Cadência de Tiro (-25% Cooldown) por 15s"],
         "nerfs": ["Duração temporária (15 segundos)"],
         "flavor_text": "Mecanismo de repetição acelerado."
     }
@@ -195,9 +195,9 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
         "nome": "Matriz Protetora",
         "categoria": "Consumível",
         "icone_asset": "icon_fps_cap",
-        "valor": 0.08,
+        "valor": 0.15,
         "duracao": 15.0,
-        "buffs": ["-8% Dano Recebido por 15s"],
+        "buffs": ["-15% Dano Recebido por 15s"],
         "nerfs": ["Duração temporária (15 segundos)"],
         "flavor_text": "Campos de dispersão de impacto."
     }

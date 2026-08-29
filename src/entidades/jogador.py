@@ -318,7 +318,7 @@ class Jogador:
 
         dano_a_aplicar = int(quantidade)
         if self.buff_resistencia_timer > 0.0:
-            dano_a_aplicar = max(1, int(round(dano_a_aplicar * 0.92)))
+            dano_a_aplicar = max(1, int(round(dano_a_aplicar * 0.85)))
 
         self.hp = max(0, self.hp - dano_a_aplicar)
         self.flash_dano_timer = JOGADOR_COOLDOWN_DANO_FLASH
@@ -345,6 +345,56 @@ class Jogador:
             return
         self.hp = min(self.hp_max, self.hp + int(quantidade))
 
+    def obter_buffs_ativos(self) -> list[dict]:
+        """Retorna lista de buffs e escudos ativos no jogador para exibição no HUD."""
+        ativos = []
+        if self.buff_dano_timer > 0.0:
+            ativos.append({
+                "id": "dano",
+                "nome": "DANO +20%",
+                "timer": self.buff_dano_timer,
+                "duracao": 15.0,
+                "cor": (255, 100, 80),
+                "cor_bg": (60, 20, 20)
+            })
+        if self.buff_cadencia_timer > 0.0:
+            ativos.append({
+                "id": "cadencia",
+                "nome": "TIRO +30%",
+                "timer": self.buff_cadencia_timer,
+                "duracao": 15.0,
+                "cor": (220, 110, 255),
+                "cor_bg": (50, 15, 60)
+            })
+        if self.buff_vel_timer > 0.0:
+            ativos.append({
+                "id": "velocidade",
+                "nome": "VEL +12%",
+                "timer": self.buff_vel_timer,
+                "duracao": 15.0,
+                "cor": (255, 220, 70),
+                "cor_bg": (55, 45, 15)
+            })
+        if self.buff_resistencia_timer > 0.0:
+            ativos.append({
+                "id": "resistencia",
+                "nome": "DEFESA -15%",
+                "timer": self.buff_resistencia_timer,
+                "duracao": 15.0,
+                "cor": (80, 220, 120),
+                "cor_bg": (15, 50, 25)
+            })
+        if getattr(self, "escudo_ativo", False) or self.invulnerabilidade_timer > 0.0:
+            ativos.append({
+                "id": "escudo",
+                "nome": "ESCUDO ATIVO" if getattr(self, "escudo_ativo", False) else f"INVULN {self.invulnerabilidade_timer:.1f}s",
+                "timer": self.invulnerabilidade_timer if self.invulnerabilidade_timer > 0.0 else 999.0,
+                "duracao": 4.0 if self.invulnerabilidade_timer > 0.0 else 999.0,
+                "cor": (100, 220, 255),
+                "cor_bg": (20, 45, 65)
+            })
+        return ativos
+
     def update(self, dt: float, drops: list = None, inimigos: list = None):
         """Atualiza timers de flash de dano, armas, buffs temporários e drone companheiro."""
         if self.flash_dano_timer > 0.0:
@@ -365,7 +415,7 @@ class Jogador:
         if self.buff_resistencia_timer > 0.0:
             self.buff_resistencia_timer = max(0.0, self.buff_resistencia_timer - dt)
 
-        dt_armas = dt * (1.08 if self.buff_cadencia_timer > 0.0 else 1.0)
+        dt_armas = dt * (1.30 if self.buff_cadencia_timer > 0.0 else 1.0)
 
         for arma in self.armas:
             arma.update(dt_armas)
@@ -398,7 +448,7 @@ class Jogador:
                 novos_projeteis_drone.extend(res)
 
         self.drones = drones_vivos
-        mult_buff_vel = 1.08 if self.buff_vel_timer > 0.0 else 1.0
+        mult_buff_vel = 1.12 if self.buff_vel_timer > 0.0 else 1.0
         mult_config = getattr(self, "mult_vel_config", 1.0)
         self.velocidade_atual = self.velocidade_base * mult_vel_suporte * mult_config * mult_buff_vel
 

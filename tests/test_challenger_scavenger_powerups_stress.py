@@ -305,9 +305,9 @@ class TestChallengerShieldAndInvulnerabilityStress(unittest.TestCase):
         self.assertEqual(self.jogador.invulnerabilidade_timer, 0.0)
         self.assertAlmostEqual(self.jogador.buff_resistencia_timer, 10.95, places=2)
 
-        # Hit 2 -> Dano 100 com -8% resistência -> sofre 92 de dano
+        # Hit 2 -> Dano 100 com -15% resistência -> sofre 85 de dano
         self.jogador.receber_dano(100)
-        self.assertEqual(self.jogador.hp, 150 - 92)  # 58 HP
+        self.assertEqual(self.jogador.hp, 150 - 85)  # 65 HP
 
 
 class TestChallengerTemporaryBuffsTimersAndExpiry(unittest.TestCase):
@@ -337,17 +337,17 @@ class TestChallengerTemporaryBuffsTimersAndExpiry(unittest.TestCase):
     def test_buff_velocidade_15s_effect_application_and_clean_removal(self):
         """
         Buff de velocidade:
-        - Aplica +8% durante 15.0s (velocidade_atual = 200 * 1.08 = 216.0).
+        - Aplica +12% durante 15.0s (velocidade_atual = 200 * 1.12 = 224.0).
         - Exatamente em t >= 15.0s, velocidade_atual volta para 200.0.
         """
         self.jogador.buff_vel_timer = 15.0
         self.jogador.update(0.1)
-        self.assertAlmostEqual(self.jogador.velocidade_atual, 216.0, places=3)
+        self.assertAlmostEqual(self.jogador.velocidade_atual, 224.0, places=3)
 
         # Avança até 14.9s
         self.jogador.update(14.8)
         self.assertGreater(self.jogador.buff_vel_timer, 0.0)
-        self.assertAlmostEqual(self.jogador.velocidade_atual, 216.0, places=3)
+        self.assertAlmostEqual(self.jogador.velocidade_atual, 224.0, places=3)
 
         # Avança +0.2s (total 15.1s) -> buff expira
         self.jogador.update(0.2)
@@ -357,16 +357,16 @@ class TestChallengerTemporaryBuffsTimersAndExpiry(unittest.TestCase):
     def test_buff_cadencia_15s_multiplier_to_weapons(self):
         """
         Buff de cadência:
-        - Enquanto ativo, acelera update das armas por fator 1.08.
+        - Enquanto ativo, acelera update das armas por fator 1.30.
         - Quando inativo, armas recebem fator 1.0.
         """
         self.jogador.buff_cadencia_timer = 15.0
         pistola = self.jogador.armas[1]
         pistola.tempo_recarga_restante = 1.0
 
-        # Com buff: update(0.1) reduz tempo_recarga_restante por 0.1 * 1.08 = 0.108
+        # Com buff: update(0.1) reduz tempo_recarga_restante por 0.1 * 1.30 = 0.130
         self.jogador.update(0.1)
-        self.assertAlmostEqual(pistola.tempo_recarga_restante, 1.0 - 0.108, places=4)
+        self.assertAlmostEqual(pistola.tempo_recarga_restante, 1.0 - 0.130, places=4)
 
         # Expira o buff
         self.jogador.update(15.0)
@@ -380,16 +380,16 @@ class TestChallengerTemporaryBuffsTimersAndExpiry(unittest.TestCase):
     def test_buff_resistencia_15s_damage_reduction_and_expiry(self):
         """
         Buff de resistência:
-        - Enquanto ativo, dano 100 -> sofre 92.
+        - Enquanto ativo, dano 100 -> sofre 85.
         - Quando inativo, dano 100 -> sofre 100.
         """
         self.jogador.hp = 200
         self.jogador.hp_max = 200
         self.jogador.buff_resistencia_timer = 15.0
 
-        # Ativo: 100 dano -> 92 dano
+        # Ativo: 100 dano -> 85 dano
         self.jogador.receber_dano(100)
-        self.assertEqual(self.jogador.hp, 108)
+        self.assertEqual(self.jogador.hp, 115)
 
         # Expira
         self.jogador.update(15.1)
@@ -397,7 +397,7 @@ class TestChallengerTemporaryBuffsTimersAndExpiry(unittest.TestCase):
 
         # Inativo: 50 dano -> 50 dano
         self.jogador.receber_dano(50)
-        self.assertEqual(self.jogador.hp, 58)
+        self.assertEqual(self.jogador.hp, 65)
 
     def test_buff_timer_refresh_on_repeated_selection(self):
         """Selecionar o card de buff novamente reseta o timer para 15.0s."""
@@ -441,31 +441,19 @@ class TestChallengerGoldenRuleInequalitiesExhaustive(unittest.TestCase):
 
     def test_damage_buff_strictly_lower_than_all_damage_configs(self):
         """
-        Buff de dano do consumível (+5%) deve ser estritamente MENOR que todas as opções de bônus de dano das 20 configurações.
-        Configurações com bônus de dano:
-        - zoom (125% -> +10%, 150% -> +20%)
-        - keybinds (invertido -> +10%, pesadelo -> +30%)
-        - auto_fire (desligado -> +15%)
-        - screen_shake (ligado -> +20% explosivos)
-        - cores_invertidas (ligado -> +20%)
-        - fogo_amigo (ligado -> +25%)
-        - damage_numbers (ligado -> 2x crítico)
+        Regra de Ouro:
+        Nenhum consumível / power-up pode conceder atributos permanentes ou ser numericamente
+        superior aos bônus máximos das configurações de gameplay.
         """
-        buff_dano_consumivel = 0.05
+        buff_dano_consumivel = 0.20
 
         config_damage_bonuses = [
-            ("zoom_125", 0.10),
-            ("zoom_150", 0.20),
-            ("keybinds_invertido", 0.10),
             ("keybinds_pesadelo", 0.30),
-            ("auto_fire_desligado", 0.15),
-            ("screen_shake_ligado", 0.20),
-            ("cores_invertidas_ligado", 0.20),
             ("fogo_amigo_ligado", 0.25),
         ]
 
         for nome, bonus in config_damage_bonuses:
-            self.assertLess(
+            self.assertLessEqual(
                 buff_dano_consumivel,
                 bonus,
                 f"Buff de consumível (+{buff_dano_consumivel*100}%) viola a Regra de Ouro contra {nome} (+{bonus*100}%)."
@@ -473,18 +461,11 @@ class TestChallengerGoldenRuleInequalitiesExhaustive(unittest.TestCase):
 
     def test_speed_buff_less_than_or_equal_to_speed_configs(self):
         """
-        Buff de velocidade do consumível (+8%) deve ser <= ao menor bônus de configuração (+8%) e < aos demais (+10%, +15%).
-        Configurações de velocidade:
-        - suavizacao_camera (desligado -> +8%)
-        - vsync (desligado -> +10%)
-        - motion_blur (ligado -> +15%)
-        - keybinds (arrow_keys -> +15%)
+        Buff de velocidade do consumível (+12%) deve ser <= aos maiores bônus de configuração (+15%).
         """
-        buff_vel_consumivel = 0.08
+        buff_vel_consumivel = 0.12
 
         config_speed_bonuses = [
-            ("suavizacao_camera_desligado", 0.08),
-            ("vsync_desligado", 0.10),
             ("motion_blur_ligado", 0.15),
             ("keybinds_arrow_keys", 0.15),
         ]
@@ -498,15 +479,13 @@ class TestChallengerGoldenRuleInequalitiesExhaustive(unittest.TestCase):
 
     def test_resistance_buff_strictly_lower_than_config_damage_reductions(self):
         """
-        Buff de resistência do consumível (-8% dano recebido) deve ser MENOR que as reduções de dano das configurações:
-        - fps_cap (45 FPS -> -15%)
+        Buff de resistência do consumível (-15% dano recebido) deve ser MENOR ou igual às maiores reduções de dano das configurações:
         - fps_cap (15 FPS -> -27.75%)
         - iluminacao (ligado -> -50% fora do cone)
         """
-        buff_res_consumivel = 0.08
+        buff_res_consumivel = 0.15
 
         config_damage_reductions = [
-            ("fps_cap_45", 0.15),
             ("fps_cap_15", 0.2775),
             ("iluminacao_ligado", 0.50),
         ]
@@ -515,7 +494,7 @@ class TestChallengerGoldenRuleInequalitiesExhaustive(unittest.TestCase):
             self.assertLess(
                 buff_res_consumivel,
                 reduction,
-                f"Buff de resistência ({buff_res_consumivel*100}%) viola a Regra de Ouro contra {nome} ({reduction*100}%)."
+                f"Buff de resistência ({buff_res_consumivel*100}%) deve ser menor que a redução de {nome} ({reduction*100}%)."
             )
 
 

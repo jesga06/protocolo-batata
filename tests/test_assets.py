@@ -20,7 +20,8 @@ if PROJECT_ROOT not in sys.path:
 
 from src.utils.constantes import (
     ASSETS_DIR, ASSET_PATHS, CONFIGURACOES_CATALOGO, CONFIGURACOES_SISTEMA,
-    LARGURA_TELA, ALTURA_TELA, JOGADOR_HP_MAX_PADRAO, JOGADOR_VELOCIDADE_PADRAO
+    LARGURA_TELA, ALTURA_TELA, JOGADOR_HP_MAX_PADRAO, JOGADOR_VELOCIDADE_PADRAO,
+    obter_caminho_asset
 )
 from src.utils.math_utils import (
     distancia, distancia_sq, normalizar_vetor, vetor_direcao,
@@ -91,7 +92,7 @@ class TestAssetsExistenciaEDimensoes(unittest.TestCase):
                 self.assertEqual(wav_file.getsampwidth(), 2, f"{arq} deve ser 16-bit PCM (2 bytes/amostra)!")
                 self.assertGreater(wav_file.getnframes(), 0, f"{arq} não possui frames de áudio!")
 
-        musica_path = os.path.join(ASSETS_DIR, "audio", "musica", "musica_fase.wav")
+        musica_path = obter_caminho_asset("musica_fase")
         self.assertTrue(os.path.isfile(musica_path), "Música da fase não encontrada!")
         with wave.open(musica_path, "r") as wav_file:
             self.assertEqual(wav_file.getframerate(), 44100)
