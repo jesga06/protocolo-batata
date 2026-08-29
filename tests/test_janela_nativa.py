@@ -58,6 +58,21 @@ class TestJanelaNativa(unittest.TestCase):
         janela.alternar_fullscreen()
         self.assertEqual(janela.is_fullscreen, estado_antigo)
 
+    def test_definir_resolucao_menores_que_720p(self):
+        """Valida que a janela aceita e aplica resoluções de 1280x720 para baixo."""
+        janela = Janela.get_instance()
+        janela.definir_resolucao("75%")
+        self.assertEqual((janela.largura_janela_atual, janela.altura_janela_atual), (960, 540))
+
+        janela.definir_resolucao("50%")
+        self.assertEqual((janela.largura_janela_atual, janela.altura_janela_atual), (640, 360))
+
+        janela.definir_resolucao("25%")
+        self.assertEqual((janela.largura_janela_atual, janela.altura_janela_atual), (320, 180))
+
+        janela.definir_resolucao("100%")
+        self.assertEqual((janela.largura_janela_atual, janela.altura_janela_atual), (1280, 720))
+
 
 if __name__ == "__main__":
     unittest.main()

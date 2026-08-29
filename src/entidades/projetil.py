@@ -21,8 +21,8 @@ class Projetil:
         self,
         x: float,
         y: float,
-        dir_x: float,
-        dir_y: float,
+        dir_x: float = 1.0,
+        dir_y: float = 0.0,
         velocidade: float = 420.0,
         dano: int = 12,
         tempo_vida: float = 2.5,
@@ -33,14 +33,21 @@ class Projetil:
         explosivo: bool = False,
         raio_explosao: float = 0.0,
         perfurante: bool = False,
-        desaceleracao: float = 0.0
+        desaceleracao: float = 0.0,
+        vx: float = None,
+        vy: float = None,
+        cor=None
     ):
         self.x = float(x)
         self.y = float(y)
         self.x_origem = float(x)
         self.y_origem = float(y)
-        self.dir_x, self.dir_y = normalizar_vetor(dir_x, dir_y)
-        self.velocidade = float(velocidade)
+        if vx is not None and vy is not None:
+            self.velocidade = math.hypot(vx, vy)
+            self.dir_x, self.dir_y = normalizar_vetor(vx, vy)
+        else:
+            self.dir_x, self.dir_y = normalizar_vetor(dir_x, dir_y)
+            self.velocidade = float(velocidade)
         self.desaceleracao = float(desaceleracao)
         self.dano = int(dano)
         self.tempo_vida = float(tempo_vida)
@@ -51,12 +58,21 @@ class Projetil:
         self.width = self.largura
         self.height = self.altura
         self.sprite_key = sprite_key
+        self.cor = cor
         self.explosivo = bool(explosivo)
         self.raio_explosao = float(raio_explosao)
         self.perfurante = bool(perfurante)
         self.alvos_atingidos = set()
         self.ativo = True
         self.requer_detonacao_ao_expirar = False
+
+    @property
+    def vx(self) -> float:
+        return self.dir_x * self.velocidade
+
+    @property
+    def vy(self) -> float:
+        return self.dir_y * self.velocidade
 
     @classmethod
     def _carregar_sprite(cls, sprite_key: str):

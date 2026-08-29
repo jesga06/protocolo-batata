@@ -138,7 +138,7 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
         opcoes={
             "100%": OpcaoConfig(
                 id="100%",
-                label="Nativa (100%)",
+                label="1280x720 (100%)",
                 modificadores={},
                 flavor_text="Cada pixel em seu devido lugar.",
                 nerf_text="Nenhum",
@@ -146,15 +146,15 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             ),
             "75%": OpcaoConfig(
                 id="75%",
-                label="75%",
+                label="960x540 (75%)",
                 modificadores={"drop_chance_bonus": 0.10},
                 flavor_text="Menos pixels na tela, mais caixas no chão.",
-                nerf_text="Visão levemente borrada e pixelada",
+                nerf_text="Visão levemente pixelada",
                 buff_text="Chance de drop de itens aumentada em +10%"
             ),
             "50%": OpcaoConfig(
                 id="50%",
-                label="50%",
+                label="640x360 (50%)",
                 modificadores={"drop_chance_bonus": 0.25},
                 flavor_text="Lembranças de uma época de monitores CRT.",
                 nerf_text="Visão consideravelmente pixelada",
@@ -162,7 +162,7 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             ),
             "25%": OpcaoConfig(
                 id="25%",
-                label="25%",
+                label="320x180 (25%)",
                 modificadores={"drop_chance_bonus": 0.50},
                 flavor_text="Se você consegue contar os pixels nos dedos, está economizando processamento.",
                 nerf_text="Praticamente indecifrável",

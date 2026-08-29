@@ -62,7 +62,7 @@ class Janela:
         self.altura = int(altura_virtual)
         self.titulo = str(titulo)
         self.resizavel = bool(resizavel)
-        self.pixel_art = bool(pixel_art)
+        self.pixel_art = True  # Renderização nítida via Nearest-Neighbor para eliminar textos borrados
         self.is_fullscreen = False
 
         self._clock = pygame.time.Clock()
@@ -71,20 +71,23 @@ class Janela:
         self.eventos = []
         self.cor_fundo = (18, 22, 30)
 
-        # Obtém a resolução nativa do monitor do usuário
+        # Resolução padrão da Janela (1280x720 HD) e detecção de display
         desktop_info = pygame.display.Info()
-        self.tela_nativa_largura = max(800, getattr(desktop_info, "current_w", 1920))
-        self.tela_nativa_altura = max(600, getattr(desktop_info, "current_h", 1080))
+        self.tela_nativa_largura = max(1280, getattr(desktop_info, "current_w", 1280))
+        self.tela_nativa_altura = max(720, getattr(desktop_info, "current_h", 720))
+
+        self.largura_janela_atual = 1280
+        self.altura_janela_atual = 720
 
         # Configura flags de vídeo
         self._flags_janela = DOUBLEBUF | HWSURFACE
         if self.resizavel:
             self._flags_janela |= RESIZABLE
 
-        # Janela do Sistema Operacional criada na Resolução Nativa da Tela
+        # Janela do Sistema Operacional criada em 1280x720
         os.environ["SDL_VIDEO_CENTERED"] = "1"
         self.real_screen = pygame.display.set_mode(
-            (self.tela_nativa_largura, self.tela_nativa_altura),
+            (self.largura_janela_atual, self.altura_janela_atual),
             self._flags_janela
         )
         pygame.display.set_caption(self.titulo)
@@ -124,13 +127,40 @@ class Janela:
         else:
             self.cor_fundo = cor
 
+    def definir_resolucao(self, opcao_res: str):
+        """
+        Ajusta a resolução real da janela para resoluções menores ou iguais a 1280x720.
+        Opções suportadas: '100%' (1280x720), '75%' (960x540), '50%' (640x360), '25%' (320x180).
+        """
+        mapa = {
+            "100%": (1280, 720),
+            "75%": (960, 540),
+            "50%": (640, 360),
+            "25%": (320, 180),
+            "1280x720": (1280, 720),
+            "960x540": (960, 540),
+            "640x360": (640, 360),
+            "320x180": (320, 180),
+        }
+        res = mapa.get(str(opcao_res), (1280, 720))
+        self.largura_janela_atual, self.altura_janela_atual = res
+
+        if not self.is_fullscreen:
+            try:
+                self.real_screen = pygame.display.set_mode(
+                    (self.largura_janela_atual, self.altura_janela_atual),
+                    self._flags_janela
+                )
+            except Exception:
+                pass
+
     def alternar_fullscreen(self):
         """Alterna de forma limpa entre modo Janela e Tela Cheia sem crash ou perda de Aspect Ratio."""
         self.is_fullscreen = not self.is_fullscreen
         try:
             pygame.display.toggle_fullscreen()
         except Exception:
-            # Fallback seguro com re-set de modo na resolução nativa da tela
+            # Fallback seguro com re-set de modo
             if self.is_fullscreen:
                 self.real_screen = pygame.display.set_mode(
                     (self.tela_nativa_largura, self.tela_nativa_altura),
@@ -138,7 +168,7 @@ class Janela:
                 )
             else:
                 self.real_screen = pygame.display.set_mode(
-                    (self.tela_nativa_largura, self.tela_nativa_altura),
+                    (self.largura_janela_atual, self.altura_janela_atual),
                     self._flags_janela
                 )
 
