@@ -11,10 +11,12 @@ data/save.json
 data/*.save
 
 # Local agent artifacts
-.agents
+.agents/
 
 # IDE / OS
 .vscode/
 .idea/
 Thumbs.db
 Desktop.ini
+.VSCodeCounter/
+*.md
