@@ -27,18 +27,19 @@ class TestJanelaNativa(unittest.TestCase):
     def test_screen_to_virtual_coords_clamping(self):
         """Verifica se a conversão de coordenadas mapeia e clampa o mouse aos limites do canvas."""
         janela = Janela.get_instance()
+        rw, rh = janela.real_screen.get_size()
 
-        # Coordenadas no centro da tela (400, 300)
-        vx, vy = janela.screen_to_virtual_coords(400.0, 300.0)
+        # Coordenadas no centro da tela real devem mapear para o centro do canvas virtual (400, 300)
+        vx, vy = janela.screen_to_virtual_coords(rw / 2.0, rh / 2.0)
         self.assertAlmostEqual(vx, 400.0, delta=2.0)
         self.assertAlmostEqual(vy, 300.0, delta=2.0)
 
         # Coordenadas fora da janela (nas bordas pretas) devem ser clampadas em [0, 800] e [0, 600]
-        vx_neg, vy_neg = janela.screen_to_virtual_coords(-50.0, -100.0)
+        vx_neg, vy_neg = janela.screen_to_virtual_coords(-500.0, -500.0)
         self.assertGreaterEqual(vx_neg, 0.0)
         self.assertGreaterEqual(vy_neg, 0.0)
 
-        vx_max, vy_max = janela.screen_to_virtual_coords(2000.0, 1500.0)
+        vx_max, vy_max = janela.screen_to_virtual_coords(rw + 500.0, rh + 500.0)
         self.assertLessEqual(vx_max, 800.0)
         self.assertLessEqual(vy_max, 600.0)
 

@@ -48,7 +48,8 @@ class SistemaSpawn:
 
     def obter_arquetipo_elite(self, boss_idx: int) -> tuple[type, str]:
         """
-        Retorna o par (classe_inimigo, nome_boss) correspondente à ordem de chefes da partida.
+        Retorna o par (classe_inimigo, nome_boss) correspondente à ordem de chefes da partida,
+        alinhado com o CATALOGO_ARQUITETURAL.md.
         """
         catalogo = {
             1: (InimigoRapido, "MINI-BOSS: ESTAGIÁRIO SÊNIOR"),
@@ -146,11 +147,12 @@ class SistemaSpawn:
         arena_h: float = float(ALTURA_ARENA),
         hp_mult: float = 1.0,
         vel_mult: float = 1.0,
-        permitir_ranged: bool = True
+        permitir_ranged: bool = True,
+        possui_elite_vivo: bool = False
     ) -> list:
         """
         Atualiza os cronômetros e gera novos inimigos com arquétipos variados,
-        além de agendar o spawn obrigatório de Mini-Bosses (1:00, 3:30, 6:00, 8:30).
+        além de agendar o spawn obrigatório de Mini-Bosses (1:00, 2:00, 3:00, 4:00) com trava anti-stacking.
         Aplica multiplicadores de HP e Velocidade da configuração ativa.
         """
         self.tempo_decorrido += dt
@@ -180,6 +182,7 @@ class SistemaSpawn:
                 if vel_mult != 1.0:
                     boss_elite.velocidade *= float(vel_mult)
                 novos_inimigos.append(boss_elite)
+                break
 
         # 2. Verificação de Lote de Inimigos Regulares
         self.timer_spawn += dt

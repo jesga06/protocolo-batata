@@ -71,14 +71,22 @@ class Janela:
         self.eventos = []
         self.cor_fundo = (18, 22, 30)
 
+        # Obtém a resolução nativa do monitor do usuário
+        desktop_info = pygame.display.Info()
+        self.tela_nativa_largura = max(800, getattr(desktop_info, "current_w", 1920))
+        self.tela_nativa_altura = max(600, getattr(desktop_info, "current_h", 1080))
+
         # Configura flags de vídeo
         self._flags_janela = DOUBLEBUF | HWSURFACE
         if self.resizavel:
             self._flags_janela |= RESIZABLE
 
-        # Janela do Sistema Operacional
+        # Janela do Sistema Operacional criada na Resolução Nativa da Tela
         os.environ["SDL_VIDEO_CENTERED"] = "1"
-        self.real_screen = pygame.display.set_mode((self.largura, self.altura), self._flags_janela)
+        self.real_screen = pygame.display.set_mode(
+            (self.tela_nativa_largura, self.tela_nativa_altura),
+            self._flags_janela
+        )
         pygame.display.set_caption(self.titulo)
 
         # Buffer Virtual do Jogo (Canvas interno)
@@ -122,11 +130,17 @@ class Janela:
         try:
             pygame.display.toggle_fullscreen()
         except Exception:
-            # Fallback seguro com re-set de modo
+            # Fallback seguro com re-set de modo na resolução nativa da tela
             if self.is_fullscreen:
-                self.real_screen = pygame.display.set_mode((0, 0), self._flags_janela | FULLSCREEN)
+                self.real_screen = pygame.display.set_mode(
+                    (self.tela_nativa_largura, self.tela_nativa_altura),
+                    self._flags_janela | FULLSCREEN
+                )
             else:
-                self.real_screen = pygame.display.set_mode((self.largura, self.altura), self._flags_janela)
+                self.real_screen = pygame.display.set_mode(
+                    (self.tela_nativa_largura, self.tela_nativa_altura),
+                    self._flags_janela
+                )
 
     def screen_to_virtual_coords(self, px: float, py: float) -> tuple[float, float]:
         """

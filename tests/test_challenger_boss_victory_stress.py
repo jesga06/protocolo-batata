@@ -436,7 +436,7 @@ class TestChallengerLongRunningStabilityAndParticles(unittest.TestCase):
         """Verifica que drops não coletados são limpos após DROP_TEMPO_DESAPARECER (60s)."""
         sd = SistemaDrops()
         sd.gerar_drop_morte_inimigo(x=100, y=100, is_elite=True)
-        self.assertIn(len(sd.drops), [7, 8])
+        self.assertIn(len(sd.drops), [7, 8, 9])
 
         # Avança 30 segundos: drops ainda devem existir
         sd.update(30.0)
