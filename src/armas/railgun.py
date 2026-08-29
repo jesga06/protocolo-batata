@@ -1,4 +1,4 @@
-﻿"""
+"""
 Railgun (Canhão Eletromagnético) — Protocolo: Batata
 Arma especial de Slot 3: requer 1.0s de carga energética e dispara um projétil linear perfurante de 50 de dano.
 """
@@ -40,6 +40,11 @@ class Railgun(ArmaBase):
         self.carga_acumulada = 0.0
         self.carregando = False
         self.velocidade_projetil = float(velocidade_projetil)
+
+    @property
+    def progresso_carga(self) -> float:
+        """Retorna o percentual de carga de 0.0 a 1.0."""
+        return min(1.0, self.carga_acumulada / max(0.01, self.tempo_carga)) if self.carregando else 0.0
 
     def iniciar_carga(self):
         """Inicia o ciclo de carga da arma com feedback sonoro."""

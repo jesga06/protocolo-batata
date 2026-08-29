@@ -8,6 +8,7 @@ from src.entidades.inimigo_base import InimigoBase
 from src.entidades.projetil import Projetil
 from src.armas.pistola import Pistola
 from src.armas.melee import Melee
+from src.armas.railgun import Railgun
 from src.sistemas.sistema_spawn import SistemaSpawn
 from src.sistemas.sistema_drops import SistemaDrops
 from src.sistemas.sistema_scavenger import SistemaScavenger
@@ -25,7 +26,7 @@ from src.utils.constantes import (
     TEMPO_VITORIA,
     obter_caminho_asset, SAVE_FILE_PATH
 )
-from src.utils.math_utils import colisao_aabb, clamp, distancia
+from src.utils.math_utils import colisao_aabb, clamp, distancia, vetor_direcao
 
 
 class GameplayScene(BaseScene):
@@ -180,7 +181,7 @@ class GameplayScene(BaseScene):
         mods = self.gerenciador_config.obter_modificadores()
         # 1. Velocidade do jogador
         self.jogador.mult_vel_config = mods.vel_jogador_mult
-        mult_buff_vel = 1.08 if getattr(self.jogador, "buff_vel_timer", 0.0) > 0.0 else 1.0
+        mult_buff_vel = 1.12 if getattr(self.jogador, "buff_vel_timer", 0.0) > 0.0 else 1.0
         self.jogador.velocidade_atual = self.jogador.velocidade_base * mods.vel_jogador_mult * mult_buff_vel
 
         # 2. Dano das armas do jogador
@@ -195,8 +196,8 @@ class GameplayScene(BaseScene):
 
     def loop(self):
         dt = self.janela.delta_time()
-        # Se dt for 0 ou excessivamente baixo (em testes headless ultra-rápidos), usa 1/60s
-        if dt < 0.005:
+        # Em testes unitários headless ou loops ultra-rápidos (<10ms), avança 1 frame padrão a 60 FPS
+        if dt < 0.010:
             dt = 1.0 / 60.0
         # Clampa dt para evitar saltos quânticos em frames atípicos (máximo 100ms)
         dt = min(dt, 0.1)
@@ -374,13 +375,130 @@ class GameplayScene(BaseScene):
         crit_chance = getattr(mods, "critico_chance", 0.0) if mods else 0.0
         crit_mult = getattr(mods, "critico_mult", 2.0) if mods else 2.0
 
-        if disparar_agora and self.jogador.vivo:
-            arma_ativa = self.jogador.obter_arma_ativa()
-            if arma_ativa is not None:
-                if isinstance(arma_ativa, Pistola) or getattr(arma_ativa, "slot", None) == 2:
-                    if hasattr(arma_ativa, "pode_atirar") and arma_ativa.pode_atirar():
+        # Direção de mira do jogador
+        dir_mira_x, dir_mira_y = vetor_direcao(centro_jogador_x, centro_jogador_y, mouse_mundo_x, mouse_mundo_y)
+        if dir_mira_x == 0.0 and dir_mira_y == 0.0:
+            dir_mira_x = 1.0
+        # Ponto de saída do projétil deslocado fora do corpo da batata (evita auto-colisão)
+        spawn_origem_x = centro_jogador_x + dir_mira_x * 24.0
+        spawn_origem_y = centro_jogador_y + dir_mira_y * 24.0
+
+        arma_ativa = self.jogador.obter_arma_ativa() if self.jogador.vivo else None
+
+        # Gerenciamento de Carga da Railgun (1.0s de preparação com faíscas elétricas e SFX)
+        if arma_ativa is not None and (isinstance(arma_ativa, Railgun) or "railgun" in getattr(arma_ativa, "nome", "").lower()):
+            if disparar_agora and self.jogador.vivo and arma_ativa.pode_atirar():
+                if not getattr(arma_ativa, "carregando", False):
+                    arma_ativa.iniciar_carga()
+
+                arma_pronta = arma_ativa.update_carga(dt)
+                # Emite faíscas elétricas ciano/azul ao redor do jogador enquanto carrega
+                self.sistema_particulas.emitir_faiscas(
+                    centro_jogador_x, centro_jogador_y,
+                    dir_x=dir_mira_x, dir_y=dir_mira_y,
+                    cor=(100, 220, 255), qtd=3
+                )
+                if arma_pronta:
+                    novos_tiros = arma_ativa.disparar(
+                        spawn_origem_x, spawn_origem_y,
+                        mouse_mundo_x, mouse_mundo_y
+                    )
+                    if novos_tiros:
+                        for p in novos_tiros:
+                            if hitbox_mult != 1.0:
+                                p.largura = max(2, int(round(p.largura * hitbox_mult)))
+                                p.altura = max(2, int(round(p.altura * hitbox_mult)))
+                                p.width = p.largura
+                                p.height = p.altura
+                            if mult_dano_buff != 1.0:
+                                p.dano = max(1, math.ceil(p.dano * mult_dano_buff))
+                        self.projeteis.extend(novos_tiros)
+                        self.aplicar_shake(12.0, 0.3)
+                        self.buffer_tiro = 0.0
+            else:
+                if getattr(arma_ativa, "carregando", False):
+                    arma_ativa.cancelar_carga()
+        elif disparar_agora and self.jogador.vivo and arma_ativa is not None:
+            if isinstance(arma_ativa, Pistola) or getattr(arma_ativa, "slot", None) == 2:
+                if hasattr(arma_ativa, "pode_atirar") and arma_ativa.pode_atirar():
+                    novos_tiros = arma_ativa.disparar(
+                        spawn_origem_x, spawn_origem_y,
+                        mouse_mundo_x, mouse_mundo_y
+                    )
+                    if novos_tiros:
+                        for p in novos_tiros:
+                            if hitbox_mult != 1.0:
+                                p.largura = max(2, int(round(p.largura * hitbox_mult)))
+                                p.altura = max(2, int(round(p.altura * hitbox_mult)))
+                                p.width = p.largura
+                                p.height = p.altura
+                            if mult_dano_buff != 1.0:
+                                p.dano = max(1, math.ceil(p.dano * mult_dano_buff))
+                        self.projeteis.extend(novos_tiros)
+                        self.buffer_tiro = 0.0
+            elif isinstance(arma_ativa, Melee) or getattr(arma_ativa, "slot", None) == 1:
+                if hasattr(arma_ativa, "pode_atirar") and arma_ativa.pode_atirar():
+                    ang_mira = math.atan2(mouse_mundo_y - centro_jogador_y, mouse_mundo_x - centro_jogador_x)
+                    afetados = arma_ativa.executar_ataque(
+                        centro_jogador_x, centro_jogador_y,
+                        self.inimigos,
+                        mira_x=mouse_mundo_x,
+                        mira_y=mouse_mundo_y,
+                        angulo_mira=ang_mira
+                    )
+                    if isinstance(afetados, (list, tuple)):
+                        for inim in afetados:
+                            dano_base = getattr(arma_ativa, "dano", 10)
+                            is_crit = (crit_chance > 0.0 and random.random() < crit_chance)
+                            dano_melee = math.ceil(dano_base * mult_dano_buff * (crit_mult if is_crit else 1.0))
+                            self.dano_total_causado += dano_melee
+                            self.sistema_particulas.emitir_faiscas(
+                                inim.x + getattr(inim, "largura", 28) / 2.0,
+                                inim.y + getattr(inim, "altura", 28) / 2.0,
+                                dir_x=math.cos(ang_mira),
+                                dir_y=math.sin(ang_mira),
+                                cor=(255, 240, 150),
+                                qtd=5
+                            )
+                            if hasattr(self, "config_sistema") and str(self.config_sistema.obter_valor("damage_numbers")).lower() in ("ligado", "true", "1"):
+                                self.sistema_particulas.emitir_texto_dano(
+                                    inim.x + getattr(inim, "largura", 28) / 2.0,
+                                    inim.y,
+                                    dano_melee,
+                                    critico=is_crit
+                                )
+                            if not getattr(inim, "vivo", True):
+                                self.abates += 1
+                                self.pontos += getattr(inim, "score_valor", 100)
+                                if getattr(inim, "is_elite", False):
+                                    self.aplicar_shake(14.0, 0.35)
+                                    self.sistema_particulas.emitir_debris(inim.x + 14, inim.y + 14, cor=(255, 215, 0), qtd=16)
+                                self.sistema_drops.gerar_drop_morte_inimigo(
+                                    inim.x + getattr(inim, "largura", 28) / 2.0,
+                                    inim.y + getattr(inim, "altura", 28) / 2.0,
+                                    bonus_chance_drop=getattr(mods, "drop_chance_bonus", 0.0) if mods else 0.0,
+                                    mult_chance_drop=getattr(mods, "drop_chance_mult", 1.0) if mods else 1.0,
+                                    xp_base=getattr(inim, "xp_valor", 5),
+                                    loot_enriquecido=(getattr(inim, "loot_enriquecido", False) or getattr(mods, "loot_enriquecido", False)),
+                                    chance_arma=getattr(inim, "chance_drop_arma", None),
+                                    chance_equipamento=getattr(inim, "chance_drop_equipamento", None),
+                                    is_elite=getattr(inim, "is_elite", False)
+                                )
+                    self.buffer_tiro = 0.0
+                    self.efeitos_melee.append({
+                        "x": centro_jogador_x,
+                        "y": centro_jogador_y,
+                        "angulo": ang_mira,
+                        "alcance": getattr(arma_ativa, "alcance", 84.0),
+                        "arco_graus": getattr(arma_ativa, "arco_graus", 45.0),
+                        "tempo": 0.15,
+                        "tempo_total": 0.15
+                    })
+            else:
+                if hasattr(arma_ativa, "pode_atirar") and arma_ativa.pode_atirar():
+                    if hasattr(arma_ativa, "disparar"):
                         novos_tiros = arma_ativa.disparar(
-                            centro_jogador_x, centro_jogador_y,
+                            spawn_origem_x, spawn_origem_y,
                             mouse_mundo_x, mouse_mundo_y
                         )
                         if novos_tiros:
@@ -394,82 +512,6 @@ class GameplayScene(BaseScene):
                                     p.dano = max(1, math.ceil(p.dano * mult_dano_buff))
                             self.projeteis.extend(novos_tiros)
                             self.buffer_tiro = 0.0
-                elif isinstance(arma_ativa, Melee) or getattr(arma_ativa, "slot", None) == 1:
-                    if hasattr(arma_ativa, "pode_atirar") and arma_ativa.pode_atirar():
-                        ang_mira = math.atan2(mouse_mundo_y - centro_jogador_y, mouse_mundo_x - centro_jogador_x)
-                        afetados = arma_ativa.executar_ataque(
-                            centro_jogador_x, centro_jogador_y,
-                            self.inimigos,
-                            mira_x=mouse_mundo_x,
-                            mira_y=mouse_mundo_y,
-                            angulo_mira=ang_mira
-                        )
-                        if isinstance(afetados, (list, tuple)):
-                            for inim in afetados:
-                                dano_base = getattr(arma_ativa, "dano", 10)
-                                is_crit = (crit_chance > 0.0 and random.random() < crit_chance)
-                                dano_melee = math.ceil(dano_base * mult_dano_buff * (crit_mult if is_crit else 1.0))
-                                self.dano_total_causado += dano_melee
-                                self.sistema_particulas.emitir_faiscas(
-                                    inim.x + getattr(inim, "largura", 28) / 2.0,
-                                    inim.y + getattr(inim, "altura", 28) / 2.0,
-                                    dir_x=math.cos(ang_mira),
-                                    dir_y=math.sin(ang_mira),
-                                    cor=(255, 240, 150),
-                                    qtd=5
-                                )
-                                if hasattr(self, "config_sistema") and str(self.config_sistema.obter_valor("damage_numbers")).lower() in ("ligado", "true", "1"):
-                                    self.sistema_particulas.emitir_texto_dano(
-                                        inim.x + getattr(inim, "largura", 28) / 2.0,
-                                        inim.y,
-                                        dano_melee,
-                                        critico=is_crit
-                                    )
-                                if not getattr(inim, "vivo", True):
-                                    self.abates += 1
-                                    self.pontos += getattr(inim, "score_valor", 100)
-                                    if getattr(inim, "is_elite", False):
-                                        self.aplicar_shake(14.0, 0.35)
-                                        self.sistema_particulas.emitir_debris(inim.x + 14, inim.y + 14, cor=(255, 215, 0), qtd=16)
-                                    self.sistema_drops.gerar_drop_morte_inimigo(
-                                        inim.x + getattr(inim, "largura", 28) / 2.0,
-                                        inim.y + getattr(inim, "altura", 28) / 2.0,
-                                        bonus_chance_drop=getattr(mods, "drop_chance_bonus", 0.0) if mods else 0.0,
-                                        mult_chance_drop=getattr(mods, "drop_chance_mult", 1.0) if mods else 1.0,
-                                        xp_base=getattr(inim, "xp_valor", 5),
-                                        loot_enriquecido=(getattr(inim, "loot_enriquecido", False) or getattr(mods, "loot_enriquecido", False)),
-                                        chance_arma=getattr(inim, "chance_drop_arma", None),
-                                        chance_equipamento=getattr(inim, "chance_drop_equipamento", None),
-                                        is_elite=getattr(inim, "is_elite", False)
-                                    )
-                        self.buffer_tiro = 0.0
-                        self.efeitos_melee.append({
-                            "x": centro_jogador_x,
-                            "y": centro_jogador_y,
-                            "angulo": ang_mira,
-                            "alcance": getattr(arma_ativa, "alcance", 84.0),
-                            "arco_graus": getattr(arma_ativa, "arco_graus", 45.0),
-                            "tempo": 0.15,
-                            "tempo_total": 0.15
-                        })
-                else:
-                    if hasattr(arma_ativa, "pode_atirar") and arma_ativa.pode_atirar():
-                        if hasattr(arma_ativa, "disparar"):
-                            novos_tiros = arma_ativa.disparar(
-                                centro_jogador_x, centro_jogador_y,
-                                mouse_mundo_x, mouse_mundo_y
-                            )
-                            if novos_tiros:
-                                for p in novos_tiros:
-                                    if hitbox_mult != 1.0:
-                                        p.largura = max(2, int(round(p.largura * hitbox_mult)))
-                                        p.altura = max(2, int(round(p.altura * hitbox_mult)))
-                                        p.width = p.largura
-                                        p.height = p.altura
-                                    if mult_dano_buff != 1.0:
-                                        p.dano = max(1, math.ceil(p.dano * mult_dano_buff))
-                                self.projeteis.extend(novos_tiros)
-                                self.buffer_tiro = 0.0
 
         # Atualiza o tempo de vida dos efeitos visuais de Melee
         for ef in self.efeitos_melee:
@@ -688,16 +730,30 @@ class GameplayScene(BaseScene):
                             )
                         break
 
-                # Fogo Amigo balístico para projéteis do jogador (após carência inicial de 60ms)
-                if auto_dano and proj.ativo and getattr(proj, "dono", "jogador") == "jogador" and (proj.tempo_vida - proj.tempo_vida_restante > 0.06):
-                    if colisao_aabb(proj.x, proj.y, proj.largura, proj.altura, self.jogador.x, self.jogador.y, self.jogador.largura, self.jogador.altura):
-                        self.jogador.receber_dano(proj.dano)
-                        self.aplicar_shake(6.0, 0.15)
-                        proj.ativo = False
-                    elif self.jogador.drone is not None and getattr(self.jogador.drone, "ativo", False):
-                        if colisao_aabb(proj.x, proj.y, proj.largura, proj.altura, self.jogador.drone.x, self.jogador.drone.y, self.jogador.drone.largura, self.jogador.drone.altura):
-                            self.jogador.drone.receber_dano(proj.dano)
-                            proj.ativo = False
+                # Fogo Amigo balístico para projéteis do jogador (após carência de distância percorrida >= 42px)
+                if auto_dano and proj.ativo and getattr(proj, "dono", "jogador") == "jogador":
+                    dist_origem = distancia(proj.x, proj.y, getattr(proj, "x_origem", proj.x), getattr(proj, "y_origem", proj.y))
+                    if dist_origem >= 42.0 or (proj.tempo_vida - proj.tempo_vida_restante > 0.20):
+                        if colisao_aabb(proj.x, proj.y, proj.largura, proj.altura, self.jogador.x, self.jogador.y, self.jogador.largura, self.jogador.altura):
+                            self.jogador.receber_dano(proj.dano)
+                            self.aplicar_shake(6.0, 0.15)
+                            if not getattr(proj, "perfurante", False):
+                                proj.ativo = False
+
+                    # Destruição de todos os drones companheiros por fogo amigo (inclusive com Railgun)
+                    drones_list = []
+                    if hasattr(self.jogador, "drones") and self.jogador.drones:
+                        drones_list = list(self.jogador.drones)
+                    elif getattr(self.jogador, "drone", None) is not None:
+                        drones_list = [self.jogador.drone]
+
+                    for dr in drones_list:
+                        if getattr(dr, "ativo", True):
+                            if colisao_aabb(proj.x, proj.y, proj.largura, proj.altura, dr.x, dr.y, dr.largura, dr.altura):
+                                dr.receber_dano(proj.dano)
+                                if not getattr(proj, "perfurante", False):
+                                    proj.ativo = False
+                                break
 
         # Limpeza de entidades destruídas / inativas
         self.projeteis = [p for p in self.projeteis if p.ativo]

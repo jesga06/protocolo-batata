@@ -32,12 +32,16 @@ class Projetil:
         sprite_key: str = "projetil_pistola",
         explosivo: bool = False,
         raio_explosao: float = 0.0,
-        perfurante: bool = False
+        perfurante: bool = False,
+        desaceleracao: float = 0.0
     ):
         self.x = float(x)
         self.y = float(y)
+        self.x_origem = float(x)
+        self.y_origem = float(y)
         self.dir_x, self.dir_y = normalizar_vetor(dir_x, dir_y)
         self.velocidade = float(velocidade)
+        self.desaceleracao = float(desaceleracao)
         self.dano = int(dano)
         self.tempo_vida = float(tempo_vida)
         self.tempo_vida_restante = float(tempo_vida)
@@ -52,6 +56,7 @@ class Projetil:
         self.perfurante = bool(perfurante)
         self.alvos_atingidos = set()
         self.ativo = True
+        self.requer_detonacao_ao_expirar = False
 
     @classmethod
     def _carregar_sprite(cls, sprite_key: str):
@@ -67,9 +72,12 @@ class Projetil:
         return cls._sprites.get(sprite_key)
 
     def update(self, dt: float):
-        """Atualiza a posição do projétil e decrementa o tempo de vida."""
+        """Atualiza a posição do projétil, desacelera se aplicável e decrementa o tempo de vida."""
         if not self.ativo:
             return
+
+        if self.desaceleracao > 0.0:
+            self.velocidade = max(0.0, self.velocidade - self.desaceleracao * dt)
 
         self.x += self.dir_x * self.velocidade * dt
         self.y += self.dir_y * self.velocidade * dt
@@ -77,6 +85,8 @@ class Projetil:
 
         if self.tempo_vida_restante <= 0.0:
             self.ativo = False
+            if self.explosivo:
+                self.requer_detonacao_ao_expirar = True
 
     def explodir(
         self,
@@ -90,7 +100,7 @@ class Projetil:
         Executa a detonação em área (AoE) do projétil explosivo.
         O alvo de impacto direto recebe 2x de dano (Direct Hit Bonus).
         Demais inimigos no raio de explosão recebem 1x de dano.
-        Se Fogo Amigo estiver ativo, aplica dano ao jogador e/ou ao drone do jogador.
+        Se Fogo Amigo estiver ativo, aplica dano ao jogador e/ou aos drones do jogador.
         """
         if not self.explosivo or self.raio_explosao <= 0.0:
             return []
@@ -124,7 +134,7 @@ class Projetil:
                     ky = (e_cy - centro_y) / dist
                     inimigo.aplicar_knockback(kx, ky, forca=280.0)
 
-        # Checa fogo amigo para o jogador e drone
+        # Checa fogo amigo para o jogador e drones
         auto_dano_ativo = False
         if config_sistema is not None:
             if hasattr(config_sistema, "obter_modificadores"):
@@ -140,13 +150,20 @@ class Projetil:
             if dist_j <= self.raio_explosao:
                 jogador.receber_dano(dano_efetivo)
 
-            # Destruição do drone companheiro por fogo amigo (1 HP)
-            if getattr(jogador, "drone", None) is not None and getattr(jogador.drone, "ativo", False):
-                d_cx = jogador.drone.x + getattr(jogador.drone, "largura", 24) / 2.0
-                d_cy = jogador.drone.y + getattr(jogador.drone, "altura", 24) / 2.0
-                dist_d = distancia(centro_x, centro_y, d_cx, d_cy)
-                if dist_d <= self.raio_explosao:
-                    jogador.drone.receber_dano(dano_efetivo)
+            # Destruição de todos os drones companheiros por fogo amigo (1 HP)
+            drones_list = []
+            if hasattr(jogador, "drones") and jogador.drones:
+                drones_list = list(jogador.drones)
+            elif getattr(jogador, "drone", None) is not None:
+                drones_list = [jogador.drone]
+
+            for dr in drones_list:
+                if getattr(dr, "ativo", True):
+                    d_cx = dr.x + getattr(dr, "largura", 24) / 2.0
+                    d_cy = dr.y + getattr(dr, "altura", 24) / 2.0
+                    dist_d = distancia(centro_x, centro_y, d_cx, d_cy)
+                    if dist_d <= self.raio_explosao:
+                        dr.receber_dano(dano_efetivo)
 
         # Reproduz efeito sonoro de explosão
         try:
@@ -163,7 +180,7 @@ class Projetil:
         return (self.x, self.y, self.largura, self.altura)
 
     def desenhar(self, janela, camera=None):
-        """Renderiza o projétil na tela virtual com coordenadas de câmera."""
+        """Renderiza o projétil na tela virtual com coordenadas de câmera e rotação direcional."""
         if not self.ativo:
             return
 
@@ -176,7 +193,14 @@ class Projetil:
 
         sprite = self._carregar_sprite(self.sprite_key)
         if sprite is not None:
-            janela.screen.blit(sprite, (int(draw_x), int(draw_y)))
+            # Rotaciona foguetes, granadas e projéteis balísticos de acordo com o vetor de disparo
+            if "foguete" in self.sprite_key or "granada" in self.sprite_key or "rifle" in self.sprite_key or "pistola" in self.sprite_key or "minigun" in self.sprite_key:
+                ang_deg = -math.degrees(math.atan2(self.dir_y, self.dir_x))
+                rot_sprite = pygame.transform.rotate(sprite, ang_deg)
+                rot_rect = rot_sprite.get_rect(center=(int(draw_x + self.largura / 2.0), int(draw_y + self.altura / 2.0)))
+                janela.screen.blit(rot_sprite, rot_rect)
+            else:
+                janela.screen.blit(sprite, (int(draw_x), int(draw_y)))
         else:
             # Fallback gráfico baseado na chave do sprite
             cor = AMARELO_XP

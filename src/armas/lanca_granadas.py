@@ -59,11 +59,12 @@ class LancaGranadas(ArmaBase):
             dir_y=dir_y,
             velocidade=self.velocidade_projetil,
             dano=self.dano,
-            tempo_vida=2.0,
+            tempo_vida=1.0,
             dono="jogador",
             sprite_key="projetil_granada",
             explosivo=True,
-            raio_explosao=self.raio_explosao
+            raio_explosao=self.raio_explosao,
+            desaceleracao=self.velocidade_projetil
         )
 
         try:
