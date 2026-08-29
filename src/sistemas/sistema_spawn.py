@@ -29,6 +29,7 @@ class SistemaSpawn:
         self.tempo_decorrido = 0.0
         self.timer_spawn = 0.0
         self.ultimo_minuto_elite = 0
+        self.bosses_spawnados_indices = set()
         self.max_ativos = int(max_ativos)
 
     def intervalo_spawn(self, tempo_s: float) -> float:
@@ -45,9 +46,9 @@ class SistemaSpawn:
         """
         return min(8, 1 + int(float(tempo_s) // 25.0))
 
-    def obter_arquetipo_elite(self, minuto: int) -> tuple[type, str]:
+    def obter_arquetipo_elite(self, boss_idx: int) -> tuple[type, str]:
         """
-        Retorna o par (classe_inimigo, nome_boss) correspondente ao minuto da partida.
+        Retorna o par (classe_inimigo, nome_boss) correspondente à ordem de chefes da partida.
         """
         catalogo = {
             1: (InimigoRapido, "MINI-BOSS: ESTAGIÁRIO SÊNIOR"),
@@ -60,10 +61,9 @@ class SistemaSpawn:
             8: (InimigoBlindado, "MINI-BOSS: FORTALEZA CIBERNÉTICA"),
             9: (InimigoRanged, "MINI-BOSS: GENERAL BALÍSTICO"),
         }
-        if minuto in catalogo:
-            return catalogo[minuto]
-        # Minuto 10+ ou indefinido
-        return (InimigoTank, f"MINI-BOSS: OVERLORD DA MEMÓRIA MK-{minuto}")
+        if boss_idx in catalogo:
+            return catalogo[boss_idx]
+        return (InimigoTank, f"MINI-BOSS: OVERLORD DA MEMÓRIA MK-{boss_idx}")
 
     def escolher_arquetipo(self, tempo_s: float, permitir_ranged: bool = True):
         """
@@ -150,34 +150,36 @@ class SistemaSpawn:
     ) -> list:
         """
         Atualiza os cronômetros e gera novos inimigos com arquétipos variados,
-        além de agendar o spawn obrigatório de Mini-Bosses a cada minuto.
+        além de agendar o spawn obrigatório de Mini-Bosses (1:00, 3:30, 6:00, 8:30).
         Aplica multiplicadores de HP e Velocidade da configuração ativa.
         """
         self.tempo_decorrido += dt
         novos_inimigos = []
 
-        # 1. Verificação de Spawn de Mini-Boss Elite a cada 60s (1:00, 2:00, 3:00...)
-        minuto_atual = int(self.tempo_decorrido // 60.0)
-        if minuto_atual > self.ultimo_minuto_elite and minuto_atual >= 1:
-            self.ultimo_minuto_elite = minuto_atual
-            cls_elite, nome_elite = self.obter_arquetipo_elite(minuto_atual)
-            if not permitir_ranged and cls_elite == InimigoRanged:
-                cls_elite = InimigoPadrao
-            ex, ey = self.gerar_posicao_spawn(
-                camera_x=camera_x,
-                camera_y=camera_y,
-                view_w=view_w,
-                view_h=view_h,
-                arena_w=arena_w,
-                arena_h=arena_h
-            )
-            boss_elite = cls_elite(x=ex, y=ey, is_elite=True, nome_elite=nome_elite)
-            if hp_mult != 1.0:
-                boss_elite.hp_max = max(1, int(round(boss_elite.hp_max * hp_mult)))
-                boss_elite.hp = boss_elite.hp_max
-            if vel_mult != 1.0:
-                boss_elite.velocidade *= float(vel_mult)
-            novos_inimigos.append(boss_elite)
+        # 1. Verificação de Spawn de Mini-Boss Elite (1º aos 60s, subsequentes a cada 2:30min = 210s, 360s, 510s)
+        HORARIOS_BOSS = [60.0, 210.0, 360.0, 510.0]
+        for idx_boss, tempo_boss in enumerate(HORARIOS_BOSS):
+            if self.tempo_decorrido >= tempo_boss and idx_boss not in self.bosses_spawnados_indices:
+                self.bosses_spawnados_indices.add(idx_boss)
+                self.ultimo_minuto_elite = idx_boss + 1
+                cls_elite, nome_elite = self.obter_arquetipo_elite(idx_boss + 1)
+                if not permitir_ranged and cls_elite == InimigoRanged:
+                    cls_elite = InimigoPadrao
+                ex, ey = self.gerar_posicao_spawn(
+                    camera_x=camera_x,
+                    camera_y=camera_y,
+                    view_w=view_w,
+                    view_h=view_h,
+                    arena_w=arena_w,
+                    arena_h=arena_h
+                )
+                boss_elite = cls_elite(x=ex, y=ey, is_elite=True, nome_elite=nome_elite)
+                if hp_mult != 1.0:
+                    boss_elite.hp_max = max(1, int(round(boss_elite.hp_max * hp_mult)))
+                    boss_elite.hp = boss_elite.hp_max
+                if vel_mult != 1.0:
+                    boss_elite.velocidade *= float(vel_mult)
+                novos_inimigos.append(boss_elite)
 
         # 2. Verificação de Lote de Inimigos Regulares
         self.timer_spawn += dt
