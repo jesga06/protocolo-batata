@@ -58,9 +58,24 @@ class Jogador:
         from src.sistemas.sistema_xp import SistemaXP
         self.armas = [Melee(), Pistola()]
         self.arma_especial = None
+        self.arma_especial_secundaria = None
         self.drones = []
         self.slot_ativo = 2  # Padrão: Slot 2 (Pistola)
         self.sistema_xp = SistemaXP()
+
+        # Módulos de Overclock BIOS
+        self.overclocks_adquiridos = set()
+        self.multithreading = False
+        self.refrigeracao_nitrogenio = False
+        self.overvolt = False
+        self.bios_modding = False
+        self.slot_especial_secundario_ativo = False
+        self.protecao_surtos = False
+        self.escudo_fatal_pronto = False
+        self.escudo_fatal_invuln_timer = 0.0
+        self.escudo_fatal_cooldown = 0.0
+        self.upgrade_barramento = False
+        self.fila_disparos_echo = []
 
     def aplicar_pulso_magnetico(self, drops: list):
         """Puxa instantaneamente todos os drops ativos na arena diretamente para a coordenada da Batata."""
@@ -116,10 +131,44 @@ class Jogador:
         """Adiciona XP ao jogador e retorna lista de níveis subidos."""
         return self.sistema_xp.adicionar_xp(quantidade, mult_xp)
 
+    def aplicar_overclock(self, mod_id: str):
+        """Aplica os efeitos permanentes do módulo de Overclock à Batata."""
+        if not mod_id:
+            return
+        self.overclocks_adquiridos.add(mod_id)
+
+        if mod_id == "multithreading":
+            self.multithreading = True
+        elif mod_id == "refrigeracao":
+            self.refrigeracao_nitrogenio = True
+        elif mod_id == "overvolt":
+            self.overvolt = True
+        elif mod_id == "bios_modding":
+            self.bios_modding = True
+        elif mod_id == "protecao_surtos":
+            self.protecao_surtos = True
+            self.hp_max += 50
+            self.hp = min(self.hp_max, self.hp + 50)
+            self.escudo_fatal_pronto = True
+            self.escudo_fatal_invuln_timer = 0.0
+            self.escudo_fatal_cooldown = 0.0
+        elif mod_id == "upgrade_barramento":
+            self.upgrade_barramento = True
+
     def selecionar_slot(self, slot: int):
-        """Alterna a arma ativa para o slot 1, 2 ou 3."""
-        if slot in (1, 2, 3):
+        """Alterna a arma ativa para o slot 1, 2 ou 3. Se BIOS Modding ativo e já no Slot 3, alterna entre 3A e 3B."""
+        if slot == 3:
+            if self.slot_ativo == 3 and getattr(self, "bios_modding", False):
+                self.slot_especial_secundario_ativo = not getattr(self, "slot_especial_secundario_ativo", False)
+                if self.arma_especial_secundaria is not None:
+                    # Alterna as duas armas especiais
+                    self.arma_especial, self.arma_especial_secundaria = self.arma_especial_secundaria, self.arma_especial
+            else:
+                self.slot_especial_secundario_ativo = False
+            self.slot_ativo = 3
+        elif slot in (1, 2):
             self.slot_ativo = slot
+            self.slot_especial_secundario_ativo = False
 
     def obter_arma_ativa(self):
         """Retorna a instância da arma correspondente ao slot_ativo atual."""
@@ -187,11 +236,11 @@ class Jogador:
 
         if teclado is not None:
             # Troca de armas via teclas numéricas 1, 2 e 3
-            if (hasattr(teclado, "key_pressed") and teclado.key_pressed("1")) or (hasattr(teclado, "key_down") and teclado.key_down("1")):
+            if hasattr(teclado, "key_down") and teclado.key_down("1"):
                 self.selecionar_slot(1)
-            elif (hasattr(teclado, "key_pressed") and teclado.key_pressed("2")) or (hasattr(teclado, "key_down") and teclado.key_down("2")):
+            elif hasattr(teclado, "key_down") and teclado.key_down("2"):
                 self.selecionar_slot(2)
-            elif (hasattr(teclado, "key_pressed") and teclado.key_pressed("3")) or (hasattr(teclado, "key_down") and teclado.key_down("3")):
+            elif hasattr(teclado, "key_down") and teclado.key_down("3"):
                 self.selecionar_slot(3)
 
         if mov_mouse and mouse is not None:
@@ -320,6 +369,21 @@ class Jogador:
         if self.buff_resistencia_timer > 0.0:
             dano_a_aplicar = max(1, int(round(dano_a_aplicar * 0.85)))
 
+        # Proteção contra Surtos (Escudo Fatal: mitiga dano letal, 5s invuln + 45s cooldown pós-invuln)
+        if dano_a_aplicar >= self.hp and getattr(self, "protecao_surtos", False) and getattr(self, "escudo_fatal_pronto", False):
+            self.escudo_fatal_pronto = False
+            self.escudo_fatal_invuln_timer = 5.0
+            self.invulnerabilidade_timer = 5.0
+            self.flash_dano_timer = JOGADOR_COOLDOWN_DANO_FLASH
+            self.hp = 1
+            try:
+                from PPlay.sound import Sound
+                sfx = Sound(obter_caminho_asset("sfx_dano_jogador"))
+                sfx.play()
+            except Exception:
+                pass
+            return
+
         self.hp = max(0, self.hp - dano_a_aplicar)
         self.flash_dano_timer = JOGADOR_COOLDOWN_DANO_FLASH
 
@@ -393,6 +457,34 @@ class Jogador:
                 "cor": (100, 220, 255),
                 "cor_bg": (20, 45, 65)
             })
+        if getattr(self, "protecao_surtos", False):
+            if getattr(self, "escudo_fatal_pronto", False):
+                ativos.append({
+                    "id": "surto",
+                    "nome": "DISJUNTOR PRONTO",
+                    "timer": 999.0,
+                    "duracao": 999.0,
+                    "cor": (140, 255, 160),
+                    "cor_bg": (20, 60, 30)
+                })
+            elif getattr(self, "escudo_fatal_invuln_timer", 0.0) > 0.0:
+                ativos.append({
+                    "id": "surto",
+                    "nome": f"SURTO INVULN {self.escudo_fatal_invuln_timer:.1f}s",
+                    "timer": self.escudo_fatal_invuln_timer,
+                    "duracao": 5.0,
+                    "cor": (255, 215, 0),
+                    "cor_bg": (60, 50, 10)
+                })
+            else:
+                ativos.append({
+                    "id": "surto",
+                    "nome": f"SURTO {self.escudo_fatal_cooldown:.0f}s",
+                    "timer": self.escudo_fatal_cooldown,
+                    "duracao": 45.0,
+                    "cor": (180, 180, 200),
+                    "cor_bg": (40, 40, 50)
+                })
         return ativos
 
     def update(self, dt: float, drops: list = None, inimigos: list = None):
@@ -415,7 +507,18 @@ class Jogador:
         if self.buff_resistencia_timer > 0.0:
             self.buff_resistencia_timer = max(0.0, self.buff_resistencia_timer - dt)
 
-        dt_armas = dt * (1.30 if self.buff_cadencia_timer > 0.0 else 1.0)
+        # Atualiza timer do escudo fatal de Proteção contra Surtos
+        if getattr(self, "escudo_fatal_invuln_timer", 0.0) > 0.0:
+            self.escudo_fatal_invuln_timer = max(0.0, self.escudo_fatal_invuln_timer - dt)
+            if self.escudo_fatal_invuln_timer == 0.0:
+                self.escudo_fatal_cooldown = 45.0
+        elif getattr(self, "escudo_fatal_cooldown", 0.0) > 0.0:
+            self.escudo_fatal_cooldown = max(0.0, self.escudo_fatal_cooldown - dt)
+            if self.escudo_fatal_cooldown == 0.0:
+                self.escudo_fatal_pronto = True
+
+        mult_cadencia = (1.35 if getattr(self, "refrigeracao_nitrogenio", False) else 1.0) * (1.30 if self.buff_cadencia_timer > 0.0 else 1.0)
+        dt_armas = dt * mult_cadencia
 
         for arma in self.armas:
             arma.update(dt_armas)
@@ -424,9 +527,18 @@ class Jogador:
             self.arma_especial.update(dt_armas)
             # Regra de Esgotamento de Munição (Slot 3 Lifecycle)
             if self.arma_especial.municao_atual <= 0:
-                self.arma_especial = None
-                if self.slot_ativo == 3:
-                    self.slot_ativo = 2
+                if getattr(self, "bios_modding", False) and self.arma_especial_secundaria is not None:
+                    self.arma_especial = self.arma_especial_secundaria
+                    self.arma_especial_secundaria = None
+                else:
+                    self.arma_especial = None
+                    if self.slot_ativo == 3:
+                        self.slot_ativo = 2
+
+        if getattr(self, "arma_especial_secundaria", None) is not None:
+            self.arma_especial_secundaria.update(dt_armas)
+            if self.arma_especial_secundaria.municao_atual <= 0:
+                self.arma_especial_secundaria = None
 
         # Atualização dos Drones Companheiros (Slot 4 - Múltiplos Drones Simultâneos)
         novos_projeteis_drone = []
@@ -449,8 +561,9 @@ class Jogador:
 
         self.drones = drones_vivos
         mult_buff_vel = 1.12 if self.buff_vel_timer > 0.0 else 1.0
+        mult_barramento = 1.40 if getattr(self, "upgrade_barramento", False) else 1.0
         mult_config = getattr(self, "mult_vel_config", 1.0)
-        self.velocidade_atual = self.velocidade_base * mult_vel_suporte * mult_config * mult_buff_vel
+        self.velocidade_atual = self.velocidade_base * mult_vel_suporte * mult_config * mult_buff_vel * mult_barramento
 
         return novos_projeteis_drone
 

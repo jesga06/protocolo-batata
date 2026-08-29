@@ -25,11 +25,16 @@ from src.utils.constantes import (
 
 class MockKeyboard:
     """Simulador de teclado para testes unitários determinísticos."""
-    def __init__(self, pressed_keys=None):
+    def __init__(self, pressed_keys=None, just_pressed_keys=None):
         self.pressed_keys = set(k.lower() for k in (pressed_keys or []))
+        self.just_pressed_keys = set(k.lower() for k in (just_pressed_keys or []))
 
     def key_pressed(self, key):
         return key.lower() in self.pressed_keys
+
+    def key_down(self, key):
+        """Simula 'tecla pressionada neste frame apenas' (equivalente a key_down do PPlay)."""
+        return key.lower() in self.just_pressed_keys
 
 
 class MockMouse:
@@ -153,6 +158,92 @@ class TestJogadorDanoECura(unittest.TestCase):
         teclado = MockKeyboard(["d"])
         j.processar_input(teclado, None, dt=1.0, limite_arena=(1600, 1200))
         self.assertEqual(j.x, 100)
+
+
+class TestJogadorSlotInputRegression(unittest.TestCase):
+    """
+    Regression: pressionar e segurar a tecla 3 não deve alternar slots repetidamente.
+    Bug: key_pressed (held) era usado junto com key_down, causando toggle frame-a-frame
+    de 3A/3B quando bios_modding estava ativo.
+    Fix: apenas key_down (um frame) é aceito para seleção de slot.
+    """
+
+    def _fazer_jogador_com_bios_modding(self):
+        """Retorna um Jogador com bios_modding ativo e arma especial dupla configurada."""
+        from src.armas.pistola import Pistola
+        j = Jogador(x=100.0, y=100.0)
+        j.bios_modding = True
+        j.arma_especial = Pistola()
+        j.arma_especial_secundaria = Pistola()
+        j.slot_ativo = 3
+        return j
+
+    def test_segurar_3_com_bios_modding_nao_alterna_slots(self):
+        """
+        Segurar a tecla 3 (key_down=False, key_pressed=True) não deve acionar
+        selecionar_slot, portanto não deve alternar entre 3A e 3B.
+        """
+        j = self._fazer_jogador_com_bios_modding()
+        arma_original = j.arma_especial
+        secundaria_original = j.arma_especial_secundaria
+
+        # Simula tecla SEGURADA: key_pressed=True mas key_down=False (não é novo frame de press)
+        teclado_held = MockKeyboard(pressed_keys=["3"], just_pressed_keys=[])
+        mouse = MockMouse()
+
+        for _ in range(30):  # 30 frames com a tecla segurada
+            j.processar_input(teclado_held, mouse, dt=0.016, limite_arena=(1600, 1200))
+
+        # Slot e armas devem ser os mesmos — sem alternância
+        self.assertEqual(j.slot_ativo, 3)
+        self.assertIs(j.arma_especial, arma_original)
+        self.assertIs(j.arma_especial_secundaria, secundaria_original)
+        self.assertFalse(j.slot_especial_secundario_ativo)
+
+    def test_novo_press_de_3_com_bios_modding_alterna_uma_vez(self):
+        """
+        Um novo press de tecla (key_down=True por exatamente 1 frame) deve
+        alternar entre 3A e 3B exatamente uma vez.
+        """
+        j = self._fazer_jogador_com_bios_modding()
+        arma_a = j.arma_especial
+        arma_b = j.arma_especial_secundaria
+
+        mouse = MockMouse()
+
+        # Frame 1: tecla pressionada neste frame (key_down=True)
+        teclado_press = MockKeyboard(pressed_keys=["3"], just_pressed_keys=["3"])
+        j.processar_input(teclado_press, mouse, dt=0.016, limite_arena=(1600, 1200))
+
+        # Deve ter alternado: arma_especial agora é a antiga secundária
+        self.assertIs(j.arma_especial, arma_b)
+        self.assertIs(j.arma_especial_secundaria, arma_a)
+        self.assertTrue(j.slot_especial_secundario_ativo)
+
+        # Frames 2–30: tecla ainda segurada mas key_down=False — NÃO deve alternar mais
+        teclado_held = MockKeyboard(pressed_keys=["3"], just_pressed_keys=[])
+        for _ in range(29):
+            j.processar_input(teclado_held, mouse, dt=0.016, limite_arena=(1600, 1200))
+
+        # Armas devem permanecer como estavam após o 1º frame
+        self.assertIs(j.arma_especial, arma_b)
+        self.assertIs(j.arma_especial_secundaria, arma_a)
+
+    def test_selecionar_slot_1_e_2_com_key_down(self):
+        """Slots 1 e 2 também respondem apenas a key_down, não a key_pressed contínuo."""
+        j = Jogador(x=100.0, y=100.0)
+        mouse = MockMouse()
+
+        # Slot 2 é o padrão; vai para slot 1 via key_down
+        teclado_press1 = MockKeyboard(just_pressed_keys=["1"])
+        j.processar_input(teclado_press1, mouse, dt=0.016, limite_arena=(1600, 1200))
+        self.assertEqual(j.slot_ativo, 1)
+
+        # Segurar tecla 2 (key_pressed only) não deve mudar slot
+        j.slot_ativo = 1
+        teclado_held2 = MockKeyboard(pressed_keys=["2"], just_pressed_keys=[])
+        j.processar_input(teclado_held2, mouse, dt=0.016, limite_arena=(1600, 1200))
+        self.assertEqual(j.slot_ativo, 1)  # permanece em 1
 
 
 if __name__ == "__main__":
