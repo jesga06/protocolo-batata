@@ -403,6 +403,8 @@ class MenuConfigs:
                 if mouse_clicado and btn_s4.collidepoint(mx, my):
                     self.gerenciador_config.definir_valor("filtro_daltonico", opt)
                     self._tocar_som("sfx_btn_click")
+                    if self.cena and hasattr(self.cena, "aplicar_modificadores"):
+                        self.cena.aplicar_modificadores()
                     return
 
             # S5: Escala Global
@@ -414,6 +416,8 @@ class MenuConfigs:
                 if mouse_clicado and btn_s5.collidepoint(mx, my):
                     self.gerenciador_config.definir_valor("escala_global", opt)
                     self._tocar_som("sfx_btn_click")
+                    if self.cena and hasattr(self.cena, "aplicar_modificadores"):
+                        self.cena.aplicar_modificadores()
                     return
 
     def draw(self, screen: pygame.Surface):
