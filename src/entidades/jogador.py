@@ -211,7 +211,7 @@ class Jogador:
 
     def receber_dano(self, quantidade: int):
         """Aplica dano ao jogador, aciona flash visual e testa condição de morte."""
-        if not self.vivo:
+        if not self.vivo or getattr(self, "modo_deus", False) or getattr(self, "invulneravel", False):
             return
 
         self.hp = max(0, self.hp - int(quantidade))

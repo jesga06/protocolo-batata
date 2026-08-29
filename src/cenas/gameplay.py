@@ -67,6 +67,10 @@ class GameplayScene(BaseScene):
         self.sistema_scavenger = SistemaScavenger()
         self.sistema_particulas = SistemaParticulas()
         self.hud = HUD()
+
+        from src.ui.menu_debug import MenuDebug
+        self.menu_debug = MenuDebug(cena_gameplay=self)
+
         self.projeteis: list[Projetil] = []
         self.inimigos: list[InimigoBase] = []
 
@@ -185,17 +189,32 @@ class GameplayScene(BaseScene):
         # Clampa dt para evitar saltos quânticos em frames atípicos (máximo 100ms)
         dt = min(dt, 0.1)
 
+        # 0. Se o Menu de Debug estiver ativo, processa seus inputs e congela o jogo
+        if hasattr(self, "menu_debug"):
+            self.menu_debug.update(dt, self.teclado, self.mouse)
+            if self.menu_debug.ativo:
+                self.pausado = True
+                return
+            elif not self.modal_level_up.ativo and not self.menu_configs.ativo and not self.game_over and not self.vitoria:
+                self.pausado = False
+
+        # Sincroniza estado de Modo Deus e Munição Infinita
+        if hasattr(self, "menu_debug"):
+            self.jogador.modo_deus = getattr(self.menu_debug, "modo_deus", False)
+            if getattr(self.menu_debug, "municao_infinita", False) and self.jogador.arma_especial:
+                self.jogador.arma_especial.municao_atual = self.jogador.arma_especial.municao_max
+
         # 1. Se o Modal de Level Up estiver ativo, processa seus inputs e congela o jogo
         if self.modal_level_up.ativo:
             self.modal_level_up.update(dt, self.teclado, self.mouse)
-            if not self.modal_level_up.ativo and not self.menu_configs.ativo:
+            if not self.modal_level_up.ativo and not self.menu_configs.ativo and not (hasattr(self, "menu_debug") and self.menu_debug.ativo):
                 self.pausado = False
             return
 
         # 2. Se o Menu de Configurações estiver ativo, processa seus inputs e congela o jogo
         if self.menu_configs.ativo:
             self.menu_configs.update(dt, self.teclado, self.mouse)
-            if not self.menu_configs.ativo and not self.modal_level_up.ativo:
+            if not self.menu_configs.ativo and not self.modal_level_up.ativo and not (hasattr(self, "menu_debug") and self.menu_debug.ativo):
                 self.pausado = False
             return
 
@@ -248,7 +267,9 @@ class GameplayScene(BaseScene):
         # =========================================================================
         # 1. ATUALIZAÇÃO DO JOGADOR E INPUTS
         # =========================================================================
-        self.tempo_sobrevivencia += dt
+        timer_congelado = getattr(self.menu_debug, "timer_congelado", False) if hasattr(self, "menu_debug") else False
+        if not timer_congelado:
+            self.tempo_sobrevivencia += dt
 
         # Atualiza temporizador de Screen Shake
         if self.shake_timer > 0.0:
@@ -394,17 +415,19 @@ class GameplayScene(BaseScene):
         # =========================================================================
         # 3. SPAWNER DE INIMIGOS
         # =========================================================================
-        novos_inimigos = self.spawner.update(
-            dt=dt,
-            camera_x=self.camera.x,
-            camera_y=self.camera.y,
-            total_inimigos_vivos=len(self.inimigos),
-            view_w=LARGURA_TELA,
-            view_h=ALTURA_TELA,
-            arena_w=self.largura_arena,
-            arena_h=self.altura_arena
-        )
-        self.inimigos.extend(novos_inimigos)
+        spawn_liberado = getattr(self.menu_debug, "spawn_natural_ativo", True) if hasattr(self, "menu_debug") else True
+        if spawn_liberado:
+            novos_inimigos = self.spawner.update(
+                dt=dt,
+                camera_x=self.camera.x,
+                camera_y=self.camera.y,
+                total_inimigos_vivos=len(self.inimigos),
+                view_w=LARGURA_TELA,
+                view_h=ALTURA_TELA,
+                arena_w=self.largura_arena,
+                arena_h=self.altura_arena
+            )
+            self.inimigos.extend(novos_inimigos)
 
         # =========================================================================
         # 4. FÍSICA DOS PROJÉTEIS
@@ -451,6 +474,7 @@ class GameplayScene(BaseScene):
                 continue
 
             if getattr(proj, "explosivo", False):
+                alvo_direto = None
                 detonar = False
                 p_cx = proj.x + proj.largura / 2.0
                 p_cy = proj.y + proj.altura / 2.0
@@ -459,12 +483,11 @@ class GameplayScene(BaseScene):
                 for inimigo in self.inimigos:
                     if not inimigo.vivo or getattr(inimigo, "em_fase", False):
                         continue
-                    e_cx = inimigo.x + getattr(inimigo, "largura", 28) / 2.0
-                    e_cy = inimigo.y + getattr(inimigo, "altura", 28) / 2.0
-                    if distancia(p_cx, p_cy, e_cx, e_cy) <= r_exp or colisao_aabb(
+                    if colisao_aabb(
                         proj.x, proj.y, proj.largura, proj.altura,
                         inimigo.x, inimigo.y, inimigo.largura, inimigo.altura
                     ):
+                        alvo_direto = inimigo
                         detonar = True
                         break
 
@@ -477,10 +500,12 @@ class GameplayScene(BaseScene):
                         self.inimigos,
                         jogador=self.jogador,
                         config_sistema=self.config_sistema,
-                        mult_dano_explosivo=mult_explosivo
+                        mult_dano_explosivo=mult_explosivo,
+                        alvo_direto=alvo_direto
                     )
                     for inim in afetados:
-                        dano_exp = int(getattr(proj, "dano", 35) * mult_explosivo)
+                        dano_base_exp = int(getattr(proj, "dano", 35) * mult_explosivo)
+                        dano_exp = dano_base_exp * 2 if (inim is alvo_direto) else dano_base_exp
                         self.dano_total_causado += dano_exp
                         if not inim.vivo:
                             self.abates += 1
@@ -768,11 +793,13 @@ class GameplayScene(BaseScene):
         # =========================================================================
         self._desenhar_hud_tela(hud_visivel=hud_visivel)
 
-        # Overlays modais de Level Up, Menu de Configurações, Vitória, Game Over e Pausa
+        # Overlays modais de Level Up, Menu de Configurações, Debug, Vitória, Game Over e Pausa
         if self.modal_level_up.ativo:
             self.modal_level_up.draw(screen)
         elif self.menu_configs.ativo:
             self.menu_configs.draw(screen)
+        elif hasattr(self, "menu_debug") and self.menu_debug.ativo:
+            self.menu_debug.draw(screen)
         elif self.vitoria:
             self._desenhar_overlay_vitoria()
         elif self.game_over:

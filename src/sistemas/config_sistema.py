@@ -214,6 +214,10 @@ class GerenciadorConfiguracoes:
         except Exception:
             return False
 
+    def salvar_progresso(self, caminho: Optional[str] = None) -> bool:
+        """Alias para salvar_arquivo."""
+        return self.salvar_arquivo(caminho)
+
     def carregar_arquivo(self, caminho: Optional[str] = None) -> bool:
         """Carrega o estado a partir de um arquivo JSON."""
         if caminho is None:
