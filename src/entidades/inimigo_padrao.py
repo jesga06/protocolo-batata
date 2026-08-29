@@ -24,7 +24,9 @@ class InimigoPadrao(InimigoBase):
         velocidade: float = INIMIGO_PADRAO_VELOCIDADE,
         dano_contato: int = INIMIGO_PADRAO_DANO,
         cooldown_contato: float = INIMIGO_PADRAO_COOLDOWN_ATAQUE,
-        xp_valor: int = INIMIGO_PADRAO_XP
+        xp_valor: int = INIMIGO_PADRAO_XP,
+        is_elite: bool = False,
+        nome_elite: str = ""
     ):
         super().__init__(
             x=x,
@@ -37,5 +39,8 @@ class InimigoPadrao(InimigoBase):
             score_valor=100,
             largura=28,
             altura=28,
-            sprite_key="inimigo_padrao"
+            sprite_key="inimigo_padrao",
+            is_elite=is_elite,
+            nome_elite=nome_elite
         )
+

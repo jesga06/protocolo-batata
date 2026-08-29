@@ -23,6 +23,14 @@ class GerenciadorConfiguracoes:
         self.desbloqueadas: set[str] = set()
         self.ativas: dict[str, Any] = {}
         self.sistema_configs: dict[str, Any] = {}
+        self.estatisticas: dict[str, Any] = {
+            "high_score": 0,
+            "melhor_tempo": 0.0,
+            "total_abates": 0,
+            "partidas_jogadas": 0,
+            "vitorias": 0,
+            "historico": []
+        }
 
         self._inicializar_padroes()
 
@@ -94,12 +102,71 @@ class GerenciadorConfiguracoes:
         """Retorna lista de definições de configurações já desbloqueadas."""
         return [cdef for cid, cdef in CONFIGURACOES_GAMEPLAY.items() if cid in self.desbloqueadas]
 
+    def obter_estatisticas(self) -> dict:
+        """Retorna as estatísticas históricas do jogador."""
+        return dict(self.estatisticas)
+
+    def registrar_partida(
+        self,
+        tempo: float,
+        abates: int,
+        pontos: int,
+        vitoria: bool = False,
+        dano_causado: int = 0
+    ) -> dict:
+        """
+        Registra o resultado de uma partida concluída (derrota ou vitória),
+        atualiza recordes históricos e persiste em disco.
+        """
+        novo_recorde_pontos = pontos > self.estatisticas.get("high_score", 0)
+        novo_recorde_tempo = tempo > self.estatisticas.get("melhor_tempo", 0.0)
+
+        self.estatisticas["partidas_jogadas"] = self.estatisticas.get("partidas_jogadas", 0) + 1
+        self.estatisticas["total_abates"] = self.estatisticas.get("total_abates", 0) + int(abates)
+
+        if vitoria:
+            self.estatisticas["vitorias"] = self.estatisticas.get("vitorias", 0) + 1
+
+        if novo_recorde_pontos:
+            self.estatisticas["high_score"] = int(pontos)
+
+        if novo_recorde_tempo:
+            self.estatisticas["melhor_tempo"] = float(tempo)
+
+        historico = self.estatisticas.setdefault("historico", [])
+        registro = {
+            "tempo": round(float(tempo), 2),
+            "abates": int(abates),
+            "pontos": int(pontos),
+            "vitoria": bool(vitoria),
+            "dano_causado": int(dano_causado),
+            "desbloqueadas": len(self.desbloqueadas)
+        }
+        historico.append(registro)
+        if len(historico) > 20:
+            self.estatisticas["historico"] = historico[-20:]
+
+        self.salvar_arquivo()
+
+        return {
+            "novo_recorde_pontos": novo_recorde_pontos,
+            "novo_recorde_tempo": novo_recorde_tempo
+        }
+
     def to_dict(self) -> dict:
         """Serializa o estado para dicionário JSON."""
         return {
             "desbloqueadas": sorted(list(self.desbloqueadas)),
             "ativas": {k: v for k, v in self.ativas.items()},
-            "sistema_configs": {k: v for k, v in self.sistema_configs.items()}
+            "sistema_configs": {k: v for k, v in self.sistema_configs.items()},
+            "estatisticas": {
+                "high_score": int(self.estatisticas.get("high_score", 0)),
+                "melhor_tempo": float(self.estatisticas.get("melhor_tempo", 0.0)),
+                "total_abates": int(self.estatisticas.get("total_abates", 0)),
+                "partidas_jogadas": int(self.estatisticas.get("partidas_jogadas", 0)),
+                "vitorias": int(self.estatisticas.get("vitorias", 0)),
+                "historico": list(self.estatisticas.get("historico", []))
+            }
         }
 
     def from_dict(self, dados: dict):
@@ -121,6 +188,17 @@ class GerenciadorConfiguracoes:
             for k, v in dados["sistema_configs"].items():
                 if k in CONFIGURACOES_SISTEMA:
                     self.sistema_configs[k] = v
+
+        if "estatisticas" in dados and isinstance(dados["estatisticas"], dict):
+            est = dados["estatisticas"]
+            self.estatisticas = {
+                "high_score": int(est.get("high_score", 0)),
+                "melhor_tempo": float(est.get("melhor_tempo", 0.0)),
+                "total_abates": int(est.get("total_abates", 0)),
+                "partidas_jogadas": int(est.get("partidas_jogadas", 0)),
+                "vitorias": int(est.get("vitorias", 0)),
+                "historico": list(est.get("historico", []))
+            }
 
     def salvar_arquivo(self, caminho: Optional[str] = None) -> bool:
         """Salva o estado serializado em arquivo JSON."""
@@ -151,3 +229,4 @@ class GerenciadorConfiguracoes:
         except Exception:
             pass
         return False
+

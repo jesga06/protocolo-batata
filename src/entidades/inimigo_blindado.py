@@ -25,7 +25,9 @@ class InimigoBlindado(InimigoBase):
         cooldown_contato: float = INIMIGO_BLINDADO_COOLDOWN_ATAQUE,
         xp_valor: int = INIMIGO_BLINDADO_XP,
         reducao_frontal: float = 0.30,
-        arco_frontal_graus: float = 90.0
+        arco_frontal_graus: float = 90.0,
+        is_elite: bool = False,
+        nome_elite: str = ""
     ):
         super().__init__(
             x=x,
@@ -38,8 +40,11 @@ class InimigoBlindado(InimigoBase):
             score_valor=250,
             largura=47,
             altura=47,
-            sprite_key="inimigo_blindado"
+            sprite_key="inimigo_blindado",
+            is_elite=is_elite,
+            nome_elite=nome_elite
         )
+
         self.reducao_frontal = float(reducao_frontal)
         self.arco_frontal_graus = float(arco_frontal_graus)
         # Vetor unitário de orientação (olhando para a direita por padrão)

@@ -5,6 +5,7 @@ atualização de ciclo de vida e coleta por contato do jogador.
 """
 
 import random
+import math
 from src.entidades.drop import ItemDrop
 from src.utils.math_utils import colisao_aabb
 from src.utils.constantes import (
@@ -32,17 +33,74 @@ class SistemaDrops:
         xp_base: int = None,
         loot_enriquecido: bool = False,
         chance_arma: float = None,
-        chance_equipamento: float = None
+        chance_equipamento: float = None,
+        is_elite: bool = False
     ) -> list[ItemDrop]:
         """
         Gera os drops ao eliminar um inimigo:
-        - Sempre gera ao menos 1 gema de XP.
-        - Calcula probabilidades para caixas de cura, armas especiais e equipamentos.
-        - Inimigos com loot_enriquecido (ex: Ranged) concedem 15% de chance para armas e 15% para equipamentos.
+        - Inimigos normais geram ao menos 1 gema de XP e rolam chances para cura, arma e equipamento.
+        - Inimigos Elite / Mini-Bosses geram garantidamente um cluster de 50 XP (5 gemas de 10 XP),
+          uma caixa de arma especial e uma caixa de equipamento / drone.
         """
         novos_drops = []
 
-        # 1. Gema de XP
+        if is_elite:
+            # 1. Cluster de 50 XP (5 gemas de 10 XP distribuídas em anel)
+            for i in range(5):
+                ang = i * (2.0 * math.pi / 5.0)
+                offset_x = math.cos(ang) * 24.0
+                offset_y = math.sin(ang) * 24.0
+                gema_elite = ItemDrop(
+                    x=x + offset_x - 8.0,
+                    y=y + offset_y - 8.0,
+                    tipo="xp",
+                    valor=10,
+                    tempo_vida=DROP_TEMPO_DESAPARECER,
+                    tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
+                )
+                novos_drops.append(gema_elite)
+                self.drops.append(gema_elite)
+
+            # 2. Caixa de Arma Garantida
+            drop_arma = ItemDrop(
+                x=x - 20.0,
+                y=y - 8.0,
+                tipo="arma",
+                valor=1,
+                tempo_vida=DROP_TEMPO_DESAPARECER,
+                tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
+            )
+            novos_drops.append(drop_arma)
+            self.drops.append(drop_arma)
+
+            # 3. Caixa de Equipamento Garantida
+            drop_equip = ItemDrop(
+                x=x + 20.0,
+                y=y - 8.0,
+                tipo="equipamento",
+                valor=1,
+                tempo_vida=DROP_TEMPO_DESAPARECER,
+                tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
+            )
+            novos_drops.append(drop_equip)
+            self.drops.append(drop_equip)
+
+            # 4. Caixa de Cura (50% de chance para Mini-Boss)
+            if random.random() < 0.50:
+                drop_cura = ItemDrop(
+                    x=x - 8.0,
+                    y=y + 24.0,
+                    tipo="cura",
+                    valor=DROP_CURA_VALOR_BASE,
+                    tempo_vida=DROP_TEMPO_DESAPARECER,
+                    tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
+                )
+                novos_drops.append(drop_cura)
+                self.drops.append(drop_cura)
+
+            return novos_drops
+
+        # 1. Gema de XP Normal
         valor_xp = int(xp_base) if xp_base is not None else DROP_XP_VALOR_BASE
         gema_xp = ItemDrop(
             x=x - 8.0,
@@ -115,6 +173,7 @@ class SistemaDrops:
             self.drops.append(drop_equip)
 
         return novos_drops
+
 
     def update(self, dt: float):
         """Atualiza timers de todos os drops e remove expirados."""

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Inimigo Tanque (Geladeira Industrial) — Protocolo: Batata
 Inimigo pesado de grande porte com alta resistência, velocidade lenta e alto dano de contato.
 """
@@ -24,7 +24,9 @@ class InimigoTank(InimigoBase):
         velocidade: float = INIMIGO_TANK_VELOCIDADE,
         dano_contato: int = INIMIGO_TANK_DANO,
         cooldown_contato: float = INIMIGO_TANK_COOLDOWN_ATAQUE,
-        xp_valor: int = INIMIGO_TANK_XP
+        xp_valor: int = INIMIGO_TANK_XP,
+        is_elite: bool = False,
+        nome_elite: str = ""
     ):
         super().__init__(
             x=x,
@@ -37,5 +39,8 @@ class InimigoTank(InimigoBase):
             score_valor=300,
             largura=62,
             altura=62,
-            sprite_key="inimigo_tank"
+            sprite_key="inimigo_tank",
+            is_elite=is_elite,
+            nome_elite=nome_elite
         )
+

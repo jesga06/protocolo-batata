@@ -6,6 +6,7 @@ recebimento de dano, knockback e renderização.
 """
 
 import os
+import math
 import pygame
 from src.utils.constantes import ASSETS_DIR, ASSET_PATHS, obter_caminho_asset, INIMIGO_PADRAO_HP
 from src.utils.math_utils import vetor_direcao, colisao_aabb, lerp
@@ -29,7 +30,9 @@ class InimigoBase:
         score_valor: int = 100,
         largura: int = 28,
         altura: int = 28,
-        sprite_key: str = "inimigo_padrao"
+        sprite_key: str = "inimigo_padrao",
+        is_elite: bool = False,
+        nome_elite: str = ""
     ):
         self.x = float(x)
         self.y = float(y)
@@ -38,21 +41,31 @@ class InimigoBase:
         self.width = self.largura
         self.height = self.altura
 
-        self.hp_max = int(hp)
-        self.hp = int(hp)
+        self.is_elite = bool(is_elite)
+        self.nome_elite = str(nome_elite)
+
+        if self.is_elite:
+            self.hp_max = int(hp * 3)
+            self.hp = self.hp_max
+            self.score_valor = int(score_valor * 10)
+            self.xp_valor = 50
+        else:
+            self.hp_max = int(hp)
+            self.hp = int(hp)
+            self.score_valor = int(score_valor)
+            self.xp_valor = int(xp_valor)
+
         self.velocidade = float(velocidade)
         self.dano_contato = int(dano_contato)
         self.cooldown_contato_max = float(cooldown_contato)
         self.cooldown_contato_atual = 0.0  # Cooldown individual por instância
-
-        self.xp_valor = int(xp_valor)
-        self.score_valor = int(score_valor)
         self.vivo = True
         self.flash_timer = 0.0
 
         self.vx_knockback = 0.0
         self.vy_knockback = 0.0
         self.sprite_key = sprite_key
+
 
     @classmethod
     def _obter_sprite(cls, chave: str):
@@ -159,6 +172,25 @@ class InimigoBase:
         if draw_x < -40 or draw_x > janela.largura + 40 or draw_y < -40 or draw_y > janela.altura + 40:
             return
 
+        # Renderiza aura pulsante roxa e dourada se for Elite/Mini-Boss
+        if getattr(self, "is_elite", False):
+            try:
+                ticks = pygame.time.get_ticks() if pygame.display.get_init() else 0
+                pulso = math.sin(ticks / 150.0) * 4.0
+                raio_aura = max(self.largura, self.altura) / 2.0 + 8.0 + pulso
+                centro_x = int(draw_x + self.largura / 2.0)
+                centro_y = int(draw_y + self.altura / 2.0)
+
+                dim_aura = max(10, int((raio_aura + 4.0) * 2))
+                aura_surf = pygame.Surface((dim_aura, dim_aura), pygame.SRCALPHA)
+                aura_cx = dim_aura // 2
+                aura_cy = dim_aura // 2
+                pygame.draw.circle(aura_surf, (175, 75, 255, 90), (aura_cx, aura_cy), max(1, int(raio_aura)))
+                pygame.draw.circle(aura_surf, (255, 215, 0, 180), (aura_cx, aura_cy), max(1, int(raio_aura)), width=2)
+                janela.screen.blit(aura_surf, (centro_x - aura_cx, centro_y - aura_cy))
+            except Exception:
+                pass
+
         sprite = self._obter_sprite(self.sprite_key)
         if sprite is not None:
             if self.flash_timer > 0.0:
@@ -175,3 +207,4 @@ class InimigoBase:
                 cor,
                 (int(draw_x), int(draw_y), self.largura, self.altura)
             )
+

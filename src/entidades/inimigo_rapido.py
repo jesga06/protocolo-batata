@@ -1,4 +1,4 @@
-﻿"""
+"""
 Inimigo Rápido (Viciado em Cafeína) — Protocolo: Batata
 Inimigo ágil em forma de cunha verde neon com alta velocidade e baixo HP.
 """
@@ -24,7 +24,9 @@ class InimigoRapido(InimigoBase):
         velocidade: float = INIMIGO_RAPIDO_VELOCIDADE,
         dano_contato: int = INIMIGO_RAPIDO_DANO,
         cooldown_contato: float = INIMIGO_RAPIDO_COOLDOWN_ATAQUE,
-        xp_valor: int = INIMIGO_RAPIDO_XP
+        xp_valor: int = INIMIGO_RAPIDO_XP,
+        is_elite: bool = False,
+        nome_elite: str = ""
     ):
         super().__init__(
             x=x,
@@ -37,5 +39,8 @@ class InimigoRapido(InimigoBase):
             score_valor=150,
             largura=31,
             altura=31,
-            sprite_key="inimigo_rapido"
+            sprite_key="inimigo_rapido",
+            is_elite=is_elite,
+            nome_elite=nome_elite
         )
+

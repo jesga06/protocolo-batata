@@ -99,11 +99,29 @@ class MenuPrincipalScene(BaseScene):
         # Título principal perfeitamente centralizado com pygame.font e rect.centerx
         fonte_titulo = pygame.font.SysFont("Arial", 36, bold=True)
         titulo_surf = fonte_titulo.render(TITULO_JOGO, True, DOURADO)
-        titulo_rect = titulo_surf.get_rect(centerx=LARGURA_TELA // 2, top=110)
+        titulo_rect = titulo_surf.get_rect(centerx=LARGURA_TELA // 2, top=100)
         screen.blit(titulo_surf, titulo_rect)
 
+        # Badge de Recorde e Melhor Tempo (Estatísticas Globais)
+        estatisticas = self.gerenciador_config.obter_estatisticas()
+        high_score = estatisticas.get("high_score", 0)
+        melhor_tempo = estatisticas.get("melhor_tempo", 0.0)
+        m_tempo = int(melhor_tempo // 60)
+        s_tempo = int(melhor_tempo % 60)
+
+        badge_rect = pygame.Rect(0, 160, 480, 32)
+        badge_rect.centerx = LARGURA_TELA // 2
+        pygame.draw.rect(screen, (25, 32, 45), badge_rect, border_radius=6)
+        pygame.draw.rect(screen, (60, 75, 95), badge_rect, width=1, border_radius=6)
+
+        fonte_badge = pygame.font.SysFont("Arial", 13, bold=True)
+        texto_badge = f"RECORDE: {high_score:,} PTS   |   MELHOR TEMPO: {m_tempo:02d}:{s_tempo:02d}"
+        badge_surf = fonte_badge.render(texto_badge, True, (215, 230, 250))
+        badge_text_rect = badge_surf.get_rect(center=badge_rect.center)
+        screen.blit(badge_surf, badge_text_rect)
+
         # Painel central das opções
-        inicio_y = 260
+        inicio_y = 250
         espacamento = 50
         fonte_opcoes = pygame.font.SysFont("Arial", 18, bold=True)
 

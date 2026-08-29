@@ -74,3 +74,60 @@ class HUD:
         texto_surf = fonte.render(texto_str, True, cor_texto)
         texto_rect = texto_surf.get_rect(centerx=LARGURA_TELA // 2, centery=pos_y + altura_barra // 2)
         screen.blit(texto_surf, texto_rect)
+
+    def desenhar_barra_boss(self, screen, boss, visivel: bool = True):
+        """
+        Renderiza a barra de vida dedicada para o Mini-Boss / Chefe Elite no topo da tela.
+        Dimensões: 400x12 px em y=78 com moldura dourada e preenchimento roxo/magenta.
+        """
+        if not visivel or boss is None or not getattr(boss, "vivo", True):
+            return
+
+        largura_barra = 400
+        altura_barra = 12
+        pos_x = (LARGURA_TELA - largura_barra) // 2
+        pos_y = 78
+        raio_borda = 3
+
+        # 1. Nome do Mini-Boss / Chefe
+        nome = getattr(boss, "nome_elite", "") or "MINI-BOSS ELITE"
+        fonte_nome = pygame.font.SysFont("Arial", 11, bold=True)
+        nome_sombra = fonte_nome.render(nome, True, (10, 5, 20))
+        nome_rect = nome_sombra.get_rect(centerx=LARGURA_TELA // 2 + 1, bottom=pos_y - 1)
+        screen.blit(nome_sombra, nome_rect)
+
+        nome_surf = fonte_nome.render(nome, True, DOURADO)
+        nome_rect_main = nome_surf.get_rect(centerx=LARGURA_TELA // 2, bottom=pos_y - 2)
+        screen.blit(nome_surf, nome_rect_main)
+
+        # 2. Fundo da barra (container roxo escuro)
+        bg_rect = (pos_x, pos_y, largura_barra, altura_barra)
+        pygame.draw.rect(screen, (35, 20, 50), bg_rect, border_radius=raio_borda)
+
+        # 3. Preenchimento proporcional
+        hp_max = max(1, getattr(boss, "hp_max", 100))
+        hp_atual = max(0, getattr(boss, "hp", 0))
+        progresso = clamp(hp_atual / hp_max, 0.0, 1.0)
+        fill_w = int(largura_barra * progresso)
+
+        if fill_w > 0:
+            fill_rect = (pos_x, pos_y, fill_w, altura_barra)
+            pygame.draw.rect(screen, (215, 140, 255), fill_rect, border_radius=raio_borda)
+            if fill_w > 4 and altura_barra >= 4:
+                highlight_rect = (pos_x + 2, pos_y + 1, fill_w - 4, 3)
+                pygame.draw.rect(screen, (245, 200, 255), highlight_rect, border_radius=1)
+
+        # 4. Borda dourada
+        pygame.draw.rect(screen, DOURADO, bg_rect, width=2, border_radius=raio_borda)
+
+        # 5. Texto de HP numérico
+        texto_hp = f"{hp_atual}/{hp_max} HP"
+        fonte_hp = pygame.font.SysFont("Arial", 9, bold=True)
+        sombra_hp = fonte_hp.render(texto_hp, True, (10, 5, 20))
+        sombra_rect = sombra_hp.get_rect(centerx=LARGURA_TELA // 2 + 1, centery=pos_y + altura_barra // 2 + 1)
+        screen.blit(sombra_hp, sombra_rect)
+
+        hp_surf = fonte_hp.render(texto_hp, True, BRANCO)
+        hp_rect = hp_surf.get_rect(centerx=LARGURA_TELA // 2, centery=pos_y + altura_barra // 2)
+        screen.blit(hp_surf, hp_rect)
+

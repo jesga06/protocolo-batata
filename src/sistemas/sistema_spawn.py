@@ -28,6 +28,7 @@ class SistemaSpawn:
     def __init__(self, max_ativos: int = SPAWN_MAX_ATIVOS):
         self.tempo_decorrido = 0.0
         self.timer_spawn = 0.0
+        self.ultimo_minuto_elite = 0
         self.max_ativos = int(max_ativos)
 
     def intervalo_spawn(self, tempo_s: float) -> float:
@@ -43,6 +44,26 @@ class SistemaSpawn:
         Fórmula: N_batch(t) = min(8, 1 + floor(t / 25))
         """
         return min(8, 1 + int(float(tempo_s) // 25.0))
+
+    def obter_arquetipo_elite(self, minuto: int) -> tuple[type, str]:
+        """
+        Retorna o par (classe_inimigo, nome_boss) correspondente ao minuto da partida.
+        """
+        catalogo = {
+            1: (InimigoRapido, "MINI-BOSS: ESTAGIÁRIO SÊNIOR"),
+            2: (InimigoTank, "MINI-BOSS: GELADEIRA INDUSTRIAL TURBO"),
+            3: (InimigoPhasing, "MINI-BOSS: PHANTOM EXECUTIVO"),
+            4: (InimigoBlindado, "MINI-BOSS: BASTIÃO TITÂNICO"),
+            5: (InimigoRanged, "MINI-BOSS: COMANDANTE ARTILHEIRO"),
+            6: (InimigoTank, "MINI-BOSS: HYPER GELADEIRA MK-II"),
+            7: (InimigoPhasing, "MINI-BOSS: ESPECTRO CORPORATIVO"),
+            8: (InimigoBlindado, "MINI-BOSS: FORTALEZA CIBERNÉTICA"),
+            9: (InimigoRanged, "MINI-BOSS: GENERAL BALÍSTICO"),
+        }
+        if minuto in catalogo:
+            return catalogo[minuto]
+        # Minuto 10+ ou indefinido
+        return (InimigoTank, f"MINI-BOSS: OVERLORD DA MEMÓRIA MK-{minuto}")
 
     def escolher_arquetipo(self, tempo_s: float):
         """
@@ -124,26 +145,18 @@ class SistemaSpawn:
         arena_h: float = float(ALTURA_ARENA)
     ) -> list:
         """
-        Atualiza os cronômetros e gera novos inimigos com arquétipos variados.
+        Atualiza os cronômetros e gera novos inimigos com arquétipos variados,
+        além de agendar o spawn obrigatório de Mini-Bosses a cada minuto.
         """
         self.tempo_decorrido += dt
-        self.timer_spawn += dt
-
-        intervalo = self.intervalo_spawn(self.tempo_decorrido)
-        if self.timer_spawn < intervalo:
-            return []
-
-        self.timer_spawn = 0.0
-
-        vagas_disponiveis = self.max_ativos - total_inimigos_vivos
-        if vagas_disponiveis <= 0:
-            return []
-
-        qtd_a_gerar = min(self.tamanho_lote(self.tempo_decorrido), vagas_disponiveis)
         novos_inimigos = []
 
-        for _ in range(qtd_a_gerar):
-            sx, sy = self.gerar_posicao_spawn(
+        # 1. Verificação de Spawn de Mini-Boss Elite a cada 60s (1:00, 2:00, 3:00...)
+        minuto_atual = int(self.tempo_decorrido // 60.0)
+        if minuto_atual > self.ultimo_minuto_elite and minuto_atual >= 1:
+            self.ultimo_minuto_elite = minuto_atual
+            cls_elite, nome_elite = self.obter_arquetipo_elite(minuto_atual)
+            ex, ey = self.gerar_posicao_spawn(
                 camera_x=camera_x,
                 camera_y=camera_y,
                 view_w=view_w,
@@ -151,8 +164,30 @@ class SistemaSpawn:
                 arena_w=arena_w,
                 arena_h=arena_h
             )
-            cls_arquetipo = self.escolher_arquetipo(self.tempo_decorrido)
-            novo = cls_arquetipo(x=sx, y=sy)
-            novos_inimigos.append(novo)
+            boss_elite = cls_elite(x=ex, y=ey, is_elite=True, nome_elite=nome_elite)
+            novos_inimigos.append(boss_elite)
+
+        # 2. Verificação de Lote de Inimigos Regulares
+        self.timer_spawn += dt
+        intervalo = self.intervalo_spawn(self.tempo_decorrido)
+        if self.timer_spawn >= intervalo:
+            self.timer_spawn = 0.0
+
+            vagas_disponiveis = self.max_ativos - (total_inimigos_vivos + len(novos_inimigos))
+            if vagas_disponiveis > 0:
+                qtd_a_gerar = min(self.tamanho_lote(self.tempo_decorrido), vagas_disponiveis)
+                for _ in range(qtd_a_gerar):
+                    sx, sy = self.gerar_posicao_spawn(
+                        camera_x=camera_x,
+                        camera_y=camera_y,
+                        view_w=view_w,
+                        view_h=view_h,
+                        arena_w=arena_w,
+                        arena_h=arena_h
+                    )
+                    cls_arquetipo = self.escolher_arquetipo(self.tempo_decorrido)
+                    novo = cls_arquetipo(x=sx, y=sy)
+                    novos_inimigos.append(novo)
 
         return novos_inimigos
+

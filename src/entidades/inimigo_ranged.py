@@ -33,7 +33,9 @@ class InimigoRanged(InimigoBase):
         distancia_tiro_max: float = 350.0,
         cooldown_tiro: float = 1.2,
         dano_projetil: int = 10,
-        vel_projetil: float = 260.0
+        vel_projetil: float = 260.0,
+        is_elite: bool = False,
+        nome_elite: str = ""
     ):
         super().__init__(
             x=x,
@@ -46,8 +48,11 @@ class InimigoRanged(InimigoBase):
             score_valor=200,
             largura=42,
             altura=42,
-            sprite_key="inimigo_ranged"
+            sprite_key="inimigo_ranged",
+            is_elite=is_elite,
+            nome_elite=nome_elite
         )
+
         self.distancia_standoff = float(distancia_standoff)
         self.distancia_tiro_max = float(distancia_tiro_max)
         self.cooldown_tiro = float(cooldown_tiro)

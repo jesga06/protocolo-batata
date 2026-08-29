@@ -25,7 +25,9 @@ class InimigoPhasing(InimigoBase):
         cooldown_contato: float = INIMIGO_PHASING_COOLDOWN_ATAQUE,
         xp_valor: int = INIMIGO_PHASING_XP,
         tempo_ciclo: float = INIMIGO_PHASING_CICLO,
-        tempo_fase: float = 1.2
+        tempo_fase: float = 1.2,
+        is_elite: bool = False,
+        nome_elite: str = ""
     ):
         super().__init__(
             x=x,
@@ -38,8 +40,11 @@ class InimigoPhasing(InimigoBase):
             score_valor=200,
             largura=42,
             altura=42,
-            sprite_key="inimigo_phasing"
+            sprite_key="inimigo_phasing",
+            is_elite=is_elite,
+            nome_elite=nome_elite
         )
+
         self.tempo_ciclo = float(tempo_ciclo)
         self.tempo_fase = float(tempo_fase)
         self.timer_ciclo = 0.0

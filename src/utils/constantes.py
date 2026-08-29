@@ -117,6 +117,8 @@ SPAWN_INTERVALO_INICIAL = 3.00
 SPAWN_INTERVALO_MINIMO = 0.75
 SPAWN_DISTANCIA_OFFSET = 80.0
 SPAWN_MAX_ATIVOS = 400
+TEMPO_VITORIA = 600.0  # 10 minutos (600.0s) de sobrevivência para vitória
+
 
 # =============================================================================
 # 7. ARMAS E PROJÉTEIS — BASELINES

@@ -1,11 +1,6 @@
-"""
-Cena de Gameplay Principal — Protocolo: Batata
-Gerencia o loop completo do jogo: jogador, câmera 2D com letterbox, armas,
-projéteis, hordas de inimigos, colisões, HUD in-world e HUD em screen-space.
-"""
-
 import math
 import os
+import random
 import pygame
 from src.cenas.base_scene import BaseScene
 from src.entidades.jogador import Jogador
@@ -16,6 +11,7 @@ from src.armas.melee import Melee
 from src.sistemas.sistema_spawn import SistemaSpawn
 from src.sistemas.sistema_drops import SistemaDrops
 from src.sistemas.sistema_scavenger import SistemaScavenger
+from src.sistemas.sistema_particulas import SistemaParticulas
 from src.sistemas.config_sistema import GerenciadorConfiguracoes
 from src.ui.hud import HUD
 from src.ui.modal_level_up import ModalLevelUp
@@ -26,9 +22,10 @@ from src.utils.constantes import (
     LARGURA_TELA, ALTURA_TELA, LARGURA_ARENA, ALTURA_ARENA,
     BRANCO, PRETO, CINZA_FUNDO, CINZA_PAINEL, CINZA_BORDA,
     VERMELHO_HP, VERDE_CURA, AMARELO_XP, AZUL_CIANO, DOURADO,
+    TEMPO_VITORIA,
     obter_caminho_asset, SAVE_FILE_PATH
 )
-from src.utils.math_utils import colisao_aabb, clamp
+from src.utils.math_utils import colisao_aabb, clamp, distancia
 
 
 class GameplayScene(BaseScene):
@@ -63,21 +60,26 @@ class GameplayScene(BaseScene):
         # Registra callback de level-up no SistemaXP do jogador
         self.jogador.sistema_xp.registrar_callback_level_up(self._ao_subir_nivel)
 
-        # Sistemas de combate, spawn, drops e progressão
+        # Sistemas de combate, spawn, drops, partículas e progressão
         self.config_sistema = self.gerenciador_config
         self.spawner = SistemaSpawn(max_ativos=400)
         self.sistema_drops = SistemaDrops()
         self.sistema_scavenger = SistemaScavenger()
+        self.sistema_particulas = SistemaParticulas()
         self.hud = HUD()
         self.projeteis: list[Projetil] = []
         self.inimigos: list[InimigoBase] = []
 
-        # Métricas de partida
+        # Métricas de partida e condição de vitória
         self.tempo_sobrevivencia = 0.0
         self.abates = 0
         self.pontos = 0
+        self.dano_total_causado = 0
         self.pausado = False
         self.game_over = False
+        self.vitoria = False
+        self.partida_registrada = False
+        self.estatisticas_partida_resultado = {}
 
         # Toasts de itens coletados, Screen Shake e Efeitos
         self.toasts_coleta: list[dict] = []
@@ -102,6 +104,14 @@ class GameplayScene(BaseScene):
                     pygame.mixer.music.play(-1)
         except Exception:
             pass
+
+    def aplicar_shake(self, intensidade: float, duracao: float):
+        """Ativa tremor de tela se a configuração 5 'screen_shake' estiver ligada."""
+        val_shake = self.gerenciador_config.obter_valor("screen_shake")
+        if val_shake in (True, "Ligado", "ligado", "1"):
+            self.shake_intensidade = max(self.shake_intensidade, float(intensidade))
+            self.shake_timer = max(self.shake_timer, float(duracao))
+
 
     _icones_slots: dict = {}
 
@@ -198,7 +208,7 @@ class GameplayScene(BaseScene):
 
         # 4. Controle de Pausa / Menu via Teclado (ESC)
         if self.teclado.key_down("ESC"):
-            if self.game_over:
+            if self.game_over or self.vitoria:
                 self._voltar_menu()
                 return
             else:
@@ -209,10 +219,24 @@ class GameplayScene(BaseScene):
                     self.pausado = False
                 return
 
+        # Comportamento no estado de Vitória
+        if self.vitoria:
+            if self.teclado.key_down("ENTER") or self.teclado.key_down("SPACE"):
+                self._reiniciar_partida()
+                return
+            if self.teclado.key_down("m") or self.teclado.key_down("M"):
+                self._voltar_menu()
+                return
+            return
+
         # Comportamento no estado de Game Over
         if self.game_over:
             if self.teclado.key_down("ENTER") or self.teclado.key_down("SPACE"):
                 self._reiniciar_partida()
+                return
+            if self.teclado.key_down("m") or self.teclado.key_down("M"):
+                self._voltar_menu()
+                return
             return
 
         # Comportamento no estado Pausado
@@ -225,6 +249,21 @@ class GameplayScene(BaseScene):
         # 1. ATUALIZAÇÃO DO JOGADOR E INPUTS
         # =========================================================================
         self.tempo_sobrevivencia += dt
+
+        # Atualiza temporizador de Screen Shake
+        if self.shake_timer > 0.0:
+            self.shake_timer = max(0.0, self.shake_timer - dt)
+            if self.shake_timer == 0.0:
+                self.shake_intensidade = 0.0
+
+        # Atualiza sistema de partículas
+        self.sistema_particulas.update(dt)
+
+        # Verificação da Condição de Vitória (600.0 segundos / 10 Minutos)
+        if self.tempo_sobrevivencia >= TEMPO_VITORIA and self.jogador.vivo and not self.vitoria:
+            self.vitoria = True
+            self._acionar_vitoria()
+            return
 
         # Atualiza e limpa toasts de coleta
         for t in self.toasts_coleta:
@@ -304,13 +343,27 @@ class GameplayScene(BaseScene):
                         )
                         if isinstance(afetados, (list, tuple)):
                             for inim in afetados:
+                                dano_melee = getattr(arma_ativa, "dano", 10)
+                                self.dano_total_causado += dano_melee
+                                self.sistema_particulas.emitir_faiscas(
+                                    inim.x + getattr(inim, "largura", 28) / 2.0,
+                                    inim.y + getattr(inim, "altura", 28) / 2.0,
+                                    dir_x=math.cos(ang_mira),
+                                    dir_y=math.sin(ang_mira),
+                                    cor=(255, 240, 150),
+                                    qtd=5
+                                )
                                 if not getattr(inim, "vivo", True):
                                     self.abates += 1
                                     self.pontos += getattr(inim, "score_valor", 100)
+                                    if getattr(inim, "is_elite", False):
+                                        self.aplicar_shake(14.0, 0.35)
+                                        self.sistema_particulas.emitir_debris(inim.x + 14, inim.y + 14, cor=(255, 215, 0), qtd=16)
                                     self.sistema_drops.gerar_drop_morte_inimigo(
                                         inim.x + getattr(inim, "largura", 28) / 2.0,
                                         inim.y + getattr(inim, "altura", 28) / 2.0,
-                                        xp_base=getattr(inim, "xp_valor", 5)
+                                        xp_base=getattr(inim, "xp_valor", 5),
+                                        is_elite=getattr(inim, "is_elite", False)
                                     )
                         self.buffer_tiro = 0.0
                         self.efeitos_melee.append({
@@ -372,7 +425,8 @@ class GameplayScene(BaseScene):
                 novos_tiros = inimigo.obter_projeteis_pendentes()
                 if novos_tiros:
                     self.projeteis.extend(novos_tiros)
-            inimigo.tentar_causar_dano_contato(self.jogador)
+            if inimigo.tentar_causar_dano_contato(self.jogador):
+                self.aplicar_shake(6.0, 0.15)
 
         # =========================================================================
         # 6. COLISÕES: PROJÉTEIS VS INIMIGOS E DETONAÇÃO DE EXPLOSIVOS
@@ -392,6 +446,7 @@ class GameplayScene(BaseScene):
                     self.jogador.x, self.jogador.y, self.jogador.largura, self.jogador.altura
                 ):
                     self.jogador.receber_dano(proj.dano)
+                    self.aplicar_shake(6.0, 0.15)
                     proj.ativo = False
                 continue
 
@@ -406,7 +461,6 @@ class GameplayScene(BaseScene):
                         continue
                     e_cx = inimigo.x + getattr(inimigo, "largura", 28) / 2.0
                     e_cy = inimigo.y + getattr(inimigo, "altura", 28) / 2.0
-                    from src.utils.math_utils import distancia
                     if distancia(p_cx, p_cy, e_cx, e_cy) <= r_exp or colisao_aabb(
                         proj.x, proj.y, proj.largura, proj.altura,
                         inimigo.x, inimigo.y, inimigo.largura, inimigo.altura
@@ -416,6 +470,9 @@ class GameplayScene(BaseScene):
 
                 if detonar or proj.tempo_vida_restante <= 0.0:
                     proj.ativo = False
+                    self.sistema_particulas.emitir_onda_choque(p_cx, p_cy, raio_max=r_exp)
+                    self.sistema_particulas.emitir_debris(p_cx, p_cy, cor=(255, 140, 40), qtd=12)
+                    self.aplicar_shake(10.0, 0.25)
                     afetados = proj.explodir(
                         self.inimigos,
                         jogador=self.jogador,
@@ -423,16 +480,22 @@ class GameplayScene(BaseScene):
                         mult_dano_explosivo=mult_explosivo
                     )
                     for inim in afetados:
+                        dano_exp = int(getattr(proj, "dano", 35) * mult_explosivo)
+                        self.dano_total_causado += dano_exp
                         if not inim.vivo:
                             self.abates += 1
                             self.pontos += getattr(inim, "score_valor", 100)
+                            if getattr(inim, "is_elite", False):
+                                self.aplicar_shake(14.0, 0.35)
+                                self.sistema_particulas.emitir_debris(inim.x + 14, inim.y + 14, cor=(255, 215, 0), qtd=16)
                             self.sistema_drops.gerar_drop_morte_inimigo(
                                 inim.x + getattr(inim, "largura", 28) / 2.0,
                                 inim.y + getattr(inim, "altura", 28) / 2.0,
                                 xp_base=getattr(inim, "xp_valor", 5),
                                 loot_enriquecido=(getattr(inim, "loot_enriquecido", False) or getattr(mods, "loot_enriquecido", False)),
                                 chance_arma=getattr(inim, "chance_drop_arma", None),
-                                chance_equipamento=getattr(inim, "chance_drop_equipamento", None)
+                                chance_equipamento=getattr(inim, "chance_drop_equipamento", None),
+                                is_elite=getattr(inim, "is_elite", False)
                             )
             else:
                 for inimigo in self.inimigos:
@@ -455,23 +518,36 @@ class GameplayScene(BaseScene):
                         else:
                             proj.ativo = False
 
+                        self.dano_total_causado += proj.dano
+                        self.sistema_particulas.emitir_faiscas(
+                            proj.x, proj.y,
+                            dir_x=getattr(proj, "dir_x", 0.0),
+                            dir_y=getattr(proj, "dir_y", 0.0),
+                            cor=(255, 220, 100),
+                            qtd=6
+                        )
+
                         inimigo.receber_dano(
                             proj.dano,
                             origem_x=proj.x,
                             origem_y=proj.y,
-                            dir_ataque=(proj.dir_x, proj.dir_y)
+                            dir_ataque=(getattr(proj, "dir_x", 0.0), getattr(proj, "dir_y", 0.0))
                         )
 
                         if not inimigo.vivo:
                             self.abates += 1
                             self.pontos += getattr(inimigo, "score_valor", 100)
+                            if getattr(inimigo, "is_elite", False):
+                                self.aplicar_shake(14.0, 0.35)
+                                self.sistema_particulas.emitir_debris(inimigo.x + 14, inimigo.y + 14, cor=(255, 215, 0), qtd=16)
                             self.sistema_drops.gerar_drop_morte_inimigo(
                                 inimigo.x + getattr(inimigo, "largura", 28) / 2.0,
                                 inimigo.y + getattr(inimigo, "altura", 28) / 2.0,
                                 xp_base=getattr(inimigo, "xp_valor", 5),
                                 loot_enriquecido=(getattr(inimigo, "loot_enriquecido", False) or getattr(mods, "loot_enriquecido", False)),
                                 chance_arma=getattr(inimigo, "chance_drop_arma", None),
-                                chance_equipamento=getattr(inimigo, "chance_drop_equipamento", None)
+                                chance_equipamento=getattr(inimigo, "chance_drop_equipamento", None),
+                                is_elite=getattr(inimigo, "is_elite", False)
                             )
                         break
 
@@ -479,6 +555,7 @@ class GameplayScene(BaseScene):
                 if auto_dano and proj.ativo and getattr(proj, "dono", "jogador") == "jogador" and (proj.tempo_vida - proj.tempo_vida_restante > 0.06):
                     if colisao_aabb(proj.x, proj.y, proj.largura, proj.altura, self.jogador.x, self.jogador.y, self.jogador.largura, self.jogador.altura):
                         self.jogador.receber_dano(proj.dano)
+                        self.aplicar_shake(6.0, 0.15)
                         proj.ativo = False
                     elif self.jogador.drone is not None and getattr(self.jogador.drone, "ativo", False):
                         if colisao_aabb(proj.x, proj.y, proj.largura, proj.altura, self.jogador.drone.x, self.jogador.drone.y, self.jogador.drone.largura, self.jogador.drone.altura):
@@ -496,6 +573,10 @@ class GameplayScene(BaseScene):
         self.sistema_drops.update(dt)
         eventos_coleta = self.sistema_drops.coletar_jogador(self.jogador, mult_valor_drop=mult_drops)
         for ev in eventos_coleta:
+            drop_x = ev.get("x", self.jogador.x + 16)
+            drop_y = ev.get("y", self.jogador.y + 16)
+            self.sistema_particulas.emitir_burst_drop(drop_x, drop_y, tipo=ev["tipo"])
+
             if ev["tipo"] == "xp":
                 self.toasts_coleta.append({
                     "texto": f"+{ev['valor']} XP",
@@ -547,7 +628,10 @@ class GameplayScene(BaseScene):
 
         # Verifica morte do jogador
         if not self.jogador.vivo:
-            self.game_over = True
+            if not self.game_over:
+                self.game_over = True
+                self._registrar_fim_partida(vitoria=False)
+
 
     def draw(self):
         screen = self.janela.screen
@@ -671,6 +755,9 @@ class GameplayScene(BaseScene):
         for proj in self.projeteis:
             proj.desenhar(self.janela, self.camera)
 
+        # Partículas de combate (faíscas, ondas de choque, bursts e detritos)
+        self.sistema_particulas.desenhar(self.janela, self.camera)
+
         # Barra de HP in-world flutuando abaixo do jogador
         hud_visivel = (self.gerenciador_config.obter_valor("hud") != "desligado")
         if hud_visivel:
@@ -681,11 +768,13 @@ class GameplayScene(BaseScene):
         # =========================================================================
         self._desenhar_hud_tela(hud_visivel=hud_visivel)
 
-        # Overlays modais de Level Up, Menu de Configurações, Game Over e Pausa
+        # Overlays modais de Level Up, Menu de Configurações, Vitória, Game Over e Pausa
         if self.modal_level_up.ativo:
             self.modal_level_up.draw(screen)
         elif self.menu_configs.ativo:
             self.menu_configs.draw(screen)
+        elif self.vitoria:
+            self._desenhar_overlay_vitoria()
         elif self.game_over:
             self._desenhar_overlay_game_over()
         elif self.pausado:
@@ -823,7 +912,13 @@ class GameplayScene(BaseScene):
             if hasattr(self, "hud") and self.hud is not None:
                 self.hud.desenhar_barra_xp(screen, self.jogador.sistema_xp)
 
-        # 4. Toasts de Coleta Flutuantes
+            # 4. Barra de Mini-Boss / Chefe Elite (Top-Center: top=78, 400x12 px)
+            if hasattr(self, "hud") and self.hud is not None:
+                boss_ativo = next((e for e in self.inimigos if getattr(e, "is_elite", False) and e.vivo), None)
+                if boss_ativo is not None:
+                    self.hud.desenhar_barra_boss(screen, boss_ativo, visivel=hud_visivel)
+
+        # 5. Toasts de Coleta Flutuantes
         if self._fonte_toast is None:
             self._fonte_toast = pygame.font.SysFont("Arial", 12, bold=True)
 
@@ -841,7 +936,7 @@ class GameplayScene(BaseScene):
             screen.blit(txt_sombra, (rect.x + 1, rect.y + 1))
             screen.blit(txt_surf, rect)
 
-        # 5. Botão de Configurações e FPS (Top-Right)
+        # 6. Botão de Configurações e FPS (Top-Right)
         fps_val = int(self.janela.get_fps())
         fonte_fps = pygame.font.SysFont("Arial", 14)
         fps_surf = fonte_fps.render(f"FPS: {fps_val}", True, AZUL_CIANO)
@@ -856,8 +951,8 @@ class GameplayScene(BaseScene):
             gear_rect = gear_surf.get_rect(centerx=768, centery=32)
             screen.blit(gear_surf, gear_rect)
 
-        # 6. Efeitos Visuais de Configurações em Tempo Real (Post-Processing)
-        # 6.1 Iluminação Dinâmica / Fog of War (Config 18)
+        # 7. Efeitos Visuais de Configurações em Tempo Real (Post-Processing)
+        # 7.1 Iluminação Dinâmica / Fog of War (Config 18)
         val_ilum = self.config_sistema.obter_valor("iluminacao")
         if val_ilum in (True, "Ligado", "ligado", "1"):
             fog = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
@@ -868,7 +963,7 @@ class GameplayScene(BaseScene):
             pygame.draw.circle(fog, (0, 0, 0, 80), (pj_cx, pj_cy), 195)
             screen.blit(fog, (0, 0))
 
-        # 6.2 Cores Invertidas (Config 17)
+        # 7.2 Cores Invertidas (Config 17)
         val_cores = self.config_sistema.obter_valor("cores_invertidas")
         if val_cores in (True, "Ligado", "ligado", "1"):
             inv_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA))
@@ -876,7 +971,7 @@ class GameplayScene(BaseScene):
             inv_surf.blit(screen, (0, 0), special_flags=pygame.BLEND_SUB)
             screen.blit(inv_surf, (0, 0))
 
-        # 6.3 Resolução / Pixelation (Config 3)
+        # 7.3 Resolução / Pixelation (Config 3)
         val_res = str(self.config_sistema.obter_valor("resolucao"))
         if val_res in ("75%", "50%", "25%"):
             fator = 0.75 if val_res == "75%" else (0.50 if val_res == "50%" else 0.25)
@@ -884,6 +979,153 @@ class GameplayScene(BaseScene):
             small_h = max(10, int(ALTURA_TELA * fator))
             small_surf = pygame.transform.scale(screen, (small_w, small_h))
             pygame.transform.scale(small_surf, (LARGURA_TELA, ALTURA_TELA), screen)
+
+    def _calcular_score_final(self, vitoria: bool = False) -> tuple[int, float]:
+        """Calcula a pontuação final consolidada e o multiplicador de dificuldade."""
+        s_abates = self.pontos
+        s_tempo = int(10.0 * self.tempo_sobrevivencia)
+        s_dano = int(0.5 * self.dano_total_causado)
+        s_vitoria = 10000 if vitoria else 0
+
+        # Multiplicador de dificuldade por configurações ativas não-padrão
+        n_configs_nao_padrao = 0
+        from src.sistemas.config_dados import CONFIGURACOES_GAMEPLAY
+        for cid, cdef in CONFIGURACOES_GAMEPLAY.items():
+            if self.gerenciador_config.is_desbloqueada(cid):
+                val_atual = self.gerenciador_config.obter_valor(cid)
+                if val_atual != cdef.valor_padrao:
+                    n_configs_nao_padrao += 1
+
+        mult_dif = 1.0 + 0.10 * n_configs_nao_padrao
+        score_final = int(round((s_abates + s_tempo + s_dano + s_vitoria) * mult_dif))
+        return score_final, mult_dif
+
+    def _registrar_fim_partida(self, vitoria: bool = False):
+        """Registra e persiste o resultado da partida nas estatísticas globais."""
+        if self.partida_registrada:
+            return
+
+        self.partida_registrada = True
+        score_final, mult_dif = self._calcular_score_final(vitoria=vitoria)
+        resultado = self.gerenciador_config.registrar_partida(
+            tempo=self.tempo_sobrevivencia,
+            abates=self.abates,
+            pontos=score_final,
+            vitoria=vitoria,
+            dano_causado=self.dano_total_causado
+        )
+        self.estatisticas_partida_resultado = {
+            "score_final": score_final,
+            "mult_dif": mult_dif,
+            "novo_recorde_pontos": resultado.get("novo_recorde_pontos", False),
+            "novo_recorde_tempo": resultado.get("novo_recorde_tempo", False)
+        }
+
+    def _acionar_vitoria(self):
+        """Executa a sequência de vitória de 10 minutos do Protocolo: Batata."""
+        try:
+            pygame.mixer.music.fadeout(800)
+        except Exception:
+            pass
+
+        try:
+            from PPlay.sound import Sound
+            sfx_vitoria_path = obter_caminho_asset("sfx_levelup")
+            sfx = Sound(sfx_vitoria_path)
+            sfx.play()
+        except Exception:
+            pass
+
+        # Congela todos os inimigos e desativa projéteis
+        for inimigo in self.inimigos:
+            inimigo.velocidade = 0.0
+            inimigo.vx_knockback = 0.0
+            inimigo.vy_knockback = 0.0
+
+        self.projeteis.clear()
+        self._registrar_fim_partida(vitoria=True)
+
+    def _desenhar_overlay_vitoria(self):
+        """Overlay modal de celebração da vitória aos 10 minutos com grade completa de estatísticas."""
+        screen = self.janela.screen
+        dark_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
+        dark_surf.fill((10, 15, 25, 235))
+        screen.blit(dark_surf, (0, 0))
+
+        # Painel central estilizado
+        painel_rect = pygame.Rect(90, 40, 620, 520)
+        pygame.draw.rect(screen, (25, 32, 45), painel_rect, border_radius=8)
+        pygame.draw.rect(screen, DOURADO, painel_rect, width=2, border_radius=8)
+
+        # Faixa superior de destaque
+        fonte_tit = pygame.font.SysFont("Arial", 24, bold=True)
+        tit_surf = fonte_tit.render("PROTOCOLO EXECUTADO COM SUCESSO", True, DOURADO)
+        tit_rect = tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=60)
+        screen.blit(tit_surf, tit_rect)
+
+        fonte_sub = pygame.font.SysFont("Arial", 13)
+        sub_surf = fonte_sub.render("A Batata superou 10 minutos de compilacao sem erros criticos.", True, (200, 220, 240))
+        sub_rect = sub_surf.get_rect(centerx=LARGURA_TELA // 2, top=95)
+        screen.blit(sub_surf, sub_rect)
+
+        # Quadro de estatísticas internas
+        quadro_rect = pygame.Rect(120, 130, 560, 280)
+        pygame.draw.rect(screen, (15, 20, 30), quadro_rect, border_radius=6)
+        pygame.draw.rect(screen, (45, 60, 80), quadro_rect, width=1, border_radius=6)
+
+        fonte_stat_label = pygame.font.SysFont("Arial", 14)
+        fonte_stat_val = pygame.font.SysFont("Arial", 14, bold=True)
+        fonte_stat_destaque = pygame.font.SysFont("Arial", 20, bold=True)
+
+        stats_data = [
+            ("Tempo de Sobrevivencia:", "10:00 (600.0s) [MAXIMO]", DOURADO),
+            ("Inimigos Neutralizados (Abates):", f"{self.abates}", AMARELO_XP),
+            ("Dano Total Infligido:", f"{self.dano_total_causado:,}", (255, 100, 100)),
+            ("Configuracoes Desbloqueadas:", f"{len(self.gerenciador_config.desbloqueadas)} / 20", AZUL_CIANO),
+            ("Multiplicador de Dificuldade:", f"x{self.estatisticas_partida_resultado.get('mult_dif', 1.0):.2f}", (180, 210, 240)),
+        ]
+
+        start_y = 145
+        step_y = 34
+        for i, (label, val_str, cor_val) in enumerate(stats_data):
+            cur_y = start_y + i * step_y
+            lbl_surf = fonte_stat_label.render(label, True, (180, 195, 215))
+            screen.blit(lbl_surf, (140, cur_y))
+
+            val_surf = fonte_stat_val.render(val_str, True, cor_val)
+            val_rect = val_surf.get_rect(right=660, top=cur_y)
+            screen.blit(val_surf, val_rect)
+
+        # Linha de separação
+        pygame.draw.line(screen, (50, 65, 85), (140, 315), (660, 315), width=1)
+
+        # Pontuação Final
+        score_val = self.estatisticas_partida_resultado.get("score_final", self.pontos)
+        score_lbl = fonte_stat_destaque.render("PONTUACAO FINAL:", True, DOURADO)
+        screen.blit(score_lbl, (140, 330))
+
+        score_num_surf = fonte_stat_destaque.render(f"{score_val:,} PTS", True, DOURADO)
+        score_num_rect = score_num_surf.get_rect(right=660, top=330)
+        screen.blit(score_num_surf, score_num_rect)
+
+        # Badge de Recorde Histórico se atingido
+        if self.estatisticas_partida_resultado.get("novo_recorde_pontos", False):
+            badge_rec_surf = fonte_stat_val.render("[NOVO RECORDE HISTORICO!]", True, AMARELO_XP)
+            badge_rec_rect = badge_rec_surf.get_rect(centerx=LARGURA_TELA // 2, top=375)
+            screen.blit(badge_rec_surf, badge_rec_rect)
+
+        # Rodapé com atalhos de navegação
+        fonte_btn = pygame.font.SysFont("Arial", 14, bold=True)
+        fonte_btn_sub = pygame.font.SysFont("Arial", 13)
+
+        btn1_surf = fonte_btn.render("[ENTER / ESPACO] Jogar Novamente", True, DOURADO)
+        screen.blit(btn1_surf, btn1_surf.get_rect(centerx=LARGURA_TELA // 2, top=430))
+
+        btn2_surf = fonte_btn_sub.render("[ESC / M] Retornar ao Menu Principal", True, (200, 210, 225))
+        screen.blit(btn2_surf, btn2_surf.get_rect(centerx=LARGURA_TELA // 2, top=465))
+
+        btn3_surf = fonte_btn_sub.render("[C] Menu de Configuracoes", True, AZUL_CIANO)
+        screen.blit(btn3_surf, btn3_surf.get_rect(centerx=LARGURA_TELA // 2, top=498))
 
     def _desenhar_overlay_pausa(self):
         """Overlay modal de pausa com textos perfeitamente centralizados."""
@@ -916,29 +1158,42 @@ class GameplayScene(BaseScene):
 
         fonte_tit = pygame.font.SysFont("Arial", 36, bold=True)
         fonte_sub = pygame.font.SysFont("Arial", 16)
-        fonte_stat = pygame.font.SysFont("Arial", 18, bold=True)
-        fonte_prompt = pygame.font.SysFont("Arial", 16, bold=True)
+        fonte_stat = pygame.font.SysFont("Arial", 16, bold=True)
+        fonte_prompt = pygame.font.SysFont("Arial", 15, bold=True)
 
         tit_surf = fonte_tit.render("PROTOCOLO FALHOU", True, VERMELHO_HP)
-        screen.blit(tit_surf, tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=160))
+        screen.blit(tit_surf, tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=130))
 
         sub_surf = fonte_sub.render("A Batata sucumbiu aos bugs e estagiários.", True, (200, 180, 180))
-        screen.blit(sub_surf, sub_surf.get_rect(centerx=LARGURA_TELA // 2, top=210))
+        screen.blit(sub_surf, sub_surf.get_rect(centerx=LARGURA_TELA // 2, top=175))
 
         minutos = int(self.tempo_sobrevivencia // 60)
         segundos = int(self.tempo_sobrevivencia % 60)
 
+        # Quadro escuro
+        quadro_rect = pygame.Rect(180, 210, 440, 200)
+        pygame.draw.rect(screen, (28, 15, 20), quadro_rect, border_radius=6)
+        pygame.draw.rect(screen, (80, 40, 50), quadro_rect, width=1, border_radius=6)
+
         tempo_surf = fonte_stat.render(f"Tempo de Sobrevivência: {minutos:02d}:{segundos:02d}", True, BRANCO)
-        screen.blit(tempo_surf, tempo_surf.get_rect(centerx=LARGURA_TELA // 2, top=270))
+        screen.blit(tempo_surf, tempo_surf.get_rect(centerx=LARGURA_TELA // 2, top=230))
 
         abates_surf = fonte_stat.render(f"Total de Abates: {self.abates}", True, AMARELO_XP)
-        screen.blit(abates_surf, abates_surf.get_rect(centerx=LARGURA_TELA // 2, top=305))
+        screen.blit(abates_surf, abates_surf.get_rect(centerx=LARGURA_TELA // 2, top=265))
 
-        pontos_surf = fonte_stat.render(f"Pontuação Final: {self.pontos}", True, AZUL_CIANO)
-        screen.blit(pontos_surf, pontos_surf.get_rect(centerx=LARGURA_TELA // 2, top=340))
+        dano_surf = fonte_stat.render(f"Dano Total: {self.dano_total_causado:,}", True, (255, 120, 120))
+        screen.blit(dano_surf, dano_surf.get_rect(centerx=LARGURA_TELA // 2, top=300))
+
+        score_val = self.estatisticas_partida_resultado.get("score_final", self.pontos)
+        pontos_surf = fonte_stat.render(f"Pontuação Final: {score_val:,} PTS", True, DOURADO)
+        screen.blit(pontos_surf, pontos_surf.get_rect(centerx=LARGURA_TELA // 2, top=335))
+
+        if self.estatisticas_partida_resultado.get("novo_recorde_pontos", False):
+            rec_surf = fonte_stat.render("[NOVO RECORDE DE PONTOS!]", True, AMARELO_XP)
+            screen.blit(rec_surf, rec_surf.get_rect(centerx=LARGURA_TELA // 2, top=370))
 
         prompt_surf = fonte_prompt.render("Pressione [ENTER] para Jogar Novamente ou [ESC] para o Menu", True, DOURADO)
-        screen.blit(prompt_surf, prompt_surf.get_rect(centerx=LARGURA_TELA // 2, top=420))
+        screen.blit(prompt_surf, prompt_surf.get_rect(centerx=LARGURA_TELA // 2, top=440))
 
     def _ao_subir_nivel(self, novo_nivel: int):
         """Callback acionado quando o jogador alcança um novo nível."""
@@ -951,4 +1206,5 @@ class GameplayScene(BaseScene):
     def _voltar_menu(self):
         from src.cenas.menu_principal import MenuPrincipalScene
         SceneManager.change_scene(MenuPrincipalScene())
+
 
