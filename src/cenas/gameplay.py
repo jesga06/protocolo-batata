@@ -497,7 +497,6 @@ class GameplayScene(BaseScene):
         eventos_coleta = self.sistema_drops.coletar_jogador(self.jogador, mult_valor_drop=mult_drops)
         for ev in eventos_coleta:
             if ev["tipo"] == "xp":
-                self.jogador.ganhar_xp(ev["valor"])
                 self.toasts_coleta.append({
                     "texto": f"+{ev['valor']} XP",
                     "cor": AMARELO_XP,
@@ -508,7 +507,6 @@ class GameplayScene(BaseScene):
                 })
             elif ev["tipo"] == "cura":
                 val_cura = ev.get("valor", 35)
-                self.jogador.curar(val_cura)
                 self.toasts_coleta.append({
                     "texto": f"+{val_cura} HP",
                     "cor": VERDE_CURA,
@@ -518,22 +516,10 @@ class GameplayScene(BaseScene):
                     "tempo_max": 1.4
                 })
             elif ev["tipo"] == "arma":
-                import random
-                from src.armas.minigun import Minigun
-                from src.armas.shotgun import Shotgun
-                from src.armas.rifle_assalto import RifleAssalto
-                from src.armas.lanca_foguetes import LancaFoguetes
-                from src.armas.lanca_granadas import LancaGranadas
-                from src.armas.railgun import Railgun
-                armas_cls = [Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas, Railgun]
-                arma_sorteada = random.choice(armas_cls)()
-                if ev.get("mult_drop", 1.0) == 2.0 or mult_drops == 2.0:
-                    arma_sorteada.municao_max *= 2
-                    arma_sorteada.municao_atual = arma_sorteada.municao_max
-                self.jogador.arma_especial = arma_sorteada
-                self.jogador.selecionar_slot(3)
+                nome_arma = getattr(self.jogador.arma_especial, "nome", "Arma Especial")
+                mun = getattr(self.jogador.arma_especial, "municao_max", 30)
                 self.toasts_coleta.append({
-                    "texto": f"{arma_sorteada.nome} ({arma_sorteada.municao_max})",
+                    "texto": f"{nome_arma} ({mun})",
                     "cor": DOURADO,
                     "x": self.jogador.x + 16,
                     "y": self.jogador.y - 15,
@@ -541,18 +527,9 @@ class GameplayScene(BaseScene):
                     "tempo_max": 1.8
                 })
             elif ev["tipo"] == "equipamento":
-                import random
-                from src.equipamentos.drone_cura import DroneCura
-                from src.equipamentos.drone_combate import DroneCombate
-                from src.equipamentos.drone_suporte import DroneSuporte
-                drones_cls = [DroneCura, DroneCombate, DroneSuporte]
-                drone_sorteado = random.choice(drones_cls)()
-                if ev.get("mult_drop", 1.0) == 2.0 or mult_drops == 2.0:
-                    drone_sorteado.tempo_vida = 60.0
-                    drone_sorteado.tempo_restante = 60.0
-                self.jogador.drone = drone_sorteado
+                nome_drone = getattr(self.jogador.drone, "nome", "Drone")
                 self.toasts_coleta.append({
-                    "texto": f"{drone_sorteado.nome} (30s)",
+                    "texto": f"{nome_drone} (30s)",
                     "cor": (255, 160, 50),
                     "x": self.jogador.x + 16,
                     "y": self.jogador.y - 15,

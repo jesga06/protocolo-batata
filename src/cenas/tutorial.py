@@ -28,15 +28,31 @@ class TutorialScene(BaseScene):
         self.tempo_acumulado += dt
 
         # Navegação de páginas e retorno
-        if self.teclado.key_down("ESCAPE") or self.teclado.key_down("RETURN") or self.teclado.key_down("SPACE"):
+        tecla_voltar = (
+            self.teclado.key_down("ESC") or self.teclado.key_pressed("ESC") or
+            self.teclado.key_down("ENTER") or self.teclado.key_pressed("ENTER") or
+            self.teclado.key_down("SPACE") or self.teclado.key_pressed("SPACE") or
+            self.teclado.key_down("m") or self.teclado.key_pressed("m") or
+            self.teclado.key_down("t") or self.teclado.key_pressed("t")
+        )
+        if tecla_voltar:
             from PPlay.scenemanager import SceneManager
             from src.cenas.menu_principal import MenuPrincipalScene
             SceneManager.change_scene(MenuPrincipalScene())
             return
 
-        if self.teclado.key_down("RIGHT") or self.teclado.key_down("d") or self.teclado.key_down("TAB"):
+        tecla_dir = (
+            self.teclado.key_down("RIGHT") or self.teclado.key_down("d") or
+            self.teclado.key_down("TAB") or self.teclado.key_down("KP_6")
+        )
+        tecla_esq = (
+            self.teclado.key_down("LEFT") or self.teclado.key_down("a") or
+            self.teclado.key_down("KP_4")
+        )
+
+        if tecla_dir:
             self.pagina_atual = (self.pagina_atual + 1) % self.total_paginas
-        elif self.teclado.key_down("LEFT") or self.teclado.key_down("a"):
+        elif tecla_esq:
             self.pagina_atual = (self.pagina_atual - 1) % self.total_paginas
 
     def draw(self):

@@ -395,7 +395,7 @@ class MenuConfigs:
             val_s4 = str(self.gerenciador_config.obter_valor("filtro_daltonico"))
 
             for i, opt in enumerate(opcoes_s4):
-                btn_s4 = pygame.Rect(220 + i * 110, 390, 100, 30)
+                btn_s4 = pygame.Rect(220 + i * 110, 356, 100, 28)
                 if mouse_clicado and btn_s4.collidepoint(mx, my):
                     self.gerenciador_config.definir_valor("filtro_daltonico", opt)
                     self._tocar_som("sfx_btn_click")
@@ -406,7 +406,7 @@ class MenuConfigs:
             val_s5 = str(self.gerenciador_config.obter_valor("escala_global"))
 
             for i, opt in enumerate(opcoes_s5):
-                btn_s5 = pygame.Rect(220 + i * 140, 470, 125, 30)
+                btn_s5 = pygame.Rect(220 + i * 140, 421, 125, 28)
                 if mouse_clicado and btn_s5.collidepoint(mx, my):
                     self.gerenciador_config.definir_valor("escala_global", opt)
                     self._tocar_som("sfx_btn_click")
