@@ -11,7 +11,7 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from PPlay.window import Window
+from src.utils.janela import Janela as Window
 from PPlay.scenemanager import SceneManager
 from src.utils.constantes import LARGURA_TELA, ALTURA_TELA, TITULO_JOGO, FPS_PADRAO
 from src.cenas.menu_principal import MenuPrincipalScene
@@ -61,10 +61,7 @@ def main(limite_frames: int | None = None):
         # 1. Executa ciclo da cena ativa (loop + draw)
         SceneManager.run()
 
-        # 2. Atualiza a tela virtual e apresenta na tela real com letterbox
-        janela.update()
-
-        # 3. Limita taxa de quadros conforme a configuração de fps_cap (60, 45, 30, 15)
+        # 2. Obtém limite de taxa de quadros (FPS Cap configurado: 60, 45, 30, 15)
         cena_atual = getattr(SceneManager, "_current_scene", None)
         fps_alvo = FPS_PADRAO
         if cena_atual and hasattr(cena_atual, "gerenciador_config"):
@@ -80,8 +77,8 @@ def main(limite_frames: int | None = None):
             except Exception:
                 fps_alvo = FPS_PADRAO
 
-        if hasattr(janela, "_clock"):
-            janela._clock.tick(fps_alvo)
+        # 3. Atualiza a tela virtual e apresenta na tela real com letterbox e sincronização de clock
+        janela.update(fps_alvo=fps_alvo)
 
         frame_count += 1
         if limite_frames is not None and frame_count >= limite_frames:
