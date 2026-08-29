@@ -177,6 +177,7 @@ class MenuDebug:
                 self.cooldown_input = 0.20
 
         # 2. Spawn pelo Clique do Mouse no Mundo
+        # 2. Interação via Mouse (Clique no painel para selecionar/executar ou no mundo para spawn)
         mouse_clicado = False
         try:
             if mouse is not None and hasattr(mouse, "button_down") and mouse.button_down(1):
@@ -189,12 +190,26 @@ class MenuDebug:
 
         if mouse_clicado and self.cooldown_input <= 0.0:
             mx, my = pygame.mouse.get_pos() if pygame.mouse.get_focused() else (400, 300)
-            # Se clicou fora do painel do menu de debug, gera spawn nas coordenadas do mundo
-            if not self.rect_painel.collidepoint(mx, my):
+            if self.rect_painel.collidepoint(mx, my):
+                # Clique dentro do painel do menu de debug
+                y_rel = my - (self.rect_painel.y + 40)
+                if 0 <= y_rel < self.total_itens * 24:
+                    item_clicado = y_rel // 24
+                    self.indice_foco = item_clicado
+                    item_rect = pygame.Rect(self.rect_painel.x + 8, self.rect_painel.y + 40 + item_clicado * 24 - 2, self.rect_painel.width - 16, 22)
+                    if mx > item_rect.centerx:
+                        self._alterar_opcao(1)
+                    elif self.indice_foco in (8, 9, 10, 11):
+                        self._executar_acao_selecionada()
+                    self.cooldown_input = 0.20
+            else:
+                # Clique fora do painel: gera spawn nas coordenadas do mundo do jogo
                 cam_x = getattr(self.cena.camera, "x", 0.0) if (self.cena and hasattr(self.cena, "camera")) else 0.0
                 cam_y = getattr(self.cena.camera, "y", 0.0) if (self.cena and hasattr(self.cena, "camera")) else 0.0
-                mundo_x = mx + cam_x
-                mundo_y = my + cam_y
+                largura_arena = getattr(self.cena, "largura_arena", 2400)
+                altura_arena = getattr(self.cena, "altura_arena", 1800)
+                mundo_x = max(20.0, min(float(largura_arena) - 20.0, mx + cam_x))
+                mundo_y = max(20.0, min(float(altura_arena) - 20.0, my + cam_y))
                 self._spawnar_item_ou_inimigo_no_mundo(mundo_x, mundo_y)
                 self.cooldown_input = 0.25
 
@@ -225,33 +240,44 @@ class MenuDebug:
             self._alterar_opcao(1)
         elif self.indice_foco in (4, 5, 6, 7):
             # Spawna na frente do jogador se apertou ENTER
-            if self.cena and hasattr(self.cena, "jogador"):
+            if self.cena and hasattr(self.cena, "jogador") and self.cena.jogador:
                 px = self.cena.jogador.x + 40.0
                 py = self.cena.jogador.y
                 self._spawnar_item_ou_inimigo_no_mundo(px, py)
         elif self.indice_foco == 8:  # Curar Vida Completa
-            if self.cena and hasattr(self.cena, "jogador"):
+            if self.cena and hasattr(self.cena, "jogador") and self.cena.jogador:
                 self.cena.jogador.hp = self.cena.jogador.hp_max
                 self._definir_status("VIDA RESTAURADA AO MAXIMO!")
         elif self.indice_foco == 9:  # Tomar Dano (1/8 HP)
-            if self.cena and hasattr(self.cena, "jogador"):
+            if self.cena and hasattr(self.cena, "jogador") and self.cena.jogador:
                 dano = max(1, self.cena.jogador.hp_max // 8)
                 self.cena.jogador.receber_dano(dano)
                 self._definir_status(f"DANO RECEBIDO: -{dano} HP")
         elif self.indice_foco == 10:  # Subir Nível (+X)
             qtd = self.opcoes_level_up[self.idx_level_up]
-            if self.cena and hasattr(self.cena, "jogador"):
-                for _ in range(qtd):
-                    xp_faltante = max(1, self.cena.jogador.sistema_xp.xp_para_proximo_nivel() - self.cena.jogador.sistema_xp.xp_atual)
-                    self.cena.jogador.ganhar_xp(xp_faltante)
+            if self.cena and hasattr(self.cena, "jogador") and self.cena.jogador:
+                sistema_xp = getattr(self.cena.jogador, "sistema_xp", None)
+                if sistema_xp is not None:
+                    for _ in range(qtd):
+                        xp_req = getattr(sistema_xp, "xp_necessario", None)
+                        if xp_req is None and hasattr(sistema_xp, "xp_para_proximo_nivel"):
+                            xp_req = sistema_xp.xp_para_proximo_nivel()
+                        xp_req = xp_req if xp_req is not None else 35
+                        xp_faltante = max(1, xp_req - getattr(sistema_xp, "xp_atual", 0))
+                        if hasattr(self.cena.jogador, "ganhar_xp"):
+                            self.cena.jogador.ganhar_xp(xp_faltante)
+                        elif hasattr(sistema_xp, "adicionar_xp"):
+                            sistema_xp.adicionar_xp(xp_faltante)
                 self.fechar()
                 self._definir_status(f"LEVEL UP (+{qtd}) ATIVADO!")
         elif self.indice_foco == 11:  # Desbloquear Todas Configurações
-            if self.cena and hasattr(self.cena, "config_sistema") and self.cena.config_sistema:
+            config_sys = getattr(self.cena, "config_sistema", None) or getattr(self.cena, "gerenciador_config", None)
+            if config_sys is not None:
                 from src.sistemas.config_dados import CONFIGURACOES_GAMEPLAY
                 for cid in CONFIGURACOES_GAMEPLAY.keys():
-                    self.cena.config_sistema.desbloquear_config(cid)
-                self.cena.config_sistema.salvar_progresso()
+                    config_sys.desbloquear_config(cid)
+                if hasattr(config_sys, "salvar_progresso"):
+                    config_sys.salvar_progresso()
                 self._definir_status("TODAS AS 20 CONFIGS DESBLOQUEADAS!")
 
     def _spawnar_item_ou_inimigo_no_mundo(self, x: float, y: float):
@@ -261,7 +287,7 @@ class MenuDebug:
 
         if self.indice_foco == 4:  # Spawn Categoria Drop
             nome_d, tipo_d, val_d = self.opcoes_tipo_drop[self.idx_tipo_drop]
-            from src.utils.constantes import DROP_LARGURA, DROP_ALTURA
+            from src.utils.constantes import DROP_LARGURA, DROP_ALTURA, DROP_TEMPO_DESAPARECER, DROP_TEMPO_SCAVENGER_ATIVAR
             drop = ItemDrop(
                 x=x - float(DROP_LARGURA) / 2.0,
                 y=y - float(DROP_ALTURA) / 2.0,
@@ -270,7 +296,10 @@ class MenuDebug:
                 tempo_vida=DROP_TEMPO_DESAPARECER,
                 tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
             )
-            self.cena.drops.append(drop)
+            if hasattr(self.cena, "sistema_drops") and hasattr(self.cena.sistema_drops, "drops"):
+                self.cena.sistema_drops.drops.append(drop)
+            elif hasattr(self.cena, "drops"):
+                self.cena.drops.append(drop)
             self._definir_status(f"DROP SPAWNADO: {nome_d}")
 
         elif self.indice_foco == 5:  # Spawn Arma Específica
@@ -286,10 +315,13 @@ class MenuDebug:
                 "LancaGranadas": LancaGranadas,
                 "Railgun": Railgun
             }
-            if classe_str in armas_map:
+            if classe_str in armas_map and hasattr(self.cena, "jogador") and self.cena.jogador:
                 nova_arma = armas_map[classe_str]()
                 self.cena.jogador.arma_especial = nova_arma
-                self.cena.jogador.slot_ativo = 3
+                if hasattr(self.cena.jogador, "selecionar_slot"):
+                    self.cena.jogador.selecionar_slot(3)
+                elif hasattr(self.cena.jogador, "slot_ativo"):
+                    self.cena.jogador.slot_ativo = 3
                 self._definir_status(f"ARMA EQUIPADA: {nome_a}")
 
         elif self.indice_foco == 6:  # Spawn Drone Específico
@@ -300,11 +332,11 @@ class MenuDebug:
                 "DroneCombate": DroneCombate,
                 "DroneSuporte": DroneSuporte
             }
-            if classe_str in drones_map:
-                novo_drone = drones_map[classe_str]()
+            if classe_str in drones_map and hasattr(self.cena, "jogador") and self.cena.jogador:
+                novo_drone = drones_map[classe_str](tempo_vida=30.0)
                 if hasattr(self.cena.jogador, "adicionar_drone"):
                     self.cena.jogador.adicionar_drone(novo_drone)
-                else:
+                elif hasattr(self.cena.jogador, "drone"):
                     self.cena.jogador.drone = novo_drone
                 self._definir_status(f"DRONE ATIVADO: {nome_dr}")
 
@@ -328,16 +360,15 @@ class MenuDebug:
             elif tipo_i == "tank":
                 inimigo = InimigoTank(x=x, y=y)
             elif tipo_i == "elite":
-                inimigo = InimigoPadrao(x=x, y=y)
-                inimigo.is_elite = True
+                inimigo = InimigoPadrao(x=x, y=y, is_elite=True, nome_elite="CHEFE DE ELITE (DEBUG)")
                 inimigo.hp_max = 120
                 inimigo.hp = 120
                 inimigo.score_valor = 500
 
-            if inimigo is not None:
+            if inimigo is not None and hasattr(self.cena, "inimigos"):
                 # Posiciona o CENTRO do inimigo exatamente nas coordenadas do clique
-                inimigo.x = x - inimigo.largura / 2.0
-                inimigo.y = y - inimigo.altura / 2.0
+                inimigo.x = x - getattr(inimigo, "largura", 28) / 2.0
+                inimigo.y = y - getattr(inimigo, "altura", 28) / 2.0
                 self.cena.inimigos.append(inimigo)
                 self._definir_status(f"INIMIGO SPAWNADO: {nome_i}")
 

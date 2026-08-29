@@ -109,6 +109,16 @@ class GameplayScene(BaseScene):
         except Exception:
             pass
 
+    @property
+    def drops(self):
+        """Atalho de compatibilidade para self.sistema_drops.drops."""
+        return self.sistema_drops.drops if hasattr(self, "sistema_drops") else []
+
+    @drops.setter
+    def drops(self, valor):
+        if hasattr(self, "sistema_drops"):
+            self.sistema_drops.drops = valor
+
     def aplicar_shake(self, intensidade: float, duracao: float):
         """Ativa tremor de tela se a configuração 5 'screen_shake' estiver ligada."""
         val_shake = self.gerenciador_config.obter_valor("screen_shake")
@@ -736,7 +746,11 @@ class GameplayScene(BaseScene):
                     "tempo_max": 1.8
                 })
             elif ev["tipo"] == "equipamento":
-                nome_drone = getattr(self.jogador.drone, "nome", "Drone")
+                nome_drone = "Drone"
+                if hasattr(self.jogador, "drones") and self.jogador.drones:
+                    nome_drone = getattr(self.jogador.drones[-1], "nome", "Drone")
+                elif hasattr(self.jogador, "drone") and self.jogador.drone:
+                    nome_drone = getattr(self.jogador.drone, "nome", "Drone")
                 self.toasts_coleta.append({
                     "texto": f"{nome_drone} (30s)",
                     "cor": (255, 160, 50),

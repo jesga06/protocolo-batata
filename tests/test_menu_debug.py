@@ -51,11 +51,19 @@ class MockGameplayCena:
         self.spawner = SistemaSpawn(max_ativos=400)
         self.sistema_particulas = SistemaParticulas()
 
-        self.drops = []
         self.inimigos = []
         self.projeteis = []
         self.pausado = False
         self.tempo_sobrevivencia = 0.0
+
+    @property
+    def drops(self):
+        return self.sistema_drops.drops if hasattr(self, "sistema_drops") else []
+
+    @drops.setter
+    def drops(self, val):
+        if hasattr(self, "sistema_drops"):
+            self.sistema_drops.drops = val
 
 
 class TestMenuDebugAndWeapons(unittest.TestCase):
@@ -279,6 +287,83 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         bar_w = 40.0
         bar_x = centro_x - bar_w / 2.0
         self.assertEqual(bar_x + bar_w / 2.0, centro_x)
+
+    def test_menu_debug_spawning_all_drops_on_real_gameplay_scene(self):
+        """Testa spawn e coleta de todas as categorias de drops na GameplayScene real sem exceções."""
+        from src.cenas.gameplay import GameplayScene
+        cena = GameplayScene()
+        debug_menu = cena.menu_debug
+        debug_menu.indice_foco = 4  # Spawn Drop
+
+        for idx in range(len(debug_menu.opcoes_tipo_drop)):
+            debug_menu.idx_tipo_drop = idx
+            debug_menu._spawnar_item_ou_inimigo_no_mundo(cena.jogador.x, cena.jogador.y)
+            self.assertGreater(len(cena.sistema_drops.drops), 0)
+            self.assertGreater(len(cena.drops), 0)
+
+        # Executa ciclo de coleta do jogador
+        cena.loop()
+        self.assertGreaterEqual(len(cena.toasts_coleta), 1)
+
+    def test_menu_debug_spawning_all_weapons_and_drones_on_real_gameplay_scene(self):
+        """Testa equipar todas as 6 armas especiais e 3 drones companheiros na GameplayScene real."""
+        from src.cenas.gameplay import GameplayScene
+        cena = GameplayScene()
+        debug_menu = cena.menu_debug
+
+        # 1. Armas
+        debug_menu.indice_foco = 5
+        for idx in range(len(debug_menu.opcoes_armas)):
+            debug_menu.idx_arma = idx
+            debug_menu._spawnar_item_ou_inimigo_no_mundo(500, 400)
+            self.assertIsNotNone(cena.jogador.arma_especial)
+            self.assertEqual(cena.jogador.slot_ativo, 3)
+
+        # 2. Drones
+        debug_menu.indice_foco = 6
+        for idx in range(len(debug_menu.opcoes_drones)):
+            debug_menu.idx_drone = idx
+            debug_menu._spawnar_item_ou_inimigo_no_mundo(500, 400)
+            self.assertGreaterEqual(len(cena.jogador.drones), 1)
+
+        cena.loop()
+
+    def test_menu_debug_spawning_all_enemy_types_on_real_gameplay_scene(self):
+        """Testa spawn de todos os tipos de inimigos (incluindo Elite) na GameplayScene real."""
+        from src.cenas.gameplay import GameplayScene
+        cena = GameplayScene()
+        debug_menu = cena.menu_debug
+        debug_menu.indice_foco = 7  # Spawn Inimigo
+
+        for idx in range(len(debug_menu.opcoes_inimigos)):
+            debug_menu.idx_inimigo = idx
+            debug_menu._spawnar_item_ou_inimigo_no_mundo(450.0, 350.0)
+
+        self.assertEqual(len(cena.inimigos), len(debug_menu.opcoes_inimigos))
+        cena.loop()
+
+    def test_menu_debug_mouse_click_panel_selection_and_world_spawn(self):
+        """Testa seleção de itens por clique no painel e spawn no mundo."""
+        from src.cenas.gameplay import GameplayScene
+        cena = GameplayScene()
+        debug_menu = cena.menu_debug
+        debug_menu.abrir()
+
+        # Simula clique no item 5 (Equipar Arma: idx 5 -> y = 16 + 40 + 5*24 = 176)
+        debug_menu.rect_painel.x = 16
+        debug_menu.rect_painel.y = 16
+        debug_menu.indice_foco = 0
+
+        # Clique no painel para mudar foco
+        y_item5 = 16 + 40 + 5 * 24 + 10
+        x_item5_esq = 16 + 50
+        # Força cooldown 0
+        debug_menu.cooldown_input = 0.0
+
+        # Atualiza com clique simulado
+        import pygame
+        screen = pygame.Surface((800, 600))
+        debug_menu.draw(screen)
 
 
 if __name__ == "__main__":
