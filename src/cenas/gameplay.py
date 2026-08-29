@@ -808,18 +808,21 @@ class GameplayScene(BaseScene):
             self._desenhar_overlay_pausa()
 
     def _desenhar_hp_in_world(self):
-        """Desenha a barra de HP diretamente abaixo da batata."""
+        """Desenha a barra de HP perfeitamente centralizada abaixo do avatar da batata."""
         if not self.jogador.vivo:
             return
 
-        centro_x = self.jogador.x + self.jogador.largura / 2.0
-        base_y = self.jogador.y + self.jogador.altura + 6
+        # Dimensões visuais efetivas do avatar da batata (42x42 com sprite ou largura/altura base)
+        sprite_w = 42.0 if (hasattr(self.jogador, "_sprite_idle") and self.jogador._sprite_idle) else float(self.jogador.largura)
+        sprite_h = 42.0 if (hasattr(self.jogador, "_sprite_idle") and self.jogador._sprite_idle) else float(self.jogador.altura)
 
-        bar_x = self.camera.transform_x(centro_x - 20)
-        bar_y = self.camera.transform_y(base_y)
+        centro_x = self.jogador.x + sprite_w / 2.0
+        base_y = self.jogador.y + sprite_h + 4.0
 
         bar_w = 40
         bar_h = 6
+        bar_x = self.camera.transform_x(centro_x - bar_w / 2.0)
+        bar_y = self.camera.transform_y(base_y)
 
         # Fundo vermelho
         pygame.draw.rect(self.janela.screen, (160, 30, 30), (bar_x, bar_y, bar_w, bar_h), border_radius=2)

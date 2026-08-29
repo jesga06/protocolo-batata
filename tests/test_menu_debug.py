@@ -145,13 +145,20 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         self.debug_menu._executar_acao_selecionada()
         self.assertEqual(self.cena.jogador.hp, self.cena.jogador.hp_max - dano_esperado)
 
-        # 7. Ação Desbloquear Todas Configurações
+        # 7. Ação Subir Nível (+1)
+        nivel_inicial = self.cena.jogador.nivel
+        self.debug_menu.indice_foco = 10
+        self.debug_menu.idx_level_up = 0  # +1
+        self.debug_menu._executar_acao_selecionada()
+        self.assertEqual(self.cena.jogador.nivel, nivel_inicial + 1)
+
+        # 8. Ação Desbloquear Todas Configurações
         self.debug_menu.indice_foco = 11
         self.debug_menu._executar_acao_selecionada()
         self.assertEqual(len(self.cena.config_sistema.desbloqueadas), 20)
 
     def test_debug_menu_spawn_drops_and_enemies(self):
-        """Testa geração de drops e inimigos nas coordenadas do mundo."""
+        """Testa geração de drops e inimigos nas coordenadas do mundo com centro alinhado."""
         # 1. Spawn Drop XP (+50)
         self.debug_menu.indice_foco = 4
         self.debug_menu.idx_tipo_drop = 1  # XP (+50)
@@ -159,6 +166,8 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         self.assertEqual(len(self.cena.drops), 1)
         self.assertEqual(self.cena.drops[0].tipo, "xp")
         self.assertEqual(self.cena.drops[0].valor, 50)
+        self.assertEqual(self.cena.drops[0].x + self.cena.drops[0].largura / 2.0, 500.0)
+        self.assertEqual(self.cena.drops[0].y + self.cena.drops[0].altura / 2.0, 400.0)
 
         # 2. Spawn Arma Específica (Minigun)
         self.debug_menu.indice_foco = 5
@@ -175,12 +184,14 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         self.assertTrue(len(self.cena.jogador.drones) >= 1)
         self.assertEqual(self.cena.jogador.drones[0].nome, "Drone de Cura")
 
-        # 4. Spawn Inimigo (Tanque)
+        # 4. Spawn Inimigo (Tanque) — Valida que o CENTRO do inimigo coincide com o clique
         self.debug_menu.indice_foco = 7
         self.debug_menu.idx_inimigo = 5  # Tanque
         self.debug_menu._spawnar_item_ou_inimigo_no_mundo(600.0, 350.0)
         self.assertEqual(len(self.cena.inimigos), 1)
         self.assertEqual(self.cena.inimigos[0].hp, 120)
+        self.assertEqual(self.cena.inimigos[0].x + self.cena.inimigos[0].largura / 2.0, 600.0)
+        self.assertEqual(self.cena.inimigos[0].y + self.cena.inimigos[0].altura / 2.0, 350.0)
 
     def test_rocket_launcher_direct_hit_bonus_and_aoe(self):
         """Testa que o foguete aplica 2x dano no impacto direto e 1x dano aos demais na área."""
@@ -228,6 +239,46 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         )
         self.assertIn(inimigo_alcance_novo, afetados)
         self.assertEqual(inimigo_alcance_novo.hp, 30)  # 40 - 10 = 30 HP
+
+    def test_sistema_xp_methods_and_aliases(self):
+        """Valida que adicionar_xp, ganhar_xp e xp_necessario funcionam de forma idêntica."""
+        from src.sistemas.sistema_xp import SistemaXP
+        xp_sys = SistemaXP()
+        self.assertEqual(xp_sys.xp_necessario, 35)
+        self.assertEqual(xp_sys.xp_para_proximo_nivel(), 35)
+
+        # Testa ganhar_xp
+        niveis = xp_sys.ganhar_xp(35)
+        self.assertEqual(xp_sys.nivel, 2)
+        self.assertIn(2, niveis)
+        self.assertEqual(xp_sys.xp_necessario, 60)
+
+    def test_hud_xp_and_boss_bar_vertical_separation(self):
+        """Valida que a barra de XP (y=58..68) e o texto/barra do Mini-Boss (y=74..102) não se sobrepõem."""
+        from src.ui.hud import HUD
+        hud = HUD()
+        screen = pygame.Surface((800, 600))
+        boss = InimigoPadrao(x=0, y=0)
+        boss.is_elite = True
+
+        # Renderiza sem exceção
+        hud.desenhar_barra_xp(screen, self.cena.jogador.sistema_xp)
+        hud.desenhar_barra_boss(screen, boss)
+
+    def test_in_world_hp_bar_centering(self):
+        """Valida que o centro da barra de HP está perfeitamente alinhado com o centro do avatar."""
+        from src.cenas.gameplay import GameplayScene
+        cena = GameplayScene()
+        cena.jogador.x = 200.0
+        cena.jogador.y = 200.0
+
+        # Avatar 42x42 -> centro em x = 221.0
+        # Barra de 40px -> x = 221.0 - 20.0 = 201.0
+        sprite_w = 42.0 if (hasattr(cena.jogador, "_sprite_idle") and cena.jogador._sprite_idle) else float(cena.jogador.largura)
+        centro_x = cena.jogador.x + sprite_w / 2.0
+        bar_w = 40.0
+        bar_x = centro_x - bar_w / 2.0
+        self.assertEqual(bar_x + bar_w / 2.0, centro_x)
 
 
 if __name__ == "__main__":

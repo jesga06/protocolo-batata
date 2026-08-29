@@ -27,7 +27,7 @@ class HUD:
     def desenhar_barra_xp(self, screen, sistema_xp, visivel: bool = True):
         """
         Renderiza a barra de experiência centralizada na tela logo abaixo do HUD superior.
-        Dimensões: 360x10 px, top=62, border_radius=3.
+        Dimensões: 360x10 px, top=58, border_radius=3.
         """
         if not visivel or sistema_xp is None:
             return
@@ -35,7 +35,7 @@ class HUD:
         largura_barra = 360
         altura_barra = 10
         pos_x = (LARGURA_TELA - largura_barra) // 2
-        pos_y = 62
+        pos_y = 58
         raio_borda = 3
 
         # 1. Fundo da barra
@@ -78,7 +78,7 @@ class HUD:
     def desenhar_barra_boss(self, screen, boss, visivel: bool = True):
         """
         Renderiza a barra de vida dedicada para o Mini-Boss / Chefe Elite no topo da tela.
-        Dimensões: 400x12 px em y=78 com moldura dourada e preenchimento roxo/magenta.
+        Dimensões: 400x12 px em y=90 com moldura dourada e preenchimento roxo/magenta.
         """
         if not visivel or boss is None or not getattr(boss, "vivo", True):
             return
@@ -86,18 +86,18 @@ class HUD:
         largura_barra = 400
         altura_barra = 12
         pos_x = (LARGURA_TELA - largura_barra) // 2
-        pos_y = 78
+        pos_y = 90
         raio_borda = 3
 
-        # 1. Nome do Mini-Boss / Chefe
+        # 1. Nome do Mini-Boss / Chefe (posicionado acima da barra em y=74 sem sobrepor a barra de XP)
         nome = getattr(boss, "nome_elite", "") or "MINI-BOSS ELITE"
         fonte_nome = pygame.font.SysFont("Arial", 11, bold=True)
         nome_sombra = fonte_nome.render(nome, True, (10, 5, 20))
-        nome_rect = nome_sombra.get_rect(centerx=LARGURA_TELA // 2 + 1, bottom=pos_y - 1)
+        nome_rect = nome_sombra.get_rect(centerx=LARGURA_TELA // 2 + 1, top=75)
         screen.blit(nome_sombra, nome_rect)
 
         nome_surf = fonte_nome.render(nome, True, DOURADO)
-        nome_rect_main = nome_surf.get_rect(centerx=LARGURA_TELA // 2, bottom=pos_y - 2)
+        nome_rect_main = nome_surf.get_rect(centerx=LARGURA_TELA // 2, top=74)
         screen.blit(nome_surf, nome_rect_main)
 
         # 2. Fundo da barra (container roxo escuro)

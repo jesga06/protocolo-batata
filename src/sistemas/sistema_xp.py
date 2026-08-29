@@ -24,6 +24,11 @@ class SistemaXP:
         if callable(callback) and callback not in self._callbacks_level_up:
             self._callbacks_level_up.append(callback)
 
+    @property
+    def xp_necessario(self) -> int:
+        """Retorna a quantidade total de XP necessária para o próximo nível."""
+        return self.xp_para_proximo_nivel(self.nivel)
+
     def xp_para_proximo_nivel(self, nivel: int = None) -> int:
         """
         Retorna a quantidade de XP necessária para avançar a partir do nível informado.
@@ -65,6 +70,10 @@ class SistemaXP:
             self.xp_atual = min(self.xp_atual, self.xp_para_proximo_nivel(self.nivel_max))
 
         return niveis_ganhos
+
+    def ganhar_xp(self, quantidade: int, mult_xp: float = 1.0) -> list[int]:
+        """Alias para adicionar_xp."""
+        return self.adicionar_xp(quantidade, mult_xp)
 
     def progresso_normalizado(self) -> float:
         """Retorna uma fração entre 0.0 e 1.0 correspondente ao preenchimento da barra de XP."""

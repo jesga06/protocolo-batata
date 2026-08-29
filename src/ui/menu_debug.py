@@ -240,11 +240,11 @@ class MenuDebug:
                 self._definir_status(f"DANO RECEBIDO: -{dano} HP")
         elif self.indice_foco == 10:  # Subir Nível (+X)
             qtd = self.opcoes_level_up[self.idx_level_up]
-            if self.cena and hasattr(self.cena, "modal_level_up"):
+            if self.cena and hasattr(self.cena, "jogador"):
                 for _ in range(qtd):
-                    self.cena.jogador.sistema_xp.ganhar_xp(self.cena.jogador.sistema_xp.xp_necessario - self.cena.jogador.sistema_xp.xp_atual)
+                    xp_faltante = max(1, self.cena.jogador.sistema_xp.xp_para_proximo_nivel() - self.cena.jogador.sistema_xp.xp_atual)
+                    self.cena.jogador.ganhar_xp(xp_faltante)
                 self.fechar()
-                self.cena.modal_level_up.enfileirar_level_up(self.cena.jogador.nivel)
                 self._definir_status(f"LEVEL UP (+{qtd}) ATIVADO!")
         elif self.indice_foco == 11:  # Desbloquear Todas Configurações
             if self.cena and hasattr(self.cena, "config_sistema") and self.cena.config_sistema:
@@ -255,15 +255,16 @@ class MenuDebug:
                 self._definir_status("TODAS AS 20 CONFIGS DESBLOQUEADAS!")
 
     def _spawnar_item_ou_inimigo_no_mundo(self, x: float, y: float):
-        """Gera a entidade selecionada nas coordenadas especificadas."""
+        """Gera a entidade selecionada com o CENTRO posicionado exatamente nas coordenadas (x, y)."""
         if not self.cena:
             return
 
         if self.indice_foco == 4:  # Spawn Categoria Drop
             nome_d, tipo_d, val_d = self.opcoes_tipo_drop[self.idx_tipo_drop]
+            from src.utils.constantes import DROP_LARGURA, DROP_ALTURA
             drop = ItemDrop(
-                x=x - 8.0,
-                y=y - 8.0,
+                x=x - float(DROP_LARGURA) / 2.0,
+                y=y - float(DROP_ALTURA) / 2.0,
                 tipo=tipo_d,
                 valor=val_d,
                 tempo_vida=DROP_TEMPO_DESAPARECER,
@@ -307,7 +308,7 @@ class MenuDebug:
                     self.cena.jogador.drone = novo_drone
                 self._definir_status(f"DRONE ATIVADO: {nome_dr}")
 
-        elif self.indice_foco == 7:  # Spawn Inimigo
+        elif self.indice_foco == 7:  # Spawn Inimigo (Centro alinhado com o clique)
             nome_i, tipo_i = self.opcoes_inimigos[self.idx_inimigo]
             from src.entidades import (
                 InimigoPadrao, InimigoRapido, InimigoPhasing,
@@ -334,6 +335,9 @@ class MenuDebug:
                 inimigo.score_valor = 500
 
             if inimigo is not None:
+                # Posiciona o CENTRO do inimigo exatamente nas coordenadas do clique
+                inimigo.x = x - inimigo.largura / 2.0
+                inimigo.y = y - inimigo.altura / 2.0
                 self.cena.inimigos.append(inimigo)
                 self._definir_status(f"INIMIGO SPAWNADO: {nome_i}")
 
