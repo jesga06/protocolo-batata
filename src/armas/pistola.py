@@ -20,8 +20,8 @@ class Pistola(ArmaBase):
     def __init__(
         self,
         dano: int = PISTOLA_DANO,
-        cooldown: float = 0.33,
-        velocidade_projetil: float = 420.0,
+        cooldown: float = PISTOLA_COOLDOWN,
+        velocidade_projetil: float = PISTOLA_VELOCIDADE_PROJETIL,
         tempo_vida_projetil: float = 2.5
     ):
         super().__init__(
@@ -49,14 +49,16 @@ class Pistola(ArmaBase):
             dir_x = 1.0  # Direção padrão para a direita se coincidirem
 
         projetil = Projetil(
-            x=origem_x,
-            y=origem_y,
+            x=origem_x - 4.0,
+            y=origem_y - 4.0,
             dir_x=dir_x,
             dir_y=dir_y,
             velocidade=self.velocidade_projetil,
             dano=self.dano,
             tempo_vida=self.tempo_vida_projetil,
-            dono="jogador"
+            dono="jogador",
+            largura=8,
+            altura=8
         )
 
         # Tenta reproduzir efeito sonoro de tiro de forma segura

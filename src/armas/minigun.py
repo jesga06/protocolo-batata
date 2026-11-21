@@ -3,7 +3,6 @@ Minigun — Protocolo: Batata
 Arma especial de Slot 3: altíssima cadência de tiro, leve dispersão e grande capacidade de munição.
 """
 
-import math
 import random
 from src.armas.arma_base import ArmaBase
 from src.entidades.projetil import Projetil
@@ -59,14 +58,16 @@ class Minigun(ArmaBase):
             dir_x, dir_y = rotacionar_vetor(dir_x, dir_y, desvio)
 
         projetil = Projetil(
-            x=origem_x,
-            y=origem_y,
+            x=origem_x - 3.0,
+            y=origem_y - 3.0,
             dir_x=dir_x,
             dir_y=dir_y,
             velocidade=self.velocidade_projetil,
             dano=self.dano,
             tempo_vida=2.2,
             dono="jogador",
+            largura=6,
+            altura=6,
             sprite_key="projetil_minigun"
         )
 

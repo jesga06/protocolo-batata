@@ -5,7 +5,7 @@ Arma de Slot 1 permanente do jogador com dano em arco curto e repulsão (knockba
 
 import math
 from src.armas.arma_base import ArmaBase
-from src.utils.math_utils import distancia, vetor_direcao
+from src.utils.math_utils import distancia, vetor_direcao, clamp
 from src.utils.constantes import (
     MELEE_DANO, MELEE_COOLDOWN, MELEE_ALCANCE,
     MELEE_KNOCKBACK, MELEE_ALVOS_MAX, MELEE_ARCO_GRAUS, obter_caminho_asset
@@ -91,15 +91,31 @@ class Melee(ArmaBase):
             if not getattr(inimigo, "vivo", True) or getattr(inimigo, "em_fase", False):
                 continue
 
-            centro_e_x = inimigo.x + getattr(inimigo, "largura", 28) / 2.0
-            centro_e_y = inimigo.y + getattr(inimigo, "altura", 28) / 2.0
-            dist = distancia(origem_x, origem_y, centro_e_x, centro_e_y)
+            larg_e = float(getattr(inimigo, "largura", 28))
+            alt_e = float(getattr(inimigo, "altura", 28))
+            centro_e_x = inimigo.x + larg_e / 2.0
+            centro_e_y = inimigo.y + alt_e / 2.0
+            usar_aabb = getattr(inimigo, "is_elite", False) or getattr(inimigo, "is_boss", False) or larg_e > 32.0 or alt_e > 32.0
+            if usar_aabb:
+                px = clamp(origem_x, inimigo.x, inimigo.x + larg_e)
+                py = clamp(origem_y, inimigo.y, inimigo.y + alt_e)
+                dist = distancia(origem_x, origem_y, px, py)
+            else:
+                px, py = centro_e_x, centro_e_y
+                dist = distancia(origem_x, origem_y, centro_e_x, centro_e_y)
 
             if dist <= self.alcance:
                 if ang_mira is not None:
-                    ang_e = math.atan2(centro_e_y - origem_y, centro_e_x - origem_x)
-                    delta_ang = abs(math.atan2(math.sin(ang_e - ang_mira), math.cos(ang_e - ang_mira)))
-                    if delta_ang <= meio_arco_rad + 1e-5:
+                    ang_c = math.atan2(centro_e_y - origem_y, centro_e_x - origem_x)
+                    delta_c = abs(math.atan2(math.sin(ang_c - ang_mira), math.cos(ang_c - ang_mira)))
+                    no_cone = (delta_c <= meio_arco_rad + 1e-5)
+                    if not no_cone and usar_aabb and dist > 1e-5:
+                        ang_p = math.atan2(py - origem_y, px - origem_x)
+                        delta_p = abs(math.atan2(math.sin(ang_p - ang_mira), math.cos(ang_p - ang_mira)))
+                        no_cone = (delta_p <= meio_arco_rad + 1e-5)
+                    elif not no_cone and usar_aabb and dist <= 1e-5:
+                        no_cone = True
+                    if no_cone:
                         atingidos.append((inimigo, dist, centro_e_x, centro_e_y))
                 else:
                     atingidos.append((inimigo, dist, centro_e_x, centro_e_y))

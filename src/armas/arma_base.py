@@ -23,6 +23,7 @@ class ArmaBase(ABC):
     ):
         self.nome = nome
         self.dano = int(dano)
+        self._dano_original = self.dano
         self.cooldown = float(cooldown)
         self.tempo_recarga_restante = 0.0
         self.municao_infinita = municao_infinita

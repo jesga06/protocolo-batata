@@ -3,7 +3,6 @@ Escopeta (Shotgun) — Protocolo: Batata
 Arma especial de Slot 3: disparo de múltiplos projéteis (pellets) em leque cônico com alto impacto a curta distância.
 """
 
-import math
 from src.armas.arma_base import ArmaBase
 from src.entidades.projetil import Projetil
 from src.utils.math_utils import vetor_direcao, rotacionar_vetor
@@ -66,14 +65,16 @@ class Shotgun(ArmaBase):
         for offset in offsets:
             p_dx, p_dy = rotacionar_vetor(dir_x, dir_y, offset)
             proj = Projetil(
-                x=origem_x,
-                y=origem_y,
+                x=origem_x - 3.0,
+                y=origem_y - 3.0,
                 dir_x=p_dx,
                 dir_y=p_dy,
                 velocidade=self.velocidade_projetil,
                 dano=self.dano,
                 tempo_vida=1.2,
                 dono="jogador",
+                largura=6,
+                altura=6,
                 sprite_key="projetil_shotgun"
             )
             projeteis.append(proj)
