@@ -50,14 +50,16 @@ class RifleAssalto(ArmaBase):
             dir_x = 1.0
 
         projetil = Projetil(
-            x=origem_x,
-            y=origem_y,
+            x=origem_x - 5.0,
+            y=origem_y - 5.0,
             dir_x=dir_x,
             dir_y=dir_y,
             velocidade=self.velocidade_projetil,
             dano=self.dano,
             tempo_vida=2.5,
             dono="jogador",
+            largura=10,
+            altura=10,
             sprite_key="projetil_rifle"
         )
 

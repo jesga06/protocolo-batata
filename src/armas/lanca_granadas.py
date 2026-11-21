@@ -53,14 +53,16 @@ class LancaGranadas(ArmaBase):
             dir_x = 1.0
 
         projetil = Projetil(
-            x=origem_x,
-            y=origem_y,
+            x=origem_x - 6.0,
+            y=origem_y - 6.0,
             dir_x=dir_x,
             dir_y=dir_y,
             velocidade=self.velocidade_projetil,
             dano=self.dano,
             tempo_vida=1.0,
             dono="jogador",
+            largura=12,
+            altura=12,
             sprite_key="projetil_granada",
             explosivo=True,
             raio_explosao=self.raio_explosao,

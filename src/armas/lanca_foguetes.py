@@ -53,14 +53,16 @@ class LancaFoguetes(ArmaBase):
             dir_x = 1.0
 
         projetil = Projetil(
-            x=origem_x,
-            y=origem_y,
+            x=origem_x - 7.0,
+            y=origem_y - 7.0,
             dir_x=dir_x,
             dir_y=dir_y,
             velocidade=self.velocidade_projetil,
             dano=self.dano,
             tempo_vida=3.0,
             dono="jogador",
+            largura=14,
+            altura=14,
             sprite_key="projetil_foguete",
             explosivo=True,
             raio_explosao=self.raio_explosao
