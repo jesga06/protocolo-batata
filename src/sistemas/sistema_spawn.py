@@ -185,6 +185,9 @@ class SistemaSpawn:
                         arena_h=arena_h
                     )
                     boss_elite = cls_elite(x=ex, y=ey, is_elite=True, nome_elite=nome_elite)
+                    if idx_boss == 0:
+                        boss_elite.hp_max = max(1, int(round(boss_elite.hp_max * 0.40)))
+                        boss_elite.hp = boss_elite.hp_max
                     mapa_arq = {
                         1: "impressora_matricial",
                         2: "fonte_generica",
