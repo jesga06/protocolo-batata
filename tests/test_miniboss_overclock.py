@@ -56,10 +56,10 @@ class TestMiniBossOverclockSystem(unittest.TestCase):
     def test_miniboss_schedule_4_tiers_and_names(self):
         """Valida a configuração oficial dos 4 tiers de mini-bosses."""
         esperados = {
-            1: (InimigoRapido, "MINI-BOSS: ESTAGIÁRIO SÊNIOR"),
-            2: (InimigoTank, "MINI-BOSS: ARQUIVO MORTO PRIORITÁRIO"),
-            3: (InimigoPhasing, "MINI-BOSS: FANTASMA DO RH"),
-            4: (InimigoBlindado, "MINI-BOSS: SEGURANÇA-CHEFE"),
+            1: (InimigoRapido, "MINI-BOSS: IMPRESSORA MATRICIAL"),
+            2: (InimigoTank, "MINI-BOSS: FONTE GENÉRICA 500W"),
+            3: (InimigoPhasing, "MINI-BOSS: ROTEADOR CORPORATIVO"),
+            4: (InimigoBlindado, "MINI-BOSS: NO-BREAK CHUMBADO"),
         }
 
         for tier, (cls_exp, nome_exp) in esperados.items():
@@ -150,11 +150,11 @@ class TestMiniBossOverclockSystem(unittest.TestCase):
         """Valida anti-stacking: apenas 1 mini-boss ativo por vez; timers subsequentes pausam enquanto um elite está vivo."""
         spawner = SistemaSpawn()
 
-        # Avança até 60.5s -> Spawna 1º mini-boss (Estagiário Sênior)
+        # Avança até 60.5s -> Spawna 1º mini-boss (Impressora Matricial)
         novos = spawner.update(60.5, camera_x=0, camera_y=0, total_inimigos_vivos=0, possui_elite_vivo=False)
         elites = [e for e in novos if getattr(e, "is_elite", False)]
         self.assertEqual(len(elites), 1)
-        self.assertIn("ESTAGIÁRIO SÊNIOR", elites[0].nome_elite)
+        self.assertIn("IMPRESSORA MATRICIAL", elites[0].nome_elite)
 
         # Enquanto o elite está vivo (possui_elite_vivo=True), avança 120s (tempo total de partida > 180s)
         # O segundo mini-boss NÃO deve spawnar porque o cronômetro do elite está pausado
@@ -163,11 +163,11 @@ class TestMiniBossOverclockSystem(unittest.TestCase):
         self.assertEqual(len(elites_durante), 0)
 
         # Agora o primeiro elite morre (possui_elite_vivo=False)
-        # Avança 60s -> Spawna o 2º mini-boss (Arquivo Morto Prioritário)
+        # Avança 60s -> Spawna o 2º mini-boss (Fonte Genérica 500W)
         novos_depois = spawner.update(60.0, camera_x=0, camera_y=0, total_inimigos_vivos=0, possui_elite_vivo=False)
         elites_depois = [e for e in novos_depois if getattr(e, "is_elite", False)]
         self.assertEqual(len(elites_depois), 1)
-        self.assertIn("ARQUIVO MORTO PRIORITÁRIO", elites_depois[0].nome_elite)
+        self.assertIn("FONTE GENÉRICA 500W", elites_depois[0].nome_elite)
 
     def test_modal_overclock_3_distinct_cards_and_catalog(self):
         """Valida que o ModalOverclock sorteia 3 cartas distintas dos 6 módulos catalogados."""

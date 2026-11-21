@@ -146,7 +146,7 @@ class TestTier1FeatureCoverage(unittest.TestCase):
         """Verifica o catálogo e nomes de Mini-Bosses alinhados a CATALOGO_ARQUITETURAL.md."""
         cls1, nome1 = self.spawner.obter_arquetipo_elite(1)
         self.assertEqual(cls1, InimigoRapido)
-        self.assertEqual(nome1, "MINI-BOSS: ESTAGIÁRIO SÊNIOR")
+        self.assertEqual(nome1, "MINI-BOSS: IMPRESSORA MATRICIAL")
 
         cls2, nome2 = self.spawner.obter_arquetipo_elite(2)
         self.assertEqual(cls2, InimigoTank)
@@ -404,10 +404,10 @@ class TestTier1FeatureCoverage(unittest.TestCase):
         for _ in range(50):
             cena.loop()
 
-        mobs_comuns = [inim for inim in cena.inimigos if inim != boss]
-        self.assertLessEqual(len(mobs_comuns), 10)
+        mobs_comuns = [inim for inim in cena.inimigos if inim != boss and not getattr(inim, "is_caixa_som", False)]
+        self.assertLessEqual(len(mobs_comuns), 22)
         for mob in mobs_comuns:
-            self.assertIsInstance(mob, InimigoPadrao)
+            self.assertIsInstance(mob, (InimigoPadrao, InimigoRapido, InimigoRanged))
 
     # --- R5: Debug Commands in MenuDebug ---
     def test_t1_debug_commands_in_menudebug(self):

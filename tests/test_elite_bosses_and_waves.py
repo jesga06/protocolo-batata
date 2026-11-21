@@ -67,7 +67,7 @@ class TestEliteBossesAndWaves(unittest.TestCase):
         elites = [e for e in novos if getattr(e, "is_elite", False)]
         self.assertEqual(len(elites), 1)
         self.assertEqual(spawner.ultimo_minuto_elite, 1)
-        self.assertIn("ESTAGIÁRIO SÊNIOR", elites[0].nome_elite)
+        self.assertIn("IMPRESSORA MATRICIAL", elites[0].nome_elite)
 
         # Avança mais 10s no minuto 1 -> Não gera outro elite no mesmo minuto
         novos_depois = spawner.update(10.0, camera_x=0, camera_y=0, total_inimigos_vivos=len(novos))
@@ -79,7 +79,7 @@ class TestEliteBossesAndWaves(unittest.TestCase):
         elites_m2 = [e for e in novos_m2 if getattr(e, "is_elite", False)]
         self.assertEqual(len(elites_m2), 1)
         self.assertEqual(spawner.ultimo_minuto_elite, 2)
-        self.assertIn("ARQUIVO MORTO PRIORITÁRIO", elites_m2[0].nome_elite)
+        self.assertIn("FONTE GENÉRICA 500W", elites_m2[0].nome_elite)
 
     def test_drops_garantidos_elite(self):
         """Valida que a morte de um elite gera +50 XP (5 gemas de 10 XP), 1 caixa de arma e 1 de equipamento."""
