@@ -36,7 +36,8 @@ class HUD:
 
         largura_barra = 360
         altura_barra = 10
-        pos_x = (LARGURA_TELA - largura_barra) // 2
+        centro_x = screen.get_width() // 2 if hasattr(screen, "get_width") else LARGURA_TELA // 2
+        pos_x = centro_x - largura_barra // 2
         pos_y = 58
         raio_borda = 3
 
@@ -70,11 +71,11 @@ class HUD:
 
         # Sombra de texto para alta legibilidade
         sombra_surf = fonte.render(texto_str, True, (10, 10, 15))
-        sombra_rect = sombra_surf.get_rect(centerx=LARGURA_TELA // 2 + 1, centery=pos_y + altura_barra // 2 + 1)
+        sombra_rect = sombra_surf.get_rect(centerx=centro_x + 1, centery=pos_y + altura_barra // 2 + 1)
         screen.blit(sombra_surf, sombra_rect)
 
         texto_surf = fonte.render(texto_str, True, cor_texto)
-        texto_rect = texto_surf.get_rect(centerx=LARGURA_TELA // 2, centery=pos_y + altura_barra // 2)
+        texto_rect = texto_surf.get_rect(centerx=centro_x, centery=pos_y + altura_barra // 2)
         screen.blit(texto_surf, texto_rect)
 
     def desenhar_barra_boss(self, screen, boss, visivel: bool = True):
@@ -87,7 +88,8 @@ class HUD:
 
         largura_barra = 400
         altura_barra = 12
-        pos_x = (LARGURA_TELA - largura_barra) // 2
+        centro_x = screen.get_width() // 2 if hasattr(screen, "get_width") else LARGURA_TELA // 2
+        pos_x = centro_x - largura_barra // 2
         pos_y = 90
         raio_borda = 3
 
@@ -95,11 +97,11 @@ class HUD:
         nome = getattr(boss, "nome_elite", "") or "MINI-BOSS ELITE"
         fonte_nome = self._fonte_nome
         nome_sombra = fonte_nome.render(nome, True, (10, 5, 20))
-        nome_rect = nome_sombra.get_rect(centerx=LARGURA_TELA // 2 + 1, top=75)
+        nome_rect = nome_sombra.get_rect(centerx=centro_x + 1, top=75)
         screen.blit(nome_sombra, nome_rect)
 
         nome_surf = fonte_nome.render(nome, True, DOURADO)
-        nome_rect_main = nome_surf.get_rect(centerx=LARGURA_TELA // 2, top=74)
+        nome_rect_main = nome_surf.get_rect(centerx=centro_x, top=74)
         screen.blit(nome_surf, nome_rect_main)
 
         # 2. Fundo da barra (container roxo escuro)
@@ -126,11 +128,11 @@ class HUD:
         texto_hp = f"{hp_atual}/{hp_max} HP"
         fonte_hp = self._fonte_hp
         sombra_hp = fonte_hp.render(texto_hp, True, (10, 5, 20))
-        sombra_rect = sombra_hp.get_rect(centerx=LARGURA_TELA // 2 + 1, centery=pos_y + altura_barra // 2 + 1)
+        sombra_rect = sombra_hp.get_rect(centerx=centro_x + 1, centery=pos_y + altura_barra // 2 + 1)
         screen.blit(sombra_hp, sombra_rect)
 
         hp_surf = fonte_hp.render(texto_hp, True, BRANCO)
-        hp_rect = hp_surf.get_rect(centerx=LARGURA_TELA // 2, centery=pos_y + altura_barra // 2)
+        hp_rect = hp_surf.get_rect(centerx=centro_x, centery=pos_y + altura_barra // 2)
         screen.blit(hp_surf, hp_rect)
 
 

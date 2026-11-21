@@ -82,10 +82,12 @@ class MenuConfigs:
         self.max_scroll_y: float = 0.0
         self.config_selecionada_id: str = "fps_cap"
 
-        # Dimensões da tela e painéis
-        self.painel_rect = pygame.Rect(30, 20, 740, 560)
-        self.lista_rect = pygame.Rect(45, 110, 435, 410)
-        self.detalhes_rect = pygame.Rect(495, 110, 260, 410)
+        # Dimensões da tela e painéis com offsets dinâmicos para centralização em 1280x720
+        self.offset_x = (LARGURA_TELA - 800) // 2
+        self.offset_y = (ALTURA_TELA - 600) // 2
+        self.painel_rect = pygame.Rect(self.offset_x + 30, self.offset_y + 20, 740, 560)
+        self.lista_rect = pygame.Rect(self.offset_x + 45, self.offset_y + 110, 435, 410)
+        self.detalhes_rect = pygame.Rect(self.offset_x + 495, self.offset_y + 110, 260, 410)
 
         # Superfície de overlay escuro pré-alocada
         self._dark_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
@@ -305,9 +307,11 @@ class MenuConfigs:
         self._mouse_pressionado_anterior = pressionado_agora
 
         # 3. Processamento dos Cliques nas Abas e Botão Fechar
-        aba0_rect = pygame.Rect(50, 68, 200, 32)
-        aba1_rect = pygame.Rect(260, 68, 200, 32)
-        btn_fechar_rect = pygame.Rect(650, 68, 105, 32)
+        ox = getattr(self, "offset_x", (LARGURA_TELA - 800) // 2)
+        oy = getattr(self, "offset_y", (ALTURA_TELA - 600) // 2)
+        aba0_rect = pygame.Rect(ox + 50, oy + 68, 200, 32)
+        aba1_rect = pygame.Rect(ox + 260, oy + 68, 200, 32)
+        btn_fechar_rect = pygame.Rect(ox + 650, oy + 68, 105, 32)
 
         if mouse_clicado:
             if aba0_rect.collidepoint(mx, my):
@@ -330,10 +334,10 @@ class MenuConfigs:
                 "Dificuldade": 76,
                 "Experimental": 84
             }
-            cat_x = 48
+            cat_x = ox + 48
             for cat_nome in self.categorias_lista:
                 largura_pill = larguras_cats.get(cat_nome, 76)
-                cat_btn_rect = pygame.Rect(cat_x, 108, largura_pill, 22)
+                cat_btn_rect = pygame.Rect(cat_x, oy + 108, largura_pill, 22)
                 if mouse_clicado and cat_btn_rect.collidepoint(mx, my):
                     self.categoria_filtro = None if cat_nome == "TODAS" else cat_nome
                     self.scroll_y = 0.0
@@ -354,8 +358,8 @@ class MenuConfigs:
             self.max_scroll_y = max(0.0, float(espaco_total - area_visivel_h))
 
             # Botoes de scroll para cima e para baixo
-            btn_up_rect = pygame.Rect(455, 140, 20, 24)
-            btn_down_rect = pygame.Rect(455, 480, 20, 24)
+            btn_up_rect = pygame.Rect(ox + 455, oy + 140, 20, 24)
+            btn_down_rect = pygame.Rect(ox + 455, oy + 480, 20, 24)
 
             # Suporte a MOUSEWHEEL via eventos do pygame
             try:
@@ -376,13 +380,13 @@ class MenuConfigs:
                     return
 
             # Itens da lista
-            start_y = 136
+            start_y = oy + 136
             for i, cdef in enumerate(configs_filtradas):
                 item_y = start_y + i * item_h - self.scroll_y
-                if item_y + item_h < 135 or item_y > 515:
+                if item_y + item_h < oy + 135 or item_y > oy + 515:
                     continue  # Fora da área de visualização
 
-                item_rect = pygame.Rect(50, item_y, 400, 48)
+                item_rect = pygame.Rect(ox + 50, item_y, 400, 48)
                 is_desbloqueada = self.gerenciador_config.is_desbloqueada(cdef.id)
 
                 # Se o mouse passou por cima, seleciona para visualização no inspetor
@@ -392,9 +396,9 @@ class MenuConfigs:
                 # Controles interativos dentro do item
                 if is_desbloqueada:
                     # Botão de Toggle ou Ciclo
-                    ctrl_rect = pygame.Rect(320, item_y + 10, 120, 28)
-                    btn_prev_rect = pygame.Rect(320, item_y + 10, 24, 28)
-                    btn_next_rect = pygame.Rect(420, item_y + 10, 24, 28)
+                    ctrl_rect = pygame.Rect(ox + 320, item_y + 10, 120, 28)
+                    btn_prev_rect = pygame.Rect(ox + 320, item_y + 10, 24, 28)
+                    btn_next_rect = pygame.Rect(ox + 420, item_y + 10, 24, 28)
 
                     if mouse_clicado:
                         if cdef.tipo == TipoControleConfig.TOGGLE:
@@ -413,15 +417,15 @@ class MenuConfigs:
         elif self.aba_atual == 1:
             # Sliders de Volume (Master, Música, SFX)
             sliders_info = [
-                ("volume_master", 160),
-                ("volume_musica", 230),
-                ("volume_sfx", 300)
+                ("volume_master", oy + 160),
+                ("volume_musica", oy + 230),
+                ("volume_sfx", oy + 300)
             ]
 
             for cid, y_pos in sliders_info:
-                track_rect = pygame.Rect(280, y_pos + 6, 260, 14)
-                btn_menos = pygame.Rect(240, y_pos, 30, 26)
-                btn_mais = pygame.Rect(550, y_pos, 30, 26)
+                track_rect = pygame.Rect(ox + 280, y_pos + 6, 260, 14)
+                btn_menos = pygame.Rect(ox + 240, y_pos, 30, 26)
+                btn_mais = pygame.Rect(ox + 550, y_pos, 30, 26)
 
                 val_atual = self.gerenciador_config.obter_valor(cid)
                 val_atual = 100 if val_atual is None else int(val_atual)
@@ -461,21 +465,23 @@ class MenuConfigs:
         screen.blit(self._dark_surf, (0, 0))
 
         # 2. Painel Principal Centralizado
+        ox = getattr(self, "offset_x", (LARGURA_TELA - 800) // 2)
+        oy = getattr(self, "offset_y", (ALTURA_TELA - 600) // 2)
         pygame.draw.rect(screen, (22, 26, 36), self.painel_rect, border_radius=8)
         pygame.draw.rect(screen, (55, 68, 92), self.painel_rect, width=2, border_radius=8)
 
         # 3. Cabeçalho com Título e Subtítulo
         tit_surf = self._fonte_titulo.render("PAINEL DE CONFIGURAÇÕES", True, DOURADO)
-        screen.blit(tit_surf, (50, 30))
+        screen.blit(tit_surf, (ox + 50, oy + 30))
 
         sub_txt = "Personalize o jogo e ative sacrifícios mecânicos para ganhar bônus" if self.aba_atual == 0 else "Ajustes de áudio"
         sub_surf = self._fonte_sub.render(sub_txt, True, (150, 165, 185))
-        screen.blit(sub_surf, (50, 52))
+        screen.blit(sub_surf, (ox + 50, oy + 52))
 
         # 4. Barra de Abas [ GAMEPLAY ] e [ SISTEMA ]
-        aba0_rect = pygame.Rect(50, 68, 200, 32)
-        aba1_rect = pygame.Rect(260, 68, 200, 32)
-        btn_fechar_rect = pygame.Rect(650, 68, 105, 32)
+        aba0_rect = pygame.Rect(ox + 50, oy + 68, 200, 32)
+        aba1_rect = pygame.Rect(ox + 260, oy + 68, 200, 32)
+        btn_fechar_rect = pygame.Rect(ox + 650, oy + 68, 105, 32)
 
         # Aba 0: Gameplay
         cor_aba0 = (38, 48, 68) if self.aba_atual == 0 else (26, 30, 42)
@@ -513,6 +519,9 @@ class MenuConfigs:
 
     def _desenhar_aba_gameplay(self, screen: pygame.Surface):
         """Renderiza a lista de 20 configs e o painel de inspeção detalhado à direita."""
+        ox = getattr(self, "offset_x", (LARGURA_TELA - 800) // 2)
+        oy = getattr(self, "offset_y", (ALTURA_TELA - 600) // 2)
+
         # 1. Filtros de Categoria no topo da lista
         larguras_cats = {
             "Performance": 82,
@@ -521,11 +530,11 @@ class MenuConfigs:
             "Dificuldade": 76,
             "Experimental": 84
         }
-        cat_x = 48
+        cat_x = ox + 48
         for cat_nome in self.categorias_lista:
             is_ativa = (self.categoria_filtro is None and cat_nome == "TODAS") or (self.categoria_filtro == cat_nome)
             largura_pill = larguras_cats.get(cat_nome, 76)
-            cat_rect = pygame.Rect(cat_x, 108, largura_pill, 20)
+            cat_rect = pygame.Rect(cat_x, oy + 108, largura_pill, 20)
             cor_bg = (40, 52, 75) if is_ativa else (25, 30, 42)
             cor_borda = AZUL_CIANO if is_ativa else (45, 55, 75)
             pygame.draw.rect(screen, cor_bg, cat_rect, border_radius=3)
@@ -543,18 +552,18 @@ class MenuConfigs:
         ]
 
         item_h = 52
-        start_y = 136
+        start_y = oy + 136
 
         # Fundo da lista
-        pygame.draw.rect(screen, (16, 20, 28), pygame.Rect(48, 134, 404, 380), border_radius=4)
-        pygame.draw.rect(screen, (40, 50, 70), pygame.Rect(48, 134, 404, 380), width=1, border_radius=4)
+        pygame.draw.rect(screen, (16, 20, 28), pygame.Rect(ox + 48, oy + 134, 404, 380), border_radius=4)
+        pygame.draw.rect(screen, (40, 50, 70), pygame.Rect(ox + 48, oy + 134, 404, 380), width=1, border_radius=4)
 
         for i, cdef in enumerate(configs_filtradas):
             item_y = start_y + i * item_h - self.scroll_y
-            if item_y + item_h < 135 or item_y > 510:
+            if item_y + item_h < oy + 135 or item_y > oy + 510:
                 continue
 
-            item_rect = pygame.Rect(50, item_y, 400, 48)
+            item_rect = pygame.Rect(ox + 50, item_y, 400, 48)
             is_desbloqueada = self.gerenciador_config.is_desbloqueada(cdef.id)
             is_selecionada = (self.config_selecionada_id == cdef.id)
 
@@ -576,23 +585,23 @@ class MenuConfigs:
                     # Ícone escurecido cacheado se bloqueado
                     icone_dark = self._obter_icone_bloqueado(cdef.id)
                     if icone_dark is not None:
-                        screen.blit(icone_dark, (58, item_y + 8))
+                        screen.blit(icone_dark, (ox + 58, item_y + 8))
                     else:
-                        screen.blit(icone_img, (58, item_y + 8))
+                        screen.blit(icone_img, (ox + 58, item_y + 8))
                 else:
-                    screen.blit(icone_img, (58, item_y + 8))
+                    screen.blit(icone_img, (ox + 58, item_y + 8))
             else:
                 cor_ic = DOURADO if is_desbloqueada else (70, 75, 85)
-                pygame.draw.rect(screen, cor_ic, (58, item_y + 8, 32, 32), border_radius=4)
+                pygame.draw.rect(screen, cor_ic, (ox + 58, item_y + 8, 32, 32), border_radius=4)
 
             # Nome e Categoria
             cor_nome = BRANCO if is_desbloqueada else (110, 115, 125)
             nome_surf = self._fonte_item_tit.render(cdef.nome, True, cor_nome)
-            screen.blit(nome_surf, (98, item_y + 6))
+            screen.blit(nome_surf, (ox + 98, item_y + 6))
 
             cat_str = f"[{cdef.categoria.value if hasattr(cdef.categoria, 'value') else cdef.categoria}]"
             cat_surf = self._fonte_cat.render(cat_str, True, AZUL_CIANO if is_desbloqueada else (85, 90, 100))
-            screen.blit(cat_surf, (98, item_y + 26))
+            screen.blit(cat_surf, (ox + 98, item_y + 26))
 
             # Controles à direita do item
             if is_desbloqueada:
@@ -603,16 +612,16 @@ class MenuConfigs:
                     cor_btn_borda = VERDE_CURA if is_on else VERMELHO_HP
                     txt_btn = f"[{val_atual.upper()}]"
 
-                    btn_rect = pygame.Rect(320, item_y + 10, 120, 28)
+                    btn_rect = pygame.Rect(ox + 320, item_y + 10, 120, 28)
                     pygame.draw.rect(screen, cor_btn, btn_rect, border_radius=4)
                     pygame.draw.rect(screen, cor_btn_borda, btn_rect, width=1, border_radius=4)
                     lbl_btn = self._fonte_btn.render(txt_btn, True, BRANCO)
                     screen.blit(lbl_btn, lbl_btn.get_rect(center=btn_rect.center))
                 else:
                     # Grupo: botões < [Opção] >
-                    btn_prev = pygame.Rect(320, item_y + 10, 24, 28)
-                    btn_mid = pygame.Rect(346, item_y + 10, 72, 28)
-                    btn_next = pygame.Rect(420, item_y + 10, 24, 28)
+                    btn_prev = pygame.Rect(ox + 320, item_y + 10, 24, 28)
+                    btn_mid = pygame.Rect(ox + 346, item_y + 10, 72, 28)
+                    btn_next = pygame.Rect(ox + 420, item_y + 10, 24, 28)
 
                     pygame.draw.rect(screen, (35, 45, 65), btn_prev, border_radius=3)
                     pygame.draw.rect(screen, AZUL_CIANO, btn_prev, width=1, border_radius=3)
@@ -629,12 +638,12 @@ class MenuConfigs:
             else:
                 # Bloqueado
                 lbl_bloq = self._fonte_btn.render("[BLOQUEADO]", True, (110, 115, 130))
-                lbl_rect = lbl_bloq.get_rect(right=440, centery=item_y + 24)
+                lbl_rect = lbl_bloq.get_rect(right=ox + 440, centery=item_y + 24)
                 screen.blit(lbl_bloq, lbl_rect)
 
         # Botões e setas de scroll (acima e abaixo na barra lateral direita da lista)
-        btn_up_rect = pygame.Rect(455, 140, 20, 24)
-        btn_down_rect = pygame.Rect(455, 480, 20, 24)
+        btn_up_rect = pygame.Rect(ox + 455, oy + 140, 20, 24)
+        btn_down_rect = pygame.Rect(ox + 455, oy + 480, 20, 24)
         pode_subir = self.scroll_y > 0.0
         pode_descer = self.scroll_y < self.max_scroll_y
 
@@ -739,19 +748,22 @@ class MenuConfigs:
 
     def _desenhar_aba_sistema(self, screen: pygame.Surface):
         """Renderiza a aba de configurações sistêmicas (volumes, filtro daltônico e escala global)."""
+        ox = getattr(self, "offset_x", (LARGURA_TELA - 800) // 2)
+        oy = getattr(self, "offset_y", (ALTURA_TELA - 600) // 2)
+
         # Painel central da aba de sistema
-        area_rect = pygame.Rect(48, 110, 704, 400)
+        area_rect = pygame.Rect(ox + 48, oy + 110, 704, 400)
         pygame.draw.rect(screen, (18, 22, 32), area_rect, border_radius=6)
         pygame.draw.rect(screen, (45, 55, 75), area_rect, width=1, border_radius=6)
 
         # 1. Sliders de Áudio
         tit_audio = self._fonte_det_tit.render("AUDIO & MUSICA", True, DOURADO)
-        screen.blit(tit_audio, (70, 125))
+        screen.blit(tit_audio, (ox + 70, oy + 125))
 
         sliders_info = [
-            ("volume_master", "Volume Geral (Master)", 160),
-            ("volume_musica", "Volume da Música", 230),
-            ("volume_sfx", "Volume dos Efeitos (SFX)", 300)
+            ("volume_master", "Volume Geral (Master)", oy + 160),
+            ("volume_musica", "Volume da Música", oy + 230),
+            ("volume_sfx", "Volume dos Efeitos (SFX)", oy + 300)
         ]
 
         for cid, label, y_pos in sliders_info:
@@ -760,29 +772,29 @@ class MenuConfigs:
 
             # Rótulo
             lbl_surf = self._fonte_item_tit.render(label, True, BRANCO)
-            screen.blit(lbl_surf, (70, y_pos + 4))
+            screen.blit(lbl_surf, (ox + 70, y_pos + 4))
 
             # Botão Menos [-]
-            btn_menos = pygame.Rect(240, y_pos, 30, 26)
+            btn_menos = pygame.Rect(ox + 240, y_pos, 30, 26)
             pygame.draw.rect(screen, (32, 40, 56), btn_menos, border_radius=3)
             pygame.draw.rect(screen, AZUL_CIANO, btn_menos, width=1, border_radius=3)
             m_surf = self._fonte_btn.render("-", True, AZUL_CIANO)
             screen.blit(m_surf, m_surf.get_rect(center=btn_menos.center))
 
             # Barra do Slider
-            track_rect = pygame.Rect(280, y_pos + 6, 260, 14)
+            track_rect = pygame.Rect(ox + 280, y_pos + 6, 260, 14)
             pygame.draw.rect(screen, (28, 34, 48), track_rect, border_radius=3)
 
             # Preenchimento
             fill_w = int(260 * (val_atual / 100.0))
             if fill_w > 0:
-                pygame.draw.rect(screen, AZUL_CIANO, (280, y_pos + 6, fill_w, 14), border_radius=3)
+                pygame.draw.rect(screen, AZUL_CIANO, (ox + 280, y_pos + 6, fill_w, 14), border_radius=3)
 
             # Borda do Slider
             pygame.draw.rect(screen, (60, 75, 100), track_rect, width=1, border_radius=3)
 
             # Botão Mais [+]
-            btn_mais = pygame.Rect(550, y_pos, 30, 26)
+            btn_mais = pygame.Rect(ox + 550, y_pos, 30, 26)
             pygame.draw.rect(screen, (32, 40, 56), btn_mais, border_radius=3)
             pygame.draw.rect(screen, AZUL_CIANO, btn_mais, width=1, border_radius=3)
             p_surf = self._fonte_btn.render("+", True, AZUL_CIANO)
@@ -791,7 +803,7 @@ class MenuConfigs:
             # Texto numérico
             val_txt = f"{val_atual}%"
             txt_surf = self._fonte_item_tit.render(val_txt, True, DOURADO)
-            screen.blit(txt_surf, (595, y_pos + 4))
+            screen.blit(txt_surf, (ox + 595, y_pos + 4))
 
 
 

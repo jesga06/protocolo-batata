@@ -89,8 +89,10 @@ class MenuDebug:
         self.indice_foco = 0
         self.total_itens = 15
 
-        # Retângulo do painel de Debug (Top-Left)
-        self.rect_painel = pygame.Rect(16, 16, 340, 560)
+        # Retângulo do painel de Debug centralizado / com offset adaptado para 1280x720
+        self.offset_x = (LARGURA_TELA - 800) // 2
+        self.offset_y = (ALTURA_TELA - 600) // 2
+        self.rect_painel = pygame.Rect(self.offset_x + 16, self.offset_y + 16, 340, 560)
         self._painel_surf = pygame.Surface((self.rect_painel.width, self.rect_painel.height), pygame.SRCALPHA)
         self._painel_surf.fill((12, 10, 22, 235))
         self._tecla_f1_anterior = False
