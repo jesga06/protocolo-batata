@@ -157,26 +157,31 @@ class InimigoPhasing(InimigoBase):
                     sprite = self._sprite_cache[cache_key]
 
                 if display_inited:
-                    alpha_key = (self.sprite_key, self.largura, self.altura, 90)
+                    alpha_key = (self.sprite_key, self.largura, self.altura, 105)
                     if alpha_key not in self._alpha_cache:
                         sprite_fase = sprite.copy()
-                        sprite_fase.set_alpha(90)
+                        sprite_fase.fill((60, 220, 255, 190), special_flags=pygame.BLEND_RGBA_MULT)
+                        sprite_fase.set_alpha(120)
                         self._alpha_cache[alpha_key] = sprite_fase
                     else:
                         sprite_fase = self._alpha_cache[alpha_key]
 
-                    screen.blit(sprite_fase, (int(draw_x), int(draw_y)))
+                    ticks = pygame.time.get_ticks()
+                    jitter_x = int(math.sin(ticks / 45.0) * 3.0)
+                    screen.blit(sprite_fase, (int(draw_x) - jitter_x, int(draw_y)))
+                    screen.blit(sprite_fase, (int(draw_x) + jitter_x, int(draw_y)))
 
-                    # Aura sutil ciano
-                    aura_rect_key = (self.largura + 6, self.altura + 6)
+                    # Aura etérea ciano/violeta com varredura de sinal fantasma
+                    aura_rect_key = (self.largura + 10, self.altura + 10)
                     if aura_rect_key not in self._aura_retangular_cache:
                         aura_surf = pygame.Surface(aura_rect_key, pygame.SRCALPHA)
-                        pygame.draw.rect(aura_surf, (0, 220, 255, 60), (0, 0, aura_rect_key[0], aura_rect_key[1]), width=2, border_radius=4)
+                        pygame.draw.ellipse(aura_surf, (56, 189, 248, 55), (0, 0, aura_rect_key[0], aura_rect_key[1]))
+                        pygame.draw.ellipse(aura_surf, (168, 85, 247, 175), (0, 0, aura_rect_key[0], aura_rect_key[1]), width=2)
                         self._aura_retangular_cache[aura_rect_key] = aura_surf
                     else:
                         aura_surf = self._aura_retangular_cache[aura_rect_key]
 
-                    screen.blit(aura_surf, (int(draw_x - 3), int(draw_y - 3)))
+                    screen.blit(aura_surf, (int(draw_x - 5), int(draw_y - 5)))
                 else:
                     # Fallback sem display_init: desenha sem cachear
                     sprite_fase = sprite.copy()

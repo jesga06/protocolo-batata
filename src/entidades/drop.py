@@ -99,6 +99,19 @@ class ItemDrop:
 
     @classmethod
     def _obter_sprite(cls, tipo: str, largura: int, altura: int):
+        chave = (tipo, int(largura), int(altura))
+        if chave in cls._sprites:
+            return cls._sprites[chave]
+
+        try:
+            from src.utils.pixel_art_sprites import obter_sprite_drop
+            img_px = obter_sprite_drop(tipo, max(1, int(largura)), max(1, int(altura)))
+            if img_px is not None:
+                cls._sprites[chave] = img_px
+                return img_px
+        except Exception:
+            pass
+
         if tipo not in cls._base_sprite_cache:
             import os
             mapa_arquivos = {
@@ -107,7 +120,8 @@ class ItemDrop:
                 "arma": "drop_arma.png",
                 "equipamento": "drop_equipamento.png",
                 "config": "drop_config.png",
-                "overclock": "drop_config.png"
+                "overclock": "drop_config.png",
+                "capsula_powerup": "drop_config.png",
             }
             nome_arquivo = mapa_arquivos.get(tipo, "drop_xp.png")
             caminho = os.path.join(ASSETS_DIR, "sprites", "drops", nome_arquivo)
@@ -123,12 +137,10 @@ class ItemDrop:
         if base_img is None:
             return None
 
-        chave = (tipo, largura, altura)
-        if chave not in cls._sprites:
-            try:
-                cls._sprites[chave] = pygame.transform.scale(base_img, (largura, altura))
-            except Exception:
-                cls._sprites[chave] = None
+        try:
+            cls._sprites[chave] = pygame.transform.scale(base_img, (largura, altura))
+        except Exception:
+            cls._sprites[chave] = None
         return cls._sprites[chave]
 
     def desenhar(self, janela, camera=None, pausar_despawn: bool = False):

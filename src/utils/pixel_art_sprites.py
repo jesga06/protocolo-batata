@@ -325,6 +325,97 @@ GRID_DRONE_SUPORTE = [
     "...OOOOOO...",
 ]
 
+# 5. DROPS & CÁPSULAS DE SUPRIMENTO (12x12 / 14x14)
+GRID_DROP_XP = [
+    "....OOOO....",
+    "...OUUUUO...",
+    "..OUUWWUUO..",
+    ".OUUWWWWUUO.",
+    "OUUWWUUUUUUO",
+    "OUUUUUUUUUUO",
+    "OUUUUUUUUUUO",
+    "OUUUUUUNNUUO",
+    ".OUUUUNNUUO.",
+    "..OUUUUUUO..",
+    "...OUUUUO...",
+    "....OOOO....",
+]
+
+GRID_DROP_CURA = [
+    "..OOOOOOOO..",
+    ".OWWWWWWWWO.",
+    "OWWWGGGGWWWO",
+    "OWWWGGGGWWWO",
+    "OWGGGGGGGGWO",
+    "OWGGGGGGGGWO",
+    "OWGGGGGGGGWO",
+    "OWGGGGGGGGWO",
+    "OWWWGGGGWWWO",
+    "OWWWGGGGWWWO",
+    ".OWWWWWWWWO.",
+    "..OOOOOOOO..",
+]
+
+GRID_DROP_ARMA = [
+    ".OOOOOOOOOO.",
+    "OZZZZZZZZZZO",
+    "OZUUUUUUUUZO",
+    "OZUZZZZZZUZO",
+    "OZUZNNNNZUZO",
+    "OZUZNWWWNUZO",
+    "OZUZNWWWNUZO",
+    "OZUZNNNNZUZO",
+    "OZUZZZZZZUZO",
+    "OZUUUUUUUUZO",
+    "OZZZZZZZZZZO",
+    ".OOOOOOOOOO.",
+]
+
+GRID_DROP_EQUIP = [
+    ".OOOOOOOOOO.",
+    "OZZZZZZZZZZO",
+    "OZCCCCCCCCZO",
+    "OZCZZZZZZCZO",
+    "OZCZAAAAZCZO",
+    "OZCZA3WWACZO".replace("3", "W"),
+    "OZCZA3WWACZO".replace("3", "W"),
+    "OZCZAAAAZCZO",
+    "OZCZZZZZZCZO",
+    "OZCCCCCCCCZO",
+    "OZZZZZZZZZZO",
+    ".OOOOOOOOOO.",
+]
+
+GRID_DROP_OVERCLOCK = [
+    "..OOOOOOOO..",
+    ".OPPPPPPPPO.",
+    "OPPLLLLLLPPO",
+    "OPLOOOOOOLPO",
+    "OPLOUUUUOLPO",
+    "OPLOUWWUOLPO",
+    "OPLOUWWUOLPO",
+    "OPLOUUUUOLPO",
+    "OPLOOOOOOLPO",
+    "OPPLLLLLLPPO",
+    ".OPPPPPPPPO.",
+    "..OOOOOOOO..",
+]
+
+GRID_DROP_CAPSULA = [
+    "...OOOOOO...",
+    "..OCCCCCCO..",
+    ".OCCWWWWCCO.",
+    "OCCWCCCCWCCO",
+    "OCWCCUUCCWCO",
+    "OCWCUWWUCWCO",
+    "OCWCUWWUCWCO",
+    "OCWCCUUCCWCO",
+    "OCCWCCCCWCCO",
+    ".OCCWWWWCCO.",
+    "..OCCCCCCO..",
+    "...OOOOOO...",
+]
+
 _CACHE_SURFACES: dict[tuple, pygame.Surface] = {}
 
 
@@ -438,3 +529,18 @@ def obter_sprite_drone(sprite_key: str, largura: int = 24, altura: int = 24, niv
 
     _CACHE_SURFACES[chave] = base
     return base
+
+
+def obter_sprite_drop(tipo: str, largura: int = 20, altura: int = 20) -> pygame.Surface:
+    """Retorna o sprite em Pixel Art Limpo para gemas de XP, kits de cura, caixas, overclocks e cápsulas."""
+    mapa = {
+        "xp": GRID_DROP_XP,
+        "cura": GRID_DROP_CURA,
+        "arma": GRID_DROP_ARMA,
+        "equipamento": GRID_DROP_EQUIP,
+        "config": GRID_DROP_OVERCLOCK,
+        "overclock": GRID_DROP_OVERCLOCK,
+        "capsula_powerup": GRID_DROP_CAPSULA,
+    }
+    grid = mapa.get(tipo, GRID_DROP_XP)
+    return _renderizar_grid(grid, largura, altura)

@@ -267,20 +267,26 @@ class SistemaDrops:
         par_id = self._proximo_par_capsula_id
         self._proximo_par_capsula_id += 1
         criadas = []
-        offsets_x = [-75.0, 75.0]
+        offsets_x = [-145.0, 145.0]
+        from src.utils.constantes import LARGURA_ARENA, ALTURA_ARENA
         for idx, op in enumerate(opcoes[:2]):
             ox = offsets_x[idx] if idx < len(offsets_x) else 0.0
+            cx_cap = max(48.0, min(float(LARGURA_ARENA - 48), centro_x + ox - float(DROP_LARGURA) / 2.0))
+            cy_cap = max(48.0, min(float(ALTURA_ARENA - 48), centro_y - 36.0 - float(DROP_ALTURA) / 2.0))
             cap = ItemDrop(
-                x=centro_x + ox - float(DROP_LARGURA) / 2.0,
-                y=centro_y - float(DROP_ALTURA) / 2.0,
+                x=cx_cap,
+                y=cy_cap,
                 tipo="capsula_powerup",
                 valor=int(op.get("valor", 1) if isinstance(op.get("valor", 1), (int, float)) and op.get("valor", 1) >= 1 else 1),
                 tempo_vida=15.0,
                 tempo_scavenger=999.0,
+                largura=26,
+                altura=26,
                 subtipo=str(op.get("subtipo", op.get("tipo", "buff_dano_temp"))),
                 rotulo=str(op.get("nome", "Suprimento")),
                 par_id=par_id
             )
+            cap.pickup_cooldown = 0.65
             criadas.append(cap)
             self._adicionar_drop(cap)
         return criadas
@@ -309,6 +315,8 @@ class SistemaDrops:
         coletados = []
         for drop in self.drops:
             if not drop.ativo or drop.coletado:
+                continue
+            if getattr(drop, "pickup_cooldown", 0.0) > 0.0 and drop.tempo_decorrido < drop.pickup_cooldown:
                 continue
 
             if colisao_aabb(j_x, j_y, j_w, j_h, drop.x, drop.y, drop.largura, drop.altura):
