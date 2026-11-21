@@ -22,7 +22,7 @@ def inicializar_jogo():
     import pygame
     os.environ["SDL_VIDEO_CENTERED"] = "1"
 
-    # Habilita suporte a High-DPI no Windows para evitar borrão de DPI scaling
+    # Habilita suporte a High-DPI antes de pygame.init() para evitar borrão de DPI scaling
     try:
         import ctypes
         try:
@@ -35,12 +35,25 @@ def inicializar_jogo():
     if not pygame.get_init():
         pygame.init()
 
+    # Inicializa canais do mixer com buffer expandido (32 canais) antes da criação das cenas
+    try:
+        if not pygame.mixer.get_init():
+            try:
+                from PPlay.sound import SoundManager
+                SoundManager.inicializar()
+            except Exception:
+                pygame.mixer.init()
+        if pygame.mixer.get_init():
+            pygame.mixer.set_num_channels(32)
+    except Exception:
+        pass
+
     janela = Window(
         largura_virtual=LARGURA_TELA,
         altura_virtual=ALTURA_TELA,
         titulo=TITULO_JOGO,
         resizavel=True,
-        pixel_art=False
+        pixel_art=True
     )
     janela.set_background_color((18, 22, 30))
 
@@ -58,26 +71,41 @@ def main(limite_frames: int | None = None):
     frame_count = 0
 
     while True:
-        # 1. Executa ciclo da cena ativa (loop + draw)
+        # 1. Processa eventos do sistema e atalhos globais no topo do loop
+        janela.processar_eventos()
+
+        # 2. Executa ciclo da cena ativa (loop + draw)
         SceneManager.run()
 
-        # 2. Obtém limite de taxa de quadros (FPS Cap configurado: 60, 45, 30, 15)
+        # 3. Obtém limite de taxa de quadros (FPS Cap configurado: 60, 45, 30, 15)
+        # Suporta GameplayScene, MenuPrincipalScene, TutorialScene e quaisquer cenas com gerenciador de config
         cena_atual = getattr(SceneManager, "_current_scene", None)
         fps_alvo = FPS_PADRAO
-        if cena_atual and hasattr(cena_atual, "gerenciador_config"):
+        if cena_atual and hasattr(cena_atual, "gerenciador_config") and cena_atual.gerenciador_config:
             val_fps = cena_atual.gerenciador_config.obter_valor("fps_cap")
             try:
                 fps_alvo = int(val_fps)
             except Exception:
                 fps_alvo = FPS_PADRAO
-        elif cena_atual and hasattr(cena_atual, "config_sistema"):
+        elif cena_atual and hasattr(cena_atual, "config_sistema") and cena_atual.config_sistema:
             val_fps = cena_atual.config_sistema.obter_valor("fps_cap")
             try:
                 fps_alvo = int(val_fps)
             except Exception:
                 fps_alvo = FPS_PADRAO
+        else:
+            # Fallback para cenas como TutorialScene que podem não instanciar seu próprio gerenciador
+            try:
+                from src.sistemas.config_sistema import GerenciadorConfiguracoes
+                from src.utils.constantes import SAVE_FILE_PATH
+                cfg = GerenciadorConfiguracoes()
+                cfg.carregar_arquivo(SAVE_FILE_PATH)
+                val_fps = cfg.obter_valor("fps_cap")
+                fps_alvo = int(val_fps)
+            except Exception:
+                fps_alvo = FPS_PADRAO
 
-        # 3. Atualiza a tela virtual e apresenta na tela real com letterbox e sincronização de clock
+        # 4. Atualiza a tela virtual e apresenta na tela real com letterbox e sincronização de clock
         janela.update(fps_alvo=fps_alvo)
 
         frame_count += 1

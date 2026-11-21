@@ -109,6 +109,24 @@ INIMIGO_RANGED_COOLDOWN_ATAQUE = 1.2
 INIMIGO_RANGED_XP = 15
 INIMIGO_RANGED_DISTANCIA_TIRO = 280.0
 
+# Mini-Boss e Chefe Final (Geladeira Tsunami)
+MINIBOSS_TEMPO_SOBREAQUECIMENTO = 60.0
+BOSS_GELADEIRA_LARGURA = 112
+BOSS_GELADEIRA_ALTURA = 156
+BOSS_GELADEIRA_HP_BASE = 2500
+BOSS_GELADEIRA_DANO_CONTATO = 30
+BOSS_GELADEIRA_VELOCIDADE = 85.0
+BOSS_GELADEIRA_NOME = "GELADEIRA TSUNAMI"
+BOSS_GELADEIRA_FLAVOR = "The Perfect Sound™"
+
+GELADEIRA_TSUNAMI_LARGURA = 112
+GELADEIRA_TSUNAMI_ALTURA = 156
+GELADEIRA_TSUNAMI_HP = 2500
+GELADEIRA_TSUNAMI_DANO = 30
+GELADEIRA_TSUNAMI_VELOCIDADE = 85.0
+GELADEIRA_TSUNAMI_NOME = "GELADEIRA TSUNAMI"
+GELADEIRA_TSUNAMI_FLAVOR = "The Perfect Sound™"
+
 # =============================================================================
 # 6. SPAWN DE INIMIGOS — CONFIGURAÇÃO (+50% INTERVALO ENTRE WAVES)
 # =============================================================================
@@ -117,7 +135,7 @@ SPAWN_INTERVALO_INICIAL = 3.00
 SPAWN_INTERVALO_MINIMO = 0.75
 SPAWN_DISTANCIA_OFFSET = 80.0
 SPAWN_MAX_ATIVOS = 400
-TEMPO_VITORIA = 600.0  # 10 minutos (600.0s) de sobrevivência para vitória
+TEMPO_VITORIA = 600.0  # Constante legada mantida para compatibilidade de testes (vitória agora requer derrotar Geladeira Tsunami)
 
 
 # =============================================================================
@@ -134,8 +152,8 @@ MELEE_ARCO_GRAUS = 60.0  # +15º de abertura de cone
 
 # Slot 2: Pistola (Padrão de Fábrica - 10 Dano)
 PISTOLA_DANO = 10
-PISTOLA_COOLDOWN = 0.35
-PISTOLA_VELOCIDADE_PROJETIL = 450.0
+PISTOLA_COOLDOWN = 0.33
+PISTOLA_VELOCIDADE_PROJETIL = 420.0
 PISTOLA_ALCANCE_MAX = 800.0
 
 # Slot 3: Armas Especiais Temporárias (+50% de Munição)
@@ -185,9 +203,7 @@ DRONE_CURA_VALOR = 5
 DRONE_CURA_INTERVALO = 3.0
 DRONE_COMBATE_DANO = 8
 DRONE_COMBATE_INTERVALO = 1.0
-DRONE_COMBATE_ALCANCE = 250.0
-DRONE_SUPORTE_ESCUDO_MAX = 40
-DRONE_SUPORTE_REGEN_INTERVALO = 8.0
+DRONE_COMBATE_ALCANCE = 350.0
 
 # =============================================================================
 # 9. DROPS E PROGRESSÃO TEMPORÁRIA
@@ -201,451 +217,13 @@ DROP_LARGURA = 42
 DROP_ALTURA = 42
 
 # =============================================================================
-# 10. CATÁLOGO COMPLETO DE CONFIGURAÇÕES (SSOT: CONFIGURACOES.MD)
+# 10. CATÁLOGO COMPLETO DE CONFIGURAÇÕES (SSOT: src.sistemas.config_dados)
 # =============================================================================
 
 TOTAL_CONFIGS_GAMEPLAY = 20
 
-CONFIGURACOES_CATALOGO = {
-    # 1. Limite de Quadros (Performance)
-    "fps_cap": {
-        "id": "fps_cap",
-        "nome": "Limite de Quadros",
-        "categoria": "Performance",
-        "tipo": "grupo",
-        "padrao": "60",
-        "opcoes": ["60", "45", "30", "15"],
-        "icone": "ui/icones_configs/icon_fps_cap.png",
-        "flavor_text": {
-            "60": "O olho humano não consegue ver além de 30 FPS.",
-            "45": "Modo Performance: Os inimigos também estão perdendo frames.",
-            "30": "Modo Slow Motion: Só é lag se você estiver perdendo.",
-            "15": "Experiência Cinematográfica: Cada frame foi desenhado à mão por monges tibetanos."
-        },
-        "buffs": {
-            "60": {},
-            "45": {"dano_inimigos_mult": 0.85},
-            "30": {"vel_inimigos_mult": 0.90},
-            "15": {"dano_inimigos_mult": 0.7225, "vel_inimigos_mult": 0.81}
-        }
-    },
-
-    # 2. Qualidade Gráfica (Performance)
-    "graficos_qualidade": {
-        "id": "graficos_qualidade",
-        "nome": "Qualidade Gráfica",
-        "categoria": "Performance",
-        "tipo": "toggle",
-        "padrao": "alta",
-        "opcoes": ["alta", "baixa"],
-        "icone": "ui/icones_configs/icon_graficos_qualidade.png",
-        "flavor_text": {
-            "alta": "Sprites nítidos para quem aprecia os pequenos detalhes.",
-            "baixa": "Cortes no Orçamento: Texturas são um luxo que o departamento financeiro cortou."
-        },
-        "buffs": {
-            "alta": {},
-            "baixa": {"hp_inimigos_mult": 0.80}
-        }
-    },
-
-    # 3. Resolução da Tela (Performance)
-    "resolucao": {
-        "id": "resolucao",
-        "nome": "Resolução da Tela",
-        "categoria": "Performance",
-        "tipo": "grupo",
-        "padrao": "100%",
-        "opcoes": ["100%", "75%", "50%", "25%"],
-        "icone": "ui/icones_configs/icon_resolucao.png",
-        "flavor_text": {
-            "100%": "Cada pixel em seu devido lugar.",
-            "75%": "Anti-Aliasing Reverso: Menos pixels na tela, mais caixas no chão.",
-            "50%": "Nostalgia Forçada: Lembranças de uma época de monitores CRT.",
-            "25%": "Arqueologia de Pixels: Se você consegue contar os pixels nos dedos, está economizando processamento."
-        },
-        "buffs": {
-            "100%": {},
-            "75%": {"drop_chance_bonus": 0.10},
-            "50%": {"drop_chance_bonus": 0.25},
-            "25%": {"drop_chance_bonus": 0.50}
-        }
-    },
-
-    # 4. Sincronização Vertical (Performance)
-    "vsync": {
-        "id": "vsync",
-        "nome": "Sincronização Vertical",
-        "categoria": "Performance",
-        "tipo": "toggle",
-        "padrao": "ligado",
-        "opcoes": ["ligado", "desligado"],
-        "icone": "ui/icones_configs/icon_vsync.png",
-        "flavor_text": {
-            "ligado": "Estabilidade garantida para monitores sensíveis.",
-            "desligado": "Morte por Mil Cortes: Espero que seu monitor tenha FreeSync."
-        },
-        "buffs": {
-            "ligado": {},
-            "desligado": {"vel_jogador_mult": 1.10}
-        }
-    },
-
-    # 5. Tremor de Tela (Performance / Visual)
-    "screen_shake": {
-        "id": "screen_shake",
-        "nome": "Tremor de Tela",
-        "categoria": "Performance / Visual",
-        "tipo": "toggle",
-        "padrao": "desligado",
-        "opcoes": ["desligado", "ligado"],
-        "icone": "ui/icones_configs/icon_screen_shake.png",
-        "flavor_text": {
-            "desligado": "Uma experiência suave.",
-            "ligado": "Protocolo: Terremoto: A tela treme. A sua mira também."
-        },
-        "buffs": {
-            "desligado": {},
-            "ligado": {"dano_explosivos_mult": 1.20}
-        }
-    },
-
-    # 6. Desfoque de Movimento (Performance / Visual)
-    "motion_blur": {
-        "id": "motion_blur",
-        "nome": "Desfoque de Movimento",
-        "categoria": "Performance / Visual",
-        "tipo": "toggle",
-        "padrao": "desligado",
-        "opcoes": ["desligado", "ligado"],
-        "icone": "ui/icones_configs/icon_motion_blur.png",
-        "flavor_text": {
-            "desligado": "Uma experiência suave.",
-            "ligado": "Fantasmagórico: Você se move tão rápido que até seus pixels ficaram para trás."
-        },
-        "buffs": {
-            "desligado": {},
-            "ligado": {"vel_jogador_mult": 1.15}
-        }
-    },
-
-    # 7. Exibição de Interface (Interface)
-    "hud": {
-        "id": "hud",
-        "nome": "Exibição de Interface",
-        "categoria": "Interface",
-        "tipo": "toggle",
-        "padrao": "ligado",
-        "opcoes": ["ligado", "desligado"],
-        "icone": "ui/icones_configs/icon_hud.png",
-        "flavor_text": {
-            "ligado": "Barras de vida, experiência, inventário e cronômetro visíveis.",
-            "desligado": "Trust Me Bro: Com certeza você ainda tem vida sobrando. Provavelmente."
-        },
-        "buffs": {
-            "ligado": {},
-            "desligado": {"xp_ganho_mult": 1.25}
-        }
-    },
-
-    # 8. Números de Dano (Interface)
-    "damage_numbers": {
-        "id": "damage_numbers",
-        "nome": "Números de Dano",
-        "categoria": "Interface",
-        "tipo": "toggle",
-        "padrao": "desligado",
-        "opcoes": ["desligado", "ligado"],
-        "icone": "ui/icones_configs/icon_damage_numbers.png",
-        "flavor_text": {
-            "desligado": "Inimigos sofrem dano em silêncio.",
-            "ligado": "Aula de Matemática: Finalmente uma aplicação prática para aritmética básica."
-        },
-        "buffs": {
-            "desligado": {},
-            "ligado": {"critico_chance": 0.15, "critico_mult": 2.0}
-        }
-    },
-
-    # 9. Nível de Zoom (Interface)
-    "zoom": {
-        "id": "zoom",
-        "nome": "Nível de Zoom",
-        "categoria": "Interface",
-        "tipo": "grupo",
-        "padrao": "100%",
-        "opcoes": ["75%", "100%", "125%", "150%"],
-        "icone": "ui/icones_configs/icon_zoom.png",
-        "flavor_text": {
-            "75%": "Visão de Satélite: Aquilo é uma batata ou uma formiga armada?",
-            "100%": "Campo de visão padrão e equilibrado.",
-            "125%": "Lupa: Foco total no que está na sua cara.",
-            "150%": "Modo Microscópio: Você consegue ver de perto os inimigos."
-        },
-        "buffs": {
-            "75%": {"hitbox_projeteis_mult": 1.50},
-            "100%": {},
-            "125%": {"dano_armas_mult": 1.10},
-            "150%": {"dano_armas_mult": 1.20}
-        }
-    },
-
-    # 10. Movimento pelo Mouse (Controles)
-    "movimento_mouse": {
-        "id": "movimento_mouse",
-        "nome": "Movimento pelo Mouse",
-        "categoria": "Controles",
-        "tipo": "toggle",
-        "padrao": "desligado",
-        "opcoes": ["desligado", "ligado"],
-        "icone": "ui/icones_configs/icon_movimento_mouse.png",
-        "flavor_text": {
-            "desligado": "Controle manual com pés firmes nas teclas.",
-            "ligado": "Piloto Automático: Para que servem as pernas quando o destino tem um cursor?"
-        },
-        "buffs": {
-            "desligado": {},
-            "ligado": {"drop_chance_mult": 1.40}
-        }
-    },
-
-    # 11. Modificadores de Teclas (Controles)
-    "keybinds": {
-        "id": "keybinds",
-        "nome": "Modificadores de Teclas",
-        "categoria": "Controles",
-        "tipo": "grupo",
-        "padrao": "padrao",
-        "opcoes": ["padrao", "invertido", "arrow_keys", "uma_mao", "pesadelo"],
-        "icone": "ui/icones_configs/icon_keybinds.png",
-        "flavor_text": {
-            "padrao": "Ergonomia convencional para seres humanos normais.",
-            "invertido": "Horizontes Invertidos: Para cima é o novo para baixo.",
-            "arrow_keys": "Nostalgia: Lembranças dolorosas de jogar no teclado de 1998.",
-            "uma_mao": "Uma Mão Só: Uma mão no volante, a outra no carinho.",
-            "pesadelo": "Anarquia das Teclas: Sua memória muscular acabou de pedir demissão."
-        },
-        "buffs": {
-            "padrao": {},
-            "invertido": {"dano_armas_mult": 1.10},
-            "arrow_keys": {"vel_jogador_mult": 1.15},
-            "uma_mao": {"xp_ganho_mult": 1.20},
-            "pesadelo": {"dano_armas_mult": 1.30}
-        }
-    },
-
-    # 12. Suavização de Câmera (Controles / Câmera)
-    "suavizacao_camera": {
-        "id": "suavizacao_camera",
-        "nome": "Suavização de Câmera",
-        "categoria": "Controles / Câmera",
-        "tipo": "toggle",
-        "padrao": "ligado",
-        "opcoes": ["ligado", "desligado"],
-        "icone": "ui/icones_configs/icon_suavizacao_camera.png",
-        "flavor_text": {
-            "ligado": "Transições suaves para evitar tontura.",
-            "desligado": "Raw Footage: Estabilização de imagem é cobrada à parte."
-        },
-        "buffs": {
-            "ligado": {},
-            "desligado": {"vel_jogador_mult": 1.08}
-        }
-    },
-
-    # 13. Disparo Automático (Controles / Combate)
-    "auto_fire": {
-        "id": "auto_fire",
-        "nome": "Disparo Automático",
-        "categoria": "Controles / Combate",
-        "tipo": "toggle",
-        "padrao": "ligado",
-        "opcoes": ["ligado", "desligado"],
-        "icone": "ui/icones_configs/icon_auto_fire.png",
-        "flavor_text": {
-            "ligado": "Segure o botão e reze.",
-            "desligado": "Trigger Discipline: Cada projétil disparado é uma decisão de vida ou morte."
-        },
-        "buffs": {
-            "ligado": {},
-            "desligado": {"dano_armas_mult": 1.15}
-        }
-    },
-
-    # 14. Inimigos à Distância (Dificuldade)
-    "inimigos_ranged": {
-        "id": "inimigos_ranged",
-        "nome": "Inimigos à Distância",
-        "categoria": "Dificuldade",
-        "tipo": "toggle",
-        "padrao": "desligado",
-        "opcoes": ["desligado", "ligado"],
-        "icone": "ui/icones_configs/icon_inimigos_ranged.png",
-        "flavor_text": {
-            "desligado": "Inimigos civilizados.",
-            "ligado": "Evolução Tecnológica: Eles finalmente descobriram a tecnologia dos projéteis balísticos."
-        },
-        "buffs": {
-            "desligado": {},
-            "ligado": {"loot_enriquecido": True}
-        }
-    },
-
-    # 15. Captura de Drops por Inimigos (Dificuldade)
-    "coleta_inimiga": {
-        "id": "coleta_inimiga",
-        "nome": "Captura de Drops por Inimigos",
-        "categoria": "Dificuldade",
-        "tipo": "toggle",
-        "padrao": "desligado",
-        "opcoes": ["desligado", "ligado"],
-        "icone": "ui/icones_configs/icon_coleta_inimiga.png",
-        "flavor_text": {
-            "desligado": "Raposo, não pegue.",
-            "ligado": "Modo Raciocínio: Os inimigos se sentiram inspirados pelo Gemini 3.7 Flash."
-        },
-        "buffs": {
-            "desligado": {},
-            "ligado": {"drops_valor_mult": 2.0}
-        }
-    },
-
-    # 16. Velocidade dos Inimigos (Dificuldade)
-    "velocidade_inimigos": {
-        "id": "velocidade_inimigos",
-        "nome": "Velocidade dos Inimigos",
-        "categoria": "Dificuldade",
-        "tipo": "grupo",
-        "padrao": "normal",
-        "opcoes": ["normal", "+25%", "+50%"],
-        "icone": "ui/icones_configs/icon_velocidade_inimigos.png",
-        "flavor_text": {
-            "normal": "Inimigos marcham normalmente.",
-            "+25%": "Overclock: Eles encontraram o botão turbo.",
-            "+50%": "Surto: Injetaram energético na corrente de dados."
-        },
-        "buffs": {
-            "normal": {},
-            "+25%": {"xp_ganho_mult": 1.20, "vel_inimigos_mult": 1.25},
-            "+50%": {"xp_ganho_mult": 1.40, "vel_inimigos_mult": 1.50}
-        }
-    },
-
-    # 17. Vida dos Inimigos (Dificuldade)
-    "vida_inimigos": {
-        "id": "vida_inimigos",
-        "nome": "Vida dos Inimigos",
-        "categoria": "Dificuldade",
-        "tipo": "grupo",
-        "padrao": "normal",
-        "opcoes": ["normal", "+50%", "+100%"],
-        "icone": "ui/icones_configs/icon_vida_inimigos.png",
-        "flavor_text": {
-            "normal": "Inimigos com vida padrão.",
-            "+50%": "Blindados: Blindagem adicional direto da fábrica.",
-            "+100%": "Pesados: Eles estão mais densos."
-        },
-        "buffs": {
-            "normal": {},
-            "+50%": {"drop_chance_bonus": 0.20, "hp_inimigos_mult": 1.50},
-            "+100%": {"drop_chance_bonus": 0.40, "hp_inimigos_mult": 2.00}
-        }
-    },
-
-    # 18. Iluminação Dinâmica (Experimental / Atmosfera)
-    "iluminacao": {
-        "id": "iluminacao",
-        "nome": "Iluminação Dinâmica",
-        "categoria": "Experimental / Atmosfera",
-        "tipo": "toggle",
-        "padrao": "desligado",
-        "opcoes": ["desligado", "ligado"],
-        "icone": "ui/icones_configs/icon_iluminacao.png",
-        "flavor_text": {
-            "desligado": "Luz do dia perpétua sobre o campo de batalha.",
-            "ligado": "Modo Escuridão: Eles estão com dificuldade de te enxergar."
-        },
-        "buffs": {
-            "desligado": {},
-            "ligado": {"dano_fora_visao_mult": 0.50}
-        }
-    },
-
-    # 19. Cores Invertidas (Experimental / Visual)
-    "cores_invertidas": {
-        "id": "cores_invertidas",
-        "nome": "Cores Invertidas",
-        "categoria": "Experimental / Visual",
-        "tipo": "toggle",
-        "padrao": "desligado",
-        "opcoes": ["desligado", "ligado"],
-        "icone": "ui/icones_configs/icon_cores_invertidas.png",
-        "flavor_text": {
-            "desligado": "Paleta de cores original e aconchegante.",
-            "ligado": "Espaço Negativo: Seus olhos registraram uma reclamação no Procon."
-        },
-        "buffs": {
-            "desligado": {},
-            "ligado": {"dano_armas_mult": 1.20}
-        }
-    },
-
-    # 20. Fogo Amigo (Experimental / Risco Extremo)
-    "fogo_amigo": {
-        "id": "fogo_amigo",
-        "nome": "Fogo Amigo",
-        "categoria": "Experimental / Risco Extremo",
-        "tipo": "toggle",
-        "padrao": "desligado",
-        "opcoes": ["desligado", "ligado"],
-        "icone": "ui/icones_configs/icon_fogo_amigo.png",
-        "flavor_text": {
-            "desligado": "Seus tiros e explosões atravessam você inofensivamente.",
-            "ligado": "Collateral Damage: Aparentemente, estilhaços de granada não leem crachá de identificação."
-        },
-        "buffs": {
-            "desligado": {},
-            "ligado": {"dano_armas_mult": 1.25, "auto_dano": True}
-        }
-    }
-}
-
-# =============================================================================
-# 11. CONFIGURAÇÕES DE SISTEMA (SEM IMPACTO NO GAMEPLAY)
-# =============================================================================
-
-CONFIGURACOES_SISTEMA = {
-    "volume_master": {
-        "id": "volume_master",
-        "nome": "Volume Geral",
-        "tipo": "slider",
-        "padrao": 100,
-        "min": 0,
-        "max": 100,
-        "icone": "ui/icones_configs/icon_volume_master.png",
-        "descricao": "Controla o volume geral de toda a aplicação."
-    },
-    "volume_musica": {
-        "id": "volume_musica",
-        "nome": "Volume da Música",
-        "tipo": "slider",
-        "padrao": 100,
-        "min": 0,
-        "max": 100,
-        "icone": "ui/icones_configs/icon_volume_musica.png",
-        "descricao": "Controla a trilha sonora 8-bit em loop."
-    },
-    "volume_sfx": {
-        "id": "volume_sfx",
-        "nome": "Volume dos Efeitos",
-        "tipo": "slider",
-        "padrao": 100,
-        "min": 0,
-        "max": 100,
-        "icone": "ui/icones_configs/icon_volume_sfx.png",
-        "descricao": "Controla tiros, explosões, pickups e menus."
-    }
-}
+# Re-export de CONFIGURACOES_GAMEPLAY, CONFIGURACOES_CATALOGO e CONFIGURACOES_SISTEMA
+# localizado ao final do módulo para evitar importação circular de pacotes.
 
 # =============================================================================
 # 12. MAPA DE ARQUIVOS DE ASSETS
@@ -664,6 +242,7 @@ ASSET_PATHS = {
     "inimigo_phasing": "sprites/inimigos/inimigo_phasing.png",
     "inimigo_blindado": "sprites/inimigos/inimigo_blindado.png",
     "inimigo_ranged": "sprites/inimigos/inimigo_ranged.png",
+    "boss_geladeira_tsunami": "sprites/inimigos/geladeira_tsunami.png",
 
     # Armas
     "arma_melee": "sprites/armas/arma_melee.png",
@@ -694,6 +273,7 @@ ASSET_PATHS = {
     "drop_arma": "sprites/drops/drop_arma.png",
     "drop_equipamento": "sprites/drops/drop_equipamento.png",
     "drop_config": "sprites/drops/drop_config.png",
+    "drop_overclock": "sprites/drops/drop_config.png",
 
     # Tiles
     "tile_piso": "tiles/tile_piso.png",
@@ -708,6 +288,31 @@ ASSET_PATHS = {
     "btn_bg_normal": "ui/btn_bg_normal.png",
     "btn_bg_hover": "ui/btn_bg_hover.png",
     "mira_crosshair": "ui/mira_crosshair.png",
+
+    # UI - Ícones de Configurações
+    "icon_auto_fire": "ui/icones_configs/icon_auto_fire.png",
+    "icon_coleta_inimiga": "ui/icones_configs/icon_coleta_inimiga.png",
+    "icon_cores_invertidas": "ui/icones_configs/icon_cores_invertidas.png",
+    "icon_damage_numbers": "ui/icones_configs/icon_damage_numbers.png",
+    "icon_fogo_amigo": "ui/icones_configs/icon_fogo_amigo.png",
+    "icon_fps_cap": "ui/icones_configs/icon_fps_cap.png",
+    "icon_graficos_qualidade": "ui/icones_configs/icon_graficos_qualidade.png",
+    "icon_hud": "ui/icones_configs/icon_hud.png",
+    "icon_iluminacao": "ui/icones_configs/icon_iluminacao.png",
+    "icon_inimigos_ranged": "ui/icones_configs/icon_inimigos_ranged.png",
+    "icon_keybinds": "ui/icones_configs/icon_keybinds.png",
+    "icon_motion_blur": "ui/icones_configs/icon_motion_blur.png",
+    "icon_movimento_mouse": "ui/icones_configs/icon_movimento_mouse.png",
+    "icon_resolucao": "ui/icones_configs/icon_resolucao.png",
+    "icon_screen_shake": "ui/icones_configs/icon_screen_shake.png",
+    "icon_suavizacao_camera": "ui/icones_configs/icon_suavizacao_camera.png",
+    "icon_velocidade_inimigos": "ui/icones_configs/icon_velocidade_inimigos.png",
+    "icon_vida_inimigos": "ui/icones_configs/icon_vida_inimigos.png",
+    "icon_volume_master": "ui/icones_configs/icon_volume_master.png",
+    "icon_volume_musica": "ui/icones_configs/icon_volume_musica.png",
+    "icon_volume_sfx": "ui/icones_configs/icon_volume_sfx.png",
+    "icon_vsync": "ui/icones_configs/icon_vsync.png",
+    "icon_zoom": "ui/icones_configs/icon_zoom.png",
 
     # Áudio SFX
     "sfx_tiro_pistola": "audio/sfx/tiro_pistola.wav",
@@ -730,7 +335,8 @@ ASSET_PATHS = {
     "sfx_btn_click": "audio/sfx/btn_click.wav",
 
     # Música
-    "musica_fase": "audio/musica/heavy is the bit.wav"
+    "musica_fase": "audio/musica/heavy is the bit.wav",
+    "musica_boss": "audio/musica/geladeira tsunami.wav"
 }
 
 
@@ -739,3 +345,11 @@ def obter_caminho_asset(chave: str) -> str:
     if chave in ASSET_PATHS:
         return os.path.join(ASSETS_DIR, ASSET_PATHS[chave])
     raise KeyError(f"Asset '{chave}' não encontrado no catálogo de caminhos.")
+
+
+# Re-export e aliases SSOT a partir de src.sistemas.config_dados
+from src.sistemas.config_dados import (
+    CONFIGURACOES_GAMEPLAY,
+    CONFIGURACOES_GAMEPLAY as CONFIGURACOES_CATALOGO,
+    CONFIGURACOES_SISTEMA,
+)

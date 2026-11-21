@@ -36,7 +36,9 @@ def vetor_direcao(origem_x: float, origem_y: float, destino_x: float, destino_y:
 
 
 def clamp(valor: float, min_val: float, max_val: float) -> float:
-    """Restringe um valor numérico entre os limites [min_val, max_val]."""
+    """Restringe um valor numérico entre os limites [min_val, max_val]. Protegido caso min_val > max_val."""
+    if min_val > max_val:
+        min_val, max_val = max_val, min_val
     if valor < min_val:
         return min_val
     if valor > max_val:
