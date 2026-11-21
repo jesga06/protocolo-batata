@@ -80,32 +80,32 @@ class TestChallengerInimigoRangedStandoffAndFiringBoundaries(unittest.TestCase):
         - dist = 280.0px (== 280.0px): o avanço direto é interrompido.
         - dist = 279.0px (< 280.0px): a velocidade de aproximação é zerada.
         """
-        # Caso 1: dist = 281.0px (alvo em x=281.0, y=0.0; inimigo em x=0.0, y=0.0)
+        # Caso 1: dist = 281.0px a partir do centro (21, 21) -> alvo em (302.0, 21.0)
         e_281 = InimigoRanged(x=0.0, y=0.0, velocidade=100.0, distancia_standoff=280.0)
-        e_281.update(dt=0.1, pos_alvo=(281.0, 0.0))
+        e_281.update(dt=0.1, pos_alvo=(302.0, 21.0))
         # Deve ter avançado 100 * 0.1 = 10.0px no eixo X
         self.assertAlmostEqual(e_281.x, 10.0, places=3)
 
-        # Caso 2: dist = 280.0px (limite exato)
+        # Caso 2: dist = 280.0px (limite exato a partir do centro 21, 21)
         e_280 = InimigoRanged(x=0.0, y=0.0, velocidade=100.0, distancia_standoff=280.0)
-        e_280.update(dt=0.1, pos_alvo=(280.0, 0.0))
+        e_280.update(dt=0.1, pos_alvo=(301.0, 21.0))
         self.assertAlmostEqual(e_280.x, 0.0, places=3)
 
-        # Caso 3: dist = 279.0px (dentro do stand-off)
+        # Caso 3: dist = 279.0px (dentro do stand-off a partir do centro 21, 21)
         e_279 = InimigoRanged(x=0.0, y=0.0, velocidade=100.0, distancia_standoff=280.0)
-        e_279.update(dt=0.1, pos_alvo=(279.0, 0.0))
+        e_279.update(dt=0.1, pos_alvo=(300.0, 21.0))
         self.assertAlmostEqual(e_279.x, 0.0, places=3)
 
     def test_standoff_distance_negative_direction_boundary(self):
         """Verifica o stand-off quando o jogador está à esquerda do inimigo (-X)."""
-        # Inimigo em x=500.0, alvo em x=219.0 (dist = 281.0px) -> deve mover para a esquerda
+        # Inimigo em x=500.0 (centro 521, 21), alvo em x=240.0 (dist = 281.0px) -> deve mover para a esquerda
         e_left_move = InimigoRanged(x=500.0, y=0.0, velocidade=100.0, distancia_standoff=280.0)
-        e_left_move.update(dt=0.1, pos_alvo=(219.0, 0.0))
+        e_left_move.update(dt=0.1, pos_alvo=(240.0, 21.0))
         self.assertAlmostEqual(e_left_move.x, 490.0, places=3)
 
-        # Inimigo em x=500.0, alvo em x=221.0 (dist = 279.0px) -> não deve mover
+        # Inimigo em x=500.0 (centro 521, 21), alvo em x=242.0 (dist = 279.0px) -> não deve mover
         e_left_stop = InimigoRanged(x=500.0, y=0.0, velocidade=100.0, distancia_standoff=280.0)
-        e_left_stop.update(dt=0.1, pos_alvo=(221.0, 0.0))
+        e_left_stop.update(dt=0.1, pos_alvo=(242.0, 21.0))
         self.assertAlmostEqual(e_left_stop.x, 500.0, places=3)
 
     def test_firing_cooldown_dt_accumulation_boundaries(self):
@@ -116,7 +116,7 @@ class TestChallengerInimigoRangedStandoffAndFiringBoundaries(unittest.TestCase):
         - Fila limpa e timer resetado.
         """
         e = InimigoRanged(x=200.0, y=100.0, cooldown_tiro=1.2, distancia_tiro_max=350.0)
-        alvo = (100.0, 100.0)  # Distância ~100px (<= 350px)
+        alvo = (121.0, 121.0)  # Alinhado horizontalmente ao centro (221, 121), distância 100px (<= 350px)
 
         # Atualizações parciais acumulando 1.19s
         e.update(dt=0.50, pos_alvo=alvo)
@@ -151,14 +151,14 @@ class TestChallengerInimigoRangedStandoffAndFiringBoundaries(unittest.TestCase):
         - dist = 349px (<= 350px): dispara normalmente ao expirar cooldown.
         - dist = 351px (> 350px): não dispara mesmo com cooldown expirado.
         """
-        # Inimigo em x=0, y=0. Alvo em x=349, y=0 (dist = 349px)
+        # Inimigo em x=0, y=0 (centro 21, 21). Alvo a dist = 349px -> (370.0, 21.0)
         e_in_range = InimigoRanged(x=0.0, y=0.0, cooldown_tiro=1.2, distancia_tiro_max=350.0)
-        e_in_range.update(dt=1.25, pos_alvo=(349.0, 0.0))
+        e_in_range.update(dt=1.25, pos_alvo=(370.0, 21.0))
         self.assertEqual(len(e_in_range.projeteis_pendentes), 1)
 
-        # Inimigo em x=0, y=0. Alvo em x=351, y=0 (dist = 351px)
-        e_out_range = InimigoRanged(x=0.0, y=0.0, cooldown_tiro=1.2, distancia_tiro_max=350.0)
-        e_out_range.update(dt=1.25, pos_alvo=(351.0, 0.0))
+        # Inimigo em x=0, y=0 (centro 21, 21). Alvo a dist = 351px -> (372.0, 21.0) (velocidade=0 para testar alcance puro)
+        e_out_range = InimigoRanged(x=0.0, y=0.0, velocidade=0.0, cooldown_tiro=1.2, distancia_tiro_max=350.0)
+        e_out_range.update(dt=1.25, pos_alvo=(372.0, 21.0))
         self.assertEqual(len(e_out_range.projeteis_pendentes), 0)
 
 
@@ -229,7 +229,7 @@ class TestChallengerInimigoPhasingIntangibilityCycle(unittest.TestCase):
     def test_phasing_movement_uninterrupted_in_and_out_of_phase(self):
         """Garante que a perseguição beeline do inimigo ocorre sem interrupção tanto em fase quanto fora dela."""
         e = InimigoPhasing(x=0.0, y=0.0, velocidade=100.0, tempo_ciclo=3.0, tempo_fase=1.2)
-        alvo = (500.0, 0.0)
+        alvo = (521.0, 21.0)
 
         # 1.0s em fase: avança 100px
         e.update(dt=1.0, pos_alvo=alvo)
