@@ -657,13 +657,13 @@ class TestTier4RealWorldScenarios(unittest.TestCase):
         self.assertFalse(cena.boss_cutscene_ativa)
         self.assertEqual(boss.estado, ESTADO_FASE1)
 
-        # 5. Combate Fase 1 -> Dano até 60% HP (<= 3900 de 6500) -> Fase 2
-        boss.receber_dano(2700)
+        # 5. Combate Fase 1 -> Dano até 70% HP (<= 9100 de 13000) -> Fase 2
+        boss.receber_dano(4000)
         boss.update(0.1, (cena.jogador.x, cena.jogador.y))
         self.assertEqual(boss.estado, ESTADO_FASE2)
 
-        # 6. Combate Fase 2 -> Dano até 20% HP (<= 1300 de 6500) -> Fase 3
-        boss.receber_dano(2700)
+        # 6. Combate Fase 2 -> Dano até 35% HP (<= 4550 de 13000) -> Fase 3
+        boss.receber_dano(4600)
         boss.update(0.1, (cena.jogador.x, cena.jogador.y))
         self.assertEqual(boss.estado, ESTADO_FASE3)
 

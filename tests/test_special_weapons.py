@@ -266,6 +266,21 @@ class TestSlot3LifecycleAndAmmoDepletion(unittest.TestCase):
         self.assertEqual(len(jog.drones), 1)
         self.assertEqual(jog.drones[0].nivel_mk, 3)
 
+    def test_imas_nao_puxam_capsulas_powerup(self):
+        """Valida que nem aplicar_pulso_magnetico nem DroneSuporte atraem capsula_powerup."""
+        from src.equipamentos.drone_suporte import DroneSuporte
+        cap = ItemDrop(x=500.0, y=300.0, tipo="capsula_powerup", subtipo="cura")
+        gema = ItemDrop(x=480.0, y=300.0, tipo="xp", valor=5)
+        self.jogador.aplicar_pulso_magnetico([cap, gema])
+        self.assertEqual(cap.x, 500.0)
+        self.assertNotEqual(gema.x, 480.0)
+
+        drone_sup = DroneSuporte()
+        gema2 = ItemDrop(x=470.0, y=300.0, tipo="xp", valor=5)
+        drone_sup.update(0.1, jogador=self.jogador, drops=[cap, gema2])
+        self.assertEqual(cap.x, 500.0)
+        self.assertLess(gema2.x, 470.0)
+
 
 if __name__ == "__main__":
     unittest.main()
