@@ -33,6 +33,9 @@ class DroneSuporte(DroneBase):
         self.bonus_velocidade = float(bonus_velocidade)
         self.raio_magnetico = float(raio_magnetico)
         self.velocidade_magnetica = float(velocidade_magnetica)
+        self.timer_estase: float = 0.0
+        self.intervalo_estase: float = 3.5
+        self.zonas_estase_pendentes: list = []
 
     def update(self, dt: float, jogador=None, drops: list = None, *args, **kwargs):
         """
@@ -41,6 +44,8 @@ class DroneSuporte(DroneBase):
         super().update(dt, jogador=jogador, *args, **kwargs)
         if not self.ativo:
             return
+
+        raio_efetivo = self.raio_magnetico + (getattr(self, "nivel_mk", 1) - 1) * 35.0
 
         if jogador is not None and drops:
             j_cx = jogador.x + getattr(jogador, "largura", 32) / 2.0
@@ -54,10 +59,31 @@ class DroneSuporte(DroneBase):
                 d_cy = drop.y + getattr(drop, "altura", 42) / 2.0
                 dist = distancia(j_cx, j_cy, d_cx, d_cy)
 
-                if dist <= self.raio_magnetico and dist > 0.1:
+                if dist <= raio_efetivo and dist > 0.1:
                     # Move o drop em direção ao centro do jogador sem ultrapassá-lo (evita overshoot)
                     dx = (j_cx - d_cx) / dist
                     dy = (j_cy - d_cy) / dist
                     passo = min(self.velocidade_magnetica * dt, dist)
                     drop.x += dx * passo
                     drop.y += dy * passo
+
+        self.timer_estase += dt
+        if self.timer_estase >= self.intervalo_estase:
+            inimigos = kwargs.get("inimigos", None)
+            if inimigos and jogador is not None:
+                j_cx = jogador.x + getattr(jogador, "largura", 32) / 2.0
+                j_cy = jogador.y + getattr(jogador, "altura", 32) / 2.0
+                for inim in inimigos:
+                    if getattr(inim, "vivo", True):
+                        i_cx = inim.x + getattr(inim, "largura", 28) / 2.0
+                        i_cy = inim.y + getattr(inim, "altura", 28) / 2.0
+                        if distancia(j_cx, j_cy, i_cx, i_cy) <= 320.0:
+                            self.timer_estase = 0.0
+                            self.zonas_estase_pendentes.append({
+                                "x": inim.x + getattr(inim, "largura", 28) / 2.0,
+                                "y": inim.y + getattr(inim, "altura", 28) / 2.0,
+                                "raio": 85.0 + (getattr(self, "nivel_mk", 1) - 1) * 20.0,
+                                "tempo": 3.0,
+                                "tempo_max": 3.0
+                            })
+                            break

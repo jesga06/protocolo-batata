@@ -40,9 +40,12 @@ class DroneCombate(DroneBase):
         self._cooldown_base = float(cooldown_tiro)
         self.alcance_deteccao = float(alcance_deteccao)
         self.velocidade_projetil = float(velocidade_projetil)
+        self.alvo_atual = None
 
     def disparar_no_alvo(self, alvo, mult_dano: float = 1.0) -> list[Projetil]:
         """Gera um projétil apontado do centro do drone para o alvo com spawn centralizado."""
+        from src.utils.math_utils import rotacionar_vetor
+
         d_cx = self.x + self.largura / 2.0
         d_cy = self.y + self.altura / 2.0
         a_cx = alvo.x + getattr(alvo, "largura", 28) / 2.0
@@ -66,8 +69,47 @@ class DroneCombate(DroneBase):
             dono="jogador",
             largura=d_largura,
             altura=d_altura,
-            sprite_key="projetil_pistola"
+            sprite_key="projetil_pistola",
+            knockback_forca=36.0
         )
+
+        projeteis = [proj]
+        mk = getattr(self, "nivel_mk", 1)
+        if mk == 2:
+            dx_extra, dy_extra = rotacionar_vetor(dir_x, dir_y, 0.10)
+            proj_extra = Projetil(
+                x=d_cx - d_largura / 2.0,
+                y=d_cy - d_altura / 2.0,
+                dir_x=dx_extra,
+                dir_y=dy_extra,
+                velocidade=self.velocidade_projetil,
+                dano=dano_final,
+                tempo_vida=1.8,
+                dono="jogador",
+                largura=d_largura,
+                altura=d_altura,
+                sprite_key="projetil_pistola",
+                knockback_forca=36.0
+            )
+            projeteis.append(proj_extra)
+        elif mk >= 3:
+            for rad in (-0.10, 0.10):
+                dx_extra, dy_extra = rotacionar_vetor(dir_x, dir_y, rad)
+                proj_extra = Projetil(
+                    x=d_cx - d_largura / 2.0,
+                    y=d_cy - d_altura / 2.0,
+                    dir_x=dx_extra,
+                    dir_y=dy_extra,
+                    velocidade=self.velocidade_projetil,
+                    dano=dano_final,
+                    tempo_vida=1.8,
+                    dono="jogador",
+                    largura=d_largura,
+                    altura=d_altura,
+                    sprite_key="projetil_pistola",
+                    knockback_forca=36.0
+                )
+                projeteis.append(proj_extra)
 
         try:
             from PPlay.sound import Sound
@@ -76,7 +118,7 @@ class DroneCombate(DroneBase):
         except Exception:
             pass
 
-        return [proj]
+        return projeteis
 
     def update(
         self,
@@ -141,9 +183,31 @@ class DroneCombate(DroneBase):
                         melhor_alvo = inimigo
 
                 if melhor_alvo is not None:
+                    self.alvo_atual = melhor_alvo
                     self.timer_tiro -= cooldown_efetivo
                     if self.timer_tiro < 0.0:
                         self.timer_tiro = 0.0
                     return self.disparar_no_alvo(melhor_alvo, mult_dano=m_dano)
+                else:
+                    self.alvo_atual = None
+            else:
+                self.alvo_atual = None
+        elif inimigos:
+            d_cx = self.x + self.largura / 2.0
+            d_cy = self.y + self.altura / 2.0
+            melhor_alvo = None
+            menor_dist = self.alcance_deteccao
+            for inimigo in inimigos:
+                if not getattr(inimigo, "vivo", True) or getattr(inimigo, "em_fase", False):
+                    continue
+                e_cx = inimigo.x + getattr(inimigo, "largura", 28) / 2.0
+                e_cy = inimigo.y + getattr(inimigo, "altura", 28) / 2.0
+                dist = distancia(d_cx, d_cy, e_cx, e_cy)
+                if dist <= menor_dist:
+                    menor_dist = dist
+                    melhor_alvo = inimigo
+            self.alvo_atual = melhor_alvo
+        else:
+            self.alvo_atual = None
 
         return []

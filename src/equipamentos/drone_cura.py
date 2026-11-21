@@ -31,6 +31,8 @@ class DroneCura(DroneBase):
         self.intervalo_cura = float(intervalo_cura)
         self.valor_cura = int(valor_cura)
         self.timer_cura = 0.0
+        self.feixe_cura_timer: float = 0.0
+        self.ultimo_valor_curado: int = 0
 
     def update(self, dt: float, jogador=None, *args, **kwargs):
         """
@@ -40,9 +42,23 @@ class DroneCura(DroneBase):
         if not self.ativo:
             return
 
+        self.feixe_cura_timer = max(0.0, self.feixe_cura_timer - dt)
+
         self.timer_cura += dt
         if self.timer_cura >= self.intervalo_cura:
             self.timer_cura -= self.intervalo_cura
             if jogador is not None and getattr(jogador, "vivo", True):
+                cura_mk = self.valor_cura + (getattr(self, "nivel_mk", 1) - 1) * 3
+                hp_antes = getattr(jogador, "hp", 0)
+                hp_max = getattr(jogador, "hp_max", 150)
                 if hasattr(jogador, "curar"):
-                    jogador.curar(self.valor_cura)
+                    jogador.curar(cura_mk)
+                excedente = max(0, (hp_antes + cura_mk) - hp_max)
+                if excedente > 0 and hasattr(jogador, "escudo_sobrevida"):
+                    jogador.escudo_sobrevida = min(25, getattr(jogador, "escudo_sobrevida", 0) + excedente)
+                self.feixe_cura_timer = 0.45
+                self.ultimo_valor_curado = cura_mk
+                jogador.evento_cura_drone = cura_mk
+
+    def desenhar(self, janela, camera=None):
+        super().desenhar(janela, camera)

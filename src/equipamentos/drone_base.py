@@ -47,6 +47,12 @@ class DroneBase:
         self.x = 0.0
         self.y = 0.0
         self.ativo = True
+        self.nivel_mk: int = 1
+
+    def evoluir_mk(self):
+        """Evolui o nível MK do drone (MK-I -> MK-II -> MK-III) e renova sua duração."""
+        self.nivel_mk = min(3, getattr(self, "nivel_mk", 1) + 1)
+        self.tempo_restante = self.tempo_vida
 
     @classmethod
     def _carregar_sprite(cls, sprite_key: str):
@@ -124,7 +130,16 @@ class DroneBase:
             )
             return
 
-        sprite = self._carregar_sprite(self.sprite_key)
+        sprite = None
+        try:
+            from src.utils.pixel_art_sprites import obter_sprite_drone
+            sprite = obter_sprite_drone(self.sprite_key, self.largura, self.altura, getattr(self, "nivel_mk", 1))
+        except Exception:
+            sprite = None
+
+        if sprite is None:
+            sprite = self._carregar_sprite(self.sprite_key)
+
         if sprite is not None:
             screen.blit(sprite, (int(draw_x), int(draw_y)))
         else:
