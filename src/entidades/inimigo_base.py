@@ -46,7 +46,7 @@ class InimigoBase:
         if self.is_elite:
             self.largura = int(largura * 2)
             self.altura = int(altura * 2)
-            self.hp_max = int(hp * 24)
+            self.hp_max = int(hp * 45)
             self.hp = self.hp_max
             self.score_valor = int(score_valor * 10)
             self.xp_valor = 50
