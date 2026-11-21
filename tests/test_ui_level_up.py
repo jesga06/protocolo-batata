@@ -79,19 +79,18 @@ class TestModalLevelUpTierAndMilestone(unittest.TestCase):
             self.assertEqual(card["categoria"], "Consumível")
 
     def test_milestone_level_5_places_config_in_middle_slot(self):
-        """No nível 5 (marco), o card central (índice 1) deve ser obrigatoriamente uma configuração."""
+        """No nível 5 (marco), as 3 opções ofertadas devem ser configurações de gameplay distintas."""
         self.jogador.nivel = 5
         self.modal.abrir(nivel=5)
         self.assertTrue(self.modal.ativo)
         self.assertEqual(len(self.modal.cards_sorteados), 3)
 
-        # Card lateral 0: Consumível
-        self.assertEqual(self.modal.cards_sorteados[0]["categoria"], "Consumível")
-        # Card central 1: Configuração de gameplay
-        self.assertEqual(self.modal.cards_sorteados[1]["tipo"], "config")
-        self.assertIn(self.modal.cards_sorteados[1]["config_id"], CONFIGURACOES_GAMEPLAY)
-        # Card lateral 2: Consumível
-        self.assertEqual(self.modal.cards_sorteados[2]["categoria"], "Consumível")
+        ids_ofertados = []
+        for card in self.modal.cards_sorteados:
+            self.assertEqual(card["tipo"], "config")
+            self.assertIn(card["config_id"], CONFIGURACOES_GAMEPLAY)
+            ids_ofertados.append(card["config_id"])
+        self.assertEqual(len(set(ids_ofertados)), 3)
 
     def test_pity_buffer_persistence_until_selected(self):
         """
@@ -101,14 +100,16 @@ class TestModalLevelUpTierAndMilestone(unittest.TestCase):
         self.jogador.nivel = 5
         self.modal.abrir(nivel=5)
 
-        config_ofertada = self.modal.cards_sorteados[1]
+        config_ofertada = self.modal.cards_sorteados[0]
         self.assertIsNotNone(self.modal.config_pity_buffer)
         self.assertEqual(self.modal.config_pity_buffer.id, config_ofertada["config_id"])
 
-        # Jogador escolhe o Card 0 (Consumível lateral)
+        # Jogador escolhe um consumível manual se houver, mantendo pity buffer
+        self.assertIsNotNone(self.modal.config_pity_buffer)
+        self.modal.cards_sorteados[0] = {"tipo": "cura", "valor": 10, "nome": "Cura", "categoria": "Consumível"}
         self.modal.selecionar_card(0)
         self.assertFalse(self.modal.ativo)
-        self.assertFalse(self.gerenciador.is_desbloqueada(config_ofertada["config_id"]))
+        self.assertFalse(self.gerenciador.is_desbloqueada(self.modal.config_pity_buffer.id))
         # Pity buffer deve permanecer ativo
         self.assertIsNotNone(self.modal.config_pity_buffer)
 
@@ -117,12 +118,12 @@ class TestModalLevelUpTierAndMilestone(unittest.TestCase):
         self.modal.abrir(nivel=6)
         self.assertTrue(self.modal.ativo)
 
-        # Card do meio continua sendo a configuração do pity buffer
-        self.assertEqual(self.modal.cards_sorteados[1]["tipo"], "config")
-        self.assertEqual(self.modal.cards_sorteados[1]["config_id"], config_ofertada["config_id"])
+        # Config do pity buffer continua ofertada
+        self.assertEqual(self.modal.cards_sorteados[0]["tipo"], "config")
+        self.assertEqual(self.modal.cards_sorteados[0]["config_id"], config_ofertada["config_id"])
 
-        # Agora o jogador seleciona o Card 1 (a configuração)
-        self.modal.selecionar_card(1)
+        # Agora o jogador seleciona o Card 0 (a configuração)
+        self.modal.selecionar_card(0)
         self.assertTrue(self.gerenciador.is_desbloqueada(config_ofertada["config_id"]))
         # Pity buffer deve ser limpo
         self.assertIsNone(self.modal.config_pity_buffer)

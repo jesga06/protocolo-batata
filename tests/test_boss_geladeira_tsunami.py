@@ -463,28 +463,28 @@ class TestTier2BoundaryAndCornerCases(unittest.TestCase):
         self.assertEqual(elite.tempo_vida_restante, 0.0)
 
     def test_t2_boss_hp_threshold_boundaries(self):
-        """Valida as fronteiras estritas de HP: >66% Fase 1, 33-66% Fase 2, <=33% Fase 3, 0 HP Morte."""
+        """Valida as fronteiras estritas de HP: >70% Fase 1, 35-70% Fase 2, <=35% Fase 3, 0 HP Morte."""
         boss = GeladeiraTsunami(x=300, y=200, hp=2500)
         boss.update(3.6, (300, 200))  # Pula intro
         self.assertEqual(boss.estado, ESTADO_FASE1)
 
-        # 66.04% HP (1651 / 2500) -> Fase 1
-        boss.hp = 1651
+        # 70.04% HP (1751 / 2500) -> Fase 1
+        boss.hp = 1751
         boss.update(0.1, (300, 200))
         self.assertEqual(boss.estado, ESTADO_FASE1)
 
-        # Exatamente 66.00% HP (1650 / 2500) -> Fase 2
-        boss.hp = 1650
+        # Exatamente 70.00% HP (1750 / 2500) -> Fase 2
+        boss.hp = 1750
         boss.update(0.1, (300, 200))
         self.assertEqual(boss.estado, ESTADO_FASE2)
 
-        # 33.04% HP (826 / 2500) -> Fase 2
-        boss.hp = 826
+        # 35.04% HP (876 / 2500) -> Fase 2
+        boss.hp = 876
         boss.update(0.1, (300, 200))
         self.assertEqual(boss.estado, ESTADO_FASE2)
 
-        # Exatamente 33.00% HP (825 / 2500) -> Fase 3
-        boss.hp = 825
+        # Exatamente 35.00% HP (875 / 2500) -> Fase 3
+        boss.hp = 875
         boss.update(0.1, (300, 200))
         self.assertEqual(boss.estado, ESTADO_FASE3)
 

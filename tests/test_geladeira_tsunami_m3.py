@@ -167,10 +167,10 @@ class TestGeladeiraTsunamiMilestone3(unittest.TestCase):
         boss.update(3.6, (500, 300))
         self.assertEqual(boss.subestado_fase2, "telegraph")
 
-        # Avança duração do telegraph (0.8s) -> entra em dash
+        # Avança duração do telegraph (0.65s) -> entra em dash
         boss.update(0.9, (500, 300))
         self.assertEqual(boss.subestado_fase2, "dash")
-        self.assertEqual(boss.dash_velocidade, 420.0)
+        self.assertEqual(boss.dash_velocidade, 500.0)
 
         # Limpa projéteis acumulados na fase de stalk
         boss.obter_projeteis_pendentes()

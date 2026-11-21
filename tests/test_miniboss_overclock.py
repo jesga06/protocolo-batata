@@ -271,12 +271,12 @@ class TestMiniBossOverclockSystem(unittest.TestCase):
         jogador.update(0.10)
         self.assertAlmostEqual(pistola.cooldown_atual, 0.90, places=4)
 
-        # Com overclock: dt=0.10 reduz cooldown em 0.10 * 1.35 = 0.135s
+        # Com overclock: dt=0.10 reduz cooldown em 0.10 * 1.20 = 0.120s
         jogador.aplicar_overclock("refrigeracao")
         self.assertTrue(jogador.refrigeracao_nitrogenio)
         pistola.cooldown_atual = 1.0
         jogador.update(0.10)
-        self.assertAlmostEqual(pistola.cooldown_atual, 1.0 - 0.135, places=4)
+        self.assertAlmostEqual(pistola.cooldown_atual, 1.0 - 0.120, places=4)
 
     def test_overclock_3_overvolt_crit_multiplier(self):
         """Valida Overclock 3: Overvolt (+30% Crit Chance com 2x multiplicador)."""
@@ -384,8 +384,8 @@ class TestMiniBossOverclockSystem(unittest.TestCase):
         """Valida que GameplayScene._desenhar_hud_tela renderiza Slot 3B na tela quando BIOS Modding está ativo."""
         cena = GameplayScene()
         screen = cena.janela.screen
-        sx3b = 16 + 2 * (42 + 6)  # 112
-        sy3b = 14 + 42 + 4        # 60
+        sx3b = 16 + 2 * (54 + 6)  # 136
+        sy3b = 14 + 54 + 4        # 72
 
         # Sem BIOS Modding: região do Slot 3B permanece com a cor de fundo limpa
         screen.fill((0, 0, 0))
