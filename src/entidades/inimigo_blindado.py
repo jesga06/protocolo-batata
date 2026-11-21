@@ -58,14 +58,9 @@ class InimigoBlindado(InimigoBase):
 
         cx = self.x + self.largura / 2.0
         cy = self.y + self.altura / 2.0
-        tx, ty = pos_alvo
+        tx, ty = getattr(self, "pos_alvo_override", None) or pos_alvo
 
-        if abs(self.y - ty) < 1e-4:
-            ux, uy = (1.0 if tx > self.x else -1.0), 0.0
-        elif abs(self.x - tx) < 1e-4:
-            ux, uy = 0.0, (1.0 if ty > self.y else -1.0)
-        else:
-            ux, uy = vetor_direcao(cx, cy, tx, ty)
+        ux, uy = vetor_direcao(cx, cy, tx, ty)
 
         if ux != 0.0 or uy != 0.0:
             self.facing_x = ux
@@ -90,12 +85,7 @@ class InimigoBlindado(InimigoBase):
         if origem_x is not None and origem_y is not None:
             cx = self.x + self.largura / 2.0
             cy = self.y + self.altura / 2.0
-            if abs(self.y - float(origem_y)) < 1e-4:
-                vox, voy = (1.0 if float(origem_x) > self.x else -1.0), 0.0
-            elif abs(self.x - float(origem_x)) < 1e-4:
-                vox, voy = 0.0, (1.0 if float(origem_y) > self.y else -1.0)
-            else:
-                vox, voy = vetor_direcao(cx, cy, float(origem_x), float(origem_y))
+            vox, voy = vetor_direcao(cx, cy, float(origem_x), float(origem_y))
             dot = self.facing_x * vox + self.facing_y * voy
             return dot >= cos_limite
 
@@ -112,15 +102,26 @@ class InimigoBlindado(InimigoBase):
         quantidade: int,
         origem_x: float = None,
         origem_y: float = None,
-        dir_ataque: tuple[float, float] = None
-    ):
+        dir_ataque: tuple[float, float] = None,
+        *args,
+        **kwargs
+    ) -> int:
         """
         Calcula a atenuação da armadura frontal:
         - Ataque frontal (cone de 90°): sofre 30% de redução (dano * 0.70).
         - Ataque lateral ou pelas costas: sofre 100% de dano pleno.
+        Retorna o dano efetivo aplicado.
         """
-        if not self.vivo:
-            return
+        if not self.vivo or int(quantidade) <= 0:
+            return 0
+
+        # Se dir_ataque foi passado em kwargs mas não posicionalmente
+        if dir_ataque is None and "dir_ataque" in kwargs:
+            dir_ataque = kwargs["dir_ataque"]
+        if origem_x is None and "origem_x" in kwargs:
+            origem_x = kwargs["origem_x"]
+        if origem_y is None and "origem_y" in kwargs:
+            origem_y = kwargs["origem_y"]
 
         dano_base = int(quantidade)
         if self.is_ataque_frontal(origem_x=origem_x, origem_y=origem_y, dir_ataque=dir_ataque):
@@ -129,5 +130,6 @@ class InimigoBlindado(InimigoBase):
         else:
             dano_efetivo = dano_base
 
-        super().receber_dano(dano_efetivo)
+        super().receber_dano(dano_efetivo, *args, **kwargs)
+        return dano_efetivo
 

@@ -7,7 +7,7 @@ import math
 import os
 import pygame
 from src.utils.constantes import ASSETS_DIR, ASSET_PATHS, obter_caminho_asset, AMARELO_XP, LARANJA_ALERTA, VERMELHO_DANO
-from src.utils.math_utils import normalizar_vetor, distancia
+from src.utils.math_utils import normalizar_vetor, distancia, vetor_direcao
 
 
 class Projetil:
@@ -65,6 +65,8 @@ class Projetil:
         self.alvos_atingidos = set()
         self.ativo = True
         self.requer_detonacao_ao_expirar = False
+        self._cached_rot_surf = None
+        self._cached_rot_key = None
 
     @property
     def vx(self) -> float:
@@ -121,6 +123,9 @@ class Projetil:
         if not self.explosivo or self.raio_explosao <= 0.0:
             return []
 
+        self.requer_detonacao_ao_expirar = False
+        self.ativo = False
+
         centro_x = self.x + self.largura / 2.0
         centro_y = self.y + self.altura / 2.0
         dano_efetivo = int(round(self.dano * mult_dano_explosivo))
@@ -134,14 +139,34 @@ class Projetil:
             e_cy = inimigo.y + getattr(inimigo, "altura", 28) / 2.0
             dist = distancia(centro_x, centro_y, e_cx, e_cy)
 
+            dir_ataque = vetor_direcao(centro_x, centro_y, e_cx, e_cy)
+            if dir_ataque == (0.0, 0.0):
+                dir_ataque = (self.dir_x, self.dir_y)
+
             if inimigo is alvo_direto:
                 # Bônus de impacto direto: 2x de dano
-                inimigo.receber_dano(dano_efetivo * 2)
+                try:
+                    inimigo.receber_dano(
+                        dano_efetivo * 2,
+                        origem_x=centro_x,
+                        origem_y=centro_y,
+                        dir_ataque=dir_ataque
+                    )
+                except TypeError:
+                    inimigo.receber_dano(dano_efetivo * 2)
                 inimigos_afetados.append(inimigo)
                 if hasattr(inimigo, "aplicar_knockback"):
                     inimigo.aplicar_knockback(self.dir_x, self.dir_y, forca=350.0)
             elif dist <= self.raio_explosao:
-                inimigo.receber_dano(dano_efetivo)
+                try:
+                    inimigo.receber_dano(
+                        dano_efetivo,
+                        origem_x=centro_x,
+                        origem_y=centro_y,
+                        dir_ataque=dir_ataque
+                    )
+                except TypeError:
+                    inimigo.receber_dano(dano_efetivo)
                 inimigos_afetados.append(inimigo)
 
                 # Aplica knockback radial a partir do epicentro da explosão
@@ -152,7 +177,7 @@ class Projetil:
 
         # Checa fogo amigo para o jogador e drones
         auto_dano_ativo = False
-        if config_sistema is not None:
+        if config_sistema is not None and getattr(self, "dono", "jogador") == "jogador":
             if hasattr(config_sistema, "obter_modificadores"):
                 mods = config_sistema.obter_modificadores()
                 auto_dano_ativo = getattr(mods, "auto_dano", False)
@@ -195,6 +220,69 @@ class Projetil:
         """Retorna (x, y, largura, altura) para teste de colisão AABB."""
         return (self.x, self.y, self.largura, self.altura)
 
+    def clonar(
+        self,
+        vx: float = None,
+        vy: float = None,
+        x: float = None,
+        y: float = None,
+        cor: tuple = None
+    ) -> "Projetil":
+        """
+        Cria e retorna uma cópia independente do projétil atual.
+        Preserva atributos críticos balísticos e explosivos (raio_explosao, sprite_key,
+        desaceleracao, perfurante, explosivo, largura, altura, dano, tempo_vida,
+        tempo_vida_restante, x_origem, y_origem, alvos_atingidos e dono),
+        permitindo override opcional de velocidade vetorial (vx, vy), posição (x, y) e cor.
+        """
+        pos_x = self.x if x is None else float(x)
+        pos_y = self.y if y is None else float(y)
+        cor_clone = self.cor if cor is None else cor
+
+        if vx is not None and vy is not None:
+            clone = Projetil(
+                x=pos_x,
+                y=pos_y,
+                vx=vx,
+                vy=vy,
+                dano=self.dano,
+                tempo_vida=self.tempo_vida,
+                dono=self.dono,
+                largura=self.largura,
+                altura=self.altura,
+                sprite_key=self.sprite_key,
+                explosivo=self.explosivo,
+                raio_explosao=self.raio_explosao,
+                perfurante=self.perfurante,
+                desaceleracao=self.desaceleracao,
+                cor=cor_clone
+            )
+        else:
+            clone = Projetil(
+                x=pos_x,
+                y=pos_y,
+                dir_x=self.dir_x,
+                dir_y=self.dir_y,
+                velocidade=self.velocidade,
+                dano=self.dano,
+                tempo_vida=self.tempo_vida,
+                dono=self.dono,
+                largura=self.largura,
+                altura=self.altura,
+                sprite_key=self.sprite_key,
+                explosivo=self.explosivo,
+                raio_explosao=self.raio_explosao,
+                perfurante=self.perfurante,
+                desaceleracao=self.desaceleracao,
+                cor=cor_clone
+            )
+
+        clone.tempo_vida_restante = self.tempo_vida_restante
+        clone.x_origem = self.x_origem
+        clone.y_origem = self.y_origem
+        clone.alvos_atingidos = set(self.alvos_atingidos)
+        return clone
+
     def desenhar(self, janela, camera=None):
         """Renderiza o projétil na tela virtual com coordenadas de câmera e rotação direcional."""
         if not self.ativo:
@@ -203,30 +291,58 @@ class Projetil:
         draw_x = camera.transform_x(self.x) if camera else self.x
         draw_y = camera.transform_y(self.y) if camera else self.y
 
+        largura_janela = getattr(janela, "largura", 800)
+        altura_janela = getattr(janela, "altura", 600)
+        screen = getattr(janela, "screen", janela)
+        is_low_graphics = getattr(janela, "low_graphics", False)
+
         # Não desenha se estiver completamente fora da tela visível
-        if draw_x < -30 or draw_x > janela.largura + 30 or draw_y < -30 or draw_y > janela.altura + 30:
+        if draw_x < -30 or draw_x > largura_janela + 30 or draw_y < -30 or draw_y > altura_janela + 30:
             return
 
-        sprite = self._carregar_sprite(self.sprite_key)
-        if sprite is not None:
-            # Rotaciona foguetes, granadas e projéteis balísticos de acordo com o vetor de disparo
-            if "foguete" in self.sprite_key or "granada" in self.sprite_key or "rifle" in self.sprite_key or "pistola" in self.sprite_key or "minigun" in self.sprite_key:
-                ang_deg = -math.degrees(math.atan2(self.dir_y, self.dir_x))
-                rot_sprite = pygame.transform.rotate(sprite, ang_deg)
-                rot_rect = rot_sprite.get_rect(center=(int(draw_x + self.largura / 2.0), int(draw_y + self.altura / 2.0)))
-                janela.screen.blit(rot_sprite, rot_rect)
-            else:
-                janela.screen.blit(sprite, (int(draw_x), int(draw_y)))
-        else:
-            # Fallback gráfico baseado na chave do sprite
+        # Fallback/cor configurada ou derivada do sprite
+        cor = self.cor
+        if cor is None:
             cor = AMARELO_XP
             if "foguete" in self.sprite_key or "granada" in self.sprite_key:
                 cor = LARANJA_ALERTA
             elif "inimigo" in self.sprite_key:
                 cor = VERMELHO_DANO
 
+        # Modo low_graphics: desenha diretamente primitivas geométricas sem texturas/rotação pesada
+        if is_low_graphics:
             pygame.draw.rect(
-                janela.screen,
+                screen,
+                cor,
+                (int(draw_x), int(draw_y), self.largura, self.altura)
+            )
+            return
+
+        sprite = self._carregar_sprite(self.sprite_key)
+        if sprite is not None:
+            # Garante escala do sprite compatível com a largura e altura do projétil
+            if sprite.get_width() != self.largura or sprite.get_height() != self.altura:
+                escala_key = (self.sprite_key, self.largura, self.altura)
+                if getattr(self, "_cached_scaled_key", None) != escala_key or getattr(self, "_cached_scaled_surf", None) is None:
+                    self._cached_scaled_key = escala_key
+                    self._cached_scaled_surf = pygame.transform.scale(sprite, (self.largura, self.altura))
+                sprite = self._cached_scaled_surf
+
+            # Rotaciona foguetes, granadas e projéteis balísticos de acordo com o vetor de disparo
+            if "foguete" in self.sprite_key or "granada" in self.sprite_key or "rifle" in self.sprite_key or "pistola" in self.sprite_key or "minigun" in self.sprite_key:
+                ang_deg = -math.degrees(math.atan2(self.dir_y, self.dir_x))
+                rot_key = (self.sprite_key, self.largura, self.altura, round(ang_deg, 1))
+                if getattr(self, "_cached_rot_key", None) != rot_key or getattr(self, "_cached_rot_surf", None) is None:
+                    self._cached_rot_key = rot_key
+                    self._cached_rot_surf = pygame.transform.rotate(sprite, ang_deg)
+                rot_sprite = self._cached_rot_surf
+                rot_rect = rot_sprite.get_rect(center=(int(draw_x + self.largura / 2.0), int(draw_y + self.altura / 2.0)))
+                screen.blit(rot_sprite, rot_rect)
+            else:
+                screen.blit(sprite, (int(draw_x), int(draw_y)))
+        else:
+            pygame.draw.rect(
+                screen,
                 cor,
                 (int(draw_x), int(draw_y), self.largura, self.altura)
             )
