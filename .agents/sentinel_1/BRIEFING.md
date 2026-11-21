@@ -1,15 +1,15 @@
-# BRIEFING — 2026-08-28T19:00:08Z
+# BRIEFING — 2026-08-29T19:18:29Z
 
 ## Mission
-Coordinate and monitor implementation of directional 45° cone melee combat tuning, Phase 2 (Drops & XP progression), and Phase 3 (Configuration Engine Backend) via project orchestrator.
+Coordinate and monitor implementation of the endgame progression and boss encounter systems in Protocolo: Batata (4-tier Mini-Boss Overclock System, 6 Overclock modules, Final Boss Geladeira Tsunami with 3-phase FSM, cutscene, HUD, drops/spawns, debug tools, and automated tests).
 
 ## 🔒 My Identity
 - Archetype: sentinel
 - Working directory: c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\sentinel_1
-- Orchestrator: d3d496fa-cbc4-4e06-a862-b9fc8c05c2e8
+- Orchestrator: 0ff429fb-af32-4948-a7ed-a11082bb5668
 - Victory Auditor: [to be spawned on victory claim]
-- Cron 1 (Progress): 4e789d13-b464-41b3-bbaa-d9a52c8b4958/task-37
-- Cron 2 (Liveness): 4e789d13-b464-41b3-bbaa-d9a52c8b4958/task-39
+- Cron 1 (Progress): 8d0f341a-0fa1-4acd-8b08-03133986f7f6/task-39
+- Cron 2 (Liveness): 8d0f341a-0fa1-4acd-8b08-03133986f7f6/task-41
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -17,10 +17,10 @@ Coordinate and monitor implementation of directional 45° cone melee combat tuni
 - Must not write code or analyze problems directly
 - Monitor progress via crons and verify claims independently
 - Path chosen: General (teamwork_preview_orchestrator)
-- Blanket autonomous authorization from user (max 5 agents hierarchy)
+- Blanket autonomous authorization from user (max 5 parallel agents)
 
 ## User Context
-- **Last user request**: Directional 45° cone melee combat tuning, Phase 2 (Drops & XP progression), and Phase 3 (Configuration Engine Backend) + Balance tuning: Pistol dmg = 17 (3-hit kill on 50 HP enemy), Melee dmg = 10 (5 hits).
+- **Last user request**: Implement endgame progression and boss encounter systems: 4-tier Mini-Boss Overclock System (2x scale, 60s thermal overload escape, 6 Overclocks) and Final Boss Geladeira Tsunami (112x156 px, 3-phase FSM, speech balloon, cutscene, boss-mode drops/spawner, victory integration, debug tools, unit tests).
 - **Pending clarifications**: none
 - **Delivered results**: none
 

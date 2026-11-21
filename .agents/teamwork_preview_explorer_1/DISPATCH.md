@@ -1,9 +1,10 @@
-## 2026-08-28T19:01:19Z
-You are teamwork_preview_explorer_1.
-Your working directory is: `c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\teamwork_preview_explorer_1`
+## 2026-08-29T05:36:15Z
 
-Your mission:
-Explore and analyze the codebase for Protocolo: Batata to prepare the implementation of:
-1. R1: Directional Cone Melee Tuning (45° Arc, 2.0x Potato reach ~84px, 10 damage, 360.0 px/s knockback, 45° cone aim guide & swing visual)
-2. R2: Phase 2 - Drops & XP System (Loot spawning on enemy death, 10s drop lifetime, player collection, XP gain, level tracking, XP_prox = 10 + 5 * level, screen-space XP progress bar in HUD)
-3. R3: Phase 3 - Configuration Engine Backend (src/sistemas/config_dados.py and config_efeitos.py for 20 gameplay configs + 5 systemic configs from CONFIGURACOES.md)
+Investigate Wave Spawning, Elite Mini-Boss mechanics, Boss HP bar in HUD, and Elite Drop rewards for Phase 6.
+Specifically:
+1. Examine `src/sistemas/sistema_spawn.py`, `src/entidades/` (all enemy files), `src/sistemas/sistema_drops.py`, `src/ui/hud.py`, and `src/cenas/gameplay.py`.
+2. Determine how waves/timer currently work, how enemies are spawned, how elite/boss enemies should be defined (e.g. 3x HP, distinct purple/gold aura, top-screen boss HP bar).
+3. Determine how drops are triggered upon enemy defeat (guaranteed +50 XP cluster, guaranteed weapon/equipment crates for elites).
+4. Identify existing unit tests in `tests/` covering spawning and enemies, and what new tests are needed.
+5. Write your comprehensive analysis and recommendations to `.agents/teamwork_preview_explorer_1/handoff.md`.
+6. Send a message to caller with a summary of findings and the path to your handoff file.

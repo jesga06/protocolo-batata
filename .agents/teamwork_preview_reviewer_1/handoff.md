@@ -1,108 +1,131 @@
-# Independent Review & Verification Report: R1, R2, R3 & Balance Tuning
+# Handoff Report — Reviewer 1 (Phase 6: Final Wave Progression, Elites, Victory Loop, High Score & Particles)
 
-**Reviewer Agent**: `teamwork_preview_reviewer_1` (Reviewer & Adversarial Critic)  
-**Working Directory**: `c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\teamwork_preview_reviewer_1`  
-**Recipient**: `d3d496fa-cbc4-4e06-a862-b9fc8c05c2e8` (Parent Orchestrator)  
-**Date**: 2026-08-28  
+**Timestamp**: 2026-08-29T05:48:40Z  
+**Archetype**: reviewer_critic  
 **Verdict**: **APPROVE**  
-**Type**: Hard Handoff (Review Complete)
+**Integrity Status**: CLEAN — Zero integrity violations detected  
 
 ---
 
 ## 1. Observation
 
-Direct inspection of code, tests, runtime behavior, and compilation yielded the following evidence-tiered facts:
+### 1.1 Source Code Verification
+- **`src/utils/constantes.py`**:
+  - Line 120: `TEMPO_VITORIA = 600.0` defined as the single source of truth for the 10-minute survival objective.
+  - Colors and assets registered cleanly without breaking backward compatibility.
+- **`src/sistemas/config_sistema.py`**:
+  - Lines 26–33: `self.estatisticas` schema initialized with `high_score`, `melhor_tempo`, `total_abates`, `partidas_jogadas`, `vitorias`, `historico`.
+  - Lines 109–154: `registrar_partida(tempo, abates, pontos, vitoria=False, dano_causado=0) -> dict` implemented with 20-entry history capping and disk persistence.
+  - Lines 156–202: `to_dict()` and `from_dict()` handle serialization with legacy save fallback and partial schema resilience.
+- **`src/cenas/menu_principal.py`**:
+  - Lines 106–122: Centered badge at `y=160` displaying `RECORDE: {high_score:,} PTS | MELHOR TEMPO: {min:02d}:{sec:02d}`.
+- **`src/entidades/inimigo_base.py` & Subclasses**:
+  - Lines 44–56: `is_elite=True` dynamically scales attributes: `hp_max = int(hp * 3)`, `hp = hp_max`, `score_valor = int(score_valor * 10)`, `xp_valor = 50`.
+  - Lines 176–193: In-world pulsing purple `(175, 75, 255, 90)` and gold `(255, 215, 0, 180)` aura rendering.
+  - Subclasses (`InimigoPadrao`, `InimigoTank`, `InimigoRapido`, `InimigoPhasing`, `InimigoBlindado`, `InimigoRanged`) pass `is_elite` and `nome_elite` up to `super().__init__`.
+- **`src/sistemas/sistema_spawn.py`**:
+  - Lines 48–67: `obter_arquetipo_elite(minuto)` provides catalog rotation for minutes 1 through 10.
+  - Lines 154–169: Guaranteed elite mini-boss spawned perimeter-outside-camera every 60s (`1:00, 2:00, 3:00...`).
+- **`src/sistemas/sistema_drops.py`**:
+  - Lines 47–101: When `is_elite=True`, generates a 50 XP cluster (5x 10XP gems in a 24px radius ring), 1 guaranteed weapon crate, 1 guaranteed equipment crate, and 50% heal crate.
+- **`src/ui/hud.py`**:
+  - Lines 78–133: `HUD.desenhar_barra_boss(screen, boss, visivel=True)` renders 400x12px top-screen bar at `y=78` with gold border, dark purple background, and numeric HP text.
+- **`src/sistemas/sistema_particulas.py`**:
+  - Implements `Particula` and `OndaChoque` physics with lifetime decay and velocity damping.
+  - Line 96: `MAX_PARTICULAS = 300` strict ceiling enforced via FIFO ejection.
+  - Methods `emitir_faiscas`, `emitir_burst_drop`, `emitir_onda_choque`, `emitir_debris`.
+- **`src/cenas/gameplay.py`**:
+  - Lines 108–114: Screen shake hooked to Config 5 (`screen_shake == "ligado"`).
+  - Lines 262–266: 10-minute victory triggered at `tempo_sobrevivencia >= 600.0s`.
+  - Lines 983–1002: Mathematical score calculation formula:
+    $$\text{Score} = (\text{Abates} + 10 \cdot \text{Tempo} + 0.5 \cdot \text{Dano} + \text{Vit}) \times (1.0 + 0.10 \cdot N_{\text{configs}})$$
+  - Lines 1024–1047: `_acionar_vitoria()` freezes enemy movement/knockback, clears projectiles, and records match.
+  - Lines 1048–1129: `_desenhar_overlay_vitoria()` renders full statistics grid, high score badge, navigation shortcuts, and strictly 0 emojis.
 
-1. `[Observed]` **Melee Directional Cone Mechanics (`src/armas/melee.py`)**:
-   - `Melee` default parameters: `dano = 10`, `cooldown = 0.6`, `alcance = 84.0` (2× 42px potato reach), `knockback_forca = 360.0` (2× baseline 180.0 px/s), `max_alvos_knockback = 2`, `arco_graus = 45.0`.
-   - `executar_ataque` calculates angular delta normalized across $[-\pi, \pi]$:
-     $$\Delta \theta = |\text{atan2}(\sin(\theta_e - \theta_{\text{aim}}), \cos(\theta_e - \theta_{\text{aim}}))| \le \text{radians}(22.5^\circ) + 10^{-5}$$
-     and radial distance $d \le 84.0\text{px}$.
-   - All enemies in the cone receive 10 damage; enemies are sorted ascending by distance and up to 2 closest targets receive 360.0 px/s knockback impulse along `vetor_direcao(origem, centro_inimigo)`.
-   - When no aim coordinates or angle are provided, falls back to $360^\circ$ radial hit up to 84.0px.
-
-2. `[Observed]` **Visuals & HUD Elements (`src/cenas/gameplay.py`, `src/ui/hud.py`)**:
-   - Idle Aim Guide: Translucent $45^\circ$ sector polygon (`(0, 220, 255, 25)` fill, `(0, 220, 255, 80)` outline) drawn toward mouse cursor when Slot 1 (Melee) is active.
-   - Swing Attack Effect: Expanding $45^\circ$ slash arc fan (`(255, 215, 0, alpha//3)` fill, `(255, 255, 255, alpha)` outer border) rendered over 0.15s toward attack direction.
-   - Screen-Space HUD XP Bar: Centered 360x10 px bar at `top = 62`, `border_radius = 3`, rendered under the top HUD with dynamic level text, current XP, threshold, and gold styling at max level 20.
-
-3. `[Observed]` **Drops, Scavenger AI & XP Progression (`src/entidades/drop.py`, `src/sistemas/sistema_drops.py`, `src/sistemas/sistema_xp.py`, `src/sistemas/sistema_scavenger.py`)**:
-   - `ItemDrop`: 10.0s lifetime (`DROP_TEMPO_DESAPARECER`), 1.0s scavenger grace period (`DROP_TEMPO_SCAVENGER_ATIVAR`), blinking effect under 2.5s remaining.
-   - `SistemaDrops`: Drops XP gem on enemy death + chance for heal / weapon crates; handles player AABB collision pickup and support for 2× multiplier (`coleta_inimiga`).
-   - `SistemaXP`: Level starts at 1, max 20; formula $XP_{\text{prox}} = 10 + 5 \times \text{level}$; multi-level overflow carryover properly increments levels in a `while` loop without losing surplus XP; fires registered callbacks.
-   - `SistemaScavenger`: Global singleton enemy AI; filters drops with `tempo_decorrido >= 1.0s`; excludes the 3 closest enemies and enemies $> 600\text{px}$; selects one candidate pseudo-randomly; consumes drop without player reward if reaching it first.
-
-4. `[Observed]` **Configuration Engine Backend (`src/sistemas/config_dados.py`, `config_efeitos.py`, `config_sistema.py`)**:
-   - Catalog: Full 20 gameplay configurations matching `CONFIGURACOES.md` + 5 systemic configurations (including S5: Escala Global). Total: 25 configurations in `TODAS_CONFIGURACOES`.
-   - `calcular_modificadores`: When a configuration is locked (`config_id not in configs_desbloqueadas`), it strictly forces `valor_padrao` (neutral 1.0x multipliers, 0.0 bonuses).
-   - Multipliers: Active unlocked options stack multiplicatively (e.g., max damage $2.691\times$, max player speed $1.3662\times$, max XP $1.75\times$).
-   - `GerenciadorConfiguracoes`: Handles locking, unlocking, active selections, and JSON serialization (`to_dict` / `from_dict`).
-
-5. `[Verified]` **Balance Tuning & Test Verification**:
-   - Standard enemy HP is 50 (`INIMIGO_PADRAO_HP = 50`).
-   - Melee takes exactly 5 hits (10 dmg $\times 5 = 50$).
-   - Pistol takes exactly 3 hits (17 dmg $\times 3 = 51 \ge 50$).
-   - Compilation: `python -m compileall src tests` executed cleanly with exit code 0.
-   - Unit tests: Full discovery ran **146 tests** in 30.148s with **0 failures and 0 errors** (`OK`).
-
-6. `[Observed]` **Integrity Check**:
-   - Zero hardcoded test return hacks or facade dummy classes detected.
-   - Real implementations of geometry, physics, state machines, math pipelines, and rendering.
+### 1.2 Automated Test Execution
+Command:
+```powershell
+.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+Result:
+```
+Ran 196 tests in 2.613s
+OK
+```
+All 196 tests (161 baseline tests + 35 adversarial stress tests) passed with 0 failures and 0 errors.
 
 ---
 
 ## 2. Logic Chain
 
-1. **R1 Cone Melee**:
-   - Geometry: Half-angle $\theta = 22.5^\circ$. Normalized angular difference handles full $[-\pi, \pi]$ wraparound smoothly (e.g. $-179^\circ$ vs $+179^\circ \rightarrow \Delta = 2^\circ \le 22.5^\circ \rightarrow$ hit).
-   - Boundary tests confirm $22.4^\circ$ hits, $22.6^\circ$ misses; $83.9\text{px}$ hits, $84.1\text{px}$ misses.
-   - Knockback limit: When 10 enemies are in the cone, all 10 take 10 damage, but only the 2 closest receive the 360 px/s knockback impulse.
-2. **R2 Drops & XP Progression**:
-   - Drop timing: At 9.9s drop is active; at 10.05s it expires. At 0.9s it is ineligible for Scavenger; at 1.05s it becomes eligible.
-   - XP carryover: Awarding 500 XP at Level 1 progresses sequentially through levels 2 to 12 ($15+20+25+30+35+40+45+50+55+60+65 = 440\text{ XP}$ consumed), leaving exactly 60 XP into Level 12 (requiring 70 XP), with total XP = 500.
-3. **R3 Configuration Engine**:
-   - 20 gameplay configs + 5 system configs align 100% with `CONFIGURACOES.md`.
-   - Extreme testing with all 20 configs activated at maximum values produces exact theoretical products without overflow, NaN, or Inf.
-   - Isolation testing confirms locked configs leak zero buffs even if active dictionaries contain modified values.
-4. **Balance Tuning**:
-   - Pistol 17 damage kills 50 HP enemy in 3 shots ($17 \times 3 = 51 \ge 50$).
-   - Melee 10 damage kills 50 HP enemy in 5 hits ($10 \times 5 = 50$).
+1. **[Observed]** Phase 6 requires 10-minute victory loop, minute-based elite bosses, guaranteed high-tier rewards, persistent high scores in `save.json`, combat particles, and screen shake.
+2. **[Verified]** Source code implements genuine mathematical formulas, OOP entity hierarchies, particle physics, and JSON serialization without hardcoded test mocks or facade shortcuts.
+3. **[Verified]** Executing the full unit test suite executes 196 tests spanning persistence, particles, boss waves, victory overlays, and stress scenarios with 100% pass rate.
+4. **[Verified]** No emoji characters exist in any UI or text string in the repository, satisfying the strict UI guideline.
+5. **[Inferred]** The implementation fulfills all acceptance criteria with robust performance and complete backward compatibility.
 
 ---
 
 ## 3. Caveats
 
-1. **Headless Execution**: Pygame runs under `SDL_VIDEODRIVER=dummy` in headless test environments. Pixel drawing and surface blits are verified via surface buffer tests and compilation.
-2. **Future Persistence Hookup**: `GerenciadorConfiguracoes` has complete `to_dict()` and `from_dict()` methods, ready for hookup with `data/save.json` during UI/Persistence integration phases.
+- **Audio in Headless Environments**: All sound playing calls (`pygame.mixer.music`, `PPlay.sound.Sound`) are wrapped in `try/except Exception: pass`, ensuring automated tests and headless servers run seamlessly without audio hardware.
+- **Save File Isolation in Tests**: Tests use temporary files (`tempfile.NamedTemporaryFile`) to avoid polluting the production `data/save.json`.
 
 ---
 
-## 4. Conclusion
+## 4. Quality Review Report
 
-The implementation of R1 (Directional Cone Melee Tuning), R2 (Drops & XP Progression), R3 (Configuration Engine Backend), and Pistol Balance Tuning is **complete, mathematically sound, fully tested, and meets all acceptance criteria**.
+### Review Summary
+**Verdict**: **APPROVE**
 
-**Final Verdict**: **APPROVE**
+### Findings
+- **Integrity**: CLEAN. No hardcoded test results, facade logic, bypassed requirements, or fabricated logs found.
+- **Architecture**: Conforms to PowerPPlay 2.0 / Pygame-CE architecture, decoupled subsystems, clean event handling, and single source of truth in `constantes.py`.
+- **Type Annotations & Documentation**: Full docstrings and type annotations present across all modules.
+
+### Verified Claims
+- `TEMPO_VITORIA == 600.0` constant → verified in `test_vitoria_stats.py:29` → PASS
+- Elite 3x HP, 10x Score, 50 XP scaling → verified in `test_elite_bosses_and_waves.py:30-56` → PASS
+- Spawner minute-cadence for elites → verified in `test_elite_bosses_and_waves.py:58-84` and `test_challenger_boss_victory_stress.py:48-82` → PASS
+- Guaranteed 50 XP ring + crate drops → verified in `test_challenger_boss_victory_stress.py:360-388` → PASS
+- Save persistence & 20-entry history → verified in `test_persistence.py:23-134` and `test_challenger_save_particles_stress.py:48-126` → PASS
+- Screen shake toggle obedience → verified in `test_particles_screenshake.py:90-122` and `test_challenger_save_particles_stress.py:322-402` → PASS
+- Particle 300 ceiling under spam → verified in `test_challenger_save_particles_stress.py:227-252` → PASS
+
+### Coverage Gaps
+- None. All 12 target modules and 5 test suites are covered.
 
 ---
 
-## 5. Verification Method
+## 5. Adversarial Review Report
 
-To independently reproduce and verify this review:
+### Challenge Summary
+**Overall risk assessment**: **LOW**
 
-1. **Run full automated unit test discovery**:
-   ```powershell
-   .\.venv\Scripts\python.exe -m unittest discover tests
-   ```
-   *Expected*: `Ran 146 tests in ~30s — OK`.
+### Challenges & Stress Tests
+1. **Schema Corruption & Partial JSON**:
+   - *Attack*: Pass empty dictionary `{}`, `None` values, corrupted syntax, or non-existent file paths to `from_dict` and `carregar_arquivo`.
+   - *Result*: PASS. `GerenciadorConfiguracoes` falls back cleanly to defaults without throwing unhandled exceptions.
+2. **Particle Memory Flood**:
+   - *Attack*: Emit 10,000 particles and 200 shockwaves rapidly.
+   - *Result*: PASS. `MAX_PARTICULAS = 300` FIFO ejection prevents heap exhaustion, and `SistemaParticulas.update` discards expired entities.
+3. **Extreme Damage & Boss Bar Division by Zero**:
+   - *Attack*: Inflict 1 damage per hit across 360 hits, 10,000 overkill damage, and render Boss HP Bar with `hp_max = 0` and `hp = -9999`.
+   - *Result*: PASS. `clamp` and `max(1, hp_max)` protect against ZeroDivisionError and graphical distortion.
+4. **Victory Transition Boundaries**:
+   - *Attack*: Test exact thresholds at $t = 599.9\text{s}$, $t = 600.0\text{s}$, and $t = 600.1\text{s}$.
+   - *Result*: PASS. State freeze activates at $600.0\text{s}$, clearing projectiles and disabling enemy velocity while allowing replay/menu navigation.
 
-2. **Run targeted subsystem test suites**:
-   ```powershell
-   .\.venv\Scripts\python.exe -m unittest tests.test_melee_cone tests.test_drops_xp tests.test_config_backend tests.test_challenger_r1_r2_r3
-   ```
-   *Expected*: `Ran 28 tests in ~0.02s — OK`.
+---
 
-3. **Verify byte-compilation across codebase**:
-   ```powershell
-   .\.venv\Scripts\python.exe -m compileall src tests
-   ```
-   *Expected*: `Exit code 0`.
+## 6. Verification Method
+
+To independently run the full test suite from the workspace root:
+```powershell
+.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+Expected output:
+```
+Ran 196 tests in ~2.6s
+OK
+```

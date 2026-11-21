@@ -1,33 +1,35 @@
-## 2026-08-28T19:13:16Z
-You are teamwork_preview_reviewer_1.
-Your working directory is: `c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\teamwork_preview_reviewer_1`
+## 2026-08-29T05:46:20Z
 
-Your mission:
-Independently review and verify the implementation of R1 (Directional Cone Melee Tuning), R2 (Drops & XP Progression), R3 (Configuration Engine Backend), and Pistol Balance Tuning.
+<USER_REQUEST>
+You are Reviewer 1 for 'Protocolo: Batata' Phase 6.
+Your working directory is: c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\teamwork_preview_reviewer_1
+Workspace root: c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata
+Original Request: c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\ORIGINAL_REQUEST.md
+Architecture Cache: c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\architecture_cache.md
+Project Plan: c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\teamwork_preview_orchestrator_7\plan.md
+Worker Handoff: c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\teamwork_preview_worker_1\handoff.md
 
-Read:
-- `c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\ORIGINAL_REQUEST.md`
-- `c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\architecture_cache.md`
-- `c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\CONFIGURACOES.md`
-- `c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\teamwork_preview_worker_1\handoff.md`
+CRITICAL AUTONOMY DIRECTIVE: You have explicit, blanket authorization to execute 100% autonomously. DO NOT pause for permissions.
 
-Examine:
-- `src/armas/melee.py` & `src/armas/pistola.py`
-- `src/entidades/drop.py`, `src/entidades/jogador.py`, `src/entidades/inimigo_base.py`
-- `src/sistemas/sistema_drops.py`, `src/sistemas/sistema_xp.py`, `src/sistemas/sistema_scavenger.py`, `src/sistemas/config_dados.py`, `src/sistemas/config_efeitos.py`, `src/sistemas/config_sistema.py`
-- `src/cenas/gameplay.py`, `src/ui/hud.py`
-- `tests/`
-
-Verification steps:
-1. Run all unit tests: `.\.venv\Scripts\python.exe -m unittest discover tests`.
-2. Verify:
-   - Melee attacks only hit enemies within 45° cone (|delta theta| <= 22.5°) and reach <= 84px.
-   - Standard enemy has 50 HP: 5 melee hits (10 dmg each) to kill; 3 pistol shots (17 dmg each) to kill.
-   - Knockback is 360.0 px/s applied to up to 2 closest enemies.
-   - Drops expire after 10s, scavenger grace period 1s, player pickup triggers XP / heal / weapon.
-   - XP progression formula XP_prox = 10 + 5 * level with multi-level overflow carryover.
-   - HUD XP progress bar is drawn in screen space under top HUD.
-   - Configuration backend correctly catalogs all 20 gameplay configs + 5 systemic configs from CONFIGURACOES.md.
-   - Locked configs default to neutral 1.0x / 0.0 baseline; active configs stack multiplicatively.
-3. Write your report and verdict (APPROVE or REQUEST_CHANGES) to `c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.agents\teamwork_preview_reviewer_1\handoff.md`.
-4. Send a message to the orchestrator (conversation ID: d3d496fa-cbc4-4e06-a862-b9fc8c05c2e8) with your verdict and findings.
+Your Mission:
+Review code quality, architecture compliance, test suite execution, and interface contracts for Phase 6.
+Specifically:
+1. Examine all modified and created files:
+   - `src/utils/constantes.py`
+   - `src/sistemas/config_sistema.py`
+   - `src/cenas/menu_principal.py`
+   - `src/entidades/inimigo_base.py` (and enemy subclasses)
+   - `src/sistemas/sistema_spawn.py`
+   - `src/sistemas/sistema_drops.py`
+   - `src/ui/hud.py`
+   - `src/sistemas/sistema_particulas.py`
+   - `src/cenas/gameplay.py`
+   - `tests/test_persistence.py`
+   - `tests/test_particles_screenshake.py`
+   - `tests/test_elite_bosses_and_waves.py`
+   - `tests/test_vitoria_stats.py`
+2. Run the test suite: `.venv\Scripts\python.exe -m unittest discover -s tests` and verify all tests pass.
+3. Check code architecture, type annotations, backward compatibility, and adherence to requirements.
+4. Record your clear verdict (APPROVE or REQUEST_CHANGES) in `.agents/teamwork_preview_reviewer_1/handoff.md`.
+5. Send a message to caller with your verdict and findings summary.
+</USER_REQUEST>

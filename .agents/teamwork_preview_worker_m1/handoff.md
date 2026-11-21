@@ -1,74 +1,83 @@
-# Milestone 1 (Phase 0: Base Architecture & Procedural Assets) — Handoff Report
+# Relatório de Conclusão Técnica — Milestone 1 (UI Phase 4: Modal Level Up & Menu de Configurações)
+
+**Data**: 2026-08-28  
+**Agente**: Worker M1 (Milestone 1)  
+**Status**: Concluído e Validado  
+
+---
 
 ## 1. Observation
 
-- [Observed] `tools/gerador_assets.py` was created and executed using `.venv/Scripts/python.exe tools/gerador_assets.py`, generating:
-  - **Player Sprites** (`assets/sprites/jogador/`): `batata_idle.png` (32x32), `batata_walk_sheet.png` (128x32, 4 frames 32x32), `batata_dano.png` (32x32).
-  - **Enemy Sprites** (`assets/sprites/inimigos/`): `inimigo_padrao.png` (32x32), `inimigo_tank.png` (48x48), `inimigo_rapido.png` (24x24), `inimigo_phasing.png` (32x32), `inimigo_blindado.png` (36x36), `inimigo_ranged.png` (32x32).
-  - **Weapon Sprites** (`assets/sprites/armas/`): `arma_melee.png` (24x24), `arma_pistola.png` (24x24), `arma_minigun.png` (32x32), `arma_shotgun.png` (32x32), `arma_rifle.png` (32x32), `arma_foguetes.png` (32x32), `arma_granadas.png` (32x32).
-  - **Projectile Sprites** (`assets/sprites/projeteis/`): `projetil_pistola.png` (8x8), `projetil_minigun.png` (6x6), `projetil_shotgun.png` (8x8), `projetil_rifle.png` (10x10), `projetil_foguete.png` (20x10), `projetil_granada.png` (12x12), `projetil_inimigo.png` (10x10).
-  - **Equipment Sprites** (`assets/sprites/equipamentos/`): `drone_cura.png` (24x24), `drone_combate.png` (24x24), `drone_suporte.png` (24x24).
-  - **Drop Crate Sprites** (`assets/sprites/drops/`): `drop_xp.png` (24x24), `drop_cura.png` (24x24), `drop_arma.png` (24x24), `drop_equipamento.png` (24x24), `drop_config.png` (24x24).
-  - **Tile Sprites** (`assets/tiles/`): `tile_piso.png` (32x32), `tile_piso_alt.png` (32x32), `tile_parede.png` (32x32), `obstaculo_caixa.png` (32x32).
-  - **UI Sprites** (`assets/ui/`): `btn_gear.png` (32x32), `card_upgrade_bg.png` (160x220), `slot_inventario.png` (40x40), `btn_bg_normal.png` (180x45), `btn_bg_hover.png` (180x45), `mira_crosshair.png` (16x16).
-  - **Config Icons** (`assets/ui/icones_configs/`): 23 distinct 32x32 PNG icons (20 gameplay configs + 3 system configs).
-  - **Sound Effects** (`assets/audio/sfx/`): 18 distinct 16-bit 44.1kHz WAV sound effects.
-  - **Music** (`assets/audio/musica/`): `musica_fase.wav` (7.11s 8-bit chiptune looping music with bassline, square wave melody, and 8-bit drum rhythm).
-- [Observed] `src/utils/constantes.py` was created containing all baseline game parameters, canvas dimensions (800x600), colors, player/enemy baselines, weapon baselines, spawner settings, asset paths, and the complete 20 gameplay + 3 system configuration catalog matching `CONFIGURACOES.md`.
-- [Observed] `src/utils/math_utils.py` was created implementing `distancia`, `distancia_sq`, `normalizar_vetor` (zero-safe), `vetor_direcao`, `clamp`, `lerp`, `colisao_aabb`, `colisao_circulo`, `ponto_em_retangulo`, `angulo_radianos`, `angulo_graus`, and `rotacionar_vetor`.
-- [Observed] `src/cenas/base_scene.py`, `src/cenas/menu_principal.py`, and `src/main.py` were implemented using `PPlay.window.Window` and `PPlay.scenemanager.SceneManager`.
-- [Verified] Running `unittest discover -s tests` executed 17 automated tests in 0.735s with 0 failures and 0 errors:
-  ```
-  Ran 17 tests in 0.735s
-  OK
-  ```
-- [Verified] Headless main loop execution verified via `python -c "import src.main; src.main.main(limite_frames=10)"` exiting cleanly with code 0.
+Durante o desenvolvimento do Milestone 1, as seguintes implementações e integrações foram realizadas no repositório:
+
+1. **`src/ui/modal_level_up.py`**:
+   - Criada a classe `ModalLevelUp` compatível com a arquitetura em camadas e resolução 800x600.
+   - Implementado sistema de consumíveis em 4 tiers escalados por nível (`obter_tier_nivel(nivel)` e `gerar_pool_consumiveis_por_tier(tier)`):
+     - **Tier 1 (Níveis 1-4)**: Cura Leve (+30 HP), Vitalidade Básica (+10 Max HP), Impulso de XP (+20 XP), Agilidade (+5% Vel), Calibração (+5% Dano).
+     - **Tier 2 (Níveis 5-9)**: Cura Moderada (+55 HP), Vitalidade Robusta (+20 Max HP), Carga de XP (+50 XP), Agilidade (+8% Vel), Munição Enriquecida (+10% Dano).
+     - **Tier 3 (Níveis 10-14)**: Cura Avançada (+85 HP), Vitalidade Blindada (+35 Max HP), Sobrecarga de XP (+100 XP), Turbo (+12% Vel), Sobrecarga Bélica (+15% Dano).
+     - **Tier 4 (Níveis 15-20+)**: Cura Total (100% HP), Vitalidade Titânica (+50 Max HP), Surto Quântico (+200 XP), Hipervelocidade (+18% Vel), Potência Máxima (+25% Dano).
+   - **Níveis de Marco (Múltiplos de 5: Lvl 5, 10, 15, 20)**: O card central (slot 2 / índice 1) é obrigatoriamente preenchido por uma Configuração de Gameplay bloqueada proveniente de `GerenciadorConfiguracoes.obter_bloqueadas()`.
+   - **Buffer de Misericórdia (Pity Buffer)**: Se o jogador não selecionar a configuração no marco e optar por um consumível lateral, a configuração permanece no buffer `self.config_pity_buffer` e é ofertada no slot central em todos os level-ups subsequentes até ser selecionada.
+   - **Interatividade e Feedback**: Suporte a cliques de mouse e teclas `1`, `2`, `3` (e numpad), efeitos sonoros `sfx_levelup`, `sfx_btn_hover`, `sfx_btn_click`, tratamento de filas com múltiplos level-ups acumulados (`fila_level_ups`) e fallback 100% consumíveis caso todas as 20 configurações estejam desbloqueadas.
+
+2. **`src/ui/menu_configs.py`**:
+   - Criada a classe `MenuConfigs` reutilizável em jogo (`GameplayScene`) e no Menu Principal (`MenuPrincipalScene`).
+   - **Aba 1 (Gameplay)**: Exibe as 20 configurações de gameplay agrupadas por categoria (*Performance*, *Interface*, *Controles*, *Dificuldade*, *Experimental*), com filtros por categoria e rolagem suave. Configurações desbloqueadas possuem botões interativos de toggle (`[LIGADO]`/`[DESLIGADO]`) e seletores cíclicos (`< 60 FPS >`); configurações bloqueadas aparecem desabilitadas em tom escurecido com badge `[🔒 BLOQUEADO]`. Painel de inspeção à direita exibe flavor text, status e lista de buffs/nerfs ativos.
+   - **Aba 2 (Sistema & Acessibilidade)**: Sliders interativos de Volume Geral (Master), Volume da Música (ajusta `pygame.mixer.music.set_volume`), Volume de Efeitos (SFX), Seletor de Filtro Daltônico S4 (`Desligado`, `Protanopia`, `Deuteranopia`, `Tritanopia`) e Seletor de Escala Global S5 (`100% (Padrão)`, `125%`, `150%`).
+   - **Acesso e Persistência**: Acessível via clique no botão de engrenagem em `(752, 16)`, tecla `C` ou `ESC`. Ao fechar ou alterar valores, persiste automaticamente o estado em `data/save.json`.
+
+3. **`src/cenas/gameplay.py` e `src/cenas/menu_principal.py`**:
+   - `GameplayScene`: Conectado callback de level-up do `SistemaXP` ao `modal_level_up`, pausando a simulação sem destruir a cena. Modificadores calculados por `gerenciador_config.obter_modificadores()` são aplicados dinamicamente à velocidade do jogador, dano de armas, ganhos de XP e multiplicadores de drops. Quando a configuração `hud` está em `desligado`, as barras de vida/XP, cronômetro e inventário são ocultadas, mantendo visível o botão de engrenagem.
+   - `MenuPrincipalScene`: Integrado `MenuConfigs` ao botão "CONFIGURAÇÕES [C]" e atalho de teclado `C`.
+
+4. **Testes Automatizados**:
+   - `tests/test_ui_level_up.py`: 9 testes unitários cobrindo tiers de consumíveis, posicionamento do card central em marcos, persistência do pity buffer, fila de level-ups, atalhos de teclado/mouse e fallback.
+   - `tests/test_ui_menu_configs.py`: 10 testes unitários cobrindo abertura/fechamento, alternância de abas, imutabilidade de configs bloqueadas, personalização em tempo real de configs desbloqueadas, sliders de áudio/acessibilidade, integração de cenas e persistência JSON.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Asset Generation Feasibility**:
-   - PowerPPlay 2.0 requires images loaded into `GameImage` / `Sprite` to exist on disk as PNG files; otherwise Python raises `FileNotFoundError`.
-   - Procedural generation via `Pillow` and `wave` in `tools/gerador_assets.py` generates all necessary assets up-front, ensuring zero missing asset exceptions at runtime.
-2. **SSOT Alignment**:
-   - `CONFIGURACOES.md` is the authoritative single source of truth for the 20 unlockable gameplay configurations and 3 system configurations.
-   - `src/utils/constantes.py` explicitly reproduces this catalog with exact IDs, category groupings, default states, options, flavor texts, buffs, and icon paths.
-3. **Headless Testability**:
-   - Setting `SDL_VIDEODRIVER=dummy` and `SDL_AUDIODRIVER=dummy` in `tests/test_assets.py` allows full CI / headless test suite execution of PPlay windows and scenes without requiring physical hardware displays or audio devices.
-4. **Foundation for Milestone 2 (Phase 1)**:
-   - With all sprites, audio, math utilities, constants, and the PPlay scene manager loop in place, Phase 1 (Player avatar, WASD movement, weapons, projectiles, enemy spawning, and beeline AI) can now be implemented directly on top of this architecture without dependency bottlenecks.
+1. **Separação de Modais e Preservação de Estado da Partida**:
+   - *Premissa*: `SceneManager.change_scene()` destrói a instância da cena ativa ao trocar para outra.
+   - *Solução*: Implementação do Level Up e do Menu de Configurações como classes modais (`ModalLevelUp` e `MenuConfigs`) desenhadas sobre o canvas de `GameplayScene` com `pausado = True`. Isso garante que a posição das hordas, projéteis, drops e timers de partida sejam preservados sem perda de contexto.
+
+2. **Diretriz de Arquitetura de Level Up (Tiers, Marcos e Pity Buffer)**:
+   - *Níveis 1-4, 6-9, 11-14, 16-19*: Foco na sobrevivência imediata através de 3 consumíveis utilitários dimensionados pelo tier daquele momento da partida.
+   - *Níveis 5, 10, 15, 20*: Ponto de inflexão estratégica onde o jogador ganha acesso a uma nova mecânica profunda (Configuração de Gameplay) no slot central.
+   - *Misericórdia (Pity Buffer)*: Impede que o jogador perca oportunidades de desbloqueio caso precise de uma cura de emergência no nível 5; a configuração continua disponível nos níveis subsequentes até ser selecionada.
+
+3. **Neutralidade e Reatividade das Configurações**:
+   - O `GerenciadorConfiguracoes` bloqueia qualquer tentativa de alteração em opções travadas.
+   - Ao desbloquear via `modal_level_up.selecionar_card()` ou alterar via `menu_configs.alterar_valor_gameplay()`, o método `cena.aplicar_modificadores()` é invocado no mesmo frame, recalculando estatísticas reais do jogador e das armas.
 
 ---
 
 ## 3. Caveats
 
-- In headless test mode, SDL audio driver dummy discards synthesized PCM playback without outputting sound to speakers; on a live desktop run (`python src/main.py`), audio playback operates through `pygame.mixer` as normal.
-- No caveats on asset presence, math accuracy, or scene loop orchestration.
+- **[No caveats]**: Todos os requisitos do Milestone 1 (R1 e R2), a diretriz de arquitetura de level up (tiers, marcos e pity buffer) e as especificações de `CONFIGURACOES.md` e `s5.md` foram integralmente implementados e validados.
 
 ---
 
 ## 4. Conclusion
 
-Milestone 1 (Phase 0 Base Architecture & Procedural Assets) is 100% complete and fully verified:
-1. `tools/gerador_assets.py` executes successfully and populates `assets/` with all required PNG sprites, UI elements, config icons, SFX WAVs, and BGM music.
-2. `src/utils/constantes.py` and `src/utils/math_utils.py` provide a robust, type-annotated mathematical and configuration foundation.
-3. `src/main.py` and `src/cenas/menu_principal.py` initialize the PPlay window and execute the scene loop without crashing.
-4. All 17 unit tests pass cleanly.
+O Milestone 1 (Phase 4 UI) está concluído com qualidade e integridade:
+- `src/ui/modal_level_up.py` operacional e testado.
+- `src/ui/menu_configs.py` operacional e testado.
+- `src/cenas/gameplay.py` e `src/cenas/menu_principal.py` integrados e estáveis.
+- 100% de aprovação na suite de testes do Milestone 1 (19/19 testes) e total compatibilidade com os testes de baseline do projeto (73/73 testes).
 
 ---
 
 ## 5. Verification Method
 
-To independently verify the implementation:
+Para reproduzir e verificar de forma automatizada e independente os resultados:
 
 ```powershell
-# 1. Run procedural asset generator
-& "c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.venv\Scripts\python.exe" tools/gerador_assets.py
+# Execução dos testes unitários do Milestone 1:
+.\.venv\Scripts\python.exe -m unittest tests/test_ui_level_up.py tests/test_ui_menu_configs.py
 
-# 2. Run unit test suite
-& "c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.venv\Scripts\python.exe" -m unittest discover -s tests
-
-# 3. Test headless main loop execution (5 frames)
-& "c:\Users\jesse\Documents\Computaria\visual studio\protocolo-batata\.venv\Scripts\python.exe" -c "import os; os.environ['SDL_VIDEODRIVER']='dummy'; os.environ['SDL_AUDIODRIVER']='dummy'; import src.main; src.main.main(limite_frames=5); print('Main loop OK')"
+# Execução de toda a suite de testes do núcleo do projeto:
+.\.venv\Scripts\python.exe -m unittest tests/test_assets.py tests/test_config_backend.py tests/test_drops_xp.py tests/test_melee_cone.py tests/test_player.py tests/test_weapons.py tests/test_gameplay_e2e.py tests/test_ui_and_weapons_m3.py tests/test_ui_level_up.py tests/test_ui_menu_configs.py
 ```

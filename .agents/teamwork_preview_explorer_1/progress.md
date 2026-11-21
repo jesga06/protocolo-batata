@@ -1,13 +1,14 @@
-# Progress — teamwork_preview_explorer_1
+# Progress Log - Explorer 1 (Phase 6: Waves, Elites, Boss HP, Elite Drops)
 
-Last visited: 2026-08-28T19:04:10Z
+Last visited: 2026-08-29T05:38:25Z
 
-## Status
-- [x] Step 0: Initialized workspace, DISPATCH.md, BRIEFING.md
-- [x] Step 1: Read mandatory docs (`ORIGINAL_REQUEST.md`, `architecture_cache.md`, `CONFIGURACOES.md`)
-- [x] Step 2: Investigate R1 (Melee Weapon & Aim Visuals: `src/armas/`, `src/entidades/jogador.py`, `src/cenas/gameplay.py`, `src/utils/math_utils.py`)
-- [x] Step 3: Investigate R2 (Drops & XP: `src/entidades/drop.py`, `src/sistemas/sistema_drops.py`, `sistema_xp.py`, `sistema_scavenger.py`, `src/ui/hud.py`, `src/cenas/gameplay.py`, enemies)
-- [x] Step 4: Investigate R3 (Configuration Engine: `CONFIGURACOES.md`, `src/sistemas/config_sistema.py`, `config_dados.py`, `config_efeitos.py`)
-- [x] Step 5: Investigate existing tests in `tests/` and formulate unit test plan
-- [ ] Step 6: Write comprehensive `handoff.md` report following the 5-component protocol
-- [ ] Step 7: Update BRIEFING.md and send completion message to parent
+## Tasks
+- [x] Session init & Architecture Cache review
+- [x] Inspect `src/sistemas/sistema_spawn.py`
+- [x] Inspect `src/entidades/` (all enemy classes & base class)
+- [x] Inspect `src/sistemas/sistema_drops.py` and `src/entidades/drop.py`
+- [x] Inspect `src/ui/hud.py`
+- [x] Inspect `src/cenas/gameplay.py`
+- [x] Inspect `tests/` for existing spawning and enemy coverage (139 passing tests)
+- [x] Synthesize findings & produce 5-component `handoff.md`
+- [x] Send handoff message to caller
