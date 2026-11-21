@@ -85,9 +85,12 @@ class MenuDebug:
         ]
         self.idx_overclock = 0
 
+        self.opcoes_pular_tempo = [10, 20, 30]
+        self.idx_pular_tempo = 0
+
         # Índice do menu focado
         self.indice_foco = 0
-        self.total_itens = 15
+        self.total_itens = 16
 
         # Retângulo do painel de Debug centralizado / com offset adaptado para 1280x720
         self.offset_x = (LARGURA_TELA - 800) // 2
@@ -283,6 +286,8 @@ class MenuDebug:
             self.idx_level_up = (self.idx_level_up + direcao) % len(self.opcoes_level_up)
         elif self.indice_foco == 13:  # Overclock
             self.idx_overclock = (self.idx_overclock + direcao) % len(self.opcoes_overclock)
+        elif self.indice_foco == 15:  # Pular Tempo + Kit Debug
+            self.idx_pular_tempo = (self.idx_pular_tempo + direcao) % len(self.opcoes_pular_tempo)
 
     def _executar_acao_selecionada(self):
         """Executa ações com a tecla ENTER / ESPAÇO."""
@@ -355,6 +360,8 @@ class MenuDebug:
                         if hasattr(self.cena, "_registrar_abate_inimigo"):
                             self.cena._registrar_abate_inimigo(inim)
                 self._definir_status("MINI-BOSSES DESTRUÍDOS!")
+        elif self.indice_foco == 15:  # Pular Tempo + Kit Debug
+            self._aplicar_kit_debug()
 
     def _spawnar_item_ou_inimigo_no_mundo(self, x: float, y: float):
         """Gera a entidade selecionada com o CENTRO posicionado exatamente nas coordenadas (x, y)."""
@@ -460,6 +467,45 @@ class MenuDebug:
                 self.cena.inimigos.append(inimigo)
                 self._definir_status(f"INIMIGO SPAWNADO: {nome_i}")
 
+    def _aplicar_kit_debug(self):
+        """Avança 10/20/30s, equipa arma especial (sem Railgun), aplica consumíveis e 1 mod de BIOS."""
+        if not self.cena:
+            return
+        import random
+        segs = float(self.opcoes_pular_tempo[self.idx_pular_tempo])
+        if hasattr(self.cena, "tempo_sobrevivencia"):
+            self.cena.tempo_sobrevivencia += segs
+        if hasattr(self.cena, "spawner") and self.cena.spawner is not None:
+            self.cena.spawner.tempo_decorrido += segs
+            self.cena.spawner.tempo_elite += segs
+
+        jog = getattr(self.cena, "jogador", None)
+        if jog is not None:
+            from src.armas import Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas
+            arma_cls = random.choice([Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas])
+            nova_arma = arma_cls()
+            if hasattr(jog, "equipar_arma_especial"):
+                jog.equipar_arma_especial(nova_arma)
+            else:
+                jog.arma_especial = nova_arma
+                if hasattr(jog, "selecionar_slot"):
+                    jog.selecionar_slot(3)
+
+            jog.buff_dano_timer = 15.0
+            jog.buff_vel_timer = 15.0
+            jog.buff_cadencia_timer = 15.0
+            jog.escudo_ativo = True
+
+            adquiridos = getattr(jog, "overclocks_adquiridos", set())
+            disponiveis = [cid for _, cid in self.opcoes_overclock if cid not in adquiridos]
+            mod_id = random.choice(disponiveis) if disponiveis else self.opcoes_overclock[self.idx_overclock][1]
+            if hasattr(jog, "aplicar_overclock"):
+                jog.aplicar_overclock(mod_id)
+
+        if hasattr(self.cena, "aplicar_modificadores"):
+            self.cena.aplicar_modificadores()
+        self._definir_status(f"+{int(segs)}s + ARMA + CONSUMIVEIS + BIOS!")
+
     def _definir_status(self, texto: str):
         self._mensagem_status = str(texto)
         self._timer_status = 2.5
@@ -497,7 +543,8 @@ class MenuDebug:
             ("12. Destravar Configs", "[ENTER DESTRAVA 20]", DOURADO),
             ("13. Boss Cutscene (Lvl 20)", "[ENTER CUTSCENE]", DOURADO),
             ("14. Conceder Overclock", f"< {self.opcoes_overclock[self.idx_overclock][0]} >", ROXO_CLARO),
-            ("15. Matar Chefe", "[ENTER PARA MATAR]", VERMELHO_DANO)
+            ("15. Matar Chefe", "[ENTER PARA MATAR]", VERMELHO_DANO),
+            ("16. Kit Debug (+Tempo)", f"< +{self.opcoes_pular_tempo[self.idx_pular_tempo]}s +Kit >", (0, 220, 255))
         ]
 
         for i, (label, val_txt, val_cor) in enumerate(itens_config):
