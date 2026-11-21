@@ -24,9 +24,11 @@ class SistemaSpawn:
     """
     Controlador do surgimento de inimigos na arena ao redor do jogador.
     """
+    HORARIOS_BOSS = [60.0, 120.0, 180.0, 240.0]
 
     def __init__(self, max_ativos: int = SPAWN_MAX_ATIVOS):
         self.tempo_decorrido = 0.0
+        self.tempo_elite = 0.0
         self.timer_spawn = 0.0
         self.ultimo_minuto_elite = 0
         self.bosses_spawnados_indices = set()
@@ -53,18 +55,18 @@ class SistemaSpawn:
         """
         catalogo = {
             1: (InimigoRapido, "MINI-BOSS: ESTAGIÁRIO SÊNIOR"),
-            2: (InimigoTank, "MINI-BOSS: GELADEIRA INDUSTRIAL TURBO"),
-            3: (InimigoPhasing, "MINI-BOSS: PHANTOM EXECUTIVO"),
-            4: (InimigoBlindado, "MINI-BOSS: BASTIÃO TITÂNICO"),
-            5: (InimigoRanged, "MINI-BOSS: COMANDANTE ARTILHEIRO"),
-            6: (InimigoTank, "MINI-BOSS: HYPER GELADEIRA MK-II"),
-            7: (InimigoPhasing, "MINI-BOSS: ESPECTRO CORPORATIVO"),
-            8: (InimigoBlindado, "MINI-BOSS: FORTALEZA CIBERNÉTICA"),
-            9: (InimigoRanged, "MINI-BOSS: GENERAL BALÍSTICO"),
+            2: (InimigoTank, "MINI-BOSS: ARQUIVO MORTO PRIORITÁRIO"),
+            3: (InimigoPhasing, "MINI-BOSS: FANTASMA DO RH"),
+            4: (InimigoBlindado, "MINI-BOSS: SEGURANÇA-CHEFE"),
+            5: (InimigoRanged, "MINI-BOSS: SUPERVISOR TERCEIRIZADO"),
+            6: (InimigoTank, "MINI-BOSS: PROCESSO EM ESPERA ETERNA"),
+            7: (InimigoPhasing, "MINI-BOSS: DIRETOR FANTASMA"),
+            8: (InimigoBlindado, "MINI-BOSS: DIRETOR DE SEGURANÇA PATRIMONIAL"),
+            9: (InimigoRanged, "MINI-BOSS: GERENTE DA TERCEIRIZADA"),
         }
         if boss_idx in catalogo:
             return catalogo[boss_idx]
-        return (InimigoTank, f"MINI-BOSS: OVERLORD DA MEMÓRIA MK-{boss_idx}")
+        return (InimigoTank, f"MINI-BOSS: AUDITORIA INTERMINÁVEL MK-{boss_idx}")
 
     def escolher_arquetipo(self, tempo_s: float, permitir_ranged: bool = True):
         """
@@ -158,43 +160,17 @@ class SistemaSpawn:
         self.tempo_decorrido += dt
         novos_inimigos = []
 
-        # 1. Verificação de Spawn de Mini-Boss Elite (1º aos 60s, subsequentes a cada 2:30min = 210s, 360s, 510s)
-        HORARIOS_BOSS = [60.0, 210.0, 360.0, 510.0]
-        for idx_boss, tempo_boss in enumerate(HORARIOS_BOSS):
-            if self.tempo_decorrido >= tempo_boss and idx_boss not in self.bosses_spawnados_indices:
-                self.bosses_spawnados_indices.add(idx_boss)
-                self.ultimo_minuto_elite = idx_boss + 1
-                cls_elite, nome_elite = self.obter_arquetipo_elite(idx_boss + 1)
-                if not permitir_ranged and cls_elite == InimigoRanged:
-                    cls_elite = InimigoPadrao
-                ex, ey = self.gerar_posicao_spawn(
-                    camera_x=camera_x,
-                    camera_y=camera_y,
-                    view_w=view_w,
-                    view_h=view_h,
-                    arena_w=arena_w,
-                    arena_h=arena_h
-                )
-                boss_elite = cls_elite(x=ex, y=ey, is_elite=True, nome_elite=nome_elite)
-                if hp_mult != 1.0:
-                    boss_elite.hp_max = max(1, int(round(boss_elite.hp_max * hp_mult)))
-                    boss_elite.hp = boss_elite.hp_max
-                if vel_mult != 1.0:
-                    boss_elite.velocidade *= float(vel_mult)
-                novos_inimigos.append(boss_elite)
-                break
-
-        # 2. Verificação de Lote de Inimigos Regulares
-        self.timer_spawn += dt
-        intervalo = self.intervalo_spawn(self.tempo_decorrido)
-        if self.timer_spawn >= intervalo:
-            self.timer_spawn = 0.0
-
-            vagas_disponiveis = self.max_ativos - (total_inimigos_vivos + len(novos_inimigos))
-            if vagas_disponiveis > 0:
-                qtd_a_gerar = min(self.tamanho_lote(self.tempo_decorrido), vagas_disponiveis)
-                for _ in range(qtd_a_gerar):
-                    sx, sy = self.gerar_posicao_spawn(
+        # 1. Verificação de Spawn de Mini-Boss Elite (1:00 / 60s, 2:00 / 120s, 3:00 / 180s, 4:00 / 240s) com trava anti-stacking
+        if not possui_elite_vivo:
+            self.tempo_elite += dt
+            for idx_boss, tempo_boss in enumerate(self.HORARIOS_BOSS):
+                if self.tempo_elite >= tempo_boss and idx_boss not in self.bosses_spawnados_indices:
+                    self.bosses_spawnados_indices.add(idx_boss)
+                    self.ultimo_minuto_elite = idx_boss + 1
+                    cls_elite, nome_elite = self.obter_arquetipo_elite(idx_boss + 1)
+                    if not permitir_ranged and cls_elite == InimigoRanged:
+                        cls_elite = InimigoPadrao
+                    ex, ey = self.gerar_posicao_spawn(
                         camera_x=camera_x,
                         camera_y=camera_y,
                         view_w=view_w,
@@ -202,7 +178,40 @@ class SistemaSpawn:
                         arena_w=arena_w,
                         arena_h=arena_h
                     )
+                    boss_elite = cls_elite(x=ex, y=ey, is_elite=True, nome_elite=nome_elite)
+                    if hp_mult != 1.0:
+                        boss_elite.hp_max = max(1, int(round(boss_elite.hp_max * hp_mult)))
+                        boss_elite.hp = boss_elite.hp_max
+                    if vel_mult != 1.0:
+                        boss_elite.velocidade *= float(vel_mult)
+                    novos_inimigos.append(boss_elite)
+                    break
+
+        # 2. Verificação de Lote de Inimigos Regulares
+        self.timer_spawn += dt
+        intervalo = self.intervalo_spawn(self.tempo_decorrido)
+        if self.timer_spawn >= intervalo:
+            self.timer_spawn -= intervalo
+
+            vagas_disponiveis = self.max_ativos - (total_inimigos_vivos + len(novos_inimigos))
+            if vagas_disponiveis > 0:
+                qtd_a_gerar = min(self.tamanho_lote(self.tempo_decorrido), vagas_disponiveis)
+                for _ in range(qtd_a_gerar):
                     cls_arquetipo = self.escolher_arquetipo(self.tempo_decorrido, permitir_ranged=permitir_ranged)
+                    # Manter InimigoRanged dentro dos limites da arena para garantir stand-off e linha de tiro
+                    margem_spawn = 0.0 if cls_arquetipo == InimigoRanged else float(SPAWN_DISTANCIA_OFFSET)
+                    sx, sy = self.gerar_posicao_spawn(
+                        camera_x=camera_x,
+                        camera_y=camera_y,
+                        view_w=view_w,
+                        view_h=view_h,
+                        margem=margem_spawn,
+                        arena_w=arena_w,
+                        arena_h=arena_h
+                    )
+                    if cls_arquetipo == InimigoRanged:
+                        sx = clamp(sx, 0.0, max(0.0, arena_w - 42.0))
+                        sy = clamp(sy, 0.0, max(0.0, arena_h - 42.0))
                     novo = cls_arquetipo(x=sx, y=sy)
                     if hp_mult != 1.0:
                         novo.hp_max = max(1, int(round(novo.hp_max * hp_mult)))

@@ -11,6 +11,7 @@ from src.utils.math_utils import colisao_aabb
 from src.utils.constantes import (
     DROP_XP_VALOR_BASE, DROP_CURA_VALOR_BASE,
     DROP_TEMPO_DESAPARECER, DROP_TEMPO_SCAVENGER_ATIVAR,
+    DROP_LARGURA, DROP_ALTURA,
     obter_caminho_asset
 )
 
@@ -20,8 +21,16 @@ class SistemaDrops:
     Gerenciador de drops e itens no chão da arena.
     """
 
+    MAX_DROPS = 300
+
     def __init__(self):
         self.drops: list[ItemDrop] = []
+
+    def _adicionar_drop(self, drop: ItemDrop):
+        """Adiciona um drop respeitando o limite MAX_DROPS (remove o drop mais antigo se exceder)."""
+        self.drops.append(drop)
+        if len(self.drops) > self.MAX_DROPS:
+            del self.drops[:len(self.drops) - self.MAX_DROPS]
 
     def gerar_drop_morte_inimigo(
         self,
@@ -34,15 +43,61 @@ class SistemaDrops:
         loot_enriquecido: bool = False,
         chance_arma: float = None,
         chance_equipamento: float = None,
-        is_elite: bool = False
+        is_elite: bool = False,
+        modo_boss: bool = False
     ) -> list[ItemDrop]:
         """
         Gera os drops ao eliminar um inimigo:
-        - Inimigos normais geram ao menos 1 gema de XP e rolam chances para cura, arma e equipamento.
+        - No modo_boss (durante a luta contra Geladeira Tsunami):
+          Zero gemas de XP, chance de drop reduzida em 60% (multiplicador 0.40 * (1.0 + bonus_chance_drop) * mult_chance_drop)
+          com 10% Cura, 45% Arma e 45% Equipamento.
         - Inimigos Elite / Mini-Bosses geram garantidamente um cluster de 50 XP (5 gemas de 10 XP),
-          uma caixa de arma especial e uma caixa de equipamento / drone.
+          uma caixa de arma especial, uma caixa de equipamento / drone e um Núcleo de Overclock.
+        - Inimigos normais geram ao menos 1 gema de XP e rolam chances para cura, arma e equipamento.
         """
         novos_drops = []
+        offset_drop_x = -float(DROP_LARGURA) / 2.0
+        offset_drop_y = -float(DROP_ALTURA) / 2.0
+
+        # Modo Boss (Geladeira Tsunami): Drops especiais sem XP, -60% taxa, 10% Cura, 45% Arma, 45% Equipamento
+        # Checado antes de is_elite para garantir 0% XP durante a luta contra o Boss
+        if modo_boss:
+            mult_boss = 0.40 * (1.0 + bonus_chance_drop) * mult_chance_drop
+            # Rola se haverá drop
+            if random.random() < mult_boss:
+                r_tipo = random.random()
+                offset_x = random.uniform(-16.0, 16.0)
+                offset_y = random.uniform(-16.0, 16.0)
+                if r_tipo < 0.10:
+                    d = ItemDrop(
+                        x=x + offset_x + offset_drop_x,
+                        y=y + offset_y + offset_drop_y,
+                        tipo="cura",
+                        valor=DROP_CURA_VALOR_BASE,
+                        tempo_vida=DROP_TEMPO_DESAPARECER,
+                        tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
+                    )
+                elif r_tipo < 0.55:
+                    d = ItemDrop(
+                        x=x + offset_x + offset_drop_x,
+                        y=y + offset_y + offset_drop_y,
+                        tipo="arma",
+                        valor=1,
+                        tempo_vida=DROP_TEMPO_DESAPARECER,
+                        tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
+                    )
+                else:
+                    d = ItemDrop(
+                        x=x + offset_x + offset_drop_x,
+                        y=y + offset_y + offset_drop_y,
+                        tipo="equipamento",
+                        valor=1,
+                        tempo_vida=DROP_TEMPO_DESAPARECER,
+                        tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
+                    )
+                novos_drops.append(d)
+                self._adicionar_drop(d)
+            return novos_drops
 
         if is_elite:
             # 1. Cluster de 50 XP (5 gemas de 10 XP distribuídas em anel)
@@ -59,11 +114,11 @@ class SistemaDrops:
                     tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
                 )
                 novos_drops.append(gema_elite)
-                self.drops.append(gema_elite)
+                self._adicionar_drop(gema_elite)
 
             # 2. Caixa de Arma Garantida
             drop_arma = ItemDrop(
-                x=x - 20.0,
+                x=x - 20.0 - 8.0,
                 y=y - 8.0,
                 tipo="arma",
                 valor=1,
@@ -71,11 +126,11 @@ class SistemaDrops:
                 tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
             )
             novos_drops.append(drop_arma)
-            self.drops.append(drop_arma)
+            self._adicionar_drop(drop_arma)
 
             # 3. Caixa de Equipamento Garantida
             drop_equip = ItemDrop(
-                x=x + 20.0,
+                x=x + 20.0 - 8.0,
                 y=y - 8.0,
                 tipo="equipamento",
                 valor=1,
@@ -83,9 +138,21 @@ class SistemaDrops:
                 tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
             )
             novos_drops.append(drop_equip)
-            self.drops.append(drop_equip)
+            self._adicionar_drop(drop_equip)
 
-            # 4. Caixa de Cura (50% de chance para Mini-Boss)
+            # 4. Núcleo de Overclock Garantido
+            drop_overclock = ItemDrop(
+                x=x - 8.0,
+                y=y - 24.0,
+                tipo="overclock",
+                valor=1,
+                tempo_vida=DROP_TEMPO_DESAPARECER,
+                tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
+            )
+            novos_drops.append(drop_overclock)
+            self._adicionar_drop(drop_overclock)
+
+            # 5. Caixa de Cura (50% de chance para Mini-Boss)
             if random.random() < 0.50:
                 drop_cura = ItemDrop(
                     x=x - 8.0,
@@ -96,39 +163,39 @@ class SistemaDrops:
                     tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
                 )
                 novos_drops.append(drop_cura)
-                self.drops.append(drop_cura)
+                self._adicionar_drop(drop_cura)
 
             return novos_drops
 
         # 1. Gema de XP Normal
         valor_xp = int(xp_base) if xp_base is not None else DROP_XP_VALOR_BASE
         gema_xp = ItemDrop(
-            x=x - 8.0,
-            y=y - 8.0,
+            x=x + offset_drop_x,
+            y=y + offset_drop_y,
             tipo="xp",
             valor=valor_xp,
             tempo_vida=DROP_TEMPO_DESAPARECER,
             tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
         )
         novos_drops.append(gema_xp)
-        self.drops.append(gema_xp)
+        self._adicionar_drop(gema_xp)
 
         # 2. Chance de Drop de Cura
         chance_cura_base = 0.08
-        chance_cura_efetiva = min(1.0, (chance_cura_base + bonus_chance_drop) * mult_chance_drop)
+        chance_cura_efetiva = min(1.0, chance_cura_base * (1.0 + bonus_chance_drop) * mult_chance_drop)
         if random.random() < chance_cura_efetiva:
             offset_x = random.uniform(-16.0, 16.0)
             offset_y = random.uniform(-16.0, 16.0)
             drop_cura = ItemDrop(
-                x=x + offset_x - 8.0,
-                y=y + offset_y - 8.0,
+                x=x + offset_x + offset_drop_x,
+                y=y + offset_y + offset_drop_y,
                 tipo="cura",
                 valor=DROP_CURA_VALOR_BASE,
                 tempo_vida=DROP_TEMPO_DESAPARECER,
                 tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
             )
             novos_drops.append(drop_cura)
-            self.drops.append(drop_cura)
+            self._adicionar_drop(drop_cura)
 
         # 3. Chance de Drop de Arma / Caixa Especial (+40% de frequência)
         if chance_arma is not None:
@@ -136,20 +203,20 @@ class SistemaDrops:
         else:
             chance_arma_base = (0.15 if (loot_enriquecido or tipo_inimigo == "ranged") else 0.04) * 1.40
 
-        chance_arma_efetiva = min(1.0, (chance_arma_base + bonus_chance_drop) * mult_chance_drop)
+        chance_arma_efetiva = min(1.0, chance_arma_base * (1.0 + bonus_chance_drop) * mult_chance_drop)
         if random.random() < chance_arma_efetiva:
             offset_x = random.uniform(-16.0, 16.0)
             offset_y = random.uniform(-16.0, 16.0)
             drop_arma = ItemDrop(
-                x=x + offset_x - 8.0,
-                y=y + offset_y - 8.0,
+                x=x + offset_x + offset_drop_x,
+                y=y + offset_y + offset_drop_y,
                 tipo="arma",
                 valor=1,
                 tempo_vida=DROP_TEMPO_DESAPARECER,
                 tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
             )
             novos_drops.append(drop_arma)
-            self.drops.append(drop_arma)
+            self._adicionar_drop(drop_arma)
 
         # 4. Chance de Drop de Equipamento / Drone (+40% de frequência)
         if chance_equipamento is not None:
@@ -157,28 +224,28 @@ class SistemaDrops:
         else:
             chance_equip_base = (0.15 if (loot_enriquecido or tipo_inimigo == "ranged") else 0.03) * 1.40
 
-        chance_equip_efetiva = min(1.0, (chance_equip_base + bonus_chance_drop) * mult_chance_drop)
+        chance_equip_efetiva = min(1.0, chance_equip_base * (1.0 + bonus_chance_drop) * mult_chance_drop)
         if random.random() < chance_equip_efetiva:
             offset_x = random.uniform(-16.0, 16.0)
             offset_y = random.uniform(-16.0, 16.0)
             drop_equip = ItemDrop(
-                x=x + offset_x - 8.0,
-                y=y + offset_y - 8.0,
+                x=x + offset_x + offset_drop_x,
+                y=y + offset_y + offset_drop_y,
                 tipo="equipamento",
                 valor=1,
                 tempo_vida=DROP_TEMPO_DESAPARECER,
                 tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
             )
             novos_drops.append(drop_equip)
-            self.drops.append(drop_equip)
+            self._adicionar_drop(drop_equip)
 
         return novos_drops
 
 
-    def update(self, dt: float):
+    def update(self, dt: float, pausar_despawn: bool = False):
         """Atualiza timers de todos os drops e remove expirados."""
         for drop in self.drops:
-            drop.update(dt)
+            drop.update(dt, pausar_despawn=pausar_despawn)
 
         self.drops = [d for d in self.drops if d.ativo and not d.coletado]
 
@@ -217,6 +284,9 @@ class SistemaDrops:
                     if hasattr(jogador, "ganhar_xp"):
                         jogador.ganhar_xp(valor_efetivo, mult_xp=mult_xp)
 
+                elif drop.tipo == "overclock":
+                    sfx_nome = "sfx_pickup_arma"
+
                 elif drop.tipo == "arma":
                     sfx_nome = "sfx_pickup_arma"
                     from src.armas import Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas, Railgun
@@ -229,12 +299,28 @@ class SistemaDrops:
                         nova_arma.municao_max = int(round(nova_arma.municao_max * mult_valor_drop))
                         nova_arma.municao_atual = nova_arma.municao_max
 
-                    if hasattr(jogador, "arma_especial"):
-                        jogador.arma_especial = nova_arma
-                    if hasattr(jogador, "selecionar_slot"):
-                        jogador.selecionar_slot(3)
-                    elif hasattr(jogador, "slot_ativo"):
-                        jogador.slot_ativo = 3
+                    if hasattr(jogador, "equipar_arma_especial"):
+                        jogador.equipar_arma_especial(nova_arma)
+                    elif hasattr(jogador, "arma_especial"):
+                        if getattr(jogador, "bios_modding", False):
+                            if jogador.arma_especial is None:
+                                jogador.arma_especial = nova_arma
+                                if hasattr(jogador, "selecionar_slot"):
+                                    jogador.selecionar_slot(3)
+                            else:
+                                if len(jogador.armas) > 1:
+                                    jogador.armas[1] = nova_arma
+                                jogador.arma_especial_secundaria = nova_arma
+                                if hasattr(jogador, "selecionar_slot"):
+                                    jogador.selecionar_slot(2)
+                                elif hasattr(jogador, "slot_ativo"):
+                                    jogador.slot_ativo = 2
+                        else:
+                            jogador.arma_especial = nova_arma
+                            if hasattr(jogador, "selecionar_slot"):
+                                jogador.selecionar_slot(3)
+                            elif hasattr(jogador, "slot_ativo"):
+                                jogador.slot_ativo = 3
 
                 elif drop.tipo == "equipamento":
                     sfx_nome = "sfx_pickup_equipamento"
@@ -256,17 +342,22 @@ class SistemaDrops:
                 except Exception:
                     pass
 
-                coletados.append({
+                evento = {
                     "tipo": drop.tipo,
                     "valor": valor_efetivo,
                     "drop": drop,
-                    "mult_drop": mult_valor_drop
-                })
+                    "mult_drop": mult_valor_drop,
+                    "x": drop.x,
+                    "y": drop.y
+                }
+                if drop.tipo == "arma":
+                    evento["arma"] = nova_arma
+                coletados.append(evento)
 
         return coletados
 
-    def desenhar(self, janela, camera=None):
+    def desenhar(self, janela, camera=None, pausar_despawn: bool = False):
         """Renderiza todos os drops ativos."""
         for drop in self.drops:
-            drop.desenhar(janela, camera)
+            drop.desenhar(janela, camera, pausar_despawn=pausar_despawn)
 

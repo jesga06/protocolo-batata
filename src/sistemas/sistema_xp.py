@@ -1,6 +1,6 @@
 """
 Sistema de Progressão de XP — Protocolo: Batata
-Controla o ganho de experiência, cálculo dinâmico de nível pela fórmula XP_prox = 10 + 5 * level,
+Controla o ganho de experiência, cálculo dinâmico de nível pela fórmula progressiva quadrática,
 tratamento de overflow multi-nível e limite máximo (Nível 20).
 """
 
@@ -29,14 +29,34 @@ class SistemaXP:
         """Retorna a quantidade total de XP necessária para o próximo nível."""
         return self.xp_para_proximo_nivel(self.nivel)
 
+    @staticmethod
+    def calcular_xp_para_nivel(nivel: int) -> int:
+        """
+        Calcula a quantidade de XP necessária para avançar a partir do nível informado.
+        Fórmula progressiva quadrática: base = 20 + 10 * level + 5 * (level ^ 2)
+        Para níveis > 10, reduz em 25%: int(round(base * 0.75)) para suavizar a subida até o nível 20.
+        Para níveis 1..10, retém a curva padrão exata: int(round(base)).
+        """
+        lvl = int(nivel)
+        base = 20 + 10 * lvl + 5 * (lvl ** 2)
+        if lvl > 10:
+            return max(1, int(round(base * 0.75)))
+        return int(round(base))
+
     def xp_para_proximo_nivel(self, nivel: int = None) -> int:
         """
         Retorna a quantidade de XP necessária para avançar a partir do nível informado.
-        Fórmula progressiva quadrática: XP_prox = 20 + 10 * level + 5 * (level ^ 2)
-        Exemplos: Lvl 1 -> 35 XP, Lvl 2 -> 60 XP, Lvl 3 -> 95 XP, Lvl 4 -> 140 XP.
+        Se nivel não for especificado, utiliza self.nivel.
         """
         lvl = self.nivel if nivel is None else int(nivel)
-        return 20 + 10 * lvl + 5 * (lvl ** 2)
+        return self.calcular_xp_para_nivel(lvl)
+
+    def calcular_xp_necessario(self, nivel: int = None) -> int:
+        """
+        Alias para xp_para_proximo_nivel / conformidade com contratos de interface.
+        """
+        lvl = self.nivel if nivel is None else int(nivel)
+        return self.calcular_xp_para_nivel(lvl)
 
     def adicionar_xp(self, quantidade: int, mult_xp: float = 1.0) -> list[int]:
         """
@@ -60,10 +80,7 @@ class SistemaXP:
             niveis_ganhos.append(self.nivel)
 
             for cb in self._callbacks_level_up:
-                try:
-                    cb(self.nivel)
-                except Exception:
-                    pass
+                cb(self.nivel)
 
         # Trava de teto no nível máximo
         if self.nivel >= self.nivel_max:

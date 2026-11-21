@@ -16,8 +16,9 @@ class SistemaScavenger:
     Gerenciador singleton de seleção e direcionamento de IA Scavenger.
     """
 
-    def __init__(self, dist_maxima: float = 600.0):
+    def __init__(self, dist_maxima: float = 600.0, mover_manualmente: bool = True):
         self.dist_maxima = float(dist_maxima)
+        self.mover_manualmente = bool(mover_manualmente)
         self.scavenger_atual = None
         self.drop_alvo = None
 
@@ -26,28 +27,36 @@ class SistemaScavenger:
         Avalia se há um scavenger ativo válido. Se não houver, busca um drop elegível (>=10.0s)
         e elege 1 inimigo elegível (excluindo os 3 mais próximos e os acima de 600px).
         """
-        # Se já existe um scavenger vivo perseguindo um drop ativo, mantém
+        # Se já existe um scavenger vivo perseguindo um drop ativo e ambos ainda estão nas listas, mantém
         if (
             self.scavenger_atual is not None and
+            self.scavenger_atual in lista_inimigos and
             getattr(self.scavenger_atual, "vivo", False) and
             self.drop_alvo is not None and
+            self.drop_alvo in lista_drops and
             getattr(self.drop_alvo, "ativo", False) and
             not getattr(self.drop_alvo, "coletado", False)
         ):
             return self.scavenger_atual
 
         # Reseta referências inválidas
+        if self.scavenger_atual is not None:
+            self.scavenger_atual.pos_alvo_override = None
+        if self.drop_alvo is not None and hasattr(self.drop_alvo, "alvo_scavenger"):
+            self.drop_alvo.alvo_scavenger = False
         self.scavenger_atual = None
         self.drop_alvo = None
 
         # Encontra drops elegíveis (tempo decorrido >= 10.0s e ativos)
-        drops_elegiveis = [
-            d for d in lista_drops
-            if getattr(d, "ativo", False) and not getattr(d, "coletado", False) and (
-                (hasattr(d, "elegivel_scavenger") and d.elegivel_scavenger()) or
-                (getattr(d, "tempo_decorrido", 0.0) >= getattr(d, "tempo_scavenger", DROP_TEMPO_SCAVENGER_ATIVAR))
-            )
-        ]
+        drops_elegiveis = []
+        for d in lista_drops:
+            if not getattr(d, "ativo", False) or getattr(d, "coletado", False):
+                continue
+            if hasattr(d, "elegivel_scavenger"):
+                if d.elegivel_scavenger():
+                    drops_elegiveis.append(d)
+            elif getattr(d, "tempo_decorrido", 0.0) >= getattr(d, "tempo_scavenger", DROP_TEMPO_SCAVENGER_ATIVAR):
+                drops_elegiveis.append(d)
 
         if not drops_elegiveis:
             return None
@@ -57,10 +66,12 @@ class SistemaScavenger:
             d_cx = drop.x + getattr(drop, "largura", 16) / 2.0
             d_cy = drop.y + getattr(drop, "altura", 16) / 2.0
 
-            # Filtra inimigos vivos e calcula distância
+            # Filtra inimigos vivos e calcula distância (excluindo Boss e Elites)
             candidatos = []
             for inimigo in lista_inimigos:
                 if not getattr(inimigo, "vivo", False):
+                    continue
+                if getattr(inimigo, "is_boss", False) or getattr(inimigo, "is_elite", False):
                     continue
 
                 e_cx = inimigo.x + getattr(inimigo, "largura", 28) / 2.0
@@ -94,6 +105,8 @@ class SistemaScavenger:
         """Limpa as referências de scavenger e cancela o override de alvo nos inimigos."""
         if self.scavenger_atual is not None:
             self.scavenger_atual.pos_alvo_override = None
+        if self.drop_alvo is not None and hasattr(self.drop_alvo, "alvo_scavenger"):
+            self.drop_alvo.alvo_scavenger = False
         self.scavenger_atual = None
         self.drop_alvo = None
         if lista_inimigos:
@@ -101,7 +114,7 @@ class SistemaScavenger:
                 if hasattr(inimigo, "pos_alvo_override") and inimigo.pos_alvo_override is not None:
                     inimigo.pos_alvo_override = None
 
-    def update(self, dt: float, lista_inimigos: list, lista_drops: list):
+    def update(self, dt: float, lista_inimigos: list, lista_drops: list, mover_manualmente: bool = True):
         """
         Atualiza o estado do scavenger:
         - Seleciona scavenger se necessário.
@@ -114,9 +127,16 @@ class SistemaScavenger:
             return
 
         # Verifica se o scavenger ou drop se tornaram inválidos
-        if not getattr(self.scavenger_atual, "vivo", False) or not getattr(self.drop_alvo, "ativo", False):
+        if (
+            self.scavenger_atual not in lista_inimigos or
+            not getattr(self.scavenger_atual, "vivo", False) or
+            self.drop_alvo not in lista_drops or
+            not getattr(self.drop_alvo, "ativo", False)
+        ):
             if self.scavenger_atual is not None:
                 self.scavenger_atual.pos_alvo_override = None
+            if self.drop_alvo is not None and hasattr(self.drop_alvo, "alvo_scavenger"):
+                self.drop_alvo.alvo_scavenger = False
             self.scavenger_atual = None
             self.drop_alvo = None
             return
@@ -124,25 +144,34 @@ class SistemaScavenger:
         s = self.scavenger_atual
         d = self.drop_alvo
 
-        s_cx = s.x + getattr(s, "largura", 28) / 2.0
-        s_cy = s.y + getattr(s, "altura", 28) / 2.0
-        d_cx = d.x + getattr(d, "largura", 16) / 2.0
-        d_cy = d.y + getattr(d, "altura", 16) / 2.0
+        s_largura = getattr(s, "largura", 28)
+        s_altura = getattr(s, "altura", 28)
+        d_largura = getattr(d, "largura", 16)
+        d_altura = getattr(d, "altura", 16)
+
+        s_cx = s.x + s_largura / 2.0
+        s_cy = s.y + s_altura / 2.0
+        d_cx = d.x + d_largura / 2.0
+        d_cy = d.y + d_altura / 2.0
 
         s.pos_alvo_override = (d_cx, d_cy)
 
         # Verifica se colidiu / alcançou o drop
-        if colisao_aabb(s.x, s.y, s.largura, s.altura, d.x, d.y, d.largura, d.altura) or distancia(s_cx, s_cy, d_cx, d_cy) <= 24.0:
+        if colisao_aabb(s.x, s.y, s_largura, s_altura, d.x, d.y, d_largura, d_altura) or distancia(s_cx, s_cy, d_cx, d_cy) <= 24.0:
             # Drop consumido pelo inimigo — sem recompensas para a batata
             d.ativo = False
             d.coletado = True
+            if hasattr(d, "alvo_scavenger"):
+                d.alvo_scavenger = False
             s.pos_alvo_override = None
             self.scavenger_atual = None
             self.drop_alvo = None
             return
 
         # Se chamado diretamente sem o loop de entidades, aplica o deslocamento manual
-        dir_x, dir_y = vetor_direcao(s_cx, s_cy, d_cx, d_cy)
-        vel = getattr(s, "velocidade", 100.0)
-        s.x += dir_x * vel * dt
-        s.y += dir_y * vel * dt
+        deve_mover = mover_manualmente and getattr(self, "mover_manualmente", True)
+        if deve_mover:
+            dir_x, dir_y = vetor_direcao(s_cx, s_cy, d_cx, d_cy)
+            vel = getattr(s, "velocidade", 100.0)
+            s.x += dir_x * vel * dt
+            s.y += dir_y * vel * dt

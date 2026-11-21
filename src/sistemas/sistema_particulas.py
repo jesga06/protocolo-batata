@@ -109,6 +109,7 @@ class TextoDano:
         self.vida = self.vida_max
         self.texto = f"{dano}!" if critico else f"{dano}"
         self.cor = (255, 215, 0) if critico else (255, 255, 255)
+        self._surf = None
 
     @property
     def viva(self) -> bool:
@@ -131,12 +132,15 @@ class SistemaParticulas:
     """
     MAX_PARTICULAS = 300
     MAX_TEXTOS = 100
+    MAX_ONDAS = 30
     _fonte_dano = None
 
     def __init__(self):
         self.particulas: list[Particula] = []
         self.ondas_choque: list[OndaChoque] = []
         self.textos_dano: list[TextoDano] = []
+        self.low_graphics: bool = False
+        self._surfs_onda_cache: dict[int, pygame.Surface] = {}
 
     def limpar(self):
         """Descarta todas as partículas, ondas e textos ativos."""
@@ -152,9 +156,9 @@ class SistemaParticulas:
         critico: bool = False
     ):
         """Emite número flutuante de dano no mundo."""
-        if len(self.textos_dano) >= self.MAX_TEXTOS:
-            self.textos_dano.pop(0)
         self.textos_dano.append(TextoDano(x, y, dano, critico=critico))
+        if len(self.textos_dano) > self.MAX_TEXTOS:
+            del self.textos_dano[:len(self.textos_dano) - self.MAX_TEXTOS]
 
     def emitir_faiscas(
         self,
@@ -168,12 +172,12 @@ class SistemaParticulas:
         """
         Emite faíscas balísticas direcionais ao atingir um alvo.
         """
+        if self.low_graphics:
+            qtd = max(1, qtd // 2)
+
         base_ang = math.atan2(dir_y, dir_x) if (dir_x != 0 or dir_y != 0) else random.uniform(0, 2 * math.pi)
 
         for _ in range(qtd):
-            if len(self.particulas) >= self.MAX_PARTICULAS:
-                self.particulas.pop(0)
-
             # Cone de espalhamento de ~90 graus
             ang = base_ang + random.uniform(-0.8, 0.8)
             vel = random.uniform(120.0, 320.0)
@@ -195,6 +199,9 @@ class SistemaParticulas:
             )
             self.particulas.append(p)
 
+        if len(self.particulas) > self.MAX_PARTICULAS:
+            del self.particulas[:len(self.particulas) - self.MAX_PARTICULAS]
+
     def emitir_burst_drop(self, x: float, y: float, tipo: str = "xp"):
         """
         Emite partículas cintilantes ascendentes ao coletar um drop.
@@ -204,15 +211,15 @@ class SistemaParticulas:
             "cura": (50, 230, 90),        # Verde
             "arma": (255, 140, 0),        # Laranja
             "equipamento": (175, 75, 255),# Roxo
-            "config": (0, 220, 255)       # Ciano
+            "config": (0, 220, 255),      # Ciano
+            "overclock": (175, 75, 255)   # Roxo
         }
         cor = mapa_cores.get(tipo, (255, 255, 255))
-        qtd = 12 if tipo in ("arma", "equipamento") else 8
+        qtd = 12 if tipo in ("arma", "equipamento", "overclock") else 8
+        if self.low_graphics:
+            qtd = max(1, qtd // 2)
 
         for _ in range(qtd):
-            if len(self.particulas) >= self.MAX_PARTICULAS:
-                self.particulas.pop(0)
-
             ang = random.uniform(-math.pi * 0.8, -math.pi * 0.2)  # Direção preferencialmente para cima
             vel = random.uniform(60.0, 160.0)
             vx = math.cos(ang) * vel + random.uniform(-20, 20)
@@ -233,6 +240,9 @@ class SistemaParticulas:
             )
             self.particulas.append(p)
 
+        if len(self.particulas) > self.MAX_PARTICULAS:
+            del self.particulas[:len(self.particulas) - self.MAX_PARTICULAS]
+
     def emitir_onda_choque(
         self,
         x: float,
@@ -244,6 +254,8 @@ class SistemaParticulas:
         Cria uma onda de choque radial expansiva.
         """
         self.ondas_choque.append(OndaChoque(x=x, y=y, raio_max=raio_max, vida_max=0.28, cor=cor))
+        if len(self.ondas_choque) > self.MAX_ONDAS:
+            del self.ondas_choque[:len(self.ondas_choque) - self.MAX_ONDAS]
 
     def emitir_debris(
         self,
@@ -255,10 +267,10 @@ class SistemaParticulas:
         """
         Emite fragmentos de detritos em todas as direções para explosões.
         """
-        for _ in range(qtd):
-            if len(self.particulas) >= self.MAX_PARTICULAS:
-                self.particulas.pop(0)
+        if self.low_graphics:
+            qtd = max(1, qtd // 2)
 
+        for _ in range(qtd):
             ang = random.uniform(0, 2 * math.pi)
             vel = random.uniform(80.0, 260.0)
             vx = math.cos(ang) * vel
@@ -279,6 +291,9 @@ class SistemaParticulas:
             )
             self.particulas.append(p)
 
+        if len(self.particulas) > self.MAX_PARTICULAS:
+            del self.particulas[:len(self.particulas) - self.MAX_PARTICULAS]
+
     def update(self, dt: float):
         """
         Atualiza física e tempo de vida de todas as partículas, ondas e textos.
@@ -297,45 +312,63 @@ class SistemaParticulas:
 
     def desenhar(self, janela, camera=None):
         """
-        Renderiza todas as partículas, ondas de choque e números de dano na tela virtual.
+        Renderiza todas as partículas, ondas de choque e números de dano na tela virtual com suporte a low_graphics.
         """
-        screen = janela.screen
+        screen = getattr(janela, "screen", janela)
+        largura_janela = getattr(janela, "largura", getattr(screen, "get_width", lambda: 800)())
+        altura_janela = getattr(janela, "altura", getattr(screen, "get_height", lambda: 600)())
+        is_low_graphics = self.low_graphics or getattr(janela, "low_graphics", False)
 
         # 1. Renderiza ondas de choque
         for oc in self.ondas_choque:
             tx = camera.transform_x(oc.x) if camera else oc.x
             ty = camera.transform_y(oc.y) if camera else oc.y
 
-            if tx < -100 or tx > janela.largura + 100 or ty < -100 or ty > janela.altura + 100:
+            if tx < -100 or tx > largura_janela + 100 or ty < -100 or ty > altura_janela + 100:
                 continue
 
             raio = oc.obter_raio_atual()
-            alpha = int(max(0, 255 * (1.0 - oc.progresso)))
-            dim = int(raio * 2 + 10)
+            if is_low_graphics:
+                # Desenha círculo simples diretamente sem alocação de Surface com alpha
+                largura_linha = max(1, int(2 * (1.0 - oc.progresso)))
+                pygame.draw.circle(screen, oc.cor, (int(tx), int(ty)), int(raio), width=largura_linha)
+            else:
+                alpha = int(max(0, 255 * (1.0 - oc.progresso)))
+                dim = int(raio * 2 + 10)
 
-            if dim > 0 and alpha > 5:
-                try:
-                    surf_oc = pygame.Surface((dim, dim), pygame.SRCALPHA)
-                    cx = dim // 2
-                    cy = dim // 2
-                    cor_rgba = (oc.cor[0], oc.cor[1], oc.cor[2], alpha)
-                    largura_linha = max(1, int(3 * (1.0 - oc.progresso)))
-                    pygame.draw.circle(surf_oc, cor_rgba, (cx, cy), int(raio), width=largura_linha)
-                    screen.blit(surf_oc, (int(tx - cx), int(ty - cy)))
-                except Exception:
-                    pass
+                if dim > 0 and alpha > 5:
+                    try:
+                        surf_oc = self._surfs_onda_cache.get(dim)
+                        if surf_oc is None:
+                            surf_oc = pygame.Surface((dim, dim), pygame.SRCALPHA)
+                            self._surfs_onda_cache[dim] = surf_oc
+                        else:
+                            surf_oc.fill((0, 0, 0, 0))
+
+                        cx = dim // 2
+                        cy = dim // 2
+                        cor_rgba = (oc.cor[0], oc.cor[1], oc.cor[2], alpha)
+                        largura_linha = max(1, int(3 * (1.0 - oc.progresso)))
+                        pygame.draw.circle(surf_oc, cor_rgba, (cx, cy), int(raio), width=largura_linha)
+                        screen.blit(surf_oc, (int(tx - cx), int(ty - cy)))
+                    except Exception:
+                        pass
 
         # 2. Renderiza partículas
         for p in self.particulas:
             tx = camera.transform_x(p.x) if camera else p.x
             ty = camera.transform_y(p.y) if camera else p.y
 
-            if tx < -20 or tx > janela.largura + 20 or ty < -20 or ty > janela.altura + 20:
+            if tx < -20 or tx > largura_janela + 20 or ty < -20 or ty > altura_janela + 20:
                 continue
 
             tam = p.obter_tamanho_atual()
             if tam > 0:
-                pygame.draw.circle(screen, p.cor, (int(tx), int(ty)), max(1, int(tam)))
+                if is_low_graphics:
+                    int_tam = max(1, int(tam))
+                    pygame.draw.rect(screen, p.cor, (int(tx - int_tam // 2), int(ty - int_tam // 2), int_tam, int_tam))
+                else:
+                    pygame.draw.circle(screen, p.cor, (int(tx), int(ty)), max(1, int(tam)))
 
         # 3. Renderiza números flutuantes de dano
         if self.textos_dano:
@@ -351,11 +384,13 @@ class SistemaParticulas:
                     tx = camera.transform_x(td.x) if camera else td.x
                     ty = camera.transform_y(td.y) if camera else td.y
 
-                    if tx < -40 or tx > janela.largura + 40 or ty < -40 or ty > janela.altura + 40:
+                    if tx < -40 or tx > largura_janela + 40 or ty < -40 or ty > altura_janela + 40:
                         continue
 
                     try:
-                        surf_t = self._fonte_dano.render(td.texto, True, td.cor)
+                        if getattr(td, "_surf", None) is None:
+                            td._surf = self._fonte_dano.render(td.texto, True, td.cor)
+                        surf_t = td._surf
                         screen.blit(surf_t, (int(tx - surf_t.get_width() / 2), int(ty)))
                     except Exception:
                         pass
