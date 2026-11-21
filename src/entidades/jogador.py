@@ -52,6 +52,14 @@ class Jogador:
         self.buff_cadencia_timer = 0.0
         self.buff_resistencia_timer = 0.0
         self.escudo_ativo = False
+        self.escudo_sobrevida = 0
+        self.evento_cura_drone = 0
+        self.anim_timer = 0.0
+        self.andando_frame = False
+        self.abates_overvolt_contador = 0
+        self.timer_sem_atirar_refrig = 0.0
+        self.pulso_frio_pronto = False
+        self.coprocessador_escudo_timer = 0.0
 
         self.vivo = True
         self.facing_right = True
@@ -127,11 +135,21 @@ class Jogador:
             self.drones = [val]
 
     def adicionar_drone(self, novo_drone):
-        """Adiciona um novo drone ao enxame com defasagem angular para não colidir visualmente."""
+        """
+        Adiciona um novo drone ao enxame ou evolui (MK-I -> MK-II -> MK-III) um drone ativo do mesmo tipo,
+        mantendo no máximo 3 unidades físicas orbitando a Batata (1 de cada classe).
+        """
         if novo_drone is not None:
             import math
+            for d in self.drones:
+                if getattr(d, "ativo", False) and type(d) is type(novo_drone):
+                    if hasattr(d, "evoluir_mk"):
+                        d.evoluir_mk()
+                    d.tempo_vida = max(float(getattr(d, "tempo_vida", 30.0)), float(getattr(novo_drone, "tempo_vida", 30.0)))
+                    d.tempo_restante = d.tempo_vida
+                    return
             if self.drones:
-                novo_drone.angulo_orbita = (self.drones[-1].angulo_orbita + math.pi / 2.0) % (2.0 * math.pi)
+                novo_drone.angulo_orbita = (self.drones[-1].angulo_orbita + (2.0 * math.pi / 3.0)) % (2.0 * math.pi)
             self.drones.append(novo_drone)
 
     @property
@@ -420,6 +438,9 @@ class Jogador:
             self.dir_movimento = (0.0, -1.0)
 
         # Atualiza posição com velocidade por segundo
+        self.andando_frame = (dx != 0.0 or dy != 0.0)
+        if self.andando_frame:
+            self.anim_timer += dt
         self.x += dx * self.velocidade_atual * dt
         self.y += dy * self.velocidade_atual * dt
 
@@ -484,6 +505,16 @@ class Jogador:
         dano_a_aplicar = int(quantidade)
         if self.buff_resistencia_timer > 0.0:
             dano_a_aplicar = max(1, int(round(dano_a_aplicar * 0.92)))
+
+        # Barreira de Sobrevida (Drone de Cura quando vida cheia)
+        if getattr(self, "escudo_sobrevida", 0) > 0:
+            absorvido = min(self.escudo_sobrevida, dano_a_aplicar)
+            self.escudo_sobrevida -= absorvido
+            dano_a_aplicar -= absorvido
+            if dano_a_aplicar <= 0:
+                self.flash_dano_timer = JOGADOR_COOLDOWN_DANO_FLASH
+                self.invulnerabilidade_timer = max(self.invulnerabilidade_timer, float(JOGADOR_INVULNERABILIDADE_TEMPO))
+                return True
 
         # Proteção contra Surtos (Escudo Fatal: mitiga dano letal, 4s invuln + recupera 50% HP + 60s cooldown pós-invuln)
         if dano_a_aplicar >= self.hp and getattr(self, "protecao_surtos", False) and getattr(self, "escudo_fatal_pronto", False):
@@ -816,11 +847,24 @@ class Jogador:
         is_low_graphics = getattr(janela, "low_graphics", False)
 
         if not is_low_graphics:
-            self._carregar_sprites()
-            # Seleciona sprite apropriado (idle ou dano)
-            sprite_base = self._sprite_dano if (self.flash_dano_timer > 0.0 and self._sprite_dano) else self._sprite_idle
+            try:
+                from src.utils.pixel_art_sprites import obter_sprite_batata
+                frame_idx = int(getattr(self, "anim_timer", 0.0) * 8.0)
+                sprite_base = obter_sprite_batata(
+                    self.largura,
+                    self.altura,
+                    andando=getattr(self, "andando_frame", False),
+                    frame=frame_idx
+                )
+            except Exception:
+                self._carregar_sprites()
+                sprite_base = self._sprite_dano if (self.flash_dano_timer > 0.0 and self._sprite_dano) else self._sprite_idle
         else:
             sprite_base = None
+
+        import math
+        offset_bob = int(round(abs(math.sin(getattr(self, "anim_timer", 0.0) * 10.0)) * 3.0)) if getattr(self, "andando_frame", False) else 0
+        draw_y_bob = draw_y - offset_bob
 
         display_inited = pygame.display.get_init()
 
@@ -873,25 +917,33 @@ class Jogador:
             olho_y = iy + 8
             pygame.draw.circle(screen, (30, 30, 30), (olho_x, olho_y), 3)
         elif sprite_base is not None:
+            # Sombra pixelada sob os pés da Batata
+            pygame.draw.ellipse(
+                screen,
+                (10, 12, 18),
+                (int(draw_x + 4), int(draw_y + self.altura - 5), max(8, self.largura - 8), 6)
+            )
             sw, sh = sprite_base.get_width(), sprite_base.get_height()
             blit_x = int(draw_x + (self.largura - sw) // 2)
-            blit_y = int(draw_y + (self.altura - sh) // 2)
+            blit_y = int(draw_y_bob + (self.altura - sh) // 2)
 
-            tipo_sprite = "dano" if (self.flash_dano_timer > 0.0 and self._sprite_dano) else "idle"
-            if display_inited:
-                flip_key = (tipo_sprite, bool(self.facing_right))
-                if flip_key not in self._sprite_flip_cache:
-                    if self.facing_right:
-                        surface_to_draw = sprite_base
-                    else:
-                        surface_to_draw = pygame.transform.flip(sprite_base, True, False)
-                    self._sprite_flip_cache[flip_key] = surface_to_draw
-                else:
-                    surface_to_draw = self._sprite_flip_cache[flip_key]
-            else:
-                surface_to_draw = sprite_base if self.facing_right else pygame.transform.flip(sprite_base, True, False)
+            surface_to_draw = sprite_base if self.facing_right else pygame.transform.flip(sprite_base, True, False)
+            if self.flash_dano_timer > 0.0:
+                flash_s = surface_to_draw.copy()
+                flash_s.fill((255, 90, 90, 0), special_flags=pygame.BLEND_RGBA_ADD)
+                surface_to_draw = flash_s
 
             screen.blit(surface_to_draw, (blit_x, blit_y))
+
+            # Anel hexagonal de Casco Eletrostático (buff_resistencia_timer > 0)
+            if getattr(self, "buff_resistencia_timer", 0.0) > 0.0:
+                cx_e = draw_x + self.largura / 2.0
+                cy_e = draw_y_bob + self.altura / 2.0
+                pts_hex = [
+                    (int(cx_e + math.cos(i * math.pi / 3.0) * 22), int(cy_e + math.sin(i * math.pi / 3.0) * 22))
+                    for i in range(6)
+                ]
+                pygame.draw.polygon(screen, (80, 220, 120), pts_hex, width=1)
         else:
             # Fallback visual
             cor = (255, 80, 80) if self.flash_dano_timer > 0.0 else (190, 150, 90)
