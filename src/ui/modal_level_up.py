@@ -497,7 +497,7 @@ class ModalLevelUp:
         pool_consumiveis = gerar_pool_consumiveis_por_tier(tier)
 
         bloqueadas = self.gerenciador_config.obter_bloqueadas()
-        is_marco = (nivel in (5, 11) or nivel % 5 == 0)
+        is_marco = (nivel in (5, 11))
         tem_pity = (self.config_pity_buffer is not None and self.config_pity_buffer.id not in self.gerenciador_config.desbloqueadas)
 
         # Determina se o slot central terá uma configuração
