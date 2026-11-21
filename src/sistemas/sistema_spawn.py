@@ -36,10 +36,15 @@ class SistemaSpawn:
 
     def intervalo_spawn(self, tempo_s: float) -> float:
         """
-        Calcula o intervalo de tempo entre spawns em segundos.
-        Fórmula: T_spawn(t) = max(0.75s, 3.00s - 0.012s * t)
+        Calcula a taxa de intervalo entre spawns em segundos.
+        Nos primeiros 50s, acelera suavemente (0.67x em 0s até 1.0x em 50s) para popular a tela 1280x720.
         """
-        return max(SPAWN_INTERVALO_MINIMO, SPAWN_INTERVALO_INICIAL - 0.012 * float(tempo_s))
+        base = max(SPAWN_INTERVALO_MINIMO, SPAWN_INTERVALO_INICIAL - 0.012 * float(tempo_s))
+        t = max(0.0, float(tempo_s))
+        if t < 50.0:
+            fator = 0.67 + 0.33 * (t / 50.0)
+            return max(SPAWN_INTERVALO_MINIMO, base * fator)
+        return base
 
     def tamanho_lote(self, tempo_s: float) -> int:
         """
