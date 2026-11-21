@@ -122,7 +122,7 @@ class TestEmpiricalChallengerMultipliers(unittest.TestCase):
         # Executa update do jogador
         jogador.update(0.1)
 
-        esperado_total = jogador.velocidade_base * esperado_config * 1.12 * 1.15 * 1.15
+        esperado_total = jogador.velocidade_base * esperado_config * 1.08 * 1.15 * 1.15
         self.assertAlmostEqual(jogador.velocidade_atual, esperado_total, places=3)
 
     def test_extreme_enemy_debuffs_and_scaling_combination(self):
@@ -213,8 +213,8 @@ class TestPlayerSpeedLifecycleStress(unittest.TestCase):
             jogador.update(dt)
             velocidades_registradas.append(jogador.velocidade_atual)
 
-        # Fase 1: Frames 0 a 100 (0 a ~1.66s) -> Config (1.25) + Buff (1.12) + Drone (1.15) = 1.61
-        vel_fase1 = jogador.velocidade_base * 1.25 * 1.12 * 1.15
+        # Fase 1: Frames 0 a 100 (0 a ~1.66s) -> Config (1.25) + Buff (1.08) + Drone (1.15) = 1.5525
+        vel_fase1 = jogador.velocidade_base * 1.25 * 1.08 * 1.15
         for v in velocidades_registradas[0:100]:
             self.assertAlmostEqual(v, vel_fase1, places=3)
 
@@ -376,26 +376,38 @@ class TestDarkIlluminationAndScavengerBoundaryStress(unittest.TestCase):
 
     def test_dark_illumination_distance_boundary_threshold(self):
         """
-        [ADVERSARIAL] Valida se o multiplicador de redução de dano (0.50) da Config 18 (iluminacao)
-        é ativado exatamente além do limiar de visão de 195.0 px.
+        [ADVERSARIAL] Valida no loop real de GameplayScene se o multiplicador de redução de dano (0.50)
+        da Config 18 (iluminacao) é ativado com base na distância da origem do projétil (> 195.0 px).
         """
-        mgr = GerenciadorConfiguracoes()
-        mgr.desbloquear_config("iluminacao")
-        mgr.definir_valor("iluminacao", "ligado")
-        mods = mgr.obter_modificadores()
+        cena = GameplayScene()
+        cena.config_sistema.desbloquear_config("iluminacao")
+        cena.config_sistema.definir_valor("iluminacao", "ligado")
+        cena.aplicar_modificadores()
+        mods = cena.config_sistema.obter_modificadores()
         self.assertEqual(mods.dano_fora_visao_mult, 0.50)
 
-        # Caso 1: Dentro do campo de visão (distância 180px <= 195px)
-        dist_dentro = 180.0
-        mult_dano_dentro = 1.0 if dist_dentro <= 195.0 else mods.dano_fora_visao_mult
-        dano_dentro = max(1, int(round(20 * mult_dano_dentro)))
-        self.assertEqual(dano_dentro, 20)
+        cx = cena.jogador.x + cena.jogador.largura / 2.0
+        cy = cena.jogador.y + cena.jogador.altura / 2.0
 
-        # Caso 2: Fora do campo de visão (distância 210px > 195px)
-        dist_fora = 210.0
-        mult_dano_fora = 1.0 if dist_fora <= 195.0 else mods.dano_fora_visao_mult
-        dano_fora = max(1, int(round(20 * mult_dano_fora)))
-        self.assertEqual(dano_fora, 10)  # -50%
+        # Caso 1: Projétil disparado de dentro do campo de visão (origem a 150px <= 195px)
+        cena.jogador.hp = 100
+        cena.jogador.invulnerabilidade_timer = 0.0
+        p_dentro = Projetil(x=cena.jogador.x, y=cena.jogador.y, dir_x=0.0, dir_y=0.0, velocidade=0.0, dano=20, dono="inimigo")
+        p_dentro.x_origem = cx + 150.0
+        p_dentro.y_origem = cy
+        cena.projeteis = [p_dentro]
+        cena.loop(dt=0.016)
+        self.assertEqual(cena.jogador.hp, 80, "Projétil originado dentro de 195px deve causar 100% do dano (20).")
+
+        # Caso 2: Projétil disparado de fora do campo de visão (origem a 240px > 195px)
+        cena.jogador.hp = 100
+        cena.jogador.invulnerabilidade_timer = 0.0
+        p_fora = Projetil(x=cena.jogador.x, y=cena.jogador.y, dir_x=0.0, dir_y=0.0, velocidade=0.0, dano=20, dono="inimigo")
+        p_fora.x_origem = cx + 240.0
+        p_fora.y_origem = cy
+        cena.projeteis = [p_fora]
+        cena.loop(dt=0.016)
+        self.assertEqual(cena.jogador.hp, 90, "Projétil originado fora de 195px deve causar 50% do dano (10).")
 
     def test_scavenger_10_second_delay_boundary_precision(self):
         """
@@ -587,6 +599,8 @@ class TestCombatRulesAndFriendlyFireIntegration(unittest.TestCase):
         cena.projeteis.append(proj_drone)
 
         cena.loop()
+        self.assertEqual(drone.hp, 0)
+        self.assertFalse(drone.ativo)
 
 class TestFullCombatLoopStress(unittest.TestCase):
     """Testa a integração contínua do loop de combate sob estresse de 300 frames com todas as 20 configs customizadas."""

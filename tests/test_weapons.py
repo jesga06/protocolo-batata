@@ -34,8 +34,10 @@ class TestPistolaEProjetil(unittest.TestCase):
         self.assertEqual(len(tiros), 1)
 
         proj = tiros[0]
-        self.assertEqual(proj.x, 100.0)
-        self.assertEqual(proj.y, 300.0)
+        self.assertEqual(proj.x, 96.0)
+        self.assertEqual(proj.y, 296.0)
+        self.assertEqual(proj.x + proj.largura / 2.0, 100.0)
+        self.assertEqual(proj.y + proj.altura / 2.0, 300.0)
         self.assertAlmostEqual(proj.dir_x, 1.0)
         self.assertAlmostEqual(proj.dir_y, 0.0)
         self.assertEqual(proj.dano, 12)

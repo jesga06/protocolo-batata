@@ -73,21 +73,47 @@ class TestGoldenRuleInequalities(unittest.TestCase):
                 self.assertEqual(card["valor"], 30)
 
     def test_config_buffs_are_strictly_superior_to_consumables(self):
-        """Valida que bônus de configurações ativas permanentes superam ou igualam consumíveis temporários."""
-        # Dano de configs permanentes: fogo_amigo dá +25%, keybinds pesadelo dá +30%, damage_numbers dá 2.0x crit
-        dano_configs = [0.25, 0.30]
-        for c_dano in dano_configs:
-            self.assertGreaterEqual(c_dano, 0.20, "Config de dano máxima deve ser numericamente superior ao consumível (+20%).")
+        """Valida no catálogo real CONFIGURACOES_GAMEPLAY que bônus permanentes superam consumíveis temporários."""
+        todos_consumiveis = []
+        for tier in [1, 2, 3, 4]:
+            todos_consumiveis.extend(gerar_pool_consumiveis_por_tier(tier))
 
-        # Velocidade de configs: motion_blur dá +15%, arrow keys dá +15%
-        vel_configs = [0.15]
-        for c_vel in vel_configs:
-            self.assertGreaterEqual(c_vel, 0.12, "Config de velocidade máxima deve ser superior ao consumível (+12%).")
+        max_dano_cons = max(c["valor"] for c in todos_consumiveis if c.get("subtipo") == "buff_dano_temp")
+        max_vel_cons = max(c["valor"] for c in todos_consumiveis if c.get("subtipo") == "buff_vel_temp")
+        max_cad_cons = max(c["valor"] for c in todos_consumiveis if c.get("subtipo") == "buff_cadencia_temp")
+        max_res_cons = max(c["valor"] for c in todos_consumiveis if c.get("subtipo") == "buff_resistencia_temp")
 
-        # Redução de dano de configs: FPS 15 dá -27.75%, Iluminação escuridão dá -50%
-        res_configs = [0.2775, 0.50]
-        for c_res in res_configs:
-            self.assertGreaterEqual(c_res, 0.15, "Config de redução de dano deve ser superior ao consumível (-15%).")
+        self.assertEqual(max_dano_cons, 0.05)
+        self.assertEqual(max_vel_cons, 0.08)
+        self.assertEqual(max_cad_cons, 0.08)
+        self.assertEqual(max_res_cons, 0.08)
+
+        # Extrai bônus reais das opções de CONFIGURACOES_GAMEPLAY
+        dano_bonus_configs = []
+        vel_bonus_configs = []
+        res_bonus_configs = []
+        for cdef in CONFIGURACOES_GAMEPLAY.values():
+            for op in cdef.opcoes.values():
+                m = op.modificadores
+                if "dano_armas_mult" in m and m["dano_armas_mult"] > 1.0:
+                    dano_bonus_configs.append(round(m["dano_armas_mult"] - 1.0, 4))
+                if "vel_jogador_mult" in m and m["vel_jogador_mult"] > 1.0:
+                    vel_bonus_configs.append(round(m["vel_jogador_mult"] - 1.0, 4))
+                if "dano_inimigos_mult" in m and m["dano_inimigos_mult"] < 1.0:
+                    res_bonus_configs.append(round(1.0 - m["dano_inimigos_mult"], 4))
+                if "dano_fora_visao_mult" in m and m["dano_fora_visao_mult"] < 1.0:
+                    res_bonus_configs.append(round(1.0 - m["dano_fora_visao_mult"], 4))
+
+        self.assertTrue(len(dano_bonus_configs) > 0)
+        self.assertTrue(len(vel_bonus_configs) > 0)
+        self.assertTrue(len(res_bonus_configs) > 0)
+
+        for c_dano in dano_bonus_configs:
+            self.assertGreater(c_dano, max_dano_cons, f"Bônus de dano de config ({c_dano}) deve superar consumível ({max_dano_cons}).")
+        for c_vel in vel_bonus_configs:
+            self.assertGreaterEqual(c_vel, max_vel_cons, f"Bônus de velocidade de config ({c_vel}) deve superar/igualar consumível ({max_vel_cons}).")
+        for c_res in res_bonus_configs:
+            self.assertGreater(c_res, max_res_cons, f"Redução de dano de config ({c_res}) deve superar consumível ({max_res_cons}).")
 
 
 if __name__ == "__main__":

@@ -261,11 +261,11 @@ class TestChallengerSaveParticlesStress(unittest.TestCase):
         for i in range(200):
             sistema.emitir_onda_choque(x=float(i), y=float(i), raio_max=100.0)
 
-        self.assertEqual(len(sistema.ondas_choque), 200)
+        self.assertEqual(len(sistema.ondas_choque), SistemaParticulas.MAX_ONDAS)
 
         # Atualiza por 0.10s -> todas devem continuar ativas (vida_max = 0.28s)
         sistema.update(0.10)
-        self.assertEqual(len(sistema.ondas_choque), 200)
+        self.assertEqual(len(sistema.ondas_choque), SistemaParticulas.MAX_ONDAS)
 
         # Atualiza por mais 0.30s (total 0.40s > 0.28s) -> todas devem ser descartadas
         sistema.update(0.30)

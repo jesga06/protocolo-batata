@@ -77,13 +77,18 @@ class TestInimigoPadraoIAEColisao(unittest.TestCase):
         self.assertFalse(atingiu_e1_novamente)
         self.assertEqual(j.hp, 140)
 
+        # Expira os 0.2s de i-frame base do jogador (JOGADOR_INVULNERABILIDADE_TEMPO = 0.2s)
+        # enquanto o cooldown de contato de e1 (0.4s) continua ativo
+        j.invulnerabilidade_timer = 0.0
+
         # 3. Inimigo e2 possui seu próprio cooldown independente zerado e aplica dano
         self.assertEqual(e2.cooldown_contato_atual, 0.0)
         atingiu_e2 = e2.tentar_causar_dano_contato(j)
         self.assertTrue(atingiu_e2)
         self.assertEqual(j.hp, 130)
 
-        # 4. Avança 0.2s: cooldown de e1 e e2 ainda ativos
+        # 4. Avança 0.2s: cooldown de e1 e e2 ainda ativos (0.2s restantes > 0)
+        j.invulnerabilidade_timer = 0.0
         e1.update(dt=0.2, pos_alvo=(100, 100))
         e2.update(dt=0.2, pos_alvo=(100, 100))
         self.assertFalse(e1.tentar_causar_dano_contato(j))
