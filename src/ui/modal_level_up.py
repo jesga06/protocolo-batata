@@ -156,9 +156,10 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
         "nome": "Calibração Térmica",
         "categoria": "Consumível",
         "icone_asset": "mira_crosshair",
-        "valor": 0.20,
+        "valor": 0.05,
         "duracao": 15.0,
-        "buffs": ["+20% Dano em todas as armas por 15s"],
+        "descricao": "+5% Dano em todas as armas por 15s.",
+        "buffs": ["+5% Dano em todas as armas por 15s"],
         "nerfs": ["Duração temporária (15 segundos)"],
         "flavor_text": "Ajuste fino nos percursores de tiro."
     }
@@ -169,9 +170,10 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
         "nome": "Sobrecarga de Passos",
         "categoria": "Consumível",
         "icone_asset": "icon_vsync",
-        "valor": 0.12,
+        "valor": 0.08,
         "duracao": 15.0,
-        "buffs": ["+12% Velocidade de movimento por 15s"],
+        "descricao": "+8% Velocidade de movimento por 15s.",
+        "buffs": ["+8% Velocidade de movimento por 15s"],
         "nerfs": ["Duração temporária (15 segundos)"],
         "flavor_text": "Lubrificação de emergência nas esteiras."
     }
@@ -182,9 +184,10 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
         "nome": "Acelerador de Gatilho",
         "categoria": "Consumível",
         "icone_asset": "icon_auto_fire",
-        "valor": 0.25,
+        "valor": 0.08,
         "duracao": 15.0,
-        "buffs": ["+25% Cadência de Tiro (-25% Cooldown) por 15s"],
+        "descricao": "+8% Cadência de Tiro (-8% Cooldown) por 15s.",
+        "buffs": ["+8% Cadência de Tiro (-8% Cooldown) por 15s"],
         "nerfs": ["Duração temporária (15 segundos)"],
         "flavor_text": "Mecanismo de repetição acelerado."
     }
@@ -195,9 +198,10 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
         "nome": "Matriz Protetora",
         "categoria": "Consumível",
         "icone_asset": "icon_fps_cap",
-        "valor": 0.15,
+        "valor": 0.08,
         "duracao": 15.0,
-        "buffs": ["-15% Dano Recebido por 15s"],
+        "descricao": "-8% Dano Recebido por 15s.",
+        "buffs": ["-8% Dano Recebido por 15s"],
         "nerfs": ["Duração temporária (15 segundos)"],
         "flavor_text": "Campos de dispersão de impacto."
     }
@@ -322,7 +326,7 @@ class ModalLevelUp:
         self.cena = cena
 
         self.ativo: bool = False
-        self.fila_level_ups: int = 0
+        self.fila_niveis: list[int] = []
         self.nivel_atual_draw: int = 1
         self.cards_sorteados: list[dict[str, Any]] = []
 
@@ -340,11 +344,16 @@ class ModalLevelUp:
             for x in self.card_xs
         ]
 
-        self.card_hovered: int = -1
-        self._ultimo_hover: int = -1
+        self.card_hovered: Optional[int] = None
+        self._ultimo_hover: Optional[int] = None
         self._mouse_pressionado_anterior: bool = True  # Inicia True para ignorar clique que causou level up
         self.tempo_transicao_entrada: float = 0.35  # 350ms de transição com input bloqueado
         self.tempo_transicao_saida: float = 0.0
+
+        # Superfícies pré-alocadas / reutilizadas em draw()
+        self._dark_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
+        self._layer_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
+        self._glow_surf = pygame.Surface((self.card_largura, self.card_altura), pygame.SRCALPHA)
 
         # Fontes de texto
         self._fonte_titulo = None
@@ -373,21 +382,37 @@ class ModalLevelUp:
 
     def _obter_icone(self, chave_icone: str) -> Optional[pygame.Surface]:
         """Recupera ou carrega um ícone 32x32 para a configuração ou consumível."""
+        if not chave_icone:
+            return None
+
         if chave_icone in self._icones_cache:
             return self._icones_cache[chave_icone]
 
+        chaves_candidatas = [chave_icone]
+        # Evita double-prefix 'icon_icon_*.png' e suporta 'vsync' -> 'icon_vsync'
+        if chave_icone.startswith("icon_"):
+            chaves_candidatas.append(chave_icone[5:])
+        else:
+            chaves_candidatas.append(f"icon_{chave_icone}")
+
         img = None
-        try:
-            caminho = obter_caminho_asset(chave_icone)
-            if os.path.isfile(caminho):
-                img = pygame.image.load(caminho).convert_alpha()
-        except Exception:
+        for chave in chaves_candidatas:
+            try:
+                caminho = obter_caminho_asset(chave)
+                if os.path.isfile(caminho):
+                    img = pygame.image.load(caminho).convert_alpha()
+                    break
+            except (KeyError, pygame.error, OSError):
+                continue
+
+        if img is None:
             try:
                 from src.utils.constantes import ASSETS_DIR
-                direto = os.path.join(ASSETS_DIR, "ui", "icones_configs", f"icon_{chave_icone}.png")
+                nome_sem_prefixo = chave_icone[5:] if chave_icone.startswith("icon_") else chave_icone
+                direto = os.path.join(ASSETS_DIR, "ui", "icones_configs", f"icon_{nome_sem_prefixo}.png")
                 if os.path.isfile(direto):
                     img = pygame.image.load(direto).convert_alpha()
-            except Exception:
+            except (KeyError, pygame.error, OSError):
                 img = None
 
         if img is not None:
@@ -406,18 +431,38 @@ class ModalLevelUp:
             self._fonte_card_corpo = pygame.font.SysFont("Arial", 9)
             self._fonte_rodape = pygame.font.SysFont("Arial", 13)
 
+    @property
+    def fila_level_ups(self) -> int:
+        """Propriedade legada mantida para retrocompatibilidade: retorna a quantidade de níveis na fila FIFO."""
+        return len(self.fila_niveis)
+
+    @fila_level_ups.setter
+    def fila_level_ups(self, valor: int):
+        val = max(0, int(valor))
+        atual = len(self.fila_niveis)
+        if val == atual:
+            return
+        if val < atual:
+            self.fila_niveis = self.fila_niveis[:val]
+        else:
+            lvl = self.nivel_atual_draw if self.nivel_atual_draw else (self.jogador.nivel if self.jogador else 1)
+            self.fila_niveis.extend([lvl] * (val - atual))
+
     def enfileirar_level_up(self, novo_nivel: int = None):
         """
-        Adiciona um level up à fila e ativa o modal se ele ainda não estiver ativo.
+        Adiciona um level up à fila FIFO e ativa o modal se ele ainda não estiver ativo.
         """
-        self.fila_level_ups += 1
         if novo_nivel is not None:
-            self.nivel_atual_draw = int(novo_nivel)
+            lvl = int(novo_nivel)
         elif self.jogador is not None:
-            self.nivel_atual_draw = int(self.jogador.nivel)
+            lvl = int(self.jogador.nivel)
+        else:
+            lvl = self.nivel_atual_draw if self.nivel_atual_draw else 1
+
+        self.fila_niveis.append(lvl)
 
         if not self.ativo:
-            self.abrir(self.nivel_atual_draw)
+            self.abrir(self.fila_niveis[0])
 
     def abrir(self, nivel: int = None):
         """Ativa o modal e sorteia a primeira trinca de cartas com transição suave."""
@@ -425,6 +470,9 @@ class ModalLevelUp:
             self.nivel_atual_draw = int(nivel)
         elif self.jogador is not None:
             self.nivel_atual_draw = int(self.jogador.nivel)
+
+        if not self.fila_niveis:
+            self.fila_niveis.append(self.nivel_atual_draw)
 
         self.ativo = True
         self.tempo_transicao_entrada = 0.35
@@ -542,8 +590,16 @@ class ModalLevelUp:
                 armas_especiais = [Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas, Railgun]
                 classe_arma = random.choice(armas_especiais)
                 nova_arma = classe_arma()
-                self.jogador.arma_especial = nova_arma
-                self.jogador.selecionar_slot(3)
+                if hasattr(self.jogador, "equipar_arma_especial"):
+                    self.jogador.equipar_arma_especial(nova_arma)
+                elif getattr(self.jogador, "bios_modding", False) and self.jogador.arma_especial is not None:
+                    if len(self.jogador.armas) > 1:
+                        self.jogador.armas[1] = nova_arma
+                    self.jogador.arma_especial_secundaria = nova_arma
+                    self.jogador.selecionar_slot(2)
+                else:
+                    self.jogador.arma_especial = nova_arma
+                    self.jogador.selecionar_slot(3)
         elif card["tipo"] in ("caixa_equip", "caixa_equipamento"):
             if self.jogador:
                 from src.equipamentos import DroneCura, DroneCombate, DroneSuporte
@@ -554,23 +610,6 @@ class ModalLevelUp:
                     self.jogador.adicionar_drone(novo_drone)
                 else:
                     self.jogador.drone = novo_drone
-        elif card["tipo"] == "vitalidade":
-            if self.jogador:
-                val = card.get("valor", 10)
-                self.jogador.hp_max += val
-                self.jogador.curar(val)
-        elif card["tipo"] == "velocidade":
-            if self.jogador:
-                mult_vel = 1.0 + float(card.get("valor", 0.05))
-                self.jogador.velocidade_base *= mult_vel
-                self.jogador.velocidade_atual = self.jogador.velocidade_base
-        elif card["tipo"] == "potencia_dano":
-            if self.jogador:
-                mult_dano = 1.0 + float(card.get("valor", 0.05))
-                for arma in self.jogador.armas:
-                    arma.dano = max(1, int(round(arma.dano * mult_dano)))
-                if self.jogador.arma_especial:
-                    self.jogador.arma_especial.dano = max(1, int(round(self.jogador.arma_especial.dano * mult_dano)))
 
         # 2. Atualiza modificadores na cena vinculada e reseta buffer de tiro
         if self.cena and hasattr(self.cena, "aplicar_modificadores"):
@@ -578,13 +617,13 @@ class ModalLevelUp:
         if self.cena and hasattr(self.cena, "buffer_tiro"):
             self.cena.buffer_tiro = 0.0
 
-        # 3. Trata a fila de level-ups
-        self.fila_level_ups = max(0, self.fila_level_ups - 1)
+        # 3. Trata a fila de level-ups FIFO
+        if self.fila_niveis:
+            self.fila_niveis.pop(0)
 
-        if self.fila_level_ups > 0:
-            # Sorteia para o próximo nível acumulado
-            if self.jogador:
-                self.nivel_atual_draw = self.jogador.nivel
+        if self.fila_niveis:
+            # Sorteia para o próximo nível acumulado na ordem FIFO (preserva marcos 5/10/15/20)
+            self.nivel_atual_draw = self.fila_niveis[0]
             self.tempo_transicao_entrada = 0.25
             self.tempo_transicao_saida = 0.0
             self._mouse_pressionado_anterior = True
@@ -593,9 +632,16 @@ class ModalLevelUp:
         else:
             # Fila concluída -> desativa seleção e inicia fade-out visual
             self.ativo = False
+            self._ultimo_hover = None
+            self.card_hovered = None
             self.tempo_transicao_saida = 0.25
             if self.cena and hasattr(self.cena, "pausado"):
                 self.cena.pausado = False
+
+            # Se o jogador atingiu o Nível 20 e completou os upgrades, inicia a cutscene do Chefe Final
+            if self.jogador and self.jogador.nivel >= 20:
+                if self.cena and hasattr(self.cena, "iniciar_boss_cutscene"):
+                    self.cena.iniciar_boss_cutscene()
 
         return True
 
@@ -604,9 +650,14 @@ class ModalLevelUp:
         # 1. Trata animação de fade-out de saída
         if self.tempo_transicao_saida > 0.0:
             self.tempo_transicao_saida = max(0.0, self.tempo_transicao_saida - dt)
+            if self.tempo_transicao_saida <= 0.0:
+                self._ultimo_hover = None
+                self.card_hovered = None
             return
 
         if not self.ativo:
+            self._ultimo_hover = None
+            self.card_hovered = None
             return
 
         # 2. Decrementa o tempo de transição inicial onde os cliques acidentais são bloqueados
@@ -615,29 +666,23 @@ class ModalLevelUp:
             if self.tempo_transicao_entrada > 0.0:
                 return
 
-        # 3. Inputs de Teclado (1, 2, 3)
+        # 3. Inputs de Teclado (1, 2, 3 e KP1, KP2, KP3)
         if teclado is not None:
-            # Tecla 1
-            if (hasattr(teclado, "key_pressed") and teclado.key_pressed("1")) or \
-               (hasattr(teclado, "key_down") and teclado.key_down("1")) or \
-               (hasattr(teclado, "key_pressed") and teclado.key_pressed("KP1")) or \
-               (hasattr(teclado, "key_down") and teclado.key_down("KP1")):
+            # Tecla 1 / KP1
+            if (hasattr(teclado, "key_down") and (teclado.key_down("1") or teclado.key_down("KP1"))) or \
+               (not hasattr(teclado, "key_down") and hasattr(teclado, "key_pressed") and (teclado.key_pressed("1") or teclado.key_pressed("KP1"))):
                 self.selecionar_card(0)
                 return
 
-            # Tecla 2
-            if (hasattr(teclado, "key_pressed") and teclado.key_pressed("2")) or \
-               (hasattr(teclado, "key_down") and teclado.key_down("2")) or \
-               (hasattr(teclado, "key_pressed") and teclado.key_pressed("KP2")) or \
-               (hasattr(teclado, "key_down") and teclado.key_down("KP2")):
+            # Tecla 2 / KP2
+            if (hasattr(teclado, "key_down") and (teclado.key_down("2") or teclado.key_down("KP2"))) or \
+               (not hasattr(teclado, "key_down") and hasattr(teclado, "key_pressed") and (teclado.key_pressed("2") or teclado.key_pressed("KP2"))):
                 self.selecionar_card(1)
                 return
 
-            # Tecla 3
-            if (hasattr(teclado, "key_pressed") and teclado.key_pressed("3")) or \
-               (hasattr(teclado, "key_down") and teclado.key_down("3")) or \
-               (hasattr(teclado, "key_pressed") and teclado.key_pressed("KP3")) or \
-               (hasattr(teclado, "key_down") and teclado.key_down("KP3")):
+            # Tecla 3 / KP3
+            if (hasattr(teclado, "key_down") and (teclado.key_down("3") or teclado.key_down("KP3"))) or \
+               (not hasattr(teclado, "key_down") and hasattr(teclado, "key_pressed") and (teclado.key_pressed("3") or teclado.key_pressed("KP3"))):
                 self.selecionar_card(2)
                 return
 
@@ -697,12 +742,12 @@ class ModalLevelUp:
         alpha_conteudo = int(fator_anim * 255)
 
         # 1. Overlay Escuro Translúcido sobre o Gameplay
-        dark_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
-        dark_surf.fill((10, 8, 20, alpha_fundo))
-        screen.blit(dark_surf, (0, 0))
+        self._dark_surf.fill((10, 8, 20, alpha_fundo))
+        screen.blit(self._dark_surf, (0, 0))
 
         # 2. Superfície de Conteúdo com Transparência Global
-        layer_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
+        self._layer_surf.fill((0, 0, 0, 0))
+        layer_surf = self._layer_surf
 
         # 2. Título Centralizado: LEVEL UP!
         tit_surf = self._fonte_titulo.render("LEVEL UP!", True, DOURADO)
@@ -751,10 +796,9 @@ class ModalLevelUp:
 
             # 4.2 Destaque de Hover / Borda e Glow
             if is_hovered:
-                glow_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
                 glow_cor = (255, 215, 0, 25) if is_config else (175, 75, 255, 25)
-                glow_surf.fill(glow_cor)
-                layer_surf.blit(glow_surf, (rect.x, rect.y))
+                self._glow_surf.fill(glow_cor)
+                layer_surf.blit(self._glow_surf, (rect.x, rect.y))
 
             pygame.draw.rect(layer_surf, cor_borda, rect, width=largura_borda, border_radius=6)
 

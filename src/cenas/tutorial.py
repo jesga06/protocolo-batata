@@ -17,11 +17,19 @@ class TutorialScene(BaseScene):
     Tela de Tutorial interativo em formato de painel com guias visuais.
     """
 
-    def __init__(self):
+    def __init__(
+        self):
         super().__init__()
         self.tempo_acumulado = 0.0
         self.pagina_atual = 0  # 0: Controles e HUD, 1: Drops e Armas, 2: Inimigos e Regras
         self.total_paginas = 3
+
+        # Debounce de entrada e proteção contra sangramento de teclas de cenas anteriores
+        self.tempo_entrada = 0.0
+        self._teclas_bloqueadas_entrada = True
+        self._tab_pressionado_anterior = False
+        self._kp6_pressionado_anterior = False
+        self._kp4_pressionado_anterior = False
 
         # Cache de fontes para alta performance
         self._fonte_tit = pygame.font.SysFont("Arial", 22, bold=True)
@@ -32,16 +40,55 @@ class TutorialScene(BaseScene):
         self._fonte_rod = pygame.font.SysFont("Arial", 11, bold=True)
 
     def loop(self):
-        dt = self.janela.delta_time()
+        dt = min(self.janela.delta_time(), 0.1)
         self.tempo_acumulado += dt
+        self.tempo_entrada += dt
 
-        # Navegação de páginas e retorno
+        # Checa estado físico das teclas brutas no Pygame
+        tab_pressionado = False
+        kp6_pressionado = False
+        kp4_pressionado = False
+        teclas_acao_seguradas = False
+        try:
+            keys = pygame.key.get_pressed()
+            tab_pressionado = bool(keys[pygame.K_TAB])
+            kp6_pressionado = bool(keys[pygame.K_KP6] or keys[pygame.K_KP_6])
+            kp4_pressionado = bool(keys[pygame.K_KP4] or keys[pygame.K_KP_4])
+            if (keys[pygame.K_t] or keys[pygame.K_RETURN] or keys[pygame.K_ESCAPE] or
+                keys[pygame.K_SPACE] or keys[pygame.K_m] or keys[pygame.K_TAB]):
+                teclas_acao_seguradas = True
+        except Exception:
+            pass
+
+        # Proteção contra sangramento de input: só aceita ações após soltar as teclas de ação ou após 0.25s
+        if self._teclas_bloqueadas_entrada:
+            if not teclas_acao_seguradas or self.tempo_entrada >= 0.25:
+                self._teclas_bloqueadas_entrada = False
+            else:
+                self._tab_pressionado_anterior = tab_pressionado
+                self._kp6_pressionado_anterior = kp6_pressionado
+                self._kp4_pressionado_anterior = kp4_pressionado
+                return
+
+        # Detecção de borda de subida (edge detection) para teclas especiais
+        tab_edge = tab_pressionado and not self._tab_pressionado_anterior
+        self._tab_pressionado_anterior = tab_pressionado
+
+        kp6_edge = kp6_pressionado and not self._kp6_pressionado_anterior
+        self._kp6_pressionado_anterior = kp6_pressionado
+
+        kp4_edge = kp4_pressionado and not self._kp4_pressionado_anterior
+        self._kp4_pressionado_anterior = kp4_pressionado
+
+        # Retorno ao menu principal via edge detection (key_down)
         tecla_voltar = (
-            self.teclado.key_down("ESC") or self.teclado.key_pressed("ESC") or
-            self.teclado.key_down("ENTER") or self.teclado.key_pressed("ENTER") or
-            self.teclado.key_down("SPACE") or self.teclado.key_pressed("SPACE") or
-            self.teclado.key_down("m") or self.teclado.key_pressed("m") or
-            self.teclado.key_down("t") or self.teclado.key_pressed("t")
+            hasattr(self.teclado, "key_down") and (
+                self.teclado.key_down("ESC") or
+                self.teclado.key_down("ENTER") or
+                self.teclado.key_down("SPACE") or
+                self.teclado.key_down("m") or self.teclado.key_down("M") or
+                self.teclado.key_down("t") or self.teclado.key_down("T")
+            )
         )
         if tecla_voltar:
             from PPlay.scenemanager import SceneManager
@@ -49,13 +96,60 @@ class TutorialScene(BaseScene):
             SceneManager.change_scene(MenuPrincipalScene())
             return
 
+        # Navegação direta para abas via teclas numéricas '1', '2', '3' (teclado principal ou numérico)
+        tecla_num1 = (
+            hasattr(self.teclado, "key_down") and (
+                self.teclado.key_down("1") or self.teclado.key_down("KP_1") or self.teclado.key_down("KP1")
+            )
+        )
+        tecla_num2 = (
+            hasattr(self.teclado, "key_down") and (
+                self.teclado.key_down("2") or self.teclado.key_down("KP_2") or self.teclado.key_down("KP2")
+            )
+        )
+        tecla_num3 = (
+            hasattr(self.teclado, "key_down") and (
+                self.teclado.key_down("3") or self.teclado.key_down("KP_3") or self.teclado.key_down("KP3")
+            )
+        )
+
+        if tecla_num1:
+            self.pagina_atual = 0
+            return
+        elif tecla_num2:
+            self.pagina_atual = 1
+            return
+        elif tecla_num3:
+            self.pagina_atual = 2
+            return
+
+        # Navegação com clique do mouse nas abas superiores
+        if self.mouse is not None and hasattr(self.mouse, "get_position") and hasattr(self.mouse, "button_down"):
+            try:
+                if self.mouse.button_down(1):
+                    mx, my = self.mouse.get_position()
+                    # Abas estão dispostas horizontalmente entre y=75 e y=105
+                    for i in range(self.total_paginas):
+                        tx = 75 + i * 220
+                        rect_tab = pygame.Rect(tx, 75, 205, 30)
+                        if rect_tab.collidepoint(mx, my):
+                            self.pagina_atual = i
+                            return
+            except Exception:
+                pass
+
+        # Navegação de páginas (Direita / Esquerda)
         tecla_dir = (
-            self.teclado.key_down("RIGHT") or self.teclado.key_down("d") or
-            self.teclado.key_down("TAB") or self.teclado.key_down("KP_6")
+            (hasattr(self.teclado, "key_down") and (
+                self.teclado.key_down("RIGHT") or self.teclado.key_down("d") or self.teclado.key_down("D") or
+                self.teclado.key_down("TAB") or self.teclado.key_down("KP_6") or self.teclado.key_down("KP6")
+            )) or tab_edge or kp6_edge
         )
         tecla_esq = (
-            self.teclado.key_down("LEFT") or self.teclado.key_down("a") or
-            self.teclado.key_down("KP_4")
+            (hasattr(self.teclado, "key_down") and (
+                self.teclado.key_down("LEFT") or self.teclado.key_down("a") or self.teclado.key_down("A") or
+                self.teclado.key_down("KP_4") or self.teclado.key_down("KP4")
+            )) or kp4_edge
         )
 
         if tecla_dir:
@@ -144,22 +238,23 @@ class TutorialScene(BaseScene):
                 ("Gema Amarela de XP", "Concede experiência. Inimigos padrão dão 5 XP; inimigos maiores concedem mais."),
                 ("Caixa Vermelha de Cura", "Restaura imediatamente 35 pontos de vida (HP) da Batata."),
                 ("Caixa Dourada de Arma", "Equipa uma arma especial no Slot 3 com munição limitada."),
-                ("Caixa Laranja de Drone", "Ativa um drone de suporte orbital no Slot 4 com duração de 30 segundos.")
+                ("Caixa Laranja de Drone", "Ativa um drone de suporte orbital no Slot 4 com duração de 30 segundos."),
+                ("Núcleo de Overclock", "Drop exclusivo de Mini-Bosses que concede upgrades especiais de BIOS.")
             ]
             y_pos = 145
             for nome_d, desc_d in drops_info:
                 d_surf = fonte_destaque.render(f"* {nome_d}:", True, AMARELO_XP)
                 screen.blit(d_surf, (70, y_pos))
                 desc_s = fonte_corpo.render(desc_d, True, BRANCO)
-                screen.blit(desc_s, (70, y_pos + 16))
-                y_pos += 36
+                screen.blit(desc_s, (70, y_pos + 15))
+                y_pos += 30
 
             sec2_surf = fonte_sec.render("ARSENAL DISPONÍVEL", True, AZUL_CIANO)
-            screen.blit(sec2_surf, (70, y_pos + 10))
-            y_pos += 35
+            screen.blit(sec2_surf, (70, y_pos + 4))
+            y_pos += 26
 
             armas_info = [
-                ("Chave de Manutenção [1]", "Golpe melee em cone direcional de 45 graus com forte repulsão (knockback)."),
+                ("Chave de Manutenção [1]", "Golpe melee em cone direcional de 60° com forte repulsão (knockback)."),
                 ("Pistola [2]", "Arma permanente de disparo contínuo (10 de dano por tiro, munição infinita)."),
                 ("Escopeta [3]", "Dispara 9 projéteis simultâneos com dispersão (10 de dano por projétil)."),
                 ("Railgun [3]", "Carrega por 1.0s e dispara um projétil de 50 de dano que atravessa todos os alvos."),
@@ -169,8 +264,8 @@ class TutorialScene(BaseScene):
                 a_surf = fonte_destaque.render(f"- {nome_a}:", True, DOURADO)
                 screen.blit(a_surf, (70, y_pos))
                 desc_a_s = fonte_corpo.render(desc_a, True, CINZA_TEXTO)
-                screen.blit(desc_a_s, (70, y_pos + 15))
-                y_pos += 32
+                screen.blit(desc_a_s, (70, y_pos + 14))
+                y_pos += 28
 
         elif self.pagina_atual == 2:
             # Página 3: Inimigos e Mecânicas
@@ -183,34 +278,35 @@ class TutorialScene(BaseScene):
                 ("Warranty Void (Fantasma Ciano)", "Alterna para forma etérea: projéteis e golpes passam direto sem dano."),
                 ("Ballistic Enthusiast (Blindado)", "Chassi reforçado com escudo que reduz dano frontal."),
                 ("Atirador Blaster (Ferrugem)", "Mantém distância tática e dispara projéteis vermelhos no jogador."),
-                ("Geladeira Industrial (Tanque)", "Monstro maciço com 120 HP que exige múltiplos disparos para ser destruído.")
+                ("Mini-Bosses e Chefe Final", "Elites periódicos (1m-4m) e a Geladeira Tsunami (Nv 20) com ataques mortais.")
             ]
             y_pos = 145
             for nome_i, desc_i in inimigos_info:
                 i_surf = fonte_destaque.render(f"* {nome_i}:", True, (255, 120, 120))
                 screen.blit(i_surf, (70, y_pos))
                 desc_i_s = fonte_corpo.render(desc_i, True, BRANCO)
-                screen.blit(desc_i_s, (70, y_pos + 16))
-                y_pos += 34
+                screen.blit(desc_i_s, (70, y_pos + 15))
+                y_pos += 31
 
-            sec2_surf = fonte_sec.render("PROGRESSÃO E LEVEL UP POR MARCOS", True, AZUL_CIANO)
-            screen.blit(sec2_surf, (70, y_pos + 8))
-            y_pos += 30
+            sec2_surf = fonte_sec.render("PROGRESSÃO, LEVEL UP E OVERCLOCK", True, AZUL_CIANO)
+            screen.blit(sec2_surf, (70, y_pos + 4))
+            y_pos += 26
 
             regras_info = [
                 ("Níveis Regulares", "Oferecem 3 opções de buffs ou utilitários consumíveis escalados para o nível."),
                 ("Níveis de Marco (a cada 5 níveis)", "A opção central é substituída por uma Configuração Amaldiçoada."),
-                ("Buffer de Pity", "Se não escolher a Configuração no nível 5, ela reaparece no nível seguinte.")
+                ("Buffer de Pity", "Se não escolher a Configuração no nível 5, ela reaparece no nível seguinte."),
+                ("Mini-Bosses e Overclock", "Derrotar Mini-Bosses concede Núcleos de Overclock com upgrades de BIOS.")
             ]
             for nome_r, desc_r in regras_info:
                 r_surf = fonte_destaque.render(f"- {nome_r}:", True, DOURADO)
                 screen.blit(r_surf, (70, y_pos))
                 desc_r_s = fonte_corpo.render(desc_r, True, CINZA_TEXTO)
-                screen.blit(desc_r_s, (70, y_pos + 15))
-                y_pos += 30
+                screen.blit(desc_r_s, (70, y_pos + 14))
+                y_pos += 27
 
         # Rodapé de Instruções
-        rodape_txt = "Pressione [A / D] ou [SETAS] para trocar de página | Pressione [ESC] ou [ENTER] para voltar"
+        rodape_txt = "Pressione [1, 2, 3], [A / D], [SETAS] ou CLIQUE para trocar de página | [ESC / ENTER] para voltar"
         fonte_rod = self._fonte_rod
         rod_surf = fonte_rod.render(rodape_txt, True, (150, 165, 185))
         screen.blit(rod_surf, rod_surf.get_rect(centerx=LARGURA_TELA // 2, bottom=painel_rect.bottom - 12))

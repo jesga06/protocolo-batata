@@ -133,3 +133,4 @@ class HUD:
         hp_rect = hp_surf.get_rect(centerx=LARGURA_TELA // 2, centery=pos_y + altura_barra // 2)
         screen.blit(hp_surf, hp_rect)
 
+

@@ -8,7 +8,7 @@ import math
 import os
 import pygame
 from src.utils.constantes import (
-    LARGURA_TELA, ALTURA_TELA,
+    LARGURA_TELA, ALTURA_TELA, LARGURA_ARENA, ALTURA_ARENA,
     ROXO_ACENTO, ROXO_CLARO, ROXO_ESCURO,
     DOURADO, VERDE_CURA, VERMELHO_DANO, LARANJA_ALERTA, BRANCO, CINZA_TEXTO,
     DROP_TEMPO_DESAPARECER, DROP_TEMPO_SCAVENGER_ATIVAR, DROP_CURA_VALOR_BASE
@@ -38,7 +38,8 @@ class MenuDebug:
             ("XP (+50)", "xp", 50),
             ("Cura (+35)", "cura", DROP_CURA_VALOR_BASE),
             ("Caixa de Arma", "arma", 1),
-            ("Caixa Equipamento", "equipamento", 1)
+            ("Caixa Equipamento", "equipamento", 1),
+            ("Núcleo Overclock", "overclock", 1)
         ]
         self.idx_tipo_drop = 0
 
@@ -66,19 +67,34 @@ class MenuDebug:
             ("Blindado", "blindado"),
             ("Ranged (Atirador)", "ranged"),
             ("Tanque (Geladeira)", "tank"),
-            ("Chefe de Elite", "elite")
+            ("Chefe de Elite", "elite"),
+            ("Geladeira Tsunami (Boss)", "boss")
         ]
         self.idx_inimigo = 0
 
         self.opcoes_level_up = [1, 3, 5, 10]
         self.idx_level_up = 0
 
+        self.opcoes_overclock = [
+            ("Multithreading", "multithreading"),
+            ("Refrigeração", "refrigeracao"),
+            ("Overvolt", "overvolt"),
+            ("BIOS Modding", "bios_modding"),
+            ("Proteção Surtos", "protecao_surtos"),
+            ("Upgrade Barramento", "upgrade_barramento")
+        ]
+        self.idx_overclock = 0
+
         # Índice do menu focado
         self.indice_foco = 0
-        self.total_itens = 12
+        self.total_itens = 15
 
         # Retângulo do painel de Debug (Top-Left)
-        self.rect_painel = pygame.Rect(16, 16, 330, 530)
+        self.rect_painel = pygame.Rect(16, 16, 340, 560)
+        self._painel_surf = pygame.Surface((self.rect_painel.width, self.rect_painel.height), pygame.SRCALPHA)
+        self._painel_surf.fill((12, 10, 22, 235))
+        self._tecla_f1_anterior = False
+        self._tecla_tilde_anterior = False
         self._fonte_tit = None
         self._fonte_item = None
         self._fonte_val = None
@@ -129,24 +145,35 @@ class MenuDebug:
             if self._timer_status <= 0.0:
                 self._mensagem_status = ""
 
-        # Checa tecla de atalho F1 ou ~ (crase / tilde) para abrir/fechar
-        tecla_f1 = False
-        tecla_tilde = False
+        # Checa tecla de atalho F1 ou ~ (crase / tilde) para abrir/fechar com edge-trigger
+        tecla_f1_atual = False
+        tecla_tilde_atual = False
 
         if teclado is not None:
+            if hasattr(teclado, "key_down"):
+                if teclado.key_down("F1"):
+                    tecla_f1_atual = True
+                if teclado.key_down("`") or teclado.key_down("~"):
+                    tecla_tilde_atual = True
             if hasattr(teclado, "key_pressed"):
-                tecla_f1 = teclado.key_pressed("F1")
-                tecla_tilde = teclado.key_pressed("`") or teclado.key_pressed("~") or teclado.key_pressed("GRAVE")
-            elif hasattr(teclado, "key_down"):
-                tecla_f1 = teclado.key_down("F1")
-                tecla_tilde = teclado.key_down("`") or teclado.key_down("~")
+                if teclado.key_pressed("F1"):
+                    tecla_f1_atual = True
+                if teclado.key_pressed("`") or teclado.key_pressed("~") or teclado.key_pressed("GRAVE"):
+                    tecla_tilde_atual = True
 
         # Checagem direta via Pygame para redundância
         chaves_pressionadas = pygame.key.get_pressed()
-        if chaves_pressionadas[pygame.K_F1] or chaves_pressionadas[pygame.K_BACKQUOTE]:
-            tecla_f1 = True
+        if chaves_pressionadas[pygame.K_F1]:
+            tecla_f1_atual = True
+        if chaves_pressionadas[pygame.K_BACKQUOTE]:
+            tecla_tilde_atual = True
 
-        if (tecla_f1 or tecla_tilde) and self.cooldown_input <= 0.0:
+        f1_edge = tecla_f1_atual and not self._tecla_f1_anterior
+        tilde_edge = tecla_tilde_atual and not self._tecla_tilde_anterior
+        self._tecla_f1_anterior = tecla_f1_atual
+        self._tecla_tilde_anterior = tecla_tilde_atual
+
+        if (f1_edge or tilde_edge) and self.cooldown_input <= 0.0:
             self.alternar()
             return
 
@@ -189,7 +216,19 @@ class MenuDebug:
             mouse_clicado = True
 
         if mouse_clicado and self.cooldown_input <= 0.0:
-            mx, my = pygame.mouse.get_pos() if pygame.mouse.get_focused() else (400, 300)
+            if self.cena and getattr(self.cena, "mouse", None):
+                try:
+                    mx, my = self.cena.mouse.get_position()
+                except Exception:
+                    mx, my = pygame.mouse.get_pos() if pygame.mouse.get_focused() else (400, 300)
+            elif mouse is not None and hasattr(mouse, "get_position"):
+                try:
+                    mx, my = mouse.get_position()
+                except Exception:
+                    mx, my = pygame.mouse.get_pos() if pygame.mouse.get_focused() else (400, 300)
+            else:
+                mx, my = pygame.mouse.get_pos() if pygame.mouse.get_focused() else (400, 300)
+
             if self.rect_painel.collidepoint(mx, my):
                 # Clique dentro do painel do menu de debug
                 y_rel = my - (self.rect_painel.y + 40)
@@ -199,15 +238,22 @@ class MenuDebug:
                     item_rect = pygame.Rect(self.rect_painel.x + 8, self.rect_painel.y + 40 + item_clicado * 24 - 2, self.rect_painel.width - 16, 22)
                     if mx > item_rect.centerx:
                         self._alterar_opcao(1)
-                    elif self.indice_foco in (8, 9, 10, 11):
-                        self._executar_acao_selecionada()
+                    else:
+                        if self.indice_foco in (0, 1, 2, 3):
+                            self._alterar_opcao(-1)
+                        elif self.indice_foco in (4, 5, 6, 7):
+                            self._alterar_opcao(-1)
+                        elif self.indice_foco in (8, 9, 10, 11, 12, 14):
+                            self._executar_acao_selecionada()
+                        elif self.indice_foco == 13:
+                            self._alterar_opcao(-1)
                     self.cooldown_input = 0.20
             else:
                 # Clique fora do painel: gera spawn nas coordenadas do mundo do jogo
                 cam_x = getattr(self.cena.camera, "x", 0.0) if (self.cena and hasattr(self.cena, "camera")) else 0.0
                 cam_y = getattr(self.cena.camera, "y", 0.0) if (self.cena and hasattr(self.cena, "camera")) else 0.0
-                largura_arena = getattr(self.cena, "largura_arena", 2400)
-                altura_arena = getattr(self.cena, "altura_arena", 1800)
+                largura_arena = getattr(self.cena, "largura_arena", LARGURA_ARENA)
+                altura_arena = getattr(self.cena, "altura_arena", ALTURA_ARENA)
                 mundo_x = max(20.0, min(float(largura_arena) - 20.0, mx + cam_x))
                 mundo_y = max(20.0, min(float(altura_arena) - 20.0, my + cam_y))
                 self._spawnar_item_ou_inimigo_no_mundo(mundo_x, mundo_y)
@@ -233,6 +279,8 @@ class MenuDebug:
             self.idx_inimigo = (self.idx_inimigo + direcao) % len(self.opcoes_inimigos)
         elif self.indice_foco == 10:  # Subir Nível (+X)
             self.idx_level_up = (self.idx_level_up + direcao) % len(self.opcoes_level_up)
+        elif self.indice_foco == 13:  # Overclock
+            self.idx_overclock = (self.idx_overclock + direcao) % len(self.opcoes_overclock)
 
     def _executar_acao_selecionada(self):
         """Executa ações com a tecla ENTER / ESPAÇO."""
@@ -276,9 +324,35 @@ class MenuDebug:
                 from src.sistemas.config_dados import CONFIGURACOES_GAMEPLAY
                 for cid in CONFIGURACOES_GAMEPLAY.keys():
                     config_sys.desbloquear_config(cid)
-                if hasattr(config_sys, "salvar_progresso"):
-                    config_sys.salvar_progresso()
                 self._definir_status("TODAS AS 20 CONFIGS DESBLOQUEADAS!")
+        elif self.indice_foco == 12:  # Boss Cutscene
+            if self.cena and hasattr(self.cena, "iniciar_boss_cutscene"):
+                self.fechar()
+                self.cena.iniciar_boss_cutscene()
+                self._definir_status("BOSS CUTSCENE INICIADA!")
+        elif self.indice_foco == 13:  # Conceder Overclock
+            nome_ov, id_ov = self.opcoes_overclock[self.idx_overclock]
+            if self.cena and hasattr(self.cena, "jogador") and self.cena.jogador:
+                self.cena.jogador.aplicar_overclock(id_ov)
+                if hasattr(self.cena, "aplicar_modificadores"):
+                    self.cena.aplicar_modificadores()
+                self._definir_status(f"OVERCLOCK CONCEDIDO: {nome_ov}")
+        elif self.indice_foco == 14:  # Matar Chefe
+            if self.cena and hasattr(self.cena, "chefe_final") and self.cena.chefe_final:
+                chefe = self.cena.chefe_final
+                if getattr(chefe, "estado", None) == "intro":
+                    chefe.intro_concluida = True
+                chefe.receber_dano(chefe.hp + 9999)
+                if hasattr(self.cena, "_registrar_abate_inimigo"):
+                    self.cena._registrar_abate_inimigo(chefe)
+                self._definir_status("GELADEIRA TSUNAMI DESTRUÍDA!")
+            elif self.cena and hasattr(self.cena, "inimigos"):
+                for inim in self.cena.inimigos:
+                    if getattr(inim, "is_elite", False):
+                        inim.receber_dano(inim.hp + 999)
+                        if hasattr(self.cena, "_registrar_abate_inimigo"):
+                            self.cena._registrar_abate_inimigo(inim)
+                self._definir_status("MINI-BOSSES DESTRUÍDOS!")
 
     def _spawnar_item_ou_inimigo_no_mundo(self, x: float, y: float):
         """Gera a entidade selecionada com o CENTRO posicionado exatamente nas coordenadas (x, y)."""
@@ -317,7 +391,10 @@ class MenuDebug:
             }
             if classe_str in armas_map and hasattr(self.cena, "jogador") and self.cena.jogador:
                 nova_arma = armas_map[classe_str]()
-                self.cena.jogador.arma_especial = nova_arma
+                if hasattr(self.cena.jogador, "equipar_arma_especial"):
+                    self.cena.jogador.equipar_arma_especial(nova_arma)
+                else:
+                    self.cena.jogador.arma_especial = nova_arma
                 if hasattr(self.cena.jogador, "selecionar_slot"):
                     self.cena.jogador.selecionar_slot(3)
                 elif hasattr(self.cena.jogador, "slot_ativo"):
@@ -346,6 +423,7 @@ class MenuDebug:
                 InimigoPadrao, InimigoRapido, InimigoPhasing,
                 InimigoBlindado, InimigoRanged, InimigoTank
             )
+            from src.entidades.geladeira_tsunami import GeladeiraTsunami
             inimigo = None
             if tipo_i == "padrao":
                 inimigo = InimigoPadrao(x=x, y=y)
@@ -364,11 +442,19 @@ class MenuDebug:
                 inimigo.hp_max = 120
                 inimigo.hp = 120
                 inimigo.score_valor = 500
+            elif tipo_i == "boss":
+                inimigo = GeladeiraTsunami(x=x - 56, y=y - 78)
+                inimigo.estado = "fase1"
+                inimigo.subestado_fase2 = "stalk"
+                inimigo.intro_concluida = True
+                if hasattr(self.cena, "chefe_final"):
+                    self.cena.chefe_final = inimigo
 
             if inimigo is not None and hasattr(self.cena, "inimigos"):
                 # Posiciona o CENTRO do inimigo exatamente nas coordenadas do clique
-                inimigo.x = x - getattr(inimigo, "largura", 28) / 2.0
-                inimigo.y = y - getattr(inimigo, "altura", 28) / 2.0
+                if tipo_i != "boss":
+                    inimigo.x = x - getattr(inimigo, "largura", 28) / 2.0
+                    inimigo.y = y - getattr(inimigo, "altura", 28) / 2.0
                 self.cena.inimigos.append(inimigo)
                 self._definir_status(f"INIMIGO SPAWNADO: {nome_i}")
 
@@ -384,9 +470,7 @@ class MenuDebug:
         self._inicializar_fontes()
 
         # 1. Fundo Escuro do Painel Translúcido
-        painel_surf = pygame.Surface((self.rect_painel.width, self.rect_painel.height), pygame.SRCALPHA)
-        painel_surf.fill((12, 10, 22, 235))
-        screen.blit(painel_surf, (self.rect_painel.x, self.rect_painel.y))
+        screen.blit(self._painel_surf, (self.rect_painel.x, self.rect_painel.y))
         pygame.draw.rect(screen, ROXO_ACENTO, self.rect_painel, width=2, border_radius=6)
 
         # 2. Cabeçalho do Console
@@ -408,7 +492,10 @@ class MenuDebug:
             ("9. Curar Vida Max", "[ENTER PARA CURAR]", VERDE_CURA),
             ("10. Tomar Dano 1/8", "[ENTER PARA DANO]", VERMELHO_DANO),
             ("11. Level Up (+X)", f"< +{self.opcoes_level_up[self.idx_level_up]} Nivel >", DOURADO),
-            ("12. Destravar Configs", "[ENTER DESTRAVA 20]", DOURADO)
+            ("12. Destravar Configs", "[ENTER DESTRAVA 20]", DOURADO),
+            ("13. Boss Cutscene (Lvl 20)", "[ENTER CUTSCENE]", DOURADO),
+            ("14. Conceder Overclock", f"< {self.opcoes_overclock[self.idx_overclock][0]} >", ROXO_CLARO),
+            ("15. Matar Chefe", "[ENTER PARA MATAR]", VERMELHO_DANO)
         ]
 
         for i, (label, val_txt, val_cor) in enumerate(itens_config):
@@ -444,7 +531,13 @@ class MenuDebug:
             screen.blit(hint_surf, (self.rect_painel.x + 12, y_cursor))
 
         # 5. Mira Visual no Cursor do Mouse para Spawn no Mundo
-        mx, my = pygame.mouse.get_pos() if pygame.mouse.get_focused() else (400, 300)
+        if self.cena and getattr(self.cena, "mouse", None):
+            try:
+                mx, my = self.cena.mouse.get_position()
+            except Exception:
+                mx, my = pygame.mouse.get_pos() if pygame.mouse.get_focused() else (400, 300)
+        else:
+            mx, my = pygame.mouse.get_pos() if pygame.mouse.get_focused() else (400, 300)
         if not self.rect_painel.collidepoint(mx, my):
             # Desenha retículo de mira
             pygame.draw.circle(screen, DOURADO, (mx, my), 10, width=1)
