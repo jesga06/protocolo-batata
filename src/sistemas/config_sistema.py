@@ -9,7 +9,7 @@ import json
 from typing import Any, Optional
 from src.sistemas.config_dados import (
     CONFIGURACOES_GAMEPLAY, CONFIGURACOES_SISTEMA, TODAS_CONFIGURACOES,
-    ConfiguracaoDef
+    ConfiguracaoDef, TipoControleConfig
 )
 from src.sistemas.config_efeitos import calcular_modificadores, ModificadoresGameplay
 
@@ -58,19 +58,50 @@ class GerenciadorConfiguracoes:
             return True
         return config_id in self.desbloqueadas
 
+    @staticmethod
+    def _validar_valor_config(cdef: ConfiguracaoDef, valor: Any) -> tuple[bool, Any]:
+        """
+        Valida se o valor é compatível com a definição da configuração.
+        - Sliders: numérico (não booleano) entre 0 e 100.
+        - Opções: valor deve constar em cdef.opcoes (ou string equivalente).
+        Retorna (valido: bool, valor_normalizado: Any).
+        """
+        if cdef.tipo == TipoControleConfig.SLIDER:
+            if isinstance(valor, (int, float)) and not isinstance(valor, bool) and 0 <= valor <= 100:
+                return True, valor
+            return False, None
+
+        if cdef.opcoes:
+            if valor in cdef.opcoes:
+                return True, valor
+            if isinstance(valor, (int, float)) and not isinstance(valor, bool) and str(valor) in cdef.opcoes:
+                return True, str(valor)
+            return False, None
+
+        return True, valor
+
     def definir_valor(self, config_id: str, valor: Any) -> bool:
         """
         Define o valor ativo de uma configuração.
         Configurações de gameplay travadas não podem ter seu valor alterado.
+        Valida se o valor é aceitável segundo a definição (opções válidas ou 0..100 para sliders).
         """
         if config_id in CONFIGURACOES_SISTEMA:
-            self.sistema_configs[config_id] = valor
+            cdef = CONFIGURACOES_SISTEMA[config_id]
+            valido, val_norm = self._validar_valor_config(cdef, valor)
+            if not valido:
+                return False
+            self.sistema_configs[config_id] = val_norm
             return True
 
         if config_id in CONFIGURACOES_GAMEPLAY:
             if config_id not in self.desbloqueadas:
                 return False  # Travada no padrão neutro até desbloquear
-            self.ativas[config_id] = valor
+            cdef = CONFIGURACOES_GAMEPLAY[config_id]
+            valido, val_norm = self._validar_valor_config(cdef, valor)
+            if not valido:
+                return False
+            self.ativas[config_id] = val_norm
             return True
 
         return False
@@ -169,49 +200,139 @@ class GerenciadorConfiguracoes:
             }
         }
 
-    def from_dict(self, dados: dict):
-        """Restaura o estado a partir de um dicionário serializado."""
-        if not dados or not isinstance(dados, dict):
-            return
+    def from_dict(self, dados: dict) -> bool:
+        """
+        Restaura o estado a partir de um dicionário serializado.
+        Operação atômica: valida e constrói todo o estado em estruturas temporárias
+        antes de atualizar a instância. Em caso de falha ou dados inválidos, a instância
+        não fica em estado corrompido.
+        """
+        if dados is None or not isinstance(dados, dict):
+            return False
 
-        self._inicializar_padroes()
-
-        if "desbloqueadas" in dados and isinstance(dados["desbloqueadas"], (list, set)):
-            self.desbloqueadas = set(dados["desbloqueadas"])
-
-        if "ativas" in dados and isinstance(dados["ativas"], dict):
-            for k, v in dados["ativas"].items():
-                if k in CONFIGURACOES_GAMEPLAY:
-                    self.ativas[k] = v
-
-        if "sistema_configs" in dados and isinstance(dados["sistema_configs"], dict):
-            for k, v in dados["sistema_configs"].items():
-                if k in CONFIGURACOES_SISTEMA:
-                    self.sistema_configs[k] = v
-
-        if "estatisticas" in dados and isinstance(dados["estatisticas"], dict):
-            est = dados["estatisticas"]
-            self.estatisticas = {
-                "high_score": int(est.get("high_score", 0)),
-                "melhor_tempo": float(est.get("melhor_tempo", 0.0)),
-                "total_abates": int(est.get("total_abates", 0)),
-                "partidas_jogadas": int(est.get("partidas_jogadas", 0)),
-                "vitorias": int(est.get("vitorias", 0)),
-                "historico": list(est.get("historico", []))
+        try:
+            temp_desbloqueadas: set[str] = set()
+            temp_ativas: dict[str, Any] = {
+                cid: cdef.valor_padrao for cid, cdef in CONFIGURACOES_GAMEPLAY.items()
+            }
+            temp_sistema: dict[str, Any] = {
+                cid: cdef.valor_padrao for cid, cdef in CONFIGURACOES_SISTEMA.items()
+            }
+            temp_estatisticas: dict[str, Any] = {
+                "high_score": 0,
+                "melhor_tempo": 0.0,
+                "total_abates": 0,
+                "partidas_jogadas": 0,
+                "vitorias": 0,
+                "historico": []
             }
 
+            # 1. Filtrar desbloqueadas estritamente contra CONFIGURACOES_GAMEPLAY
+            if "desbloqueadas" in dados and isinstance(dados["desbloqueadas"], (list, set, tuple)):
+                for item in dados["desbloqueadas"]:
+                    if isinstance(item, str) and item in CONFIGURACOES_GAMEPLAY:
+                        temp_desbloqueadas.add(item)
+
+            # 2. Validar ativas contra opções válidas de gameplay
+            if "ativas" in dados and isinstance(dados["ativas"], dict):
+                for k, v in dados["ativas"].items():
+                    if k in CONFIGURACOES_GAMEPLAY:
+                        cdef = CONFIGURACOES_GAMEPLAY[k]
+                        valido, val_norm = self._validar_valor_config(cdef, v)
+                        if valido:
+                            temp_ativas[k] = val_norm
+
+            # 3. Validar configs de sistema (faixa 0..100 para sliders / opções válidas)
+            if "sistema_configs" in dados and isinstance(dados["sistema_configs"], dict):
+                for k, v in dados["sistema_configs"].items():
+                    if k in CONFIGURACOES_SISTEMA:
+                        cdef = CONFIGURACOES_SISTEMA[k]
+                        valido, val_norm = self._validar_valor_config(cdef, v)
+                        if valido:
+                            temp_sistema[k] = val_norm
+
+            # 4. Validar e sanitizar estatísticas com resiliência a tipos incorretos
+            if "estatisticas" in dados and isinstance(dados["estatisticas"], dict):
+                est = dados["estatisticas"]
+                try:
+                    temp_estatisticas["high_score"] = int(est.get("high_score", 0))
+                except (TypeError, ValueError):
+                    temp_estatisticas["high_score"] = 0
+
+                try:
+                    temp_estatisticas["melhor_tempo"] = float(est.get("melhor_tempo", 0.0))
+                except (TypeError, ValueError):
+                    temp_estatisticas["melhor_tempo"] = 0.0
+
+                try:
+                    temp_estatisticas["total_abates"] = int(est.get("total_abates", 0))
+                except (TypeError, ValueError):
+                    temp_estatisticas["total_abates"] = 0
+
+                try:
+                    temp_estatisticas["partidas_jogadas"] = int(est.get("partidas_jogadas", 0))
+                except (TypeError, ValueError):
+                    temp_estatisticas["partidas_jogadas"] = 0
+
+                try:
+                    temp_estatisticas["vitorias"] = int(est.get("vitorias", 0))
+                except (TypeError, ValueError):
+                    temp_estatisticas["vitorias"] = 0
+
+                raw_hist = est.get("historico")
+                if isinstance(raw_hist, list):
+                    temp_estatisticas["historico"] = [
+                        entry for entry in raw_hist if isinstance(entry, dict)
+                    ]
+                else:
+                    temp_estatisticas["historico"] = []
+
+            # Atualização atômica do estado da instância
+            self.desbloqueadas = temp_desbloqueadas
+            self.ativas = temp_ativas
+            self.sistema_configs = temp_sistema
+            self.estatisticas = temp_estatisticas
+            return True
+
+        except Exception:
+            return False
+
     def salvar_arquivo(self, caminho: Optional[str] = None) -> bool:
-        """Salva o estado serializado em arquivo JSON."""
+        """Salva o estado serializado em arquivo JSON usando gravação atômica."""
         if caminho is None:
             from src.utils.constantes import SAVE_FILE_PATH
             caminho = SAVE_FILE_PATH
+        temp_path = None
         try:
             import os
-            os.makedirs(os.path.dirname(caminho), exist_ok=True)
-            with open(caminho, "w", encoding="utf-8") as f:
-                json.dump(self.to_dict(), f, indent=2, ensure_ascii=False)
+            import tempfile
+            if not isinstance(caminho, str) or not caminho.strip():
+                return False
+            # Bloqueia caminhos inválidos de drives no POSIX (ex: "Z:\\...")
+            if os.name != "nt" and len(caminho) > 1 and caminho[1] == ":" and caminho[0].isalpha():
+                return False
+
+            caminho_abs = os.path.abspath(caminho)
+            dir_path = os.path.dirname(caminho_abs)
+            if dir_path:
+                os.makedirs(dir_path, exist_ok=True)
+
+            with tempfile.NamedTemporaryFile("w", dir=dir_path, delete=False, encoding="utf-8") as tf:
+                temp_path = tf.name
+                json.dump(self.to_dict(), tf, indent=2, ensure_ascii=False)
+                tf.flush()
+                os.fsync(tf.fileno())
+
+            os.replace(temp_path, caminho_abs)
             return True
         except Exception:
+            if temp_path is not None:
+                try:
+                    import os
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                except (OSError, IOError):
+                    pass
             return False
 
     def salvar_progresso(self, caminho: Optional[str] = None) -> bool:
@@ -228,9 +349,9 @@ class GerenciadorConfiguracoes:
             if os.path.isfile(caminho):
                 with open(caminho, "r", encoding="utf-8") as f:
                     dados = json.load(f)
-                self.from_dict(dados)
-                return True
-        except Exception:
+                if isinstance(dados, dict):
+                    return self.from_dict(dados)
+        except (OSError, IOError, json.JSONDecodeError, UnicodeDecodeError):
             pass
         return False
 

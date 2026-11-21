@@ -1,7 +1,7 @@
 """
 Catálogo e Definições de Dados do Sistema de Configurações — Protocolo: Batata
 SSOT: CONFIGURACOES.md
-Define todas as 20 configurações de gameplay desbloqueáveis e as 5 configurações de sistema.
+Define todas as 20 configurações de gameplay desbloqueáveis e as 3 configurações de sistema (23 no total).
 """
 
 from dataclasses import dataclass, field
@@ -75,26 +75,26 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "45": OpcaoConfig(
                 id="45",
                 label="45 FPS",
-                modificadores={"dano_inimigos_mult": 0.85},
+                modificadores={"dano_inimigos_mult": 0.85, "fps_stutter_dodge": True},
                 flavor_text="Os inimigos também estão perdendo frames.",
                 nerf_text="Fluidez reduzida a 45 FPS",
-                buff_text="Dano recebido de inimigos reduzido em 15% (x0.85)"
+                buff_text="Dano recebido de inimigos reduzido em 15% (x0.85) e micro-congelamentos de esquiva (stutter dodge)"
             ),
             "30": OpcaoConfig(
                 id="30",
                 label="30 FPS",
-                modificadores={"vel_inimigos_mult": 0.90},
+                modificadores={"vel_inimigos_mult": 0.90, "fps_stutter_dodge": True},
                 flavor_text="Só é lag se você estiver perdendo.",
                 nerf_text="Fluidez reduzida a 30 FPS",
-                buff_text="Velocidade de movimento dos inimigos reduzida em 10% (x0.90)"
+                buff_text="Velocidade dos inimigos -10% e micro-congelamentos de esquiva (stutter dodge)"
             ),
             "15": OpcaoConfig(
                 id="15",
                 label="15 FPS",
-                modificadores={"dano_inimigos_mult": 0.7225, "vel_inimigos_mult": 0.81},
+                modificadores={"dano_inimigos_mult": 0.7225, "vel_inimigos_mult": 0.81, "fps_stutter_dodge": True},
                 flavor_text="Cada frame foi desenhado à mão por monges tibetanos.",
                 nerf_text="Experiência quase injogável",
-                buff_text="Dano de inimigos -27.75% (x0.7225) e velocidade -19% (x0.81)"
+                buff_text="Dano de inimigos -27.75% (x0.7225), velocidade -19% (x0.81) e micro-congelamentos de esquiva (stutter dodge)"
             ),
         }
     ),
@@ -119,10 +119,10 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "baixa": OpcaoConfig(
                 id="baixa",
                 label="Baixa",
-                modificadores={"hp_inimigos_mult": 0.80},
+                modificadores={"hp_inimigos_mult": 0.80, "graficos_shrapnel": True},
                 flavor_text="Texturas são um luxo que o departamento financeiro cortou.",
                 nerf_text="Sprites e partículas simplificados.",
-                buff_text="HP máximo de todos os inimigos reduzido em 20% (x0.80)"
+                buff_text="HP de inimigos -20% e inimigos mortos estilhaçam em polígonos que furam outros alvos"
             ),
         }
     ),
@@ -147,26 +147,26 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "75%": OpcaoConfig(
                 id="75%",
                 label="960x540 (75%)",
-                modificadores={"drop_chance_bonus": 0.10},
+                modificadores={"drop_chance_bonus": 0.10, "resolucao_chunky_hitbox": 1.25},
                 flavor_text="Menos pixels na tela, mais caixas no chão.",
                 nerf_text="Visão levemente pixelada",
-                buff_text="Chance de drop de itens aumentada em +10%"
+                buff_text="Drop de itens +10% e área de impacto dos tiros aumentada em +25%"
             ),
             "50%": OpcaoConfig(
                 id="50%",
                 label="640x360 (50%)",
-                modificadores={"drop_chance_bonus": 0.25},
+                modificadores={"drop_chance_bonus": 0.25, "resolucao_chunky_hitbox": 1.50},
                 flavor_text="Lembranças de uma época de monitores CRT.",
                 nerf_text="Visão consideravelmente pixelada",
-                buff_text="Chance de drop de itens aumentada em +25%"
+                buff_text="Drop de itens +25% e área de impacto dos tiros aumentada em +50%"
             ),
             "25%": OpcaoConfig(
                 id="25%",
                 label="320x180 (25%)",
-                modificadores={"drop_chance_bonus": 0.50},
+                modificadores={"drop_chance_bonus": 0.50, "resolucao_chunky_hitbox": 2.00},
                 flavor_text="Se você consegue contar os pixels nos dedos, está economizando processamento.",
                 nerf_text="Praticamente indecifrável",
-                buff_text="Chance de drop de itens aumentada em +50%"
+                buff_text="Drop de itens +50% e área de impacto dos tiros dobrada (x2.0)"
             ),
         }
     ),
@@ -191,10 +191,10 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "desligado": OpcaoConfig(
                 id="desligado",
                 label="Desligado",
-                modificadores={"vel_jogador_mult": 1.10},
+                modificadores={"vel_jogador_mult": 1.10, "vsync_tear_refraction": True},
                 flavor_text="Espero que seu monitor tenha FreeSync.",
                 nerf_text="Possível quebra de linha visual (screen tearing)",
-                buff_text="Velocidade de movimento da batata aumentada em +10% (x1.10)"
+                buff_text="Velocidade +10% e projéteis que cruzam a linha de rasgo se duplicam em dois"
             ),
         }
     ),
@@ -219,10 +219,10 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "ligado": OpcaoConfig(
                 id="ligado",
                 label="Ligado",
-                modificadores={"dano_explosivos_mult": 1.20},
+                modificadores={"dano_explosivos_mult": 1.20, "screen_shake_stagger": True},
                 flavor_text="A tela treme. A sua mira também.",
-                nerf_text="A tela treme violentamente a cada disparo pesado e explosão",
-                buff_text="Dano das armas explosivas aumentado em +20% (x1.20)"
+                nerf_text="A tela treme violentamente a cada disparo pesado, explosão e dano",
+                buff_text="Dano explosivo +20% e ondas de choque de tiros e bombas causam tropeço e lentidão em área"
             ),
         }
     ),
@@ -247,10 +247,10 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "ligado": OpcaoConfig(
                 id="ligado",
                 label="Ligado",
-                modificadores={"vel_jogador_mult": 1.15},
+                modificadores={"vel_jogador_mult": 1.15, "motion_blur_ghosting": True},
                 flavor_text="Você se move tão rápido que até seus pixels ficaram para trás.",
                 nerf_text="Rastro visual (ghosting) borra elementos em movimento",
-                buff_text="Velocidade de movimento da batata aumentada em +15% (x1.15)"
+                buff_text="Velocidade de movimento aumentada em +15% (x1.15) e rastro fantasmagórico concede +0.40s de i-frames"
             ),
         }
     ),
@@ -275,10 +275,10 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "desligado": OpcaoConfig(
                 id="desligado",
                 label="Desligado",
-                modificadores={"xp_ganho_mult": 1.25},
+                modificadores={"xp_ganho_mult": 1.25, "hud_pulse_magnet": True},
                 flavor_text="Com certeza você ainda tem vida sobrando. Provavelmente.",
                 nerf_text="Oculta completamente HP, XP, inventário e timer",
-                buff_text="Ganho de experiência (XP) aumentado em +25% (x1.25)"
+                buff_text="XP +25% e pulso magnético a cada 4s que puxa todos os drops do mapa até você"
             ),
         }
     ),
@@ -303,10 +303,10 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "ligado": OpcaoConfig(
                 id="ligado",
                 label="Ligado",
-                modificadores={"critico_chance": 0.15, "critico_mult": 2.0},
+                modificadores={"critico_chance": 0.25, "critico_mult": 2.0, "damage_numbers_knockback": True},
                 flavor_text="Finalmente uma aplicação prática para aritmética básica.",
                 nerf_text="Poluição visual com números flutuando",
-                buff_text="Habilita Críticos: 15% de chance de causar 2x de dano"
+                buff_text="Habilita Críticos (+25% chance) e os números flutuantes empurram os inimigos para trás"
             ),
         }
     ),
@@ -375,10 +375,10 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "ligado": OpcaoConfig(
                 id="ligado",
                 label="Ligado",
-                modificadores={"drop_chance_mult": 1.40},
+                modificadores={"drop_chance_mult": 1.40, "movimento_ram_collision": True},
                 flavor_text="Para que servem as pernas quando o destino tem um cursor?",
                 nerf_text="A batata caminha incessantemente na direção do cursor",
-                buff_text="Chance de drop multiplicativa aumentada em +40% (x1.40)"
+                buff_text="Drop de itens +40% e andar continuamente te faz atropelar e empurrar inimigos"
             ),
         }
     ),
@@ -403,34 +403,34 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "invertido": OpcaoConfig(
                 id="invertido",
                 label="Invertido",
-                modificadores={"dano_armas_mult": 1.10},
+                modificadores={"dano_armas_mult": 1.10, "keybinds_overdrive_dash": True},
                 flavor_text="Para cima é o novo para baixo.",
                 nerf_text="Teclas de movimento invertidas (W: baixo, S: cima, etc.)",
-                buff_text="Dano de todas as armas aumentado em +10% (x1.10)"
+                buff_text="Dano de armas +10% e manobras repentinas geram pulso de empurrão"
             ),
             "arrow_keys": OpcaoConfig(
                 id="arrow_keys",
                 label="Arrow Keys",
-                modificadores={"vel_jogador_mult": 1.15},
+                modificadores={"vel_jogador_mult": 1.15, "keybinds_overdrive_dash": True},
                 flavor_text="Lembranças dolorosas de jogar no teclado de 1998.",
                 nerf_text="Movimento transferido exclusivamente para as setas direcionais",
-                buff_text="Velocidade de movimento da batata aumentada em +15% (x1.15)"
+                buff_text="Velocidade da batata +15% e manobras repentinas geram pulso de empurrão"
             ),
             "uma_mao": OpcaoConfig(
                 id="uma_mao",
                 label="Uma Mão Só",
-                modificadores={"xp_ganho_mult": 1.20},
+                modificadores={"xp_ganho_mult": 1.20, "keybinds_overdrive_dash": True},
                 flavor_text="Uma mão no volante, a outra no carinho.",
-                nerf_text="Movimentação em QWER, ações apenas no teclado",
-                buff_text="Ganho de XP aumentado em +20% (x1.20)"
+                nerf_text="Movimentação em QWER, ações 100% no teclado (sem mouse)",
+                buff_text="Ganho de XP +20% e manobras repentinas geram pulso de empurrão"
             ),
             "pesadelo": OpcaoConfig(
                 id="pesadelo",
                 label="Pesadelo",
-                modificadores={"dano_armas_mult": 1.30},
+                modificadores={"dano_armas_mult": 1.30, "keybinds_overdrive_dash": True},
                 flavor_text="Sua memória muscular acabou de pedir demissão.",
                 nerf_text="Movimento em IJKL com eixo Y do mouse invertido",
-                buff_text="Dano de todas as armas aumentado em +30% (x1.30)"
+                buff_text="Dano de armas +30% e pulso forte de empurrão ao desviar"
             ),
         }
     ),
@@ -483,10 +483,10 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "desligado": OpcaoConfig(
                 id="desligado",
                 label="Desligado",
-                modificadores={"dano_armas_mult": 1.15},
-                flavor_text="Cada projétil disparado é uma decisão de vida ou morte.",
+                modificadores={"dano_armas_mult": 1.15, "auto_fire_burst": True},
+                flavor_text="Cada clique do mouse foi pago com o suor do seu dedo indicador.",
                 nerf_text="Necessário clicar manualmente a cada disparo",
-                buff_text="Dano de todas as armas aumentado em +15% (x1.15)"
+                buff_text="Dano +15% e cada clique manual dispara rajada dupla (2 tiros rápidos)"
             ),
         }
     ),
@@ -539,9 +539,9 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "ligado": OpcaoConfig(
                 id="ligado",
                 label="Ligado",
-                modificadores={"drops_valor_mult": 2.0},
+                modificadores={"drops_valor_mult": 2.0, "coleta_inimiga": True},
                 flavor_text="Os inimigos se sentiram inspirados pelo Gemini 3.7 Flash.",
-                nerf_text="Ativa Scavenger: inimigos tentam devorar drops após 1s",
+                nerf_text="Ativa Scavenger: inimigos tentam devorar drops após 10s",
                 buff_text="Todos os drops coletados pelo jogador valem 2x (XP e cura em dobro)"
             ),
         }
@@ -695,10 +695,10 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "ligado": OpcaoConfig(
                 id="ligado",
                 label="Ligado",
-                modificadores={"dano_armas_mult": 1.25, "auto_dano": True},
+                modificadores={"dano_armas_mult": 1.25, "auto_dano": True, "fogo_amigo_rocket_jump": True},
                 flavor_text="Aparentemente, estilhaços de granada não leem crachá de identificação.",
                 nerf_text="Seus próprios tiros e explosões causam dano à batata",
-                buff_text="Dano global de todas as armas aumentado em +25% (x1.25)"
+                buff_text="Dano +25% e explosões te arremessam longe, permitindo rocket-jump"
             ),
         }
     ),
@@ -706,9 +706,10 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
 
 
 # =============================================================================
-# CATÁLOGO DE CONFIGURAÇÕES DE SISTEMA (5 ITENS SEMPRE DISPONÍVEIS — SEM BUFFS)
+# CATÁLOGO DE CONFIGURAÇÕES DE SISTEMA (3 ITENS SEMPRE DISPONÍVEIS — SEM BUFFS)
 # =============================================================================
 
+# S1-S3: 3 Configurações canônicas de Sistema (SSOT: CONFIGURACOES.md)
 CONFIGURACOES_SISTEMA: dict[str, ConfiguracaoDef] = {
     # S1. Volume Geral
     "volume_master": ConfiguracaoDef(
@@ -745,44 +746,9 @@ CONFIGURACOES_SISTEMA: dict[str, ConfiguracaoDef] = {
         ordem=103,
         descricao_sistema="Controla tiros, explosões, pickups e menus (0% a 100%)."
     ),
-
-    # S4. Filtro Daltônico
-    "filtro_daltonico": ConfiguracaoDef(
-        id="filtro_daltonico",
-        nome="Filtro Daltônico",
-        categoria=CategoriaConfig.SISTEMA,
-        tipo=TipoControleConfig.SELETOR,
-        valor_padrao="desligado",
-        is_gameplay=False,
-        ordem=104,
-        descricao_sistema="Aplica matrizes de acessibilidade para protanopia, deuteranopia ou tritanopia.",
-        opcoes={
-            "desligado": OpcaoConfig(id="desligado", label="Desligado"),
-            "protanopia": OpcaoConfig(id="protanopia", label="Protanopia"),
-            "deuteranopia": OpcaoConfig(id="deuteranopia", label="Deuteranopia"),
-            "tritanopia": OpcaoConfig(id="tritanopia", label="Tritanopia"),
-        }
-    ),
-
-    # S5. Escala Global (Diretriz de Acessibilidade do Usuário)
-    "escala_global": ConfiguracaoDef(
-        id="escala_global",
-        nome="S5: Escala Global",
-        categoria=CategoriaConfig.SISTEMA,
-        tipo=TipoControleConfig.SELETOR,
-        valor_padrao="100%",
-        is_gameplay=False,
-        ordem=105,
-        descricao_sistema="Escala sistêmica de renderização e elementos gráficos para telas de alta resolução.",
-        opcoes={
-            "100%": OpcaoConfig(id="100%", label="100% (Padrão)"),
-            "125%": OpcaoConfig(id="125%", label="125%"),
-            "150%": OpcaoConfig(id="150%", label="150%"),
-        }
-    ),
 }
 
-# Dicionário consolidado com todas as 25 configurações
+# Dicionário consolidado com as configurações (23 no total)
 TODAS_CONFIGURACOES: dict[str, ConfiguracaoDef] = {
     **CONFIGURACOES_GAMEPLAY,
     **CONFIGURACOES_SISTEMA
