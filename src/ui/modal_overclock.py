@@ -98,20 +98,20 @@ class ModalOverclock:
 
     def _inicializar_fontes(self):
         if self._fonte_titulo is None:
-            self._fonte_titulo = pygame.font.SysFont("Arial", 24, bold=True)
-            self._fonte_sub = pygame.font.SysFont("Arial", 13, bold=True)
-            self._fonte_card_tit = pygame.font.SysFont("Arial", 15, bold=True)
-            self._fonte_card_sub = pygame.font.SysFont("Arial", 11, bold=True)
-            self._fonte_card_desc = pygame.font.SysFont("Arial", 12, bold=False)
-            self._fonte_card_flavor = pygame.font.SysFont("Arial", 10, italic=True)
+            self._fonte_titulo = pygame.font.SysFont("Arial", 32, bold=True)
+            self._fonte_sub = pygame.font.SysFont("Arial", 16, bold=True)
+            self._fonte_card_tit = pygame.font.SysFont("Arial", 18, bold=True)
+            self._fonte_card_sub = pygame.font.SysFont("Arial", 13, bold=True)
+            self._fonte_card_desc = pygame.font.SysFont("Arial", 14, bold=False)
+            self._fonte_card_flavor = pygame.font.SysFont("Arial", 12, italic=True)
 
     def _inicializar_rects(self):
         self.card_rects = []
-        card_w = 210
-        card_h = 330
-        espacamento = 30
+        card_w = 280
+        card_h = 410
+        espacamento = 44
         start_x = (LARGURA_TELA - (3 * card_w + 2 * espacamento)) // 2
-        start_y = (ALTURA_TELA - card_h) // 2 + 15
+        start_y = (ALTURA_TELA - card_h) // 2 + 20
 
         for i in range(3):
             rx = start_x + i * (card_w + espacamento)

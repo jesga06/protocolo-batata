@@ -17,29 +17,29 @@ class HUD:
     """
 
     def __init__(self):
-        self._fonte_xp = pygame.font.SysFont("Arial", 10, bold=True)
-        self._fonte_nome = pygame.font.SysFont("Arial", 11, bold=True)
-        self._fonte_hp = pygame.font.SysFont("Arial", 9, bold=True)
+        self._fonte_xp = pygame.font.SysFont("Arial", 12, bold=True)
+        self._fonte_nome = pygame.font.SysFont("Arial", 14, bold=True)
+        self._fonte_hp = pygame.font.SysFont("Arial", 11, bold=True)
 
     def _obter_fonte_xp(self):
         if self._fonte_xp is None:
-            self._fonte_xp = pygame.font.SysFont("Arial", 10, bold=True)
+            self._fonte_xp = pygame.font.SysFont("Arial", 12, bold=True)
         return self._fonte_xp
 
     def desenhar_barra_xp(self, screen, sistema_xp, visivel: bool = True):
         """
         Renderiza a barra de experiência centralizada na tela logo abaixo do HUD superior.
-        Dimensões: 360x10 px, top=58, border_radius=3.
+        Dimensões: 520x14 px, top=66, border_radius=4.
         """
         if not visivel or sistema_xp is None:
             return
 
-        largura_barra = 360
-        altura_barra = 10
+        largura_barra = 520
+        altura_barra = 14
         centro_x = screen.get_width() // 2 if hasattr(screen, "get_width") else LARGURA_TELA // 2
         pos_x = centro_x - largura_barra // 2
-        pos_y = 58
-        raio_borda = 3
+        pos_y = 66
+        raio_borda = 4
 
         # 1. Fundo da barra
         bg_rect = (pos_x, pos_y, largura_barra, altura_barra)
@@ -86,22 +86,22 @@ class HUD:
         if not visivel or boss is None or not getattr(boss, "vivo", True):
             return
 
-        largura_barra = 400
-        altura_barra = 12
+        largura_barra = 560
+        altura_barra = 16
         centro_x = screen.get_width() // 2 if hasattr(screen, "get_width") else LARGURA_TELA // 2
         pos_x = centro_x - largura_barra // 2
-        pos_y = 90
-        raio_borda = 3
+        pos_y = 106
+        raio_borda = 4
 
-        # 1. Nome do Mini-Boss / Chefe (posicionado acima da barra em y=74 sem sobrepor a barra de XP)
+        # 1. Nome do Mini-Boss / Chefe (posicionado acima da barra em y=86 sem sobrepor a barra de XP)
         nome = getattr(boss, "nome_elite", "") or "MINI-BOSS ELITE"
         fonte_nome = self._fonte_nome
         nome_sombra = fonte_nome.render(nome, True, (10, 5, 20))
-        nome_rect = nome_sombra.get_rect(centerx=centro_x + 1, top=75)
+        nome_rect = nome_sombra.get_rect(centerx=centro_x + 1, top=87)
         screen.blit(nome_sombra, nome_rect)
 
         nome_surf = fonte_nome.render(nome, True, DOURADO)
-        nome_rect_main = nome_surf.get_rect(centerx=centro_x, top=74)
+        nome_rect_main = nome_surf.get_rect(centerx=centro_x, top=86)
         screen.blit(nome_surf, nome_rect_main)
 
         # 2. Fundo da barra (container roxo escuro)

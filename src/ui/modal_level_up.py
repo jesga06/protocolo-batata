@@ -334,12 +334,12 @@ class ModalLevelUp:
         self.config_pity_buffer: Optional[ConfiguracaoDef] = None
 
         # Configuração visual das 3 cartas centralizadas na tela virtual (1280x720)
-        # Largura: 210px, Altura: 330px, Espaçamento: 30px
-        self.card_largura = 210
-        self.card_altura = 330
-        self.card_y = (ALTURA_TELA - self.card_altura) // 2 + 15
-        start_x = (LARGURA_TELA - (3 * self.card_largura + 2 * 30)) // 2
-        self.card_xs = [start_x, start_x + self.card_largura + 30, start_x + 2 * (self.card_largura + 30)]
+        # Largura: 280px, Altura: 420px, Espaçamento: 44px
+        self.card_largura = 280
+        self.card_altura = 420
+        self.card_y = (ALTURA_TELA - self.card_altura) // 2 + 20
+        start_x = (LARGURA_TELA - (3 * self.card_largura + 2 * 44)) // 2
+        self.card_xs = [start_x, start_x + self.card_largura + 44, start_x + 2 * (self.card_largura + 44)]
         self.card_rects = [
             pygame.Rect(x, self.card_y, self.card_largura, self.card_altura)
             for x in self.card_xs
@@ -421,16 +421,16 @@ class ModalLevelUp:
         return img
 
     def _inicializar_fontes(self):
-        """Inicializa as fontes do Pygame sob demanda."""
+        """Inicializa as fontes do Pygame sob demanda em escala nativa 1280x720."""
         if self._fonte_titulo is None:
-            self._fonte_titulo = pygame.font.SysFont("Arial", 30, bold=True)
-            self._fonte_sub = pygame.font.SysFont("Arial", 15, bold=True)
-            self._fonte_card_tit = pygame.font.SysFont("Arial", 12, bold=True)
-            self._fonte_card_cat = pygame.font.SysFont("Arial", 10, bold=True)
-            self._fonte_card_badge = pygame.font.SysFont("Arial", 11, bold=True)
-            self._fonte_card_sec = pygame.font.SysFont("Arial", 9, bold=True)
-            self._fonte_card_corpo = pygame.font.SysFont("Arial", 9)
-            self._fonte_rodape = pygame.font.SysFont("Arial", 13)
+            self._fonte_titulo = pygame.font.SysFont("Arial", 38, bold=True)
+            self._fonte_sub = pygame.font.SysFont("Arial", 18, bold=True)
+            self._fonte_card_tit = pygame.font.SysFont("Arial", 16, bold=True)
+            self._fonte_card_cat = pygame.font.SysFont("Arial", 12, bold=True)
+            self._fonte_card_badge = pygame.font.SysFont("Arial", 13, bold=True)
+            self._fonte_card_sec = pygame.font.SysFont("Arial", 12, bold=True)
+            self._fonte_card_corpo = pygame.font.SysFont("Arial", 12)
+            self._fonte_rodape = pygame.font.SysFont("Arial", 15)
 
     @property
     def fila_level_ups(self) -> int:
@@ -504,32 +504,40 @@ class ModalLevelUp:
         deve_ofertar_config = (is_marco or tem_pity) and (len(bloqueadas) > 0 or tem_pity)
 
         if deve_ofertar_config:
-            # 1. Se ainda não há pity buffer definido, sorteia uma nova configuração bloqueada
-            if not tem_pity:
+            # 1. Garante pity buffer se ainda não definido
+            if not tem_pity and bloqueadas:
                 self.config_pity_buffer = random.choice(bloqueadas)
 
-            cdef = self.config_pity_buffer
-            buffs, nerfs = extrair_resumo_config(cdef)
-            card_config = {
-                "tipo": "config",
-                "config_id": cdef.id,
-                "cdef": cdef,
-                "nome": cdef.nome,
-                "categoria": str(cdef.categoria.value if hasattr(cdef.categoria, "value") else cdef.categoria),
-                "icone_asset": cdef.id,
-                "buffs": buffs,
-                "nerfs": nerfs,
-                "flavor_text": ""
-            }
+            configs_ofertadas = []
+            if self.config_pity_buffer is not None and self.config_pity_buffer.id not in self.gerenciador_config.desbloqueadas:
+                configs_ofertadas.append(self.config_pity_buffer)
 
-            # 2. Sorteia 2 consumíveis únicos para os slots laterais (Card 1 / índice 0 e Card 3 / índice 2)
-            consumiveis_laterais = random.sample(pool_consumiveis, 2)
+            restantes = [c for c in bloqueadas if c.id not in {cfg.id for cfg in configs_ofertadas}]
+            if restantes:
+                qtd_extra = min(3 - len(configs_ofertadas), len(restantes))
+                configs_ofertadas.extend(random.sample(restantes, qtd_extra))
 
-            self.cards_sorteados = [
-                consumiveis_laterais[0],  # Card 1 (Slot 1)
-                card_config,              # Card 2 (Slot 2 - Configuração no Centro)
-                consumiveis_laterais[1]   # Card 3 (Slot 3)
-            ]
+            cards_cfg = []
+            for cdef in configs_ofertadas:
+                buffs, nerfs = extrair_resumo_config(cdef)
+                cards_cfg.append({
+                    "tipo": "config",
+                    "config_id": cdef.id,
+                    "cdef": cdef,
+                    "nome": cdef.nome,
+                    "categoria": str(cdef.categoria.value if hasattr(cdef.categoria, "value") else cdef.categoria),
+                    "icone_asset": cdef.id,
+                    "buffs": buffs,
+                    "nerfs": nerfs,
+                    "flavor_text": ""
+                })
+
+            # Caso restem menos de 3 configurações bloqueadas, completa com consumíveis
+            if len(cards_cfg) < 3:
+                faltam = 3 - len(cards_cfg)
+                cards_cfg.extend(random.sample(pool_consumiveis, min(faltam, len(pool_consumiveis))))
+
+            self.cards_sorteados = cards_cfg[:3]
         else:
             # 3. Nível normal: sorteia 3 consumíveis únicos escalados para o tier atual
             num_cons = min(3, len(pool_consumiveis))
@@ -825,69 +833,69 @@ class ModalLevelUp:
             layer_surf.blit(cat_surf, (rect.x + 12, rect.top + 12))
 
             # 4.5 Nome da Configuração / Consumível (Wrap de 1-2 linhas perfeitamente centralizado)
-            nome_linhas = _formatar_texto_wrap(card["nome"], max_chars_por_linha=20)
-            offset_y_nome = rect.top + 28
+            nome_linhas = _formatar_texto_wrap(card["nome"], max_chars_por_linha=24)
+            offset_y_nome = rect.top + 36
             for linha in nome_linhas[:2]:
                 cor_tit = DOURADO if (is_hovered or is_config) else BRANCO
                 nome_surf = self._fonte_card_tit.render(linha, True, cor_tit)
                 nome_rect = nome_surf.get_rect(centerx=rect.centerx, top=offset_y_nome)
                 layer_surf.blit(nome_surf, nome_rect)
-                offset_y_nome += 14
+                offset_y_nome += 18
 
-            # 4.6 Ícone Central (32x32 perfeitamente centralizado na Moldura)
+            # 4.6 Ícone Central (Moldura 48x48 perfeitamente centralizada)
             icone_img = self._obter_icone(card.get("icone_asset", card.get("config_id", "")))
             icone_cx = rect.centerx
-            icone_cy = rect.top + 76
-            moldura_rect = pygame.Rect(icone_cx - 20, icone_cy - 20, 40, 40)
-            pygame.draw.rect(layer_surf, (18, 14, 28), moldura_rect, border_radius=4)
+            icone_cy = rect.top + 100
+            moldura_rect = pygame.Rect(icone_cx - 24, icone_cy - 24, 48, 48)
+            pygame.draw.rect(layer_surf, (18, 14, 28), moldura_rect, border_radius=6)
             cor_moldura = DOURADO if is_config else (90, 60, 130)
-            pygame.draw.rect(layer_surf, cor_moldura, moldura_rect, width=1, border_radius=4)
+            pygame.draw.rect(layer_surf, cor_moldura, moldura_rect, width=1, border_radius=6)
 
             if icone_img is not None:
                 icon_rect = icone_img.get_rect(center=moldura_rect.center)
                 layer_surf.blit(icone_img, icon_rect)
             else:
                 cor_ph = DOURADO if is_config else ROXO_ACENTO
-                pygame.draw.circle(layer_surf, cor_ph, (icone_cx, icone_cy), 12, width=2)
+                pygame.draw.circle(layer_surf, cor_ph, (icone_cx, icone_cy), 14, width=2)
 
             # Linha divisória horizontal
-            div_y = rect.top + 106
+            div_y = rect.top + 136
             div_cor = (80, 65, 30) if is_config else (60, 45, 85)
-            pygame.draw.line(layer_surf, div_cor, (rect.x + 12, div_y), (rect.right - 12, div_y), 1)
+            pygame.draw.line(layer_surf, div_cor, (rect.x + 14, div_y), (rect.right - 14, div_y), 1)
 
             # 4.7 Seção de Benefícios (EFEITO para Power-Ups/Consumíveis; BENEFICIOS + SACRIFICIO apenas para Configurações)
-            y_cursor = div_y + 6
+            y_cursor = div_y + 10
             header_label = "BENEFICIOS:" if is_config else "EFEITO:"
             buff_header_surf = self._fonte_card_sec.render(header_label, True, VERDE_CURA)
-            layer_surf.blit(buff_header_surf, (rect.x + 12, y_cursor))
-            y_cursor += 15
+            layer_surf.blit(buff_header_surf, (rect.x + 14, y_cursor))
+            y_cursor += 18
 
             buffs = card.get("buffs", ["Nenhum"])
-            max_linhas_buff = 2 if is_config else 4
+            max_linhas_buff = 3 if is_config else 5
             for b_txt in buffs[:2]:
-                linhas_buff = _formatar_texto_wrap(b_txt, max_chars_por_linha=25)
+                linhas_buff = _formatar_texto_wrap(b_txt, max_chars_por_linha=30)
                 for idx_bl, bl in enumerate(linhas_buff[:max_linhas_buff]):
                     prefixo = "+ " if idx_bl == 0 else "   "
                     b_surf = self._fonte_card_corpo.render(f"{prefixo}{bl}", True, (160, 240, 170))
-                    layer_surf.blit(b_surf, (rect.x + 14, y_cursor))
-                    y_cursor += 13
+                    layer_surf.blit(b_surf, (rect.x + 16, y_cursor))
+                    y_cursor += 16
 
             # 4.8 Seção de Sacrifícios / Nerfs (EXCLUSIVA para Configurações)
             if is_config:
-                y_cursor = max(y_cursor + 4, div_y + 90)
+                y_cursor = max(y_cursor + 8, div_y + 118)
                 nerf_header_surf = self._fonte_card_sec.render("SACRIFICIO:", True, LARANJA_ALERTA)
-                layer_surf.blit(nerf_header_surf, (rect.x + 12, y_cursor))
-                y_cursor += 14
+                layer_surf.blit(nerf_header_surf, (rect.x + 14, y_cursor))
+                y_cursor += 18
 
                 nerfs = card.get("nerfs", ["Nenhum"])
                 for n_txt in nerfs[:2]:
-                    linhas_nerf = _formatar_texto_wrap(n_txt, max_chars_por_linha=25)
-                    for idx_nl, nl in enumerate(linhas_nerf[:2]):
+                    linhas_nerf = _formatar_texto_wrap(n_txt, max_chars_por_linha=30)
+                    for idx_nl, nl in enumerate(linhas_nerf[:3]):
                         cor_n = (255, 180, 140) if nl != "Nenhum" and nl != "Nenhum sacrifício" else (130, 140, 155)
                         prefixo_n = "- " if idx_nl == 0 else "   "
                         n_surf = self._fonte_card_corpo.render(f"{prefixo_n}{nl}", True, cor_n)
-                        layer_surf.blit(n_surf, (rect.x + 14, y_cursor))
-                        y_cursor += 13
+                        layer_surf.blit(n_surf, (rect.x + 16, y_cursor))
+                        y_cursor += 16
 
             # 4.9 Prompt de Escolha no Rodapé do Card
             prompt_cor = DOURADO if (is_hovered or is_config) else ROXO_CLARO
