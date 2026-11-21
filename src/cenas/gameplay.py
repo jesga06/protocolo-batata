@@ -9,6 +9,8 @@ from src.entidades.projetil import Projetil
 from src.armas.pistola import Pistola
 from src.armas.melee import Melee
 from src.armas.railgun import Railgun
+from src.armas import Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas
+from src.equipamentos import DroneCura, DroneCombate, DroneSuporte
 from src.sistemas.sistema_spawn import SistemaSpawn
 from src.sistemas.sistema_drops import SistemaDrops
 from src.sistemas.sistema_scavenger import SistemaScavenger
@@ -136,6 +138,11 @@ class GameplayScene(BaseScene):
         # Input buffer e efeitos visuais
         self.buffer_tiro = 0.0
         self.efeitos_melee: list[dict] = []
+        self.zonas_fogo: list[dict] = []
+        self.trilhas_plasma: list[dict] = []
+        self.zonas_estase: list[dict] = []
+        self.pocas_gelo: list[dict] = []
+        self.aura_cura_timer: float = 0.0
         self._ultimo_slot_ativo = getattr(self.jogador, "slot_ativo", 2)
         self._arma_ativa_anterior = None
 
@@ -292,10 +299,52 @@ class GameplayScene(BaseScene):
         return float(mx) + self.camera.x, float(my) + self.camera.y
 
     def _ao_subir_nivel(self, novo_nivel: int):
-        """Callback acionado pelo SistemaXP ao subir de nível."""
-        if hasattr(self, "modal_level_up") and self.modal_level_up is not None:
+        """
+        Callback acionado pelo SistemaXP ao subir de nível:
+        - Sempre emite onda de choque de fôlego (+10 HP e empurrão em inimigos colados).
+        - Nos Marcos de Configuração (Níveis 5 e 11 / múltiplos de 5 / Pity Buffer ativo): abre o Modal de 3 Cartas pausando o jogo.
+        - Nos Níveis Normais: NÃO pausa o jogo e derruba 2 Cápsulas de Suprimento na arena para escolha em movimento.
+        """
+        cx = self.jogador.x + self.jogador.largura / 2.0
+        cy = self.jogador.y + self.jogador.altura / 2.0
+        self.jogador.curar(10)
+        if hasattr(self, "sistema_particulas") and self.sistema_particulas is not None:
+            self.sistema_particulas.emitir_onda_choque(cx, cy, raio_max=130.0, cor=DOURADO)
+
+        for inim in getattr(self, "inimigos", []):
+            if getattr(inim, "vivo", True) and not getattr(inim, "is_boss", False):
+                icx = inim.x + getattr(inim, "largura", 28) / 2.0
+                icy = inim.y + getattr(inim, "altura", 28) / 2.0
+                if distancia(cx, cy, icx, icy) < 130.0:
+                    dx_p, dy_p = vetor_direcao(cx, cy, icx, icy)
+                    inim.x += dx_p * 32.0
+                    inim.y += dy_p * 32.0
+                    self._clamp_entidade_arena(inim)
+
+        eh_marco = (
+            (hasattr(self.jogador.sistema_xp, "eh_nivel_marco_config") and self.jogador.sistema_xp.eh_nivel_marco_config(novo_nivel))
+            or (int(novo_nivel) % 5 == 0)
+            or (hasattr(self, "modal_level_up") and self.modal_level_up is not None and self.modal_level_up.config_pity_buffer is not None)
+        )
+        if eh_marco and hasattr(self, "modal_level_up") and self.modal_level_up is not None:
             self.modal_level_up.enfileirar_level_up(novo_nivel)
             self.pausado = True
+        else:
+            from src.ui.modal_level_up import obter_tier_nivel, gerar_pool_consumiveis_por_tier
+            pool = gerar_pool_consumiveis_por_tier(obter_tier_nivel(novo_nivel))
+            opcoes_2 = random.sample(pool, min(2, len(pool)))
+            if hasattr(self, "sistema_drops") and hasattr(self.sistema_drops, "gerar_capsulas_powerup"):
+                self.sistema_drops.gerar_capsulas_powerup(cx, cy, opcoes_2)
+            self.toasts_coleta.append({
+                "texto": f"NÍVEL {novo_nivel}! +10 HP & SUPRIMENTOS",
+                "cor": DOURADO,
+                "x": cx,
+                "y": self.jogador.y - 18,
+                "tempo": 1.8,
+                "tempo_max": 1.8
+            })
+            if int(novo_nivel) >= getattr(self.jogador.sistema_xp, "nivel_max", 12):
+                self.iniciar_boss_cutscene()
 
     def aplicar_modificadores(self):
         """Aplica os modificadores matemáticos calculados às entidades ativas."""
@@ -378,6 +427,31 @@ class GameplayScene(BaseScene):
                 tiros_burst.append(p.clonar(vx=vx_n, vy=vy_n))
             self.tiros_echo_pendentes.append({"timer": 0.08, "projeteis": tiros_burst})
 
+        # 3.5 Efeitos de disparo de armas únicas (Gatilho Magnético, Munição Superaquecida, Recuo Minigun, Trilha Railgun)
+        arma_at = self.jogador.obter_arma_ativa() if self.jogador.vivo else None
+        if getattr(self.jogador, "buff_cadencia_timer", 0.0) > 0.0 and arma_at is not None and not getattr(arma_at, "municao_infinita", True):
+            if hasattr(arma_at, "municao_atual") and hasattr(arma_at, "municao_max"):
+                arma_at.municao_atual = min(arma_at.municao_max, arma_at.municao_atual + 1)
+
+        for p in novos_tiros:
+            if getattr(self.jogador, "buff_dano_timer", 0.0) > 0.0:
+                p.superaquecido = True
+                p.perfuracoes_restantes = max(getattr(p, "perfuracoes_restantes", 0), 1)
+            if getattr(p, "recuo_autor", 0.0) > 0.0:
+                self.jogador.x -= p.dir_x * p.recuo_autor * 0.15
+                self.jogador.y -= p.dir_y * p.recuo_autor * 0.15
+                self._clamp_entidade_arena(self.jogador)
+            if getattr(p, "trilha_plasma", False):
+                ox, oy = getattr(p, "origem_trilha", (p.x_origem, p.y_origem))
+                self.trilhas_plasma.append({
+                    "x1": ox,
+                    "y1": oy,
+                    "x2": ox + p.dir_x * 1100.0,
+                    "y2": oy + p.dir_y * 1100.0,
+                    "tempo": 0.40,
+                    "tempo_max": 0.40
+                })
+
     def _aplicar_overvolt_chain(self, alvo_origem, dano_base: int, mods=None):
         """Aplica corrente elétrica em cadeia (Overvolt) a partir de um alvo atingido criticamente."""
         if not getattr(self.jogador, "overvolt", False):
@@ -429,9 +503,32 @@ class GameplayScene(BaseScene):
         self.pontos += getattr(inim, "score_valor", 100)
         inim_cx = inim.x + getattr(inim, "largura", 28) / 2.0
         inim_cy = inim.y + getattr(inim, "altura", 28) / 2.0
+
+        # Overvolt (Abordagem A2): descarga elétrica automática a cada 25 abates
+        if getattr(self.jogador, "overvolt", False):
+            self.jogador.abates_overvolt_contador = getattr(self.jogador, "abates_overvolt_contador", 0) + 1
+            if self.jogador.abates_overvolt_contador >= 25:
+                self.jogador.abates_overvolt_contador = 0
+                self._aplicar_overvolt_chain(inim, 40, mods)
+
+        abate_rapido = False
         if getattr(inim, "is_elite", False):
             self.aplicar_shake(14.0, 0.35)
             self.sistema_particulas.emitir_debris(inim_cx, inim_cy, cor=(255, 215, 0), qtd=16)
+            abate_rapido = bool(getattr(inim, "elegivel_abate_rapido", False) or (getattr(inim, "tempo_vida_restante", 0.0) or 0.0) >= 30.0)
+            if abate_rapido:
+                self.toasts_coleta.append({
+                    "texto": "ABATE RÁPIDO (<30s)! ARMA SUPERAQUECIDA + REPARO!",
+                    "cor": DOURADO,
+                    "x": inim_cx,
+                    "y": inim.y - 24,
+                    "tempo": 2.4,
+                    "tempo_max": 2.4
+                })
+            if getattr(self.jogador, "bios_modding", False):
+                for arma_rec in (getattr(self.jogador, "arma_especial", None), getattr(self.jogador, "arma_especial_secundaria", None)):
+                    if arma_rec is not None and hasattr(arma_rec, "municao_max"):
+                        arma_rec.municao_atual = min(arma_rec.municao_max, arma_rec.municao_atual + max(1, int(round(arma_rec.municao_max * 0.15))))
 
         # Estilhaços Low-Poly (Qualidade Gráfica Baixa)
         if getattr(mods, "graficos_shrapnel", False):
@@ -452,15 +549,20 @@ class GameplayScene(BaseScene):
             bonus_chance_drop=getattr(mods, "drop_chance_bonus", 0.0) if mods else 0.0,
             mult_chance_drop=getattr(mods, "drop_chance_mult", 1.0) if mods else 1.0,
             xp_base=getattr(inim, "xp_valor", 5),
-            loot_enriquecido=getattr(inim, "loot_enriquecido", False),
+            loot_enriquecido=getattr(mods, "loot_enriquecido", False) or getattr(inim, "loot_enriquecido", False),
             chance_arma=getattr(inim, "chance_drop_arma", None),
             chance_equipamento=getattr(inim, "chance_drop_equipamento", None),
             is_elite=getattr(inim, "is_elite", False),
-            modo_boss=is_boss_lutando
+            modo_boss=is_boss_lutando,
+            abate_rapido=abate_rapido
         )
 
     def iniciar_boss_cutscene(self):
-        """Inicia a sequência cinematográfica de introdução do Chefe Final (Geladeira Tsunami)."""
+        """
+        Inicia a sequência cinematográfica de introdução do Chefe Final (Geladeira Tsunami).
+        NÃO instancia a Geladeira durante a queda de energia inicial para evitar que ela e o balão
+        apareçam antes do fade-in / equalizadores.
+        """
         if self.boss_cutscene_ativa or (self.chefe_final is not None and self.chefe_final.vivo):
             return
         self.boss_cutscene_ativa = True
@@ -471,19 +573,10 @@ class GameplayScene(BaseScene):
         self.projeteis.clear()
         self.tiros_echo_pendentes.clear()
         try:
-            pygame.mixer.music.fadeout(2000)
+            pygame.mixer.music.fadeout(1600)
             pygame.mixer.music._current_track = None
         except Exception:
             pass
-        y_destino = self.altura_arena / 2.0 + 90.0
-        self.chefe_final = GeladeiraTsunami(
-            self.largura_arena / 2.0 - BOSS_GELADEIRA_LARGURA / 2.0,
-            940.0,
-            y_destino=y_destino,
-            y_origem=940.0
-        )
-        if self.chefe_final not in self.inimigos:
-            self.inimigos.append(self.chefe_final)
 
     def spawn_direto_boss(self):
         """Spawna diretamente a Geladeira Tsunami pronta para combate (atalho de debug)."""
@@ -575,12 +668,13 @@ class GameplayScene(BaseScene):
                     self.pausado = False
             return
 
-        # 4. Tecla 'C' ou clique no botão de engrenagem (752, 16, 32x32) antes de qualquer inversão de mouse
+        # 4. Tecla 'C' ou clique no botão de engrenagem (LARGURA_TELA - 48, 16, 32x32 ou 752..784 legado) antes de qualquer inversão de mouse
         pode_abrir_menu = getattr(self, "_cooldown_menu_toggle", 0.0) <= 0.0
         if pode_abrir_menu and self.mouse is not None and hasattr(self.mouse, "button_down") and self.mouse.button_down(1):
             try:
                 mx_gear, my_gear = self.mouse.get_position()
-                if 752 <= mx_gear <= 784 and 16 <= my_gear <= 48:
+                gear_x = LARGURA_TELA - 48
+                if ((gear_x <= mx_gear <= gear_x + 32) or (752 <= mx_gear <= 784)) and 16 <= my_gear <= 48:
                     self.menu_configs.abrir()
                     self.pausado = True
                     self.buffer_tiro = 0.0
@@ -689,18 +783,20 @@ class GameplayScene(BaseScene):
                             pygame.mixer.music.play(-1, fade_ms=5000)
                     except Exception:
                         pass
-                    # Garante que o Chefe Final está posicionado e enquadrado
-                    y_dest = self.altura_arena / 2.0 + 90.0
+                    # Garante que o Chefe Final está posicionado e enquadrado dentro da câmera (somente APÓS o blackout!)
+                    y_dest = self.altura_arena / 2.0 + 70.0
+                    y_orig = self.altura_arena / 2.0 + 210.0
                     if self.chefe_final is None or not self.chefe_final.vivo:
                         self.chefe_final = GeladeiraTsunami(
                             self.largura_arena / 2.0 - BOSS_GELADEIRA_LARGURA / 2.0,
-                            940.0,
+                            y_orig,
                             y_destino=y_dest,
-                            y_origem=940.0
+                            y_origem=y_orig
                         )
                     else:
                         self.chefe_final.y_intro_destino = y_dest
-                        self.chefe_final.y_intro_origem = 940.0
+                        self.chefe_final.y_intro_origem = y_orig
+                        self.chefe_final.y = y_orig
                     if self.chefe_final not in self.inimigos:
                         self.inimigos.append(self.chefe_final)
                     self.camera.follow(self.jogador, suavizacao=1.0)
@@ -792,6 +888,22 @@ class GameplayScene(BaseScene):
                 drops=self.sistema_drops.drops,
                 inimigos=self.inimigos
             )
+            if getattr(self.jogador, "evento_cura_drone", 0) > 0:
+                val_c = self.jogador.evento_cura_drone
+                self.jogador.evento_cura_drone = 0
+                self.aura_cura_timer = 0.65
+                self.toasts_coleta.append({
+                    "texto": f"+{val_c} HP",
+                    "cor": VERDE_CURA,
+                    "x": self.jogador.x + 16,
+                    "y": self.jogador.y - 12,
+                    "tempo": 1.1,
+                    "tempo_max": 1.1
+                })
+            for d_sup in getattr(self.jogador, "drones", []):
+                if hasattr(d_sup, "zonas_estase_pendentes") and d_sup.zonas_estase_pendentes:
+                    self.zonas_estase.extend(d_sup.zonas_estase_pendentes)
+                    d_sup.zonas_estase_pendentes.clear()
             if tiros_drone:
                 for p_dr in tiros_drone:
                     if hitbox_mult != 1.0:
@@ -1006,6 +1118,33 @@ class GameplayScene(BaseScene):
                 elif isinstance(arma_ativa, Melee) or getattr(arma_ativa, "slot", None) == 1:
                     if hasattr(arma_ativa, "pode_atirar") and arma_ativa.pode_atirar():
                         ang_mira = math.atan2(mouse_mundo_y - centro_jogador_y, mouse_mundo_x - centro_jogador_x)
+                        if hasattr(arma_ativa, "rebater_projeteis"):
+                            rebatidos = arma_ativa.rebater_projeteis(
+                                centro_jogador_x, centro_jogador_y,
+                                self.projeteis,
+                                mira_x=mouse_mundo_x,
+                                mira_y=mouse_mundo_y,
+                                angulo_mira=ang_mira
+                            )
+                            if rebatidos:
+                                self.aplicar_shake(8.0, 0.20)
+                                for pr in rebatidos:
+                                    self.sistema_particulas.emitir_faiscas(
+                                        pr.x + getattr(pr, "largura", 8) / 2.0,
+                                        pr.y + getattr(pr, "altura", 8) / 2.0,
+                                        dir_x=math.cos(ang_mira),
+                                        dir_y=math.sin(ang_mira),
+                                        cor=DOURADO,
+                                        qtd=8
+                                    )
+                                self.toasts_coleta.append({
+                                    "texto": "PARRY!",
+                                    "cor": DOURADO,
+                                    "x": centro_jogador_x,
+                                    "y": self.jogador.y - 16,
+                                    "tempo": 1.0,
+                                    "tempo_max": 1.0
+                                })
                         afetados = arma_ativa.executar_ataque(
                             centro_jogador_x, centro_jogador_y,
                             self.inimigos,
@@ -1188,7 +1327,8 @@ class GameplayScene(BaseScene):
         # =========================================================================
         spawn_liberado = getattr(self.menu_debug, "spawn_natural_ativo", True) if hasattr(self, "menu_debug") else True
         if spawn_liberado and not self.boss_cutscene_ativa and self.arena_freeze_timer <= 0.0:
-            permitir_ranged = (str(self.config_sistema.obter_valor("inimigos_ranged")).lower() in ("ligado", "true", "1")) if hasattr(self, "config_sistema") and self.config_sistema else False
+            fogo_cruzado_ranged = (str(self.config_sistema.obter_valor("inimigos_ranged")).lower() in ("ligado", "true", "1")) if hasattr(self, "config_sistema") and self.config_sistema else False
+            permitir_ranged = True
             hp_inim_mult = getattr(mods, "hp_inimigos_mult", 1.0) if mods else 1.0
             vel_inim_mult = getattr(mods, "vel_inimigos_mult", 1.0) if mods else 1.0
             possui_elite = any(getattr(e, "is_elite", False) and getattr(e, "vivo", True) for e in self.inimigos) or (self.chefe_final is not None and self.chefe_final.vivo)
@@ -1220,7 +1360,15 @@ class GameplayScene(BaseScene):
                     permitir_ranged=permitir_ranged,
                     possui_elite_vivo=possui_elite
                 )
+                if fogo_cruzado_ranged:
+                    for ni in novos_inimigos:
+                        if hasattr(ni, "rajada_tripla"):
+                            ni.rajada_tripla = True
                 self.inimigos.extend(novos_inimigos)
+
+                # Gatilho "Jogar aos Lobos": após o ciclo dos Mini-Bosses, a Geladeira Tsunami entra mesmo se o jogador estiver em nível baixo
+                if self.chefe_final is None and not self.boss_cutscene_ativa and not possui_elite and getattr(self.spawner, "tempo_elite", 0.0) >= 265.0:
+                    self.iniciar_boss_cutscene()
 
         # =========================================================================
         # 4. FÍSICA DOS PROJÉTEIS
@@ -1251,10 +1399,62 @@ class GameplayScene(BaseScene):
                 proj._x_ant = proj.x
                 proj._y_ant = proj.y
                 proj.update(dt)
+                if getattr(proj, "superaquecido", False) and proj.ativo:
+                    self.sistema_particulas.emitir_faiscas(
+                        proj.x + proj.largura / 2.0,
+                        proj.y + proj.altura / 2.0,
+                        dir_x=-proj.dir_x,
+                        dir_y=-proj.dir_y,
+                        cor=(255, 120, 30),
+                        qtd=1
+                    )
                 # Desativa projéteis que saíram muito longe dos limites da arena
                 if (proj.x < -100 or proj.x > self.largura_arena + 100 or
                     proj.y < -100 or proj.y > self.altura_arena + 100):
                     proj.ativo = False
+
+            # Atualiza Zonas de Fogo (Foguetes), Trilhas de Plasma (Railgun), Zonas de Estase (Drone Suporte) e Poças de Gelo (Geladeira)
+            if self.aura_cura_timer > 0.0:
+                self.aura_cura_timer = max(0.0, self.aura_cura_timer - dt)
+
+            for zf in self.zonas_fogo:
+                zf["tempo"] -= dt
+                zf["tick"] = zf.get("tick", 0.0) + dt
+                if zf["tick"] >= 0.35:
+                    zf["tick"] = 0.0
+                    for inim_f in self.inimigos:
+                        if getattr(inim_f, "vivo", True) and not getattr(inim_f, "em_fase", False):
+                            icx = inim_f.x + getattr(inim_f, "largura", 28) / 2.0
+                            icy = inim_f.y + getattr(inim_f, "altura", 28) / 2.0
+                            if distancia(icx, icy, zf["x"], zf["y"]) <= zf["raio"]:
+                                inim_f.receber_dano(10)
+                                if not inim_f.vivo:
+                                    self._registrar_abate_inimigo(inim_f, mods)
+            self.zonas_fogo = [z for z in self.zonas_fogo if z["tempo"] > 0.0]
+
+            for tp in self.trilhas_plasma:
+                tp["tempo"] -= dt
+            self.trilhas_plasma = [t for t in self.trilhas_plasma if t["tempo"] > 0.0]
+
+            for ze in self.zonas_estase:
+                ze["tempo"] -= dt
+                for inim_e in self.inimigos:
+                    if getattr(inim_e, "vivo", True):
+                        icx = inim_e.x + getattr(inim_e, "largura", 28) / 2.0
+                        icy = inim_e.y + getattr(inim_e, "altura", 28) / 2.0
+                        if distancia(icx, icy, ze["x"], ze["y"]) <= ze["raio"]:
+                            inim_e.slow_timer = max(getattr(inim_e, "slow_timer", 0.0), 0.35)
+                            inim_e.slow_fator = 0.50
+                            inim_e.vulneravel_estase_timer = 0.35
+            self.zonas_estase = [z for z in self.zonas_estase if z["tempo"] > 0.0]
+
+            for pg in self.pocas_gelo:
+                pg["tempo"] -= dt
+                if distancia(centro_jogador_x, centro_jogador_y, pg["x"], pg["y"]) <= pg["raio"]:
+                    self.jogador.x -= getattr(self.jogador, "ultima_dir_dx", 0.0) * 45.0 * dt
+                    self.jogador.y -= getattr(self.jogador, "ultima_dir_dy", 0.0) * 45.0 * dt
+                    self._clamp_entidade_arena(self.jogador)
+            self.pocas_gelo = [p for p in self.pocas_gelo if p["tempo"] > 0.0]
 
         # =========================================================================
         # 5. IA DOS INIMIGOS E DANO DE CONTATO NO JOGADOR
@@ -1268,17 +1468,48 @@ class GameplayScene(BaseScene):
             if inimigo == self.chefe_final:
                 continue
             if not pular_ia_inimigos and not self.boss_cutscene_ativa:
+                # Passo Fantasma (buff_vel_timer > 0): desacelera inimigos muito próximos em 40%
+                if getattr(self.jogador, "buff_vel_timer", 0.0) > 0.0:
+                    icx_p = inimigo.x + getattr(inimigo, "largura", 28) / 2.0
+                    icy_p = inimigo.y + getattr(inimigo, "altura", 28) / 2.0
+                    if distancia(icx_p, icy_p, centro_jogador_x, centro_jogador_y) <= 95.0:
+                        inimigo.slow_timer = max(getattr(inimigo, "slow_timer", 0.0), 0.25)
+                        inimigo.slow_fator = min(getattr(inimigo, "slow_fator", 1.0), 0.60)
+
                 inimigo.update(dt, (centro_jogador_x, centro_jogador_y))
-                if getattr(inimigo, "superaqueceu", False) and not getattr(inimigo, "toast_superaquecimento_exibido", False):
-                    inimigo.toast_superaquecimento_exibido = True
-                    self.toasts_coleta.append({
-                        "texto": "O MINI-BOSS SUPERAQUECEU. VOCÊ NÃO RECEBERÁ RECOMPENSAS POR ELE.",
-                        "cor": LARANJA_ALERTA,
-                        "x": self.jogador.x + 16,
-                        "y": self.jogador.y - 25,
-                        "tempo": 4.0,
-                        "tempo_max": 4.0
-                    })
+                if getattr(inimigo, "explodiu_sobrecarga", False) or getattr(inimigo, "superaqueceu", False):
+                    if not getattr(inimigo, "toast_superaquecimento_exibido", False):
+                        inimigo.toast_superaquecimento_exibido = True
+                        icx_e = inimigo.x + getattr(inimigo, "largura", 28) / 2.0
+                        icy_e = inimigo.y + getattr(inimigo, "altura", 28) / 2.0
+                        self.sistema_particulas.emitir_onda_choque(icx_e, icy_e, raio_max=150.0, cor=LARANJA_ALERTA)
+                        self.sistema_particulas.emitir_debris(icx_e, icy_e, cor=LARANJA_ALERTA, qtd=18)
+                        self.aplicar_shake(14.0, 0.35)
+                        if distancia(icx_e, icy_e, centro_jogador_x, centro_jogador_y) <= 150.0:
+                            self.jogador.receber_dano(25)
+                        inimigo.vivo = False
+                        self.toasts_coleta.append({
+                            "texto": "O MINI-BOSS SUPERAQUECEU. VOCÊ NÃO RECEBERÁ RECOMPENSAS POR ELE.",
+                            "cor": LARANJA_ALERTA,
+                            "x": self.jogador.x + 16,
+                            "y": self.jogador.y - 25,
+                            "tempo": 3.5,
+                            "tempo_max": 3.5
+                        })
+                        continue
+                if getattr(inimigo, "pulso_eletrico_pendente", False):
+                    inimigo.pulso_eletrico_pendente = False
+                    icx_f = inimigo.x + getattr(inimigo, "largura", 28) / 2.0
+                    icy_f = inimigo.y + getattr(inimigo, "altura", 28) / 2.0
+                    self.sistema_particulas.emitir_onda_choque(icx_f, icy_f, raio_max=125.0, cor=LARANJA_ALERTA)
+                    if distancia(icx_f, icy_f, centro_jogador_x, centro_jogador_y) <= 125.0:
+                        self.jogador.receber_dano(18)
+                if getattr(inimigo, "projeteis_elite_pendentes", None):
+                    self.projeteis.extend(inimigo.projeteis_elite_pendentes)
+                    inimigo.projeteis_elite_pendentes.clear()
+                if getattr(inimigo, "projeteis_pendentes", None) and getattr(inimigo, "is_caixa_som", False):
+                    self.projeteis.extend(inimigo.projeteis_pendentes)
+                    inimigo.projeteis_pendentes.clear()
                 if hasattr(inimigo, "obter_projeteis_pendentes"):
                     novos_tiros = inimigo.obter_projeteis_pendentes()
                     if novos_tiros:
@@ -1327,6 +1558,18 @@ class GameplayScene(BaseScene):
                     self.jogador.receber_dano(dano_efetivo_contato)
                     inimigo.cooldown_contato_atual = getattr(inimigo, "cooldown_contato_max", 0.4)
                     self.aplicar_shake(6.0, 0.15)
+                    # Casco Eletrostático (buff_resistencia_timer > 0): empurra e dá choque em quem encostar
+                    if getattr(self.jogador, "buff_resistencia_timer", 0.0) > 0.0 and not getattr(inimigo, "is_boss", False):
+                        icx_c = inimigo.x + getattr(inimigo, "largura", 28) / 2.0
+                        icy_c = inimigo.y + getattr(inimigo, "altura", 28) / 2.0
+                        dx_c, dy_c = vetor_direcao(centro_jogador_x, centro_jogador_y, icx_c, icy_c)
+                        inimigo.x += dx_c * 32.0
+                        inimigo.y += dy_c * 32.0
+                        self._clamp_entidade_arena(inimigo)
+                        inimigo.receber_dano(12)
+                        self.sistema_particulas.emitir_faiscas(icx_c, icy_c, dir_x=dx_c, dir_y=dy_c, cor=(80, 255, 160), qtd=6)
+                        if not inimigo.vivo:
+                            self._registrar_abate_inimigo(inimigo, mods)
 
         # Atualização do Chefe Final (Geladeira Tsunami)
         _boss_pode_atualizar = (
@@ -1339,6 +1582,32 @@ class GameplayScene(BaseScene):
             novos_tiros_boss = self.chefe_final.obter_projeteis_pendentes()
             if novos_tiros_boss:
                 self.projeteis.extend(novos_tiros_boss)
+            if getattr(self.chefe_final, "caixas_som_pendentes", None):
+                caixas_ativas = [e for e in self.inimigos if getattr(e, "vivo", True) and getattr(e, "is_caixa_som", False)]
+                for cx_som in self.chefe_final.caixas_som_pendentes:
+                    if len(caixas_ativas) < 4:
+                        self.inimigos.append(cx_som)
+                        caixas_ativas.append(cx_som)
+                self.chefe_final.caixas_som_pendentes.clear()
+            if getattr(self.chefe_final, "pocas_gelo_pendentes", None):
+                self.pocas_gelo.extend(self.chefe_final.pocas_gelo_pendentes)
+                self.chefe_final.pocas_gelo_pendentes.clear()
+            if getattr(self.chefe_final, "pulso_empurrao_pendente", False):
+                self.chefe_final.pulso_empurrao_pendente = False
+                bcx = self.chefe_final.x + self.chefe_final.largura / 2.0
+                bcy = self.chefe_final.y + self.chefe_final.altura / 2.0
+                if distancia(bcx, bcy, centro_jogador_x, centro_jogador_y) <= 210.0:
+                    dx_b, dy_b = vetor_direcao(bcx, bcy, centro_jogador_x, centro_jogador_y)
+                    self.jogador.x += dx_b * 46.0
+                    self.jogador.y += dy_b * 46.0
+                    self._clamp_entidade_arena(self.jogador)
+            if getattr(self.chefe_final, "vortice_succao_ativo", False) and not self.boss_cutscene_ativa:
+                bcx = self.chefe_final.x + self.chefe_final.largura / 2.0
+                bcy = self.chefe_final.y + self.chefe_final.altura / 2.0
+                dx_v, dy_v = vetor_direcao(centro_jogador_x, centro_jogador_y, bcx, bcy)
+                self.jogador.x += dx_v * 65.0 * dt
+                self.jogador.y += dy_v * 65.0 * dt
+                self._clamp_entidade_arena(self.jogador)
             shake_boss = self.chefe_final.obter_shake_pendente()
             if shake_boss > 0.0:
                 self.aplicar_shake(shake_boss, 0.35)
@@ -1465,6 +1734,31 @@ class GameplayScene(BaseScene):
                         self.sistema_particulas.emitir_debris(p_cx, p_cy, cor=(255, 140, 40), qtd=12)
                         self.aplicar_shake(10.0, 0.25)
 
+                        # Lança-Foguetes: Zona de chão em chamas por 2.5s
+                        if getattr(proj, "chao_em_chamas", False):
+                            self.zonas_fogo.append({
+                                "x": p_cx,
+                                "y": p_cy,
+                                "raio": 72.0,
+                                "tempo": 2.5,
+                                "tempo_max": 2.5,
+                                "tick": 0.0
+                            })
+
+                        # Lança-Granadas: 3 sub-explosões de fragmentação
+                        if getattr(proj, "fragmentar", False):
+                            for i_frag in range(3):
+                                ang_f = i_frag * (2.0 * math.pi / 3.0) + 0.4
+                                fx = p_cx + math.cos(ang_f) * 42.0
+                                fy = p_cy + math.sin(ang_f) * 42.0
+                                self.sistema_particulas.emitir_onda_choque(fx, fy, raio_max=38.0, cor=LARANJA_ALERTA)
+                                for inim_fr in self.inimigos:
+                                    if getattr(inim_fr, "vivo", True) and not getattr(inim_fr, "em_fase", False):
+                                        if distancia(fx, fy, inim_fr.x + getattr(inim_fr, "largura", 28) / 2.0, inim_fr.y + getattr(inim_fr, "altura", 28) / 2.0) <= 45.0:
+                                            inim_fr.receber_dano(15)
+                                            if not inim_fr.vivo:
+                                                self._registrar_abate_inimigo(inim_fr, mods)
+
                         # Onda de Choque (Tremor de Tela Ligado): tropeço/slow em inimigos próximos (sem empurrar Boss)
                         if getattr(mods, "screen_shake_stagger", False):
                             for inim_st in self.inimigos:
@@ -1534,13 +1828,29 @@ class GameplayScene(BaseScene):
                                 if id(inimigo) in proj.alvos_atingidos:
                                     continue
                                 proj.alvos_atingidos.add(id(inimigo))
+                            elif getattr(proj, "perfuracoes_restantes", 0) > 0:
+                                if not hasattr(proj, "alvos_atingidos"):
+                                    proj.alvos_atingidos = set()
+                                if id(inimigo) in proj.alvos_atingidos:
+                                    continue
+                                proj.alvos_atingidos.add(id(inimigo))
+                                proj.perfuracoes_restantes -= 1
                             else:
                                 proj.ativo = False
 
-                            is_crit = (crit_chance > 0.0 and random.random() < crit_chance)
-                            dano_final = int(round(proj.dano * (crit_mult if is_crit else 1.0)))
+                            chance_crit_proj = max(crit_chance, float(getattr(proj, "chance_critico_arma", 0.0)))
+                            is_crit = bool(getattr(proj, "critico_nativo", False)) or (chance_crit_proj > 0.0 and random.random() < chance_crit_proj)
+                            mult_estase = 1.20 if getattr(inimigo, "vulneravel_estase_timer", 0.0) > 0.0 else 1.0
+                            dano_final = int(round(proj.dano * mult_estase * (crit_mult if is_crit else 1.0)))
 
                             dx_k, dy_k = getattr(proj, "dir_x", 0.0), getattr(proj, "dir_y", 0.0)
+
+                            # Knockback individual por pellet (Escopeta / Drone de Combate)
+                            kb_proj = float(getattr(proj, "knockback_forca", 0.0))
+                            if kb_proj > 0.0 and inimigo is not self.chefe_final and not getattr(inimigo, "is_boss", False):
+                                inimigo.x += dx_k * (kb_proj * 0.45)
+                                inimigo.y += dy_k * (kb_proj * 0.45)
+                                self._clamp_entidade_arena(inimigo)
 
                             # Números de Dano (Texto com Peso): Empurrão leve no inimigo (exceto Boss)
                             if getattr(mods, "damage_numbers_knockback", False) and inimigo is not self.chefe_final and not getattr(inimigo, "is_boss", False):
@@ -1708,6 +2018,44 @@ class GameplayScene(BaseScene):
                 })
                 self.modal_overclock.abrir()
                 self.pausado = True
+            elif ev["tipo"] == "capsula_powerup":
+                drop_obj = ev.get("drop")
+                sub = getattr(drop_obj, "subtipo", "buff_dano_temp") if drop_obj else "buff_dano_temp"
+                rotulo = getattr(drop_obj, "rotulo", "Suprimento") if drop_obj else "Suprimento"
+                if sub == "buff_dano_temp":
+                    self.jogador.buff_dano_timer = 15.0
+                elif sub == "buff_vel_temp":
+                    self.jogador.buff_vel_timer = 15.0
+                elif sub == "buff_cadencia_temp":
+                    self.jogador.buff_cadencia_timer = 15.0
+                elif sub == "buff_resistencia_temp":
+                    self.jogador.buff_resistencia_timer = 15.0
+                elif sub in ("cura_pequena", "cura"):
+                    self.jogador.curar(25)
+                elif sub == "cura_grande":
+                    self.jogador.curar(50)
+                elif sub in ("xp_pequeno", "xp"):
+                    self.jogador.ganhar_xp(15, mult_xp=mult_xp)
+                elif sub == "xp_grande":
+                    self.jogador.ganhar_xp(30, mult_xp=mult_xp)
+                elif sub == "escudo":
+                    self.jogador.escudo_ativo = True
+                elif sub == "pulso_magnetico":
+                    self.jogador.aplicar_pulso_magnetico(self.sistema_drops.drops)
+                elif sub == "caixa_arma":
+                    nova_a = random.choice([Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas, Railgun])()
+                    self.jogador.equipar_arma_especial(nova_a)
+                elif sub == "caixa_equip":
+                    novo_d = random.choice([DroneCura, DroneCombate, DroneSuporte])(tempo_vida=30.0)
+                    self.jogador.adicionar_drone(novo_d)
+                self.toasts_coleta.append({
+                    "texto": f"{rotulo} ATIVO!",
+                    "cor": AZUL_CIANO,
+                    "x": self.jogador.x + 16,
+                    "y": self.jogador.y - 16,
+                    "tempo": 1.6,
+                    "tempo_max": 1.6
+                })
 
         # Atualiza IA do Scavenger APENAS se a configuração "coleta_inimiga" estiver desbloqueada e ligada
         mods = self.config_sistema.obter_modificadores() if hasattr(self, "config_sistema") and self.config_sistema else None
@@ -1887,6 +2235,75 @@ class GameplayScene(BaseScene):
             pygame.draw.polygon(surf_golpe, (255, 255, 255, alpha), pontos_fan, width=2)
             world_surf.blit(surf_golpe, (cx_tela - s_cx, cy_tela - s_cy))
 
+        # Zonas de Efeito no Piso (Poças de Gelo, Zonas de Estase, Zonas de Fogo, Trilhas de Plasma, Aura de Cura e Lasers)
+        for pg in self.pocas_gelo:
+            px_t = int(self.camera.transform_x(pg["x"]))
+            py_t = int(self.camera.transform_y(pg["y"]))
+            r_pg = int(pg["raio"])
+            pygame.draw.circle(world_surf, (45, 110, 165), (px_t, py_t), r_pg)
+            pygame.draw.circle(world_surf, (130, 220, 255), (px_t, py_t), r_pg, width=2)
+
+        for ze in self.zonas_estase:
+            zx_t = int(self.camera.transform_x(ze["x"]))
+            zy_t = int(self.camera.transform_y(ze["y"]))
+            r_ze = int(ze["raio"])
+            pygame.draw.circle(world_surf, (20, 75, 120), (zx_t, zy_t), r_ze, width=2)
+            pygame.draw.circle(world_surf, (56, 189, 248), (zx_t, zy_t), max(4, int(r_ze * 0.65)), width=1)
+
+        for zf in self.zonas_fogo:
+            fx_t = int(self.camera.transform_x(zf["x"]))
+            fy_t = int(self.camera.transform_y(zf["y"]))
+            r_zf = int(zf["raio"])
+            pygame.draw.circle(world_surf, (95, 32, 12), (fx_t, fy_t), r_zf)
+            pygame.draw.circle(world_surf, (255, 115, 25), (fx_t, fy_t), r_zf, width=2)
+
+        for tp in self.trilhas_plasma:
+            tx1 = int(self.camera.transform_x(tp["x1"]))
+            ty1 = int(self.camera.transform_y(tp["y1"]))
+            tx2 = int(self.camera.transform_x(tp["x2"]))
+            ty2 = int(self.camera.transform_y(tp["y2"]))
+            w_p = max(1, int(4 * (tp["tempo"] / max(0.01, tp["tempo_max"]))))
+            pygame.draw.line(world_surf, (56, 189, 248), (tx1, ty1), (tx2, ty2), width=w_p + 2)
+            pygame.draw.line(world_surf, (255, 255, 255), (tx1, ty1), (tx2, ty2), width=w_p)
+
+        # Laser guia ciano fino da Railgun enquanto carrega
+        if arma_ativa is not None and getattr(arma_ativa, "carregando", False) and self.jogador.vivo:
+            cx_rg = int(self.camera.transform_x(cx_mundo))
+            cy_rg = int(self.camera.transform_y(cy_mundo))
+            ang_rg = math.atan2(mouse_mundo_y - cy_mundo, mouse_mundo_x - cx_mundo)
+            lx_rg = int(cx_rg + math.cos(ang_rg) * 900.0)
+            ly_rg = int(cy_rg + math.sin(ang_rg) * 900.0)
+            pygame.draw.line(world_surf, (0, 220, 255), (cx_rg, cy_rg), (lx_rg, ly_rg), width=1)
+
+        # Aura circular sob a Batata ao receber pulso de cura (Opção C)
+        if self.aura_cura_timer > 0.0 and self.jogador.vivo:
+            cx_ac = int(self.camera.transform_x(cx_mundo))
+            cy_ac = int(self.camera.transform_y(self.jogador.y + self.jogador.altura - 3))
+            r_ac = int(16 + (0.65 - self.aura_cura_timer) * 18.0)
+            pygame.draw.ellipse(world_surf, (74, 222, 128), (cx_ac - r_ac, cy_ac - r_ac // 2, r_ac * 2, max(6, r_ac)), width=2)
+
+        # Feixe verde do Drone de Cura e Mira Laser pontilhada do Drone de Combate (Opção C)
+        for dr_v in getattr(self.jogador, "drones", []):
+            if not getattr(dr_v, "ativo", False):
+                continue
+            dcx_t = int(self.camera.transform_x(dr_v.x + dr_v.largura / 2.0))
+            dcy_t = int(self.camera.transform_y(dr_v.y + dr_v.altura / 2.0))
+            if getattr(dr_v, "feixe_cura_timer", 0.0) > 0.0:
+                jcx_t = int(self.camera.transform_x(cx_mundo))
+                jcy_t = int(self.camera.transform_y(cy_mundo))
+                pygame.draw.line(world_surf, (74, 222, 128), (dcx_t, dcy_t), (jcx_t, jcy_t), width=3)
+                pygame.draw.line(world_surf, (220, 255, 230), (dcx_t, dcy_t), (jcx_t, jcy_t), width=1)
+            alv_d = getattr(dr_v, "alvo_atual", None)
+            if alv_d is not None and getattr(alv_d, "vivo", False):
+                acx_t = int(self.camera.transform_x(alv_d.x + getattr(alv_d, "largura", 28) / 2.0))
+                acy_t = int(self.camera.transform_y(alv_d.y + getattr(alv_d, "altura", 28) / 2.0))
+                for s_pt in range(0, 7, 2):
+                    f1 = s_pt / 7.0
+                    f2 = (s_pt + 1) / 7.0
+                    p1 = (int(dcx_t + (acx_t - dcx_t) * f1), int(dcy_t + (acy_t - dcy_t) * f1))
+                    p2 = (int(dcx_t + (acx_t - dcx_t) * f2), int(dcy_t + (acy_t - dcy_t) * f2))
+                    pygame.draw.line(world_surf, (244, 63, 94), p1, p2, width=1)
+
         # Drops de itens e gemas de XP no chão da arena (pausando pisca durante Boss)
         is_boss_lutando_draw = (self.chefe_final is not None and self.chefe_final.vivo)
         self.sistema_drops.desenhar(self.janela, self.camera, pausar_despawn=is_boss_lutando_draw)
@@ -2037,42 +2454,56 @@ class GameplayScene(BaseScene):
         elif self.pausado:
             self._desenhar_overlay_pausa()
 
-        # Overlay da Cutscene do Chefe Final (Whiteout / Blackout)
-        if self.boss_cutscene_ativa and self.overlay_cutscene_alpha > 0:
-            if self._overlay_surf is None:
-                self._overlay_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
-            r, g, b = self.overlay_cutscene_cor
-            self._overlay_surf.fill((r, g, b, int(self.overlay_cutscene_alpha)))
-            screen.blit(self._overlay_surf, (0, 0))
+        # Overlay da Cutscene do Chefe Final (Queda de Energia c/ Holofote -> Equalizadores)
+        if self.boss_cutscene_ativa:
+            if self.overlay_cutscene_alpha > 0:
+                if self._overlay_surf is None or self._overlay_surf.get_size() != (LARGURA_TELA, ALTURA_TELA):
+                    self._overlay_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
+                r, g, b = self.overlay_cutscene_cor
+                self._overlay_surf.fill((r, g, b, int(self.overlay_cutscene_alpha)))
+                if self.boss_cutscene_fase == "whiteout":
+                    pj_sx = int(self.camera.transform_x(self.jogador.x + self.jogador.largura / 2.0))
+                    pj_sy = int(self.camera.transform_y(self.jogador.y + self.jogador.altura / 2.0))
+                    pygame.draw.circle(self._overlay_surf, (0, 0, 0, 40), (pj_sx, pj_sy), 72)
+                screen.blit(self._overlay_surf, (0, 0))
+
+            if self.boss_cutscene_fase == "musica_in":
+                num_barras = 32
+                larg_b = max(6, (LARGURA_TELA // num_barras) - 4)
+                for idx_b in range(num_barras):
+                    bx = idx_b * (LARGURA_TELA // num_barras) + 2
+                    alt_b = int(12 + abs(math.sin(self.boss_cutscene_timer * 7.5 + idx_b * 0.55)) * 28)
+                    cor_eq = DOURADO if idx_b % 3 == 0 else (ROXO_ACENTO if idx_b % 2 == 0 else AZUL_CIANO)
+                    pygame.draw.rect(screen, cor_eq, (bx, 0, larg_b, alt_b), border_radius=2)
+                    pygame.draw.rect(screen, cor_eq, (bx, ALTURA_TELA - alt_b, larg_b, alt_b), border_radius=2)
 
     def _desenhar_hp_in_world(self):
-        """Desenha a barra de HP perfeitamente centralizada abaixo do avatar da batata."""
+        """Desenha a barra de HP em Pixel Art Limpo (Opção A) abaixo da batata, com extensão azul da Barreira de Sobrevida."""
         if not self.jogador.vivo:
             return
 
-        # Dimensões visuais efetivas do avatar da batata (42x42 com sprite ou largura/altura base)
-        sprite_w = 42.0 if (hasattr(self.jogador, "_sprite_idle") and self.jogador._sprite_idle) else float(self.jogador.largura)
-        sprite_h = 42.0 if (hasattr(self.jogador, "_sprite_idle") and self.jogador._sprite_idle) else float(self.jogador.altura)
+        centro_x = self.jogador.x + float(self.jogador.largura) / 2.0
+        base_y = self.jogador.y + float(self.jogador.altura) + 5.0
 
-        centro_x = self.jogador.x + sprite_w / 2.0
-        base_y = self.jogador.y + sprite_h + 4.0
-
-        bar_w = 40
+        bar_w = 34
         bar_h = 6
-        bar_x = self.camera.transform_x(centro_x - bar_w / 2.0)
-        bar_y = self.camera.transform_y(base_y)
+        bar_x = int(self.camera.transform_x(centro_x) - bar_w // 2)
+        bar_y = int(self.camera.transform_y(base_y))
 
-        # Fundo vermelho
-        pygame.draw.rect(self.janela.screen, (160, 30, 30), (bar_x, bar_y, bar_w, bar_h), border_radius=2)
+        # Moldura pixelada escura (#0f172a)
+        pygame.draw.rect(self.janela.screen, (15, 23, 42), (bar_x, bar_y, bar_w, bar_h))
 
-        # Preenchimento verde
-        proporcao = clamp(self.jogador.hp / float(self.jogador.hp_max), 0.0, 1.0)
-        fill_w = int(bar_w * proporcao)
+        # Preenchimento verde nítido
+        proporcao = clamp(self.jogador.hp / float(max(1, self.jogador.hp_max)), 0.0, 1.0)
+        fill_w = int((bar_w - 2) * proporcao)
         if fill_w > 0:
-            pygame.draw.rect(self.janela.screen, VERDE_CURA, (bar_x, bar_y, fill_w, bar_h), border_radius=2)
+            pygame.draw.rect(self.janela.screen, VERDE_CURA, (bar_x + 1, bar_y + 1, fill_w, bar_h - 2))
 
-        # Borda escura
-        pygame.draw.rect(self.janela.screen, (20, 20, 20), (bar_x, bar_y, bar_w, bar_h), width=1, border_radius=2)
+        # Barreira de Sobrevida (Drone de Cura quando vida cheia) em azul ciano
+        escudo_val = int(getattr(self.jogador, "escudo_sobrevida", 0))
+        if escudo_val > 0:
+            esc_w = max(2, int((bar_w - 2) * clamp(escudo_val / 25.0, 0.0, 1.0)))
+            pygame.draw.rect(self.janela.screen, (56, 189, 248), (bar_x + 1, bar_y - 2, esc_w, 2))
 
     def _desenhar_hud_tela(self, hud_visivel: bool = True):
         """Renderiza o HUD fixo na tela: inventário com ícones/munição, métricas e botão de configurações."""
@@ -2264,13 +2695,14 @@ class GameplayScene(BaseScene):
         self._desenhar_toasts(screen)
 
         # 6. Botão de Configurações e engrenagem [C] - sempre visível mesmo com hud="desligado"
+        gear_x = LARGURA_TELA - 48
         if self._btn_gear_img is not None:
-            screen.blit(self._btn_gear_img, (752, 16))
+            screen.blit(self._btn_gear_img, (gear_x, 16))
         else:
-            pygame.draw.rect(screen, (45, 55, 75), (752, 16, 32, 32), border_radius=4)
+            pygame.draw.rect(screen, (45, 55, 75), (gear_x, 16, 32, 32), border_radius=4)
             fonte_fps = self._fontes["fps"]
             gear_surf = fonte_fps.render("[C]", True, DOURADO)
-            gear_rect = gear_surf.get_rect(centerx=768, centery=32)
+            gear_rect = gear_surf.get_rect(centerx=gear_x + 16, centery=32)
             screen.blit(gear_surf, gear_rect)
 
         # 7. Mira (Crosshair) na coordenada virtual clampada (ou direção de teclado em uma_mao)
@@ -2444,22 +2876,25 @@ class GameplayScene(BaseScene):
         self._registrar_fim_partida(vitoria=True)
 
     def _desenhar_overlay_vitoria(self):
-        """Overlay modal de celebração da vitória aos 10 minutos com grade completa de estatísticas."""
+        """Overlay modal de vitória centralizado em 1280x720 com grade de estatísticas."""
         screen = self.janela.screen
-        if self._overlay_surf is None:
+        if self._overlay_surf is None or self._overlay_surf.get_size() != (LARGURA_TELA, ALTURA_TELA):
             self._overlay_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
         self._overlay_surf.fill((10, 15, 25, 235))
         screen.blit(self._overlay_surf, (0, 0))
 
+        ox = (LARGURA_TELA - 800) // 2
+        oy = (ALTURA_TELA - 600) // 2
+
         # Painel central estilizado
-        painel_rect = pygame.Rect(90, 40, 620, 520)
+        painel_rect = pygame.Rect(ox + 90, oy + 40, 620, 520)
         pygame.draw.rect(screen, (25, 32, 45), painel_rect, border_radius=8)
         pygame.draw.rect(screen, DOURADO, painel_rect, width=2, border_radius=8)
 
         # Faixa superior de destaque
         fonte_tit = self._fontes["tit_vit"]
-        tit_surf = fonte_tit.render("PROTOCOLO EXECUTADO COM SUCESSO", True, DOURADO)
-        tit_rect = tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=60)
+        tit_surf = fonte_tit.render("GELADEIRA TSUNAMI DESLIGADA", True, DOURADO)
+        tit_rect = tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 60)
         screen.blit(tit_surf, tit_rect)
 
         minutos = int(self.tempo_sobrevivencia // 60)
@@ -2467,12 +2902,12 @@ class GameplayScene(BaseScene):
         tempo_str = f"{minutos:02d}:{segundos:02d} ({self.tempo_sobrevivencia:.1f}s)"
 
         fonte_sub = self._fontes["sub_vit"]
-        sub_surf = fonte_sub.render(f"A Batata superou {minutos:02d}:{segundos:02d} de compilacao sem erros criticos.", True, (200, 220, 240))
-        sub_rect = sub_surf.get_rect(centerx=LARGURA_TELA // 2, top=95)
+        sub_surf = fonte_sub.render(f"Cleiton sobreviveu ao escritório por {minutos:02d}:{segundos:02d}.", True, (200, 220, 240))
+        sub_rect = sub_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 95)
         screen.blit(sub_surf, sub_rect)
 
         # Quadro de estatísticas internas
-        quadro_rect = pygame.Rect(120, 130, 560, 280)
+        quadro_rect = pygame.Rect(ox + 120, oy + 130, 560, 280)
         pygame.draw.rect(screen, (15, 20, 30), quadro_rect, border_radius=6)
         pygame.draw.rect(screen, (45, 60, 80), quadro_rect, width=1, border_radius=6)
 
@@ -2481,124 +2916,128 @@ class GameplayScene(BaseScene):
         fonte_stat_destaque = self._fontes["stat_destaque"]
 
         stats_data = [
-            ("Tempo de Sobrevivencia:", tempo_str, DOURADO),
-            ("Inimigos Neutralizados (Abates):", f"{self.abates}", AMARELO_XP),
-            ("Dano Total Infligido:", f"{self.dano_total_causado:,}", (255, 100, 100)),
-            ("Configuracoes Desbloqueadas:", f"{len(self.gerenciador_config.desbloqueadas)} / 20", AZUL_CIANO),
-            ("Multiplicador de Dificuldade:", f"x{self.estatisticas_partida_resultado.get('mult_dif', 1.0):.2f}", (180, 210, 240)),
+            ("Tempo de Partida:", tempo_str, DOURADO),
+            ("Máquinas Destruídas:", f"{self.abates}", AMARELO_XP),
+            ("Dano Total Causado:", f"{self.dano_total_causado:,}", (255, 100, 100)),
+            ("Configurações Desbloqueadas:", f"{len(self.gerenciador_config.desbloqueadas)} / 20", AZUL_CIANO),
+            ("Multiplicador de Configurações:", f"x{self.estatisticas_partida_resultado.get('mult_dif', 1.0):.2f}", (180, 210, 240)),
         ]
 
-        start_y = 145
+        start_y = oy + 145
         step_y = 34
         for i, (label, val_str, cor_val) in enumerate(stats_data):
             cur_y = start_y + i * step_y
             lbl_surf = fonte_stat_label.render(label, True, (180, 195, 215))
-            screen.blit(lbl_surf, (140, cur_y))
+            screen.blit(lbl_surf, (ox + 140, cur_y))
 
             val_surf = fonte_stat_val.render(val_str, True, cor_val)
-            val_rect = val_surf.get_rect(right=660, top=cur_y)
+            val_rect = val_surf.get_rect(right=ox + 660, top=cur_y)
             screen.blit(val_surf, val_rect)
 
         # Linha de separação
-        pygame.draw.line(screen, (50, 65, 85), (140, 315), (660, 315), width=1)
+        pygame.draw.line(screen, (50, 65, 85), (ox + 140, oy + 315), (ox + 660, oy + 315), width=1)
 
         # Pontuação Final
         score_val = self.estatisticas_partida_resultado.get("score_final", self.pontos)
-        score_lbl = fonte_stat_destaque.render("PONTUACAO FINAL:", True, DOURADO)
-        screen.blit(score_lbl, (140, 330))
+        score_lbl = fonte_stat_destaque.render("PONTUAÇÃO FINAL:", True, DOURADO)
+        screen.blit(score_lbl, (ox + 140, oy + 330))
 
         score_num_surf = fonte_stat_destaque.render(f"{score_val:,} PTS", True, DOURADO)
-        score_num_rect = score_num_surf.get_rect(right=660, top=330)
+        score_num_rect = score_num_surf.get_rect(right=ox + 660, top=oy + 330)
         screen.blit(score_num_surf, score_num_rect)
 
         # Badge de Recorde Histórico se atingido
         if self.estatisticas_partida_resultado.get("novo_recorde_pontos", False):
-            badge_rec_surf = fonte_stat_val.render("[NOVO RECORDE HISTORICO!]", True, AMARELO_XP)
-            badge_rec_rect = badge_rec_surf.get_rect(centerx=LARGURA_TELA // 2, top=375)
+            badge_rec_surf = fonte_stat_val.render("[NOVO RECORDE!]", True, AMARELO_XP)
+            badge_rec_rect = badge_rec_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 375)
             screen.blit(badge_rec_surf, badge_rec_rect)
 
         # Rodapé com atalhos de navegação
         fonte_btn = self._fontes["btn"]
         fonte_btn_sub = self._fontes["btn_sub"]
 
-        btn1_surf = fonte_btn.render("[ENTER / ESPACO] Jogar Novamente", True, DOURADO)
-        screen.blit(btn1_surf, btn1_surf.get_rect(centerx=LARGURA_TELA // 2, top=430))
+        btn1_surf = fonte_btn.render("[ENTER / ESPAÇO] Jogar Novamente", True, DOURADO)
+        screen.blit(btn1_surf, btn1_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 430))
 
-        btn2_surf = fonte_btn_sub.render("[ESC / M] Retornar ao Menu Principal", True, (200, 210, 225))
-        screen.blit(btn2_surf, btn2_surf.get_rect(centerx=LARGURA_TELA // 2, top=465))
+        btn2_surf = fonte_btn_sub.render("[ESC / M] Menu Principal", True, (200, 210, 225))
+        screen.blit(btn2_surf, btn2_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 465))
 
-        btn3_surf = fonte_btn_sub.render("[C] Menu de Configuracoes", True, AZUL_CIANO)
-        screen.blit(btn3_surf, btn3_surf.get_rect(centerx=LARGURA_TELA // 2, top=498))
+        btn3_surf = fonte_btn_sub.render("[C] Menu de Configurações", True, AZUL_CIANO)
+        screen.blit(btn3_surf, btn3_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 498))
 
     def _desenhar_overlay_pausa(self):
         """Overlay modal de pausa com textos perfeitamente centralizados."""
         screen = self.janela.screen
-        if self._overlay_surf is None:
+        if self._overlay_surf is None or self._overlay_surf.get_size() != (LARGURA_TELA, ALTURA_TELA):
             self._overlay_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
         self._overlay_surf.fill((10, 15, 22, 180))
         screen.blit(self._overlay_surf, (0, 0))
 
+        oy = (ALTURA_TELA - 600) // 2
         fonte_titulo = self._fontes["tit_pausa"]
         fonte_sub = self._fontes["sub_pausa"]
 
         t_surf = fonte_titulo.render("JOGO PAUSADO", True, DOURADO)
-        t_rect = t_surf.get_rect(centerx=LARGURA_TELA // 2, top=200)
+        t_rect = t_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 200)
         screen.blit(t_surf, t_rect)
 
         c_surf = fonte_sub.render("[ESC] Continuar Partida", True, BRANCO)
-        c_rect = c_surf.get_rect(centerx=LARGURA_TELA // 2, top=280)
+        c_rect = c_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 280)
         screen.blit(c_surf, c_rect)
 
         m_surf = fonte_sub.render("[M] Menu Principal", True, CINZA_BORDA)
-        m_rect = m_surf.get_rect(centerx=LARGURA_TELA // 2, top=325)
+        m_rect = m_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 325)
         screen.blit(m_surf, m_rect)
 
     def _desenhar_overlay_game_over(self):
-        """Overlay de fim de jogo com estatísticas perfeitamente centralizadas."""
+        """Overlay de fim de jogo com estatísticas perfeitamente centralizadas em 1280x720."""
         screen = self.janela.screen
-        if self._overlay_surf is None:
+        if self._overlay_surf is None or self._overlay_surf.get_size() != (LARGURA_TELA, ALTURA_TELA):
             self._overlay_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
         self._overlay_surf.fill((20, 5, 5, 210))
         screen.blit(self._overlay_surf, (0, 0))
+
+        ox = (LARGURA_TELA - 800) // 2
+        oy = (ALTURA_TELA - 600) // 2
 
         fonte_tit = self._fontes["tit_go"]
         fonte_sub = self._fontes["sub_go"]
         fonte_stat = self._fontes["stat_go"]
         fonte_prompt = self._fontes["prompt_go"]
 
-        tit_surf = fonte_tit.render("PROTOCOLO FALHOU", True, VERMELHO_HP)
-        screen.blit(tit_surf, tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=130))
+        tit_surf = fonte_tit.render("FIM DE LINHA", True, VERMELHO_HP)
+        screen.blit(tit_surf, tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 130))
 
-        sub_surf = fonte_sub.render("A Batata sucumbiu aos bugs e estagiários.", True, (200, 180, 180))
-        screen.blit(sub_surf, sub_surf.get_rect(centerx=LARGURA_TELA // 2, top=175))
+        sub_surf = fonte_sub.render("As máquinas do escritório drenaram a bateria de Cleiton.", True, (200, 180, 180))
+        screen.blit(sub_surf, sub_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 175))
 
         minutos = int(self.tempo_sobrevivencia // 60)
         segundos = int(self.tempo_sobrevivencia % 60)
 
         # Quadro escuro
-        quadro_rect = pygame.Rect(180, 210, 440, 200)
+        quadro_rect = pygame.Rect(ox + 180, oy + 210, 440, 200)
         pygame.draw.rect(screen, (28, 15, 20), quadro_rect, border_radius=6)
         pygame.draw.rect(screen, (80, 40, 50), quadro_rect, width=1, border_radius=6)
 
-        tempo_surf = fonte_stat.render(f"Tempo de Sobrevivência: {minutos:02d}:{segundos:02d}", True, BRANCO)
-        screen.blit(tempo_surf, tempo_surf.get_rect(centerx=LARGURA_TELA // 2, top=230))
+        tempo_surf = fonte_stat.render(f"Tempo de Partida: {minutos:02d}:{segundos:02d}", True, BRANCO)
+        screen.blit(tempo_surf, tempo_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 230))
 
         abates_surf = fonte_stat.render(f"Total de Abates: {self.abates}", True, AMARELO_XP)
-        screen.blit(abates_surf, abates_surf.get_rect(centerx=LARGURA_TELA // 2, top=265))
+        screen.blit(abates_surf, abates_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 265))
 
         dano_surf = fonte_stat.render(f"Dano Total: {self.dano_total_causado:,}", True, (255, 120, 120))
-        screen.blit(dano_surf, dano_surf.get_rect(centerx=LARGURA_TELA // 2, top=300))
+        screen.blit(dano_surf, dano_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 300))
 
         score_val = self.estatisticas_partida_resultado.get("score_final", self.pontos)
         pontos_surf = fonte_stat.render(f"Pontuação Final: {score_val:,} PTS", True, DOURADO)
-        screen.blit(pontos_surf, pontos_surf.get_rect(centerx=LARGURA_TELA // 2, top=335))
+        screen.blit(pontos_surf, pontos_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 335))
 
         if self.estatisticas_partida_resultado.get("novo_recorde_pontos", False):
             rec_surf = fonte_stat.render("[NOVO RECORDE DE PONTOS!]", True, AMARELO_XP)
-            screen.blit(rec_surf, rec_surf.get_rect(centerx=LARGURA_TELA // 2, top=370))
+            screen.blit(rec_surf, rec_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 370))
 
         prompt_surf = fonte_prompt.render("Pressione [ENTER] para Jogar Novamente ou [ESC] para o Menu", True, DOURADO)
-        screen.blit(prompt_surf, prompt_surf.get_rect(centerx=LARGURA_TELA // 2, top=440))
+        screen.blit(prompt_surf, prompt_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 440))
 
 
     def _reiniciar_partida(self):

@@ -79,10 +79,9 @@ class SistemaSpawn:
 
         r = random.random()
 
-        # A partir de 35.0s, inclui InimigoRanged nativamente
-        if tempo_s >= 35.0:
-            chance_ranged = 0.25 if permitir_ranged else 0.12
-            if r < chance_ranged:
+        # A partir de 35.0s, inclui InimigoRanged quando permitir_ranged=True
+        if tempo_s >= 35.0 and permitir_ranged:
+            if r < 0.15:
                 return InimigoRanged
 
         if tempo_s < 55.0:

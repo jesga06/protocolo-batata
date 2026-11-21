@@ -830,7 +830,7 @@ class Jogador:
         mult_vel_suporte = min(2.0, mult_vel_suporte)
 
         mult_buff_vel = 1.08 if getattr(self, "buff_vel_timer", 0.0) > 0.0 else 1.0
-        mult_barramento = 1.40 if getattr(self, "upgrade_barramento", False) else 1.0
+        mult_barramento = 1.15 if getattr(self, "upgrade_barramento", False) else 1.0
         mult_config = getattr(self, "mult_vel_config", 1.0)
 
         self.velocidade_atual = self.velocidade_base * mult_vel_suporte * mult_config * mult_buff_vel * mult_barramento
