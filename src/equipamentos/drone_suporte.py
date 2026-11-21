@@ -54,6 +54,8 @@ class DroneSuporte(DroneBase):
             for drop in drops:
                 if not getattr(drop, "ativo", True) or getattr(drop, "coletado", False):
                     continue
+                if getattr(drop, "tipo", "") == "capsula_powerup":
+                    continue
 
                 d_cx = drop.x + getattr(drop, "largura", 42) / 2.0
                 d_cy = drop.y + getattr(drop, "altura", 42) / 2.0

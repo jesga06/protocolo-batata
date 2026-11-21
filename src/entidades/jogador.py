@@ -85,8 +85,6 @@ class Jogador:
         self.multithreading = False
         self.coprocessadores_angulos = [0.0, 3.14159]
         self.refrigeracao_nitrogenio = False
-        self.refrigeracao_carga = 0.0
-        self.refrigeracao_overdrive_timer = 0.0
         self.overvolt = False
         self.bios_modding = False
         self.slot_especial_secundario_ativo = False
@@ -208,8 +206,8 @@ class Jogador:
             self.coprocessadores_angulos = [0.0, 3.14159]
         elif mod_id == "refrigeracao":
             self.refrigeracao_nitrogenio = True
-            self.refrigeracao_carga = 0.0
-            self.refrigeracao_overdrive_timer = 0.0
+            self.timer_sem_atirar_refrig = 0.0
+            self.pulso_frio_pronto = False
         elif mod_id == "overvolt":
             self.overvolt = True
         elif mod_id == "bios_modding":
@@ -661,25 +659,16 @@ class Jogador:
                     "cor_bg": (40, 40, 50)
                 })
         if getattr(self, "refrigeracao_nitrogenio", False):
-            if getattr(self, "refrigeracao_overdrive_timer", 0.0) > 0.0:
-                ativos.append({
-                    "id": "refrigeracao_overdrive",
-                    "nome": f"OVERDRIVE {self.refrigeracao_overdrive_timer:.1f}s",
-                    "timer": self.refrigeracao_overdrive_timer,
-                    "duracao": 6.0,
-                    "cor": (0, 255, 255),
-                    "cor_bg": (10, 45, 60)
-                })
-            else:
-                carga_pct = int(round(getattr(self, "refrigeracao_carga", 0.0) * 100))
-                ativos.append({
-                    "id": "refrigeracao",
-                    "nome": f"NITRO {carga_pct}%",
-                    "timer": self.refrigeracao_carga,
-                    "duracao": 1.0,
-                    "cor": (140, 220, 255),
-                    "cor_bg": (15, 35, 55)
-                })
+            timer_frio = float(getattr(self, "timer_sem_atirar_refrig", 0.0))
+            carga_pct = min(100, int(round((timer_frio / 1.5) * 100)))
+            ativos.append({
+                "id": "refrigeracao",
+                "nome": f"ONDA FRIA {carga_pct}%",
+                "timer": timer_frio,
+                "duracao": 1.5,
+                "cor": (140, 220, 255),
+                "cor_bg": (15, 35, 55)
+            })
         return ativos
 
     def update(self, dt: float, drops: list = None, inimigos: list = None):
