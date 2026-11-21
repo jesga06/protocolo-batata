@@ -68,11 +68,11 @@ class TestChallengerEliteSpawningAndCadence(unittest.TestCase):
                     elites_spawned.append((t + dt, inim))
             t += dt
 
-        # Deve ter gerado exatamente 4 elites em 10 minutos (1:00 / 60s, 3:30 / 210s, 6:00 / 360s, 8:30 / 510s)
+        # Deve ter gerado exatamente 4 elites (1:00 / 60s, 2:00 / 120s, 3:00 / 180s, 4:00 / 240s)
         self.assertEqual(len(elites_spawned), 4, f"Esperava 4 elites, mas obteve {len(elites_spawned)}")
 
-        # Verifica timing de cada spawn (60s, 210s, 360s, 510s)
-        horarios_esperados = [60.0, 210.0, 360.0, 510.0]
+        # Verifica timing de cada spawn (60s, 120s, 180s, 240s)
+        horarios_esperados = [60.0, 120.0, 180.0, 240.0]
         for i, (tempo_spawn, boss) in enumerate(elites_spawned):
             limiar_segundos = horarios_esperados[i]
             self.assertTrue(
@@ -84,16 +84,16 @@ class TestChallengerEliteSpawningAndCadence(unittest.TestCase):
         """Verifica se cada minuto gera o arquétipo e nome correto do catálogo."""
         esperados = {
             1: (InimigoRapido, "MINI-BOSS: ESTAGIÁRIO SÊNIOR"),
-            2: (InimigoTank, "MINI-BOSS: GELADEIRA INDUSTRIAL TURBO"),
-            3: (InimigoPhasing, "MINI-BOSS: PHANTOM EXECUTIVO"),
-            4: (InimigoBlindado, "MINI-BOSS: BASTIÃO TITÂNICO"),
-            5: (InimigoRanged, "MINI-BOSS: COMANDANTE ARTILHEIRO"),
-            6: (InimigoTank, "MINI-BOSS: HYPER GELADEIRA MK-II"),
-            7: (InimigoPhasing, "MINI-BOSS: ESPECTRO CORPORATIVO"),
-            8: (InimigoBlindado, "MINI-BOSS: FORTALEZA CIBERNÉTICA"),
-            9: (InimigoRanged, "MINI-BOSS: GENERAL BALÍSTICO"),
-            10: (InimigoTank, "MINI-BOSS: OVERLORD DA MEMÓRIA MK-10"),
-            11: (InimigoTank, "MINI-BOSS: OVERLORD DA MEMÓRIA MK-11"),
+            2: (InimigoTank, "MINI-BOSS: ARQUIVO MORTO PRIORITÁRIO"),
+            3: (InimigoPhasing, "MINI-BOSS: FANTASMA DO RH"),
+            4: (InimigoBlindado, "MINI-BOSS: SEGURANÇA-CHEFE"),
+            5: (InimigoRanged, "MINI-BOSS: SUPERVISOR TERCEIRIZADO"),
+            6: (InimigoTank, "MINI-BOSS: PROCESSO EM ESPERA ETERNA"),
+            7: (InimigoPhasing, "MINI-BOSS: DIRETOR FANTASMA"),
+            8: (InimigoBlindado, "MINI-BOSS: DIRETOR DE SEGURANÇA PATRIMONIAL"),
+            9: (InimigoRanged, "MINI-BOSS: GERENTE DA TERCEIRIZADA"),
+            10: (InimigoTank, "MINI-BOSS: AUDITORIA INTERMINÁVEL MK-10"),
+            11: (InimigoTank, "MINI-BOSS: AUDITORIA INTERMINÁVEL MK-11"),
         }
 
         for minuto, (cls_exp, nome_exp) in esperados.items():

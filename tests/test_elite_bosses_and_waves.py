@@ -46,7 +46,7 @@ class TestEliteBossesAndWaves(unittest.TestCase):
     def test_tank_elite_stats(self):
         """Valida escalonamento específico do Tank Elite (360 HP, 3000 pts)."""
         tank_normal = InimigoTank(0, 0)
-        tank_elite = InimigoTank(0, 0, is_elite=True, nome_elite="MINI-BOSS: GELADEIRA INDUSTRIAL TURBO")
+        tank_elite = InimigoTank(0, 0, is_elite=True, nome_elite="MINI-BOSS: ARQUIVO MORTO PRIORITÁRIO")
 
         self.assertEqual(tank_normal.hp, 120)
         self.assertEqual(tank_elite.hp, 360)
@@ -74,12 +74,12 @@ class TestEliteBossesAndWaves(unittest.TestCase):
         elites_depois = [e for e in novos_depois if getattr(e, "is_elite", False)]
         self.assertEqual(len(elites_depois), 0)
 
-        # Avança até 210.5s (3:30) -> Spawna Mini-Boss 2 (Geladeira Turbo)
-        novos_m2 = spawner.update(140.0, camera_x=0, camera_y=0, total_inimigos_vivos=len(novos))
+        # Avança até 120.5s (2:00) -> Spawna Mini-Boss 2 (Arquivo Morto Prioritário)
+        novos_m2 = spawner.update(50.0, camera_x=0, camera_y=0, total_inimigos_vivos=len(novos))
         elites_m2 = [e for e in novos_m2 if getattr(e, "is_elite", False)]
         self.assertEqual(len(elites_m2), 1)
         self.assertEqual(spawner.ultimo_minuto_elite, 2)
-        self.assertIn("GELADEIRA INDUSTRIAL TURBO", elites_m2[0].nome_elite)
+        self.assertIn("ARQUIVO MORTO PRIORITÁRIO", elites_m2[0].nome_elite)
 
     def test_drops_garantidos_elite(self):
         """Valida que a morte de um elite gera +50 XP (5 gemas de 10 XP), 1 caixa de arma e 1 de equipamento."""

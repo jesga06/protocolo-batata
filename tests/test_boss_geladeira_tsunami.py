@@ -500,7 +500,7 @@ class TestTier2BoundaryAndCornerCases(unittest.TestCase):
         self.assertEqual(self.sistema_xp.nivel, 20)
 
     def test_t2_fatal_shield_cooldown_starts_after_invuln(self):
-        """Valida que o cooldown de 45s do Escudo Fatal só começa APÓS os 5s de invulnerabilidade."""
+        """Valida que o cooldown de 60s do Escudo Fatal só começa APÓS os 4s de invulnerabilidade."""
         jogador = Jogador(x=400, y=300)
         jogador.aplicar_overclock("protecao_surtos")
         self.assertTrue(jogador.escudo_fatal_pronto)
@@ -511,22 +511,22 @@ class TestTier2BoundaryAndCornerCases(unittest.TestCase):
         self.assertTrue(jogador.vivo)
         self.assertGreaterEqual(jogador.hp, 1)
         self.assertFalse(jogador.escudo_fatal_pronto)
-        self.assertEqual(jogador.escudo_fatal_invuln_timer, 5.0)
+        self.assertEqual(jogador.escudo_fatal_invuln_timer, 4.0)
         self.assertEqual(jogador.escudo_fatal_cooldown, 0.0)
 
-        # Atualiza 3.0s durante invulnerabilidade -> cooldown continua 0.0
-        jogador.update(3.0)
+        # Atualiza 2.0s durante invulnerabilidade -> cooldown continua 0.0
+        jogador.update(2.0)
         self.assertAlmostEqual(jogador.escudo_fatal_invuln_timer, 2.0, delta=0.01)
         self.assertEqual(jogador.escudo_fatal_cooldown, 0.0)
 
-        # Atualiza mais 2.0s (total 5.0s) -> invulnerabilidade acaba e cooldown inicia em 45.0s
+        # Atualiza mais 2.0s (total 4.0s) -> invulnerabilidade acaba e cooldown inicia em 60.0s
         jogador.update(2.0)
         self.assertEqual(jogador.escudo_fatal_invuln_timer, 0.0)
-        self.assertEqual(jogador.escudo_fatal_cooldown, 45.0)
+        self.assertEqual(jogador.escudo_fatal_cooldown, 60.0)
         self.assertFalse(jogador.escudo_fatal_pronto)
 
-        # Atualiza 44.0s de cooldown -> continua em recarga
-        jogador.update(44.0)
+        # Atualiza 59.0s de cooldown -> continua em recarga
+        jogador.update(59.0)
         self.assertAlmostEqual(jogador.escudo_fatal_cooldown, 1.0, delta=0.01)
         self.assertFalse(jogador.escudo_fatal_pronto)
 

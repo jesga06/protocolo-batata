@@ -19,9 +19,12 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from src.utils.constantes import (
-    ASSETS_DIR, ASSET_PATHS, CONFIGURACOES_CATALOGO, CONFIGURACOES_SISTEMA,
+    ASSETS_DIR, ASSET_PATHS,
     LARGURA_TELA, ALTURA_TELA, JOGADOR_HP_MAX_PADRAO, JOGADOR_VELOCIDADE_PADRAO,
     obter_caminho_asset
+)
+from src.sistemas.config_dados import (
+    CONFIGURACOES_GAMEPLAY, CONFIGURACOES_SISTEMA
 )
 from src.utils.math_utils import (
     distancia, distancia_sq, normalizar_vetor, vetor_direcao,
@@ -104,33 +107,37 @@ class TestConstantesEConfiguracoes(unittest.TestCase):
 
     def test_total_configs_gameplay(self):
         self.assertEqual(
-            len(CONFIGURACOES_CATALOGO), 20,
+            len(CONFIGURACOES_GAMEPLAY), 20,
             "Devem existir exatamente 20 configurações de gameplay no catálogo!"
         )
 
     def test_total_configs_sistema(self):
         self.assertEqual(
-            len(CONFIGURACOES_SISTEMA), 3,
-            "Devem existir exatamente 3 configurações de sistema (volume_master, volume_musica, volume_sfx)!"
+            len(CONFIGURACOES_SISTEMA), 5,
+            "Devem existir exatamente 5 configurações de sistema (volume_master, volume_musica, volume_sfx, filtro_daltonico, escala_global)!"
         )
+        for chave in ["volume_master", "volume_musica", "volume_sfx", "filtro_daltonico", "escala_global"]:
+            self.assertIn(chave, CONFIGURACOES_SISTEMA)
 
     def test_estrutura_cada_config_gameplay(self):
-        for config_id, config_info in CONFIGURACOES_CATALOGO.items():
-            self.assertEqual(config_id, config_info["id"])
-            self.assertIn("nome", config_info)
-            self.assertIn("categoria", config_info)
-            self.assertIn("tipo", config_info)
-            self.assertIn("padrao", config_info)
-            self.assertIn("opcoes", config_info)
-            self.assertIn("icone", config_info)
-            self.assertIn("flavor_text", config_info)
-            self.assertIn("buffs", config_info)
+        for config_id, config_def in CONFIGURACOES_GAMEPLAY.items():
+            self.assertEqual(config_id, config_def.id)
+            self.assertTrue(config_def.nome)
+            self.assertTrue(config_def.categoria)
+            self.assertTrue(config_def.tipo)
+            self.assertIsNotNone(config_def.valor_padrao)
+            self.assertTrue(len(config_def.opcoes) > 0)
+            self.assertTrue(config_def.is_gameplay)
 
-            # Verifica se o ícone referenciado existe no disco
-            icone_path = os.path.join(ASSETS_DIR, config_info["icone"])
+            for op_id, op_def in config_def.opcoes.items():
+                self.assertEqual(op_id, op_def.id)
+                self.assertTrue(op_def.label)
+
+            # Verifica se o ícone correspondente existe no disco
+            icone_path = os.path.join(ASSETS_DIR, "ui", "icones_configs", f"icon_{config_id}.png")
             self.assertTrue(
                 os.path.isfile(icone_path),
-                f"Ícone '{config_info['icone']}' da config '{config_id}' não existe no disco!"
+                f"Ícone 'icon_{config_id}.png' da config '{config_id}' não existe no disco!"
             )
 
 

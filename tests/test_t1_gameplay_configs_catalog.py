@@ -108,12 +108,13 @@ class TestGameplayConfigsCatalog(unittest.TestCase):
         self.assertAlmostEqual(mods.xp_ganho_mult, 1.25)
 
     def test_config_08_damage_numbers_and_crits(self):
-        """Config 8: damage_numbers ligado concede 15% de chance de crítico 2x dano e emite números flutuantes."""
+        """Config 8: damage_numbers ligado concede 25% de chance de crítico 2x dano e emite números flutuantes."""
         self.mgr.desbloquear_config("damage_numbers")
         self.mgr.definir_valor("damage_numbers", "ligado")
         mods = self.mgr.obter_modificadores()
-        self.assertAlmostEqual(mods.critico_chance, 0.15)
+        self.assertAlmostEqual(mods.critico_chance, 0.25)
         self.assertEqual(mods.critico_mult, 2.0)
+        self.assertTrue(mods.damage_numbers_knockback)
 
         # Valida emissão no SistemaParticulas
         sp = SistemaParticulas()

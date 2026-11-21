@@ -93,19 +93,27 @@ class TestXPProgressionSystem(unittest.TestCase):
 
     def test_xp_formula_scaling(self):
         """
-        Valida a nova fórmula: XP_prox = 20 + 10*level + 5*(level^2)
-        - Nível 1 -> 35 XP
-        - Nível 2 -> 60 XP
-        - Nível 3 -> 95 XP
-        - Nível 4 -> 140 XP
-        - Nível 19 -> 2015 XP
+        Valida a fórmula quadrática com suavização de 25% para níveis > 10:
+        - Níveis 1..10 (base): base = 20 + 10*level + 5*(level^2)
+          - Nível 1 -> 35 XP
+          - Nível 2 -> 60 XP
+          - Nível 3 -> 95 XP
+          - Nível 4 -> 140 XP
+          - Nível 10 -> 620 XP
+        - Níveis > 10: int(round(base * 0.75))
+          - Nível 11 -> 551 XP (base 735 * 0.75)
+          - Nível 19 -> 1511 XP (base 2015 * 0.75)
+          - Nível 20 -> 1665 XP (base 2220 * 0.75)
         """
         xp_sys = SistemaXP(nivel_inicial=1, nivel_maximo=20)
         self.assertEqual(xp_sys.xp_para_proximo_nivel(1), 35)
         self.assertEqual(xp_sys.xp_para_proximo_nivel(2), 60)
         self.assertEqual(xp_sys.xp_para_proximo_nivel(3), 95)
         self.assertEqual(xp_sys.xp_para_proximo_nivel(4), 140)
-        self.assertEqual(xp_sys.xp_para_proximo_nivel(19), 2015)
+        self.assertEqual(xp_sys.xp_para_proximo_nivel(10), 620)
+        self.assertEqual(xp_sys.xp_para_proximo_nivel(11), 551)
+        self.assertEqual(xp_sys.xp_para_proximo_nivel(19), 1511)
+        self.assertEqual(xp_sys.xp_para_proximo_nivel(20), 1665)
 
     def test_multi_level_overflow_carryover(self):
         """

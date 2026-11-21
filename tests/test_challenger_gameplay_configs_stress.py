@@ -303,17 +303,17 @@ class TestCriticalHitsDistributionAndParticleLifecycle(unittest.TestCase):
     def test_critical_hit_statistical_monte_carlo_distribution(self):
         """
         [ADVERSARIAL] Teste de Monte Carlo com 100.000 rolagens para validar se a taxa de acertos críticos
-        converge para 15% (±0.45% com intervalo de confiança de 99.99%).
+        converge para 25% (±0.45% com intervalo de confiança de 99.99%).
         """
         mgr = GerenciadorConfiguracoes()
         mgr.desbloquear_config("damage_numbers")
         mgr.definir_valor("damage_numbers", "ligado")
         mods = mgr.obter_modificadores()
-        self.assertEqual(mods.critico_chance, 0.15)
+        self.assertEqual(mods.critico_chance, 0.25)
         self.assertEqual(mods.critico_mult, 2.0)
 
         n_amostras = 100000
-        p_esperado = 0.15
+        p_esperado = 0.25
         crits = 0
 
         random.seed(42)  # Seed determinística reproduzível
@@ -322,10 +322,10 @@ class TestCriticalHitsDistributionAndParticleLifecycle(unittest.TestCase):
                 crits += 1
 
         taxa_observada = crits / float(n_amostras)
-        # Desvio padrão = sqrt(N * p * (1-p)) / N = sqrt(0.15 * 0.85 / 100000) ~= 0.00113 (0.113%)
-        # 4 desvios padrão ~= 0.45%
-        self.assertAlmostEqual(taxa_observada, p_esperado, delta=0.005,
-                               msg=f"Taxa observada {taxa_observada*100:.2f}% fora da margem estatística de 15%.")
+        # Desvio padrão = sqrt(N * p * (1-p)) / N = sqrt(0.25 * 0.75 / 100000) ~= 0.00137 (0.137%)
+        # 4 desvios padrão ~= 0.55%
+        self.assertAlmostEqual(taxa_observada, p_esperado, delta=0.006,
+                               msg=f"Taxa observada {taxa_observada*100:.2f}% fora da margem estatística de 25%.")
 
     def test_floating_damage_text_lifecycle_and_content(self):
         """

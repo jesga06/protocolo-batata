@@ -159,7 +159,7 @@ class TestRFFixesValidation(unittest.TestCase):
         self.assertGreater(proj.dir_y, 0.0)
 
     def test_rf4_7_boss_schedule_at_2_30_intervals(self):
-        """RF4/7: Chefes surgem aos 60s (1:00), 210s (3:30), 360s (6:00) e 510s (8:30)."""
+        """RF4/7: Chefes surgem aos 60s (1:00), 120s (2:00), 180s (3:00) e 240s (4:00)."""
         spawner = SistemaSpawn()
         elites = []
 
@@ -175,7 +175,7 @@ class TestRFFixesValidation(unittest.TestCase):
 
         self.assertEqual(len(elites), 4)
         tempos = [e[0] for e in elites]
-        self.assertEqual(tempos, [60, 210, 360, 510])
+        self.assertEqual(tempos, [60, 120, 180, 240])
 
 
 if __name__ == "__main__":

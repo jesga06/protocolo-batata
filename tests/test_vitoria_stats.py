@@ -28,8 +28,8 @@ class TestVitoriaStats(unittest.TestCase):
         """Verifica se a constante TEMPO_VITORIA equivale a 600.0s (10 minutos)."""
         self.assertEqual(TEMPO_VITORIA, 600.0)
 
-    def test_disparo_condicao_vitoria_aos_600s(self):
-        """Testa o disparo da vitória quando o tempo de sobrevivência atinge 600.0s."""
+    def test_tempo_sobrevivencia_600s_nao_dispara_vitoria_automatica(self):
+        """Valida que atingir 600.0s (10 min) NÃO dispara vitória automaticamente (vitória requer derrotar o boss)."""
         self.cena.tempo_sobrevivencia = 600.0
         self.cena.jogador.hp = 100
         self.assertFalse(self.cena.vitoria)
@@ -37,10 +37,27 @@ class TestVitoriaStats(unittest.TestCase):
         # Adiciona inimigo com velocidade normal
         inimigo = InimigoPadrao(100, 100)
         self.cena.inimigos.append(inimigo)
-        self.assertGreater(inimigo.velocidade, 0.0)
+        vel_inicial = inimigo.velocidade
+        self.assertGreater(vel_inicial, 0.0)
 
         # Avança loop
         self.cena.loop()
+
+        # Jogo continua ativo: NÃO venceu automaticamente aos 600s
+        self.assertFalse(self.cena.vitoria)
+        self.assertFalse(self.cena.partida_registrada)
+        self.assertGreater(inimigo.velocidade, 0.0)
+
+    def test_disparo_vitoria_explicita_congela_jogo(self):
+        """Testa o disparo da sequência de vitória (ex: ao abater Geladeira Tsunami)."""
+        self.cena.tempo_sobrevivencia = 600.0
+        self.cena.jogador.hp = 100
+        inimigo = InimigoPadrao(100, 100)
+        self.cena.inimigos.append(inimigo)
+
+        # Aciona vitória
+        self.cena.vitoria = True
+        self.cena._acionar_vitoria()
 
         self.assertTrue(self.cena.vitoria)
         self.assertTrue(self.cena.partida_registrada)
