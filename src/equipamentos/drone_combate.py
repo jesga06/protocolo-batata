@@ -36,11 +36,13 @@ class DroneCombate(DroneBase):
         self.cooldown_tiro = float(cooldown_tiro)
         self.timer_tiro = 0.0
         self.dano = int(dano)
+        self._dano_base = int(dano)
+        self._cooldown_base = float(cooldown_tiro)
         self.alcance_deteccao = float(alcance_deteccao)
         self.velocidade_projetil = float(velocidade_projetil)
 
-    def disparar_no_alvo(self, alvo) -> list[Projetil]:
-        """Gera um projétil apontado do centro do drone para o alvo."""
+    def disparar_no_alvo(self, alvo, mult_dano: float = 1.0) -> list[Projetil]:
+        """Gera um projétil apontado do centro do drone para o alvo com spawn centralizado."""
         d_cx = self.x + self.largura / 2.0
         d_cy = self.y + self.altura / 2.0
         a_cx = alvo.x + getattr(alvo, "largura", 28) / 2.0
@@ -50,15 +52,20 @@ class DroneCombate(DroneBase):
         if dir_x == 0.0 and dir_y == 0.0:
             dir_x = 1.0
 
+        dano_final = max(1, int(round(self.dano * float(mult_dano))))
+        d_largura = 8
+        d_altura = 8
         proj = Projetil(
-            x=d_cx,
-            y=d_cy,
+            x=d_cx - d_largura / 2.0,
+            y=d_cy - d_altura / 2.0,
             dir_x=dir_x,
             dir_y=dir_y,
             velocidade=self.velocidade_projetil,
-            dano=self.dano,
+            dano=dano_final,
             tempo_vida=1.8,
             dono="jogador",
+            largura=d_largura,
+            altura=d_altura,
             sprite_key="projetil_pistola"
         )
 
@@ -71,17 +78,50 @@ class DroneCombate(DroneBase):
 
         return [proj]
 
-    def update(self, dt: float, jogador=None, inimigos: list = None, *args, **kwargs) -> list[Projetil]:
+    def update(
+        self,
+        dt: float,
+        jogador=None,
+        inimigos: list = None,
+        mult_dano: float = 1.0,
+        mult_cadencia: float = 1.0,
+        *args,
+        **kwargs
+    ) -> list[Projetil]:
         """
-        Atualiza órbita e executa aquisição de alvos dentro de 350px para disparo a cada 1.0s.
+        Atualiza órbita e executa aquisição de alvos dentro de 350px para disparo.
+        Pula inimigos em fase (getattr(e, 'em_fase', False)).
+        Limita timer_tiro para não acumular tempo excessivo.
+        Recebe e aplica modificadores mult_dano e mult_cadencia.
         Retorna lista de novos projéteis gerados.
         """
         super().update(dt, jogador=jogador, *args, **kwargs)
         if not self.ativo:
             return []
 
-        self.timer_tiro += dt
-        if self.timer_tiro >= self.cooldown_tiro:
+        # Extrai modificadores de kwargs ou do jogador se disponíveis
+        m_dano = float(kwargs.get("mult_dano", mult_dano))
+        m_cadencia = float(kwargs.get("mult_cadencia", mult_cadencia))
+
+        if jogador is not None:
+            if "mult_dano" not in kwargs and mult_dano == 1.0:
+                m_dano *= getattr(jogador, "mult_dano_config", 1.0)
+                if getattr(jogador, "buff_dano_timer", 0.0) > 0.0:
+                    m_dano *= 1.05
+            if "mult_cadencia" not in kwargs and mult_cadencia == 1.0:
+                if getattr(jogador, "buff_cadencia_timer", 0.0) > 0.0:
+                    m_cadencia *= 1.08
+
+        # Atualiza timer_tiro acelerado por mult_cadencia
+        self.timer_tiro += dt * max(0.01, m_cadencia)
+        cooldown_efetivo = max(0.01, self.cooldown_tiro)
+        # Limita timer_tiro para evitar acumular excesso (teto em 2 * cooldown)
+        if self.timer_tiro > 2.0 * cooldown_efetivo:
+            self.timer_tiro = 2.0 * cooldown_efetivo
+        elif self.timer_tiro < 0.0:
+            self.timer_tiro = 0.0
+
+        if self.timer_tiro >= cooldown_efetivo:
             if inimigos:
                 d_cx = self.x + self.largura / 2.0
                 d_cy = self.y + self.altura / 2.0
@@ -90,7 +130,7 @@ class DroneCombate(DroneBase):
                 menor_dist = self.alcance_deteccao
 
                 for inimigo in inimigos:
-                    if not getattr(inimigo, "vivo", True):
+                    if not getattr(inimigo, "vivo", True) or getattr(inimigo, "em_fase", False):
                         continue
                     e_cx = inimigo.x + getattr(inimigo, "largura", 28) / 2.0
                     e_cy = inimigo.y + getattr(inimigo, "altura", 28) / 2.0
@@ -101,7 +141,9 @@ class DroneCombate(DroneBase):
                         melhor_alvo = inimigo
 
                 if melhor_alvo is not None:
-                    self.timer_tiro = 0.0
-                    return self.disparar_no_alvo(melhor_alvo)
+                    self.timer_tiro -= cooldown_efetivo
+                    if self.timer_tiro < 0.0:
+                        self.timer_tiro = 0.0
+                    return self.disparar_no_alvo(melhor_alvo, mult_dano=m_dano)
 
         return []

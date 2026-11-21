@@ -101,20 +101,35 @@ class DroneBase:
         draw_x = camera.transform_x(self.x) if camera else self.x
         draw_y = camera.transform_y(self.y) if camera else self.y
 
-        if draw_x < -40 or draw_x > janela.largura + 40 or draw_y < -40 or draw_y > janela.altura + 40:
+        screen = getattr(janela, "screen", janela)
+        largura_janela = getattr(janela, "largura", 800)
+        altura_janela = getattr(janela, "altura", 600)
+        is_low_graphics = getattr(janela, "low_graphics", False)
+
+        if draw_x < -40 or draw_x > largura_janela + 40 or draw_y < -40 or draw_y > altura_janela + 40:
+            return
+
+        cor = AZUL_CIANO
+        if "cura" in self.sprite_key:
+            cor = VERDE_CURA
+        elif "suporte" in self.sprite_key:
+            cor = DOURADO
+
+        if is_low_graphics:
+            pygame.draw.circle(
+                screen,
+                cor,
+                (int(draw_x + self.largura / 2.0), int(draw_y + self.altura / 2.0)),
+                self.largura // 2
+            )
             return
 
         sprite = self._carregar_sprite(self.sprite_key)
         if sprite is not None:
-            janela.screen.blit(sprite, (int(draw_x), int(draw_y)))
+            screen.blit(sprite, (int(draw_x), int(draw_y)))
         else:
-            cor = AZUL_CIANO
-            if "cura" in self.sprite_key:
-                cor = VERDE_CURA
-            elif "suporte" in self.sprite_key:
-                cor = DOURADO
             pygame.draw.circle(
-                janela.screen,
+                screen,
                 cor,
                 (int(draw_x + self.largura / 2.0), int(draw_y + self.altura / 2.0)),
                 self.largura // 2

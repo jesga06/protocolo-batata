@@ -55,8 +55,9 @@ class DroneSuporte(DroneBase):
                 dist = distancia(j_cx, j_cy, d_cx, d_cy)
 
                 if dist <= self.raio_magnetico and dist > 0.1:
-                    # Move o drop em direção ao centro do jogador
+                    # Move o drop em direção ao centro do jogador sem ultrapassá-lo (evita overshoot)
                     dx = (j_cx - d_cx) / dist
                     dy = (j_cy - d_cy) / dist
-                    drop.x += dx * self.velocidade_magnetica * dt
-                    drop.y += dy * self.velocidade_magnetica * dt
+                    passo = min(self.velocidade_magnetica * dt, dist)
+                    drop.x += dx * passo
+                    drop.y += dy * passo
