@@ -39,6 +39,7 @@ class GameplayScene(BaseScene):
     _tile_piso = None
     _btn_gear_img = None
     _slot_inv_img = None
+    _mira_crosshair_img = None
 
     def __init__(self):
         super().__init__()
@@ -54,6 +55,7 @@ class GameplayScene(BaseScene):
         # Câmera 2D vinculada às dimensões virtuais
         self.camera = Camera(LARGURA_TELA, ALTURA_TELA)
         self.camera.set_world_bounds(self.largura_arena, self.altura_arena)
+        self.camera.obter_mouse_mundo = self._obter_mouse_mundo
 
         # Sistema de Configurações e Modificadores
         self.gerenciador_config = GerenciadorConfiguracoes()
@@ -142,6 +144,11 @@ class GameplayScene(BaseScene):
         self._inv_surf = None
         self._overlay_surf = None
         self._motion_blur_surf = None
+        self._zoom75_surf = None
+        self._zoom_crop_cache: dict[tuple[int, int], pygame.Surface] = {}
+        self._res_surf_cache: dict[tuple[int, int], pygame.Surface] = {}
+        self._melee_surf_cache: dict[int, pygame.Surface] = {}
+        self._vsync_strip_surf = None
         self._cooldown_menu_toggle: float = 0.0
 
         # Aplica modificadores iniciais
@@ -238,6 +245,52 @@ class GameplayScene(BaseScene):
             except Exception:
                 cls._slot_inv_img = None
 
+        if cls._mira_crosshair_img is None:
+            try:
+                caminho = obter_caminho_asset("mira_crosshair")
+                if os.path.isfile(caminho):
+                    cls._mira_crosshair_img = pygame.image.load(caminho).convert_alpha()
+            except Exception:
+                cls._mira_crosshair_img = None
+
+    def _clamp_entidade_arena(self, ent):
+        """Restringe uma entidade (jogador ou inimigo) estritamente aos limites da arena."""
+        larg = float(getattr(ent, "largura", 28))
+        alt = float(getattr(ent, "altura", 28))
+        ent.x = clamp(float(ent.x), 0.0, max(0.0, float(self.largura_arena) - larg))
+        ent.y = clamp(float(ent.y), 0.0, max(0.0, float(self.altura_arena) - alt))
+
+    def _obter_viewport_zoom75(self) -> tuple[int, int, float, float]:
+        """Calcula dimensões (1067x800) e origem (cam75_x, cam75_y) da câmera expandida para zoom='75%'."""
+        fov_w = int(round(LARGURA_TELA / 0.75))  # 1067
+        fov_h = int(round(ALTURA_TELA / 0.75))  # 800
+        cam_cx = self.camera.x + LARGURA_TELA / 2.0
+        cam_cy = self.camera.y + ALTURA_TELA / 2.0
+        cam75_x = clamp(cam_cx - fov_w / 2.0, 0.0, max(0.0, float(self.largura_arena - fov_w)))
+        cam75_y = clamp(cam_cy - fov_h / 2.0, 0.0, max(0.0, float(self.altura_arena - fov_h)))
+        return fov_w, fov_h, cam75_x, cam75_y
+
+    def _obter_mouse_mundo(self, mx: float, my: float) -> tuple[float, float]:
+        """Converte coordenadas virtuais de tela (800x600) em coordenadas do mundo considerando o zoom ativo."""
+        val_zoom = str(self.config_sistema.obter_valor("zoom")) if hasattr(self, "config_sistema") and self.config_sistema else "100%"
+        if val_zoom == "75%":
+            fov_w, fov_h, cam75_x, cam75_y = self._obter_viewport_zoom75()
+            wx = cam75_x + float(mx) * (fov_w / float(LARGURA_TELA))
+            wy = cam75_y + float(my) * (fov_h / float(ALTURA_TELA))
+            return wx, wy
+        elif val_zoom in ("125%", "150%"):
+            z = 1.25 if val_zoom == "125%" else 1.50
+            crop_w = int(LARGURA_TELA / z)
+            crop_h = int(ALTURA_TELA / z)
+            pj_cx = int(self.camera.transform_x(self.jogador.x + self.jogador.largura / 2.0))
+            pj_cy = int(self.camera.transform_y(self.jogador.y + self.jogador.altura / 2.0))
+            crop_x = clamp(pj_cx - crop_w // 2, 0, LARGURA_TELA - crop_w)
+            crop_y = clamp(pj_cy - crop_h // 2, 0, ALTURA_TELA - crop_h)
+            wx = self.camera.x + crop_x + float(mx) / z
+            wy = self.camera.y + crop_y + float(my) / z
+            return wx, wy
+        return float(mx) + self.camera.x, float(my) + self.camera.y
+
     def _ao_subir_nivel(self, novo_nivel: int):
         """Callback acionado pelo SistemaXP ao subir de nível."""
         if hasattr(self, "modal_level_up") and self.modal_level_up is not None:
@@ -278,6 +331,12 @@ class GameplayScene(BaseScene):
 
         try:
             pygame.mixer.music.set_volume(self._obter_volume_musica_efetivo(0.4))
+            vol_master = float(self.config_sistema.obter_valor("volume_master")) if hasattr(self, "config_sistema") and self.config_sistema else 100.0
+            vol_sfx = float(self.config_sistema.obter_valor("volume_sfx")) if hasattr(self, "config_sistema") and self.config_sistema else 100.0
+            self.volume_sfx_efetivo = clamp((vol_master / 100.0) * (vol_sfx / 100.0), 0.0, 1.0)
+            if pygame.mixer.get_init():
+                for ch_idx in range(pygame.mixer.get_num_channels()):
+                    pygame.mixer.Channel(ch_idx).set_volume(self.volume_sfx_efetivo)
         except Exception:
             pass
 
@@ -347,14 +406,15 @@ class GameplayScene(BaseScene):
 
         dano_chain = max(1, dano_base // 2)
         for _, alv, a_cx, a_cy in alvos_chain:
-            alv.receber_dano(dano_chain)
-            self.dano_total_causado += dano_chain
+            ret_d = alv.receber_dano(dano_chain)
+            dano_efetivo = int(ret_d) if isinstance(ret_d, (int, float)) else dano_chain
+            self.dano_total_causado += dano_efetivo
             self.sistema_particulas.emitir_faiscas(a_cx, a_cy, cor=(120, 240, 255), qtd=5)
             if hasattr(self, "config_sistema") and str(self.config_sistema.obter_valor("damage_numbers")).lower() in ("ligado", "true", "1"):
                 self.sistema_particulas.emitir_texto_dano(
                     a_cx,
                     alv.y,
-                    dano_chain,
+                    dano_efetivo,
                     critico=False
                 )
             if not getattr(alv, "vivo", True):
@@ -367,9 +427,11 @@ class GameplayScene(BaseScene):
 
         self.abates += 1
         self.pontos += getattr(inim, "score_valor", 100)
+        inim_cx = inim.x + getattr(inim, "largura", 28) / 2.0
+        inim_cy = inim.y + getattr(inim, "altura", 28) / 2.0
         if getattr(inim, "is_elite", False):
             self.aplicar_shake(14.0, 0.35)
-            self.sistema_particulas.emitir_debris(inim.x + 14, inim.y + 14, cor=(255, 215, 0), qtd=16)
+            self.sistema_particulas.emitir_debris(inim_cx, inim_cy, cor=(255, 215, 0), qtd=16)
 
         # Estilhaços Low-Poly (Qualidade Gráfica Baixa)
         if getattr(mods, "graficos_shrapnel", False):
@@ -378,7 +440,7 @@ class GameplayScene(BaseScene):
                 vx_sh = math.cos(ang_sh + random.uniform(-0.2, 0.2)) * spd_sh
                 vy_sh = math.sin(ang_sh + random.uniform(-0.2, 0.2)) * spd_sh
                 self.projeteis.append(Projetil(
-                    x=inim.x + 14, y=inim.y + 14, vx=vx_sh, vy=vy_sh, dano=12,
+                    x=inim_cx - 3.0, y=inim_cy - 3.0, vx=vx_sh, vy=vy_sh, dano=12,
                     tempo_vida=0.45, dono="jogador", largura=6, altura=6, cor=(255, 255, 255),
                     perfurante=True
                 ))
@@ -410,6 +472,7 @@ class GameplayScene(BaseScene):
         self.tiros_echo_pendentes.clear()
         try:
             pygame.mixer.music.fadeout(2000)
+            pygame.mixer.music._current_track = None
         except Exception:
             pass
         y_destino = self.altura_arena / 2.0 + 90.0
@@ -470,6 +533,7 @@ class GameplayScene(BaseScene):
             self.menu_debug.update(dt, self.teclado, self.mouse)
             if self.menu_debug.ativo:
                 self.pausado = True
+                self.buffer_tiro = 0.0
                 return
             elif not self.modal_level_up.ativo and not self.modal_overclock.ativo and not self.menu_configs.ativo and not self.game_over and not self.vitoria:
                 self.pausado = False
@@ -488,34 +552,48 @@ class GameplayScene(BaseScene):
         # 1. Se o Modal de Overclock estiver ativo, processa seus inputs e congela o jogo
         if self.modal_overclock.ativo or self.modal_overclock.tempo_transicao_saida > 0.0:
             self.modal_overclock.update(dt, self.teclado, self.mouse)
+            self.buffer_tiro = 0.0
             if not self.modal_overclock.ativo and not self.modal_level_up.ativo and not self.menu_configs.ativo and not (hasattr(self, "menu_debug") and self.menu_debug.ativo):
                 self.pausado = False
             return
 
         # 2. Se o Modal de Level Up estiver ativo, processa seus inputs e congela o jogo
-        if self.modal_level_up.ativo:
+        if self.modal_level_up.ativo or getattr(self.modal_level_up, "tempo_transicao_saida", 0.0) > 0.0:
             self.modal_level_up.update(dt, self.teclado, self.mouse)
-            if not self.modal_level_up.ativo and not self.modal_overclock.ativo and not self.menu_configs.ativo and not (hasattr(self, "menu_debug") and self.menu_debug.ativo):
+            self.buffer_tiro = 0.0
+            if not self.modal_level_up.ativo and getattr(self.modal_level_up, "tempo_transicao_saida", 0.0) <= 0.0 and not self.modal_overclock.ativo and not self.menu_configs.ativo and not (hasattr(self, "menu_debug") and self.menu_debug.ativo):
                 self.pausado = False
             return
 
         # 3. Se o Menu de Configurações estiver ativo, processa seus inputs e congela o jogo
         if self.menu_configs.ativo:
             self.menu_configs.update(dt, self.teclado, self.mouse)
+            self.buffer_tiro = 0.0
             if not self.menu_configs.ativo:
                 self._cooldown_menu_toggle = 0.18
                 if not self.modal_level_up.ativo and not self.modal_overclock.ativo and not (hasattr(self, "menu_debug") and self.menu_debug.ativo):
                     self.pausado = False
             return
 
-        # 4. Tecla 'C' para abrir o menu de configurações
+        # 4. Tecla 'C' ou clique no botão de engrenagem (752, 16, 32x32) antes de qualquer inversão de mouse
         pode_abrir_menu = getattr(self, "_cooldown_menu_toggle", 0.0) <= 0.0
+        if pode_abrir_menu and self.mouse is not None and hasattr(self.mouse, "button_down") and self.mouse.button_down(1):
+            try:
+                mx_gear, my_gear = self.mouse.get_position()
+                if 752 <= mx_gear <= 784 and 16 <= my_gear <= 48:
+                    self.menu_configs.abrir()
+                    self.pausado = True
+                    self.buffer_tiro = 0.0
+                    return
+            except Exception:
+                pass
         if pode_abrir_menu and (
             (hasattr(self.teclado, "key_down") and (self.teclado.key_down("c") or self.teclado.key_down("C"))) or
             (hasattr(self.teclado, "key_pressed") and (self.teclado.key_pressed("c") or self.teclado.key_pressed("C")))
         ):
             self.menu_configs.abrir()
             self.pausado = True
+            self.buffer_tiro = 0.0
             return
 
         # 5. Controle de Pausa / Menu via Teclado (ESC)
@@ -527,8 +605,10 @@ class GameplayScene(BaseScene):
                 if not self.pausado:
                     self.menu_configs.abrir()
                     self.pausado = True
+                    self.buffer_tiro = 0.0
                 else:
                     self.pausado = False
+                    self.buffer_tiro = 0.0
                 return
 
         # Comportamento no estado de Vitória
@@ -553,6 +633,7 @@ class GameplayScene(BaseScene):
 
         # Comportamento no estado Pausado
         if self.pausado:
+            self.buffer_tiro = 0.0
             if self.teclado.key_down("m") or self.teclado.key_down("M"):
                 self._voltar_menu()
             return
@@ -584,7 +665,8 @@ class GameplayScene(BaseScene):
                     self.boss_cutscene_timer = 0.0
                     self.overlay_cutscene_cor = (0, 0, 0)
                     self.overlay_cutscene_alpha = 255
-                    # Purga inimigos comuns e centraliza jogador
+                    # Purga inimigos comuns (desativando scavenger antes) e centraliza jogador
+                    self.sistema_scavenger.desativar(self.inimigos)
                     self.inimigos = [self.chefe_final] if (self.chefe_final is not None and self.chefe_final.vivo) else []
                     self.projeteis.clear()
                     self.tiros_echo_pendentes.clear()
@@ -697,12 +779,26 @@ class GameplayScene(BaseScene):
                 limite_arena=(self.largura_arena, self.altura_arena),
                 camera=self.camera
             )
+            hitbox_mult = (getattr(mods, "hitbox_projeteis_mult", 1.0) if mods else 1.0) * (getattr(mods, "resolucao_chunky_hitbox", 1.0) if mods else 1.0)
+            mult_dano_buff = 1.05 if getattr(self.jogador, "buff_dano_timer", 0.0) > 0.0 else 1.0
+            mult_cad_drone = 1.0
+            if getattr(self.jogador, "refrigeracao_nitrogenio", False):
+                mult_cad_drone *= 2.0 if getattr(self.jogador, "refrigeracao_overdrive_timer", 0.0) > 0.0 else 1.35
+            if getattr(self.jogador, "buff_cadencia_timer", 0.0) > 0.0:
+                mult_cad_drone *= 1.08
+
             tiros_drone = self.jogador.update(
                 dt,
                 drops=self.sistema_drops.drops,
                 inimigos=self.inimigos
             )
             if tiros_drone:
+                for p_dr in tiros_drone:
+                    if hitbox_mult != 1.0:
+                        p_dr.largura = max(2, int(round(p_dr.largura * hitbox_mult)))
+                        p_dr.altura = max(2, int(round(p_dr.altura * hitbox_mult)))
+                        p_dr.width = p_dr.largura
+                        p_dr.height = p_dr.altura
                 self.projeteis.extend(tiros_drone)
 
             # Cancela carga de armas caso o slot do jogador ou arma ativa tenha mudado
@@ -715,6 +811,7 @@ class GameplayScene(BaseScene):
                     getattr(self.jogador, "arma_primaria", None),
                     getattr(self.jogador, "arma_secundaria", None),
                     getattr(self.jogador, "arma_especial", None),
+                    getattr(self.jogador, "arma_especial_secundaria", None),
                     getattr(self, "_arma_ativa_anterior", None)
                 ):
                     if arma_cancel is not None and getattr(arma_cancel, "carregando", False):
@@ -723,9 +820,9 @@ class GameplayScene(BaseScene):
             self._ultimo_slot_ativo = slot_atual
             self._arma_ativa_anterior = arma_atual
 
-            # Atualiza a posição da câmera para seguir o jogador suavemente
+            # Atualiza a posição da câmera para seguir o jogador suavemente (dt-independente)
             val_suav = self.config_sistema.obter_valor("suavizacao_camera") if hasattr(self, "config_sistema") and self.config_sistema else "ligado"
-            suavizacao_fator = 1.0 if str(val_suav).lower() in ("desligado", "0", "false") else 0.15
+            suavizacao_fator = 1.0 if str(val_suav).lower() in ("desligado", "0", "false") else (1.0 - (1.0 - 0.15) ** (dt * 60.0))
             self.camera.follow(self.jogador, suavizacao=suavizacao_fator)
 
             # =========================================================================
@@ -739,58 +836,84 @@ class GameplayScene(BaseScene):
                 self.jogador.overdrive_pulse_trigger = False
                 self.sistema_particulas.emitir_onda_choque(centro_jogador_x, centro_jogador_y, raio_max=110.0, cor=(100, 220, 255))
                 for inim in list(self.inimigos):
-                    if inim == self.chefe_final:
+                    if inim == self.chefe_final or getattr(inim, "is_boss", False):
                         continue
                     if getattr(inim, "vivo", True) and not getattr(inim, "em_fase", False):
-                        if distancia(inim.x + 14, inim.y + 14, centro_jogador_x, centro_jogador_y) < 110.0:
-                            dir_p_x, dir_p_y = vetor_direcao(centro_jogador_x, centro_jogador_y, inim.x + 14, inim.y + 14)
+                        i_cx = inim.x + getattr(inim, "largura", 28) / 2.0
+                        i_cy = inim.y + getattr(inim, "altura", 28) / 2.0
+                        if distancia(i_cx, i_cy, centro_jogador_x, centro_jogador_y) < 110.0:
+                            dir_p_x, dir_p_y = vetor_direcao(centro_jogador_x, centro_jogador_y, i_cx, i_cy)
                             inim.x += dir_p_x * 32.0
                             inim.y += dir_p_y * 32.0
-                            inim.receber_dano(15, origem_x=centro_jogador_x, origem_y=centro_jogador_y, dir_ataque=(dir_p_x, dir_p_y))
-                            self.dano_total_causado += 15
+                            self._clamp_entidade_arena(inim)
+                            ret_d = inim.receber_dano(15, origem_x=centro_jogador_x, origem_y=centro_jogador_y, dir_ataque=(dir_p_x, dir_p_y))
+                            dano_aplicado = int(ret_d) if isinstance(ret_d, (int, float)) else 15
+                            self.dano_total_causado += dano_aplicado
                             if hasattr(self, "config_sistema") and str(self.config_sistema.obter_valor("damage_numbers")).lower() in ("ligado", "true", "1"):
                                 self.sistema_particulas.emitir_texto_dano(
                                     inim.x + getattr(inim, "largura", 28) / 2.0,
                                     inim.y,
-                                    15,
+                                    dano_aplicado,
                                     critico=False
                                 )
                             if not inim.vivo:
                                 self._registrar_abate_inimigo(inim, mods)
 
-            # Posição virtual do cursor convertida para espaço do mundo
+            # Posição virtual do cursor convertida para espaço do mundo (com suporte a zoom e presets)
+            val_keybinds = str(self.config_sistema.obter_valor("keybinds")).lower() if hasattr(self, "config_sistema") and self.config_sistema else "padrao"
+            is_uma_mao = (val_keybinds == "uma_mao")
             try:
-                mx, my = self.mouse.get_position()
-                val_keybinds = str(self.config_sistema.obter_valor("keybinds")).lower() if hasattr(self, "config_sistema") and self.config_sistema else "padrao"
+                mx_raw, my_raw = self.mouse.get_position()
+                mx, my = mx_raw, my_raw
                 if val_keybinds == "pesadelo":
                     my = ALTURA_TELA - my
             except Exception:
-                mx, my = (LARGURA_TELA / 2.0, ALTURA_TELA / 2.0)
-
-            mouse_mundo_x = mx + self.camera.x
-            mouse_mundo_y = my + self.camera.y
-
-            # Detecta clique no botão de engrenagem (752, 16, 32x32)
-            if self.mouse.button_down(1):
-                if 752 <= mx <= 784 and 16 <= my <= 48:
-                    self.menu_configs.abrir()
-                    self.pausado = True
-                    return
+                mx_raw, my_raw = (LARGURA_TELA / 2.0, ALTURA_TELA / 2.0)
+                mx, my = mx_raw, my_raw
 
             # Input buffer e Auto-Fire
             val_autofire = str(self.config_sistema.obter_valor("auto_fire")).lower() if hasattr(self, "config_sistema") and self.config_sistema else "ligado"
             autofire_desligado = val_autofire in ("desligado", "0", "false")
 
-            btn1_down = bool(self.mouse.button_down(1)) if (self.mouse is not None and hasattr(self.mouse, "button_down")) else False
-            if self.mouse is not None and hasattr(self.mouse, "button_pressed"):
-                btn1_pressed = bool(self.mouse.button_pressed(1))
-            elif self.mouse is not None and hasattr(self.mouse, "get_pressed_buttons"):
-                pressed_btns = self.mouse.get_pressed_buttons()
-                btn1_pressed = bool(pressed_btns[0]) if pressed_btns else False
-            elif pygame.mouse.get_focused() and len(pygame.mouse.get_pressed()) > 0:
-                btn1_pressed = bool(pygame.mouse.get_pressed()[0])
+            if is_uma_mao:
+                # Mira e tiro 100% no teclado: direção do movimento atual, default para cima (0.0, -1.0) se parado
+                dir_mov = getattr(self.jogador, "dir_movimento", (0.0, -1.0))
+                dir_mira_x, dir_mira_y = float(dir_mov[0]), float(dir_mov[1])
+                norm_m = math.hypot(dir_mira_x, dir_mira_y)
+                if norm_m > 1e-5:
+                    dir_mira_x /= norm_m
+                    dir_mira_y /= norm_m
+                else:
+                    dir_mira_x, dir_mira_y = 0.0, -1.0
+                mouse_mundo_x = centro_jogador_x + dir_mira_x * 160.0
+                mouse_mundo_y = centro_jogador_y + dir_mira_y * 160.0
+
+                kb_down = bool(
+                    self.teclado is not None and hasattr(self.teclado, "key_down") and (
+                        self.teclado.key_down("SPACE") or self.teclado.key_down("f") or
+                        self.teclado.key_down("F") or self.teclado.key_down("ENTER")
+                    )
+                )
+                kb_pressed = bool(
+                    self.teclado is not None and hasattr(self.teclado, "key_pressed") and (
+                        self.teclado.key_pressed("SPACE") or self.teclado.key_pressed("f") or
+                        self.teclado.key_pressed("F") or self.teclado.key_pressed("ENTER")
+                    )
+                )
+                btn1_down = kb_down
+                btn1_pressed = kb_pressed if autofire_desligado else True
             else:
-                btn1_pressed = False
+                mouse_mundo_x, mouse_mundo_y = self._obter_mouse_mundo(mx, my)
+                btn1_down = bool(self.mouse.button_down(1)) if (self.mouse is not None and hasattr(self.mouse, "button_down")) else False
+                if self.mouse is not None and hasattr(self.mouse, "button_pressed"):
+                    btn1_pressed = bool(self.mouse.button_pressed(1))
+                elif self.mouse is not None and hasattr(self.mouse, "get_pressed_buttons"):
+                    pressed_btns = self.mouse.get_pressed_buttons()
+                    btn1_pressed = bool(pressed_btns[0]) if pressed_btns else False
+                elif pygame.mouse.get_focused() and len(pygame.mouse.get_pressed()) > 0:
+                    btn1_pressed = bool(pygame.mouse.get_pressed()[0])
+                else:
+                    btn1_pressed = False
 
             if autofire_desligado:
                 disparar_agora = btn1_down
@@ -802,8 +925,6 @@ class GameplayScene(BaseScene):
                     self.buffer_tiro = max(0.0, self.buffer_tiro - dt)
                 disparar_agora = (self.buffer_tiro > 0.0)
 
-            hitbox_mult = (getattr(mods, "hitbox_projeteis_mult", 1.0) if mods else 1.0) * (getattr(mods, "resolucao_chunky_hitbox", 1.0) if mods else 1.0)
-            mult_dano_buff = 1.05 if getattr(self.jogador, "buff_dano_timer", 0.0) > 0.0 else 1.0
             crit_chance = getattr(mods, "critico_chance", 0.0) if mods else 0.0
             crit_mult = getattr(mods, "critico_mult", 2.0) if mods else 2.0
             if getattr(self.jogador, "overvolt", False):
@@ -811,9 +932,10 @@ class GameplayScene(BaseScene):
                 crit_mult = max(crit_mult, 2.0)
 
             # Direção de mira do jogador
-            dir_mira_x, dir_mira_y = vetor_direcao(centro_jogador_x, centro_jogador_y, mouse_mundo_x, mouse_mundo_y)
-            if dir_mira_x == 0.0 and dir_mira_y == 0.0:
-                dir_mira_x = 1.0
+            if not is_uma_mao:
+                dir_mira_x, dir_mira_y = vetor_direcao(centro_jogador_x, centro_jogador_y, mouse_mundo_x, mouse_mundo_y)
+                if dir_mira_x == 0.0 and dir_mira_y == 0.0:
+                    dir_mira_x = 1.0
             # Ponto de saída do projétil deslocado fora do corpo da batata (evita auto-colisão)
             spawn_origem_x = centro_jogador_x + dir_mira_x * 24.0
             spawn_origem_y = centro_jogador_y + dir_mira_y * 24.0
@@ -897,7 +1019,22 @@ class GameplayScene(BaseScene):
                                 dano_base = getattr(arma_ativa, "dano", 10)
                                 is_crit = (crit_chance > 0.0 and random.random() < crit_chance)
                                 dano_melee = math.ceil(dano_base * mult_dano_buff * (crit_mult if is_crit else 1.0))
-                                self.dano_total_causado += dano_melee
+
+                                if getattr(mods, "screen_shake_stagger", False) and inim is not self.chefe_final and not getattr(inim, "is_boss", False):
+                                    inim.x += math.cos(ang_mira) * 10.0
+                                    inim.y += math.sin(ang_mira) * 10.0
+                                    self._clamp_entidade_arena(inim)
+                                    inim.slow_timer = max(getattr(inim, "slow_timer", 0.0), 1.2)
+                                    inim.slow_fator = 0.50
+
+                                ret_d = inim.receber_dano(
+                                    dano_melee,
+                                    origem_x=centro_jogador_x,
+                                    origem_y=centro_jogador_y,
+                                    dir_ataque=(math.cos(ang_mira), math.sin(ang_mira))
+                                )
+                                dano_efetivo_m = int(ret_d) if isinstance(ret_d, (int, float)) else dano_melee
+                                self.dano_total_causado += dano_efetivo_m
                                 self.sistema_particulas.emitir_faiscas(
                                     inim.x + getattr(inim, "largura", 28) / 2.0,
                                     inim.y + getattr(inim, "altura", 28) / 2.0,
@@ -910,22 +1047,17 @@ class GameplayScene(BaseScene):
                                     self.sistema_particulas.emitir_texto_dano(
                                         inim.x + getattr(inim, "largura", 28) / 2.0,
                                         inim.y,
-                                        dano_melee,
+                                        dano_efetivo_m,
                                         critico=is_crit
                                     )
 
-                                inim.receber_dano(
-                                    dano_melee,
-                                    origem_x=centro_jogador_x,
-                                    origem_y=centro_jogador_y,
-                                    dir_ataque=(math.cos(ang_mira), math.sin(ang_mira))
-                                )
-
                                 if is_crit:
-                                    self._aplicar_overvolt_chain(inim, dano_melee, mods)
+                                    self._aplicar_overvolt_chain(inim, dano_efetivo_m, mods)
 
                                 if not getattr(inim, "vivo", True):
                                     self._registrar_abate_inimigo(inim, mods)
+                                elif inim is not self.chefe_final and not getattr(inim, "is_boss", False):
+                                    self._clamp_entidade_arena(inim)
                         self.buffer_tiro = 0.0
                         self.efeitos_melee.append({
                             "x": centro_jogador_x,
@@ -969,18 +1101,32 @@ class GameplayScene(BaseScene):
                     arma_esp = self.jogador.arma_especial
 
                 if arma_esp is not None and self.jogador.vivo:
-                    btn3_down = bool(self.mouse.button_down(3)) if (self.mouse is not None and hasattr(self.mouse, "button_down")) else False
-                    if self.mouse is not None and hasattr(self.mouse, "button_pressed"):
-                        btn3_pressed = bool(self.mouse.button_pressed(3))
-                    elif self.mouse is not None and hasattr(self.mouse, "get_pressed_buttons"):
-                        pressed_btns = self.mouse.get_pressed_buttons()
-                        btn3_pressed = bool(pressed_btns[2]) if len(pressed_btns) > 2 else False
-                    elif len(pygame.mouse.get_pressed()) > 2 and (pygame.mouse.get_focused() or btn3_down):
-                        btn3_pressed = bool(pygame.mouse.get_pressed()[2])
-                    elif len(pygame.mouse.get_pressed()) > 2:
-                        btn3_pressed = bool(pygame.mouse.get_pressed()[2])
+                    if is_uma_mao:
+                        btn3_down = bool(
+                            self.teclado is not None and hasattr(self.teclado, "key_down") and (
+                                self.teclado.key_down("SHIFT") or self.teclado.key_down("v") or
+                                self.teclado.key_down("V") or self.teclado.key_down("TAB")
+                            )
+                        )
+                        btn3_pressed = bool(
+                            self.teclado is not None and hasattr(self.teclado, "key_pressed") and (
+                                self.teclado.key_pressed("SHIFT") or self.teclado.key_pressed("v") or
+                                self.teclado.key_pressed("V") or self.teclado.key_pressed("TAB")
+                            )
+                        )
                     else:
-                        btn3_pressed = False
+                        btn3_down = bool(self.mouse.button_down(3)) if (self.mouse is not None and hasattr(self.mouse, "button_down")) else False
+                        if self.mouse is not None and hasattr(self.mouse, "button_pressed"):
+                            btn3_pressed = bool(self.mouse.button_pressed(3))
+                        elif self.mouse is not None and hasattr(self.mouse, "get_pressed_buttons"):
+                            pressed_btns = self.mouse.get_pressed_buttons()
+                            btn3_pressed = bool(pressed_btns[2]) if len(pressed_btns) > 2 else False
+                        elif len(pygame.mouse.get_pressed()) > 2 and (pygame.mouse.get_focused() or btn3_down):
+                            btn3_pressed = bool(pygame.mouse.get_pressed()[2])
+                        elif len(pygame.mouse.get_pressed()) > 2:
+                            btn3_pressed = bool(pygame.mouse.get_pressed()[2])
+                        else:
+                            btn3_pressed = False
 
                     if isinstance(arma_esp, Railgun) or "railgun" in getattr(arma_esp, "nome", "").lower():
                         is_carregando_esp = getattr(arma_esp, "carregando", False)
@@ -1054,7 +1200,11 @@ class GameplayScene(BaseScene):
                     mobs_comuns = [e for e in self.inimigos if e.vivo and e != self.chefe_final]
                     if len(mobs_comuns) < 10 and random.random() < 0.20 * dt * 4.0:
                         ex, ey = self.spawner.gerar_posicao_spawn(self.camera.x, self.camera.y)
-                        self.inimigos.append(InimigoPadrao(x=ex, y=ey))
+                        mob_boss = InimigoPadrao(x=ex, y=ey)
+                        mob_boss.hp_max = max(1, int(round(mob_boss.hp_max * hp_inim_mult)))
+                        mob_boss.hp = mob_boss.hp_max
+                        mob_boss.velocidade = float(mob_boss.velocidade) * vel_inim_mult
+                        self.inimigos.append(mob_boss)
             else:
                 novos_inimigos = self.spawner.update(
                     dt=dt,
@@ -1142,17 +1292,21 @@ class GameplayScene(BaseScene):
                 if getattr(inimigo, "cooldown_ram_atual", 0.0) <= 0.0:
                     if colisao_aabb(inimigo.x, inimigo.y, inimigo.largura, inimigo.altura,
                                     self.jogador.x, self.jogador.y, self.jogador.largura, self.jogador.altura):
-                        dir_ram_x, dir_ram_y = vetor_direcao(centro_jogador_x, centro_jogador_y, inimigo.x + 14, inimigo.y + 14)
+                        i_cx = inimigo.x + getattr(inimigo, "largura", 28) / 2.0
+                        i_cy = inimigo.y + getattr(inimigo, "altura", 28) / 2.0
+                        dir_ram_x, dir_ram_y = vetor_direcao(centro_jogador_x, centro_jogador_y, i_cx, i_cy)
                         inimigo.x += dir_ram_x * 24.0
                         inimigo.y += dir_ram_y * 24.0
-                        inimigo.receber_dano(15, origem_x=centro_jogador_x, origem_y=centro_jogador_y, dir_ataque=(dir_ram_x, dir_ram_y))
+                        self._clamp_entidade_arena(inimigo)
+                        ret_d = inimigo.receber_dano(15, origem_x=centro_jogador_x, origem_y=centro_jogador_y, dir_ataque=(dir_ram_x, dir_ram_y))
+                        dano_ram = int(ret_d) if isinstance(ret_d, (int, float)) else 15
                         inimigo.cooldown_ram_atual = 0.35
-                        self.dano_total_causado += 15
+                        self.dano_total_causado += dano_ram
                         if hasattr(self, "config_sistema") and str(self.config_sistema.obter_valor("damage_numbers")).lower() in ("ligado", "true", "1"):
                             self.sistema_particulas.emitir_texto_dano(
                                 inimigo.x + getattr(inimigo, "largura", 28) / 2.0,
                                 inimigo.y,
-                                15,
+                                dano_ram,
                                 critico=False
                             )
                         if not inimigo.vivo:
@@ -1292,6 +1446,18 @@ class GameplayScene(BaseScene):
                             detonar = True
                             break
 
+                    if not detonar and auto_dano and getattr(proj, "dono", "jogador") == "jogador":
+                        dist_origem = distancia(proj.x, proj.y, getattr(proj, "x_origem", proj.x), getattr(proj, "y_origem", proj.y))
+                        if (dist_origem >= 42.0 or (proj.tempo_vida - proj.tempo_vida_restante > 0.20)) and getattr(self.jogador, "vivo", True):
+                            if colisao_aabb(proj.x, proj.y, proj.largura, proj.altura, self.jogador.x, self.jogador.y, self.jogador.largura, self.jogador.altura):
+                                detonar = True
+                        if not detonar:
+                            drones_exp = list(self.jogador.drones) if (hasattr(self.jogador, "drones") and self.jogador.drones) else ([self.jogador.drone] if getattr(self.jogador, "drone", None) is not None else [])
+                            for dr in drones_exp:
+                                if getattr(dr, "ativo", True) and colisao_aabb(proj.x, proj.y, proj.largura, proj.altura, dr.x, dr.y, dr.largura, dr.altura):
+                                    detonar = True
+                                    break
+
                     if detonar or proj.tempo_vida_restante <= 0.0 or getattr(proj, "requer_detonacao_ao_expirar", False):
                         proj.ativo = False
                         proj.requer_detonacao_ao_expirar = False
@@ -1299,17 +1465,23 @@ class GameplayScene(BaseScene):
                         self.sistema_particulas.emitir_debris(p_cx, p_cy, cor=(255, 140, 40), qtd=12)
                         self.aplicar_shake(10.0, 0.25)
 
-                        # Onda de Choque (Tremor de Tela Ligado): tropeço/slow em inimigos próximos
+                        # Onda de Choque (Tremor de Tela Ligado): tropeço/slow em inimigos próximos (sem empurrar Boss)
                         if getattr(mods, "screen_shake_stagger", False):
                             for inim_st in self.inimigos:
-                                if inim_st.vivo and distancia(inim_st.x + 14, inim_st.y + 14, p_cx, p_cy) < 140.0:
-                                    dir_st_x, dir_st_y = vetor_direcao(p_cx, p_cy, inim_st.x + 14, inim_st.y + 14)
+                                if not inim_st.vivo or inim_st is self.chefe_final or getattr(inim_st, "is_boss", False):
+                                    continue
+                                st_cx = inim_st.x + getattr(inim_st, "largura", 28) / 2.0
+                                st_cy = inim_st.y + getattr(inim_st, "altura", 28) / 2.0
+                                if distancia(st_cx, st_cy, p_cx, p_cy) < 140.0:
+                                    dir_st_x, dir_st_y = vetor_direcao(p_cx, p_cy, st_cx, st_cy)
                                     inim_st.x += dir_st_x * 22.0
                                     inim_st.y += dir_st_y * 22.0
+                                    self._clamp_entidade_arena(inim_st)
                                     inim_st.slow_timer = max(getattr(inim_st, "slow_timer", 0.0), 1.5)
                                     inim_st.slow_fator = 0.50
                                     inim_st.cooldown_contato_atual = max(getattr(inim_st, "cooldown_contato_atual", 0.0), 0.6)
 
+                        hp_antes_map = {id(e): getattr(e, "hp", 0) for e in self.inimigos if getattr(e, "vivo", True)}
                         afetados = proj.explodir(
                             self.inimigos,
                             jogador=self.jogador,
@@ -1318,15 +1490,18 @@ class GameplayScene(BaseScene):
                             alvo_direto=alvo_direto
                         )
 
-                        # Rocket-Jump (Fogo Amigo Ligado)
+                        # Rocket-Jump (Fogo Amigo Ligado) com clamp de arena
                         if getattr(mods, "fogo_amigo_rocket_jump", False) and distancia(p_cx, p_cy, centro_jogador_x, centro_jogador_y) < r_exp:
                             dir_rj_x, dir_rj_y = vetor_direcao(p_cx, p_cy, centro_jogador_x, centro_jogador_y)
                             self.jogador.x += dir_rj_x * 48.0
                             self.jogador.y += dir_rj_y * 48.0
+                            self._clamp_entidade_arena(self.jogador)
 
                         for inim in afetados:
                             dano_base_exp = int(getattr(proj, "dano", 35) * mult_explosivo)
-                            dano_exp = dano_base_exp * 2 if (inim is alvo_direto) else dano_base_exp
+                            dano_prev = dano_base_exp * 2 if (inim is alvo_direto) else dano_base_exp
+                            hp_ant = hp_antes_map.get(id(inim))
+                            dano_exp = max(0, int(hp_ant - getattr(inim, "hp", 0))) if hp_ant is not None and hp_ant > getattr(inim, "hp", 0) else dano_prev
                             is_crit_exp = (inim is alvo_direto)
                             self.dano_total_causado += dano_exp
                             if hasattr(self, "config_sistema") and str(self.config_sistema.obter_valor("damage_numbers")).lower() in ("ligado", "true", "1"):
@@ -1365,22 +1540,37 @@ class GameplayScene(BaseScene):
                             is_crit = (crit_chance > 0.0 and random.random() < crit_chance)
                             dano_final = int(round(proj.dano * (crit_mult if is_crit else 1.0)))
 
-                            # Overvolt (Tensão Crítica): Faíscas elétricas em cadeia em acertos críticos
-                            if is_crit:
-                                self._aplicar_overvolt_chain(inimigo, dano_final, mods)
+                            dx_k, dy_k = getattr(proj, "dir_x", 0.0), getattr(proj, "dir_y", 0.0)
 
-                            # Números de Dano (Texto com Peso): Empurrão leve no inimigo
-                            if getattr(mods, "damage_numbers_knockback", False):
-                                dx_k, dy_k = getattr(proj, "dir_x", 0.0), getattr(proj, "dir_y", 0.0)
+                            # Números de Dano (Texto com Peso): Empurrão leve no inimigo (exceto Boss)
+                            if getattr(mods, "damage_numbers_knockback", False) and inimigo is not self.chefe_final and not getattr(inimigo, "is_boss", False):
                                 if dx_k != 0.0 or dy_k != 0.0:
                                     inimigo.x += dx_k * 14.0
                                     inimigo.y += dy_k * 14.0
+                                    self._clamp_entidade_arena(inimigo)
 
-                            self.dano_total_causado += dano_final
+                            # Tremor de Tela (screen_shake_stagger): estendido para tiros balísticos (exceto Boss)
+                            if getattr(mods, "screen_shake_stagger", False) and inimigo is not self.chefe_final and not getattr(inimigo, "is_boss", False):
+                                if dx_k != 0.0 or dy_k != 0.0:
+                                    inimigo.x += dx_k * 10.0
+                                    inimigo.y += dy_k * 10.0
+                                    self._clamp_entidade_arena(inimigo)
+                                inimigo.slow_timer = max(getattr(inimigo, "slow_timer", 0.0), 1.2)
+                                inimigo.slow_fator = 0.50
+
+                            ret_d = inimigo.receber_dano(
+                                dano_final,
+                                origem_x=proj.x,
+                                origem_y=proj.y,
+                                dir_ataque=(dx_k, dy_k)
+                            )
+                            dano_efetivo_b = int(ret_d) if isinstance(ret_d, (int, float)) else dano_final
+
+                            self.dano_total_causado += dano_efetivo_b
                             self.sistema_particulas.emitir_faiscas(
                                 proj.x, proj.y,
-                                dir_x=getattr(proj, "dir_x", 0.0),
-                                dir_y=getattr(proj, "dir_y", 0.0),
+                                dir_x=dx_k,
+                                dir_y=dy_k,
                                 cor=(255, 220, 100),
                                 qtd=6
                             )
@@ -1388,16 +1578,13 @@ class GameplayScene(BaseScene):
                                 self.sistema_particulas.emitir_texto_dano(
                                     inimigo.x + getattr(inimigo, "largura", 28) / 2.0,
                                     inimigo.y,
-                                    dano_final,
+                                    dano_efetivo_b,
                                     critico=is_crit
                                 )
 
-                            inimigo.receber_dano(
-                                dano_final,
-                                origem_x=proj.x,
-                                origem_y=proj.y,
-                                dir_ataque=(getattr(proj, "dir_x", 0.0), getattr(proj, "dir_y", 0.0))
-                            )
+                            # Overvolt (Tensão Crítica): Faíscas elétricas em cadeia em acertos críticos
+                            if is_crit:
+                                self._aplicar_overvolt_chain(inimigo, dano_efetivo_b, mods)
 
                             if not inimigo.vivo:
                                 self._registrar_abate_inimigo(inimigo, mods)
@@ -1408,31 +1595,39 @@ class GameplayScene(BaseScene):
                     if not proj.ativo:
                         break
 
-                # Fogo Amigo balístico para projéteis do jogador (após carência de distância percorrida >= 42px para o jogador)
+                # Fogo Amigo balístico para projéteis do jogador (após carência >= 42px para o jogador e >= 48px para drones)
                 if auto_dano and proj.ativo and getattr(proj, "dono", "jogador") == "jogador":
                     dist_origem = distancia(proj.x, proj.y, getattr(proj, "x_origem", proj.x), getattr(proj, "y_origem", proj.y))
                     if dist_origem >= 42.0 or (proj.tempo_vida - proj.tempo_vida_restante > 0.20):
                         if colisao_aabb(proj.x, proj.y, proj.largura, proj.altura, self.jogador.x, self.jogador.y, self.jogador.largura, self.jogador.altura):
-                            self.jogador.receber_dano(proj.dano)
-                            self.aplicar_shake(6.0, 0.15)
-                            if not getattr(proj, "perfurante", False):
+                            if getattr(proj, "perfurante", False):
+                                if not hasattr(proj, "alvos_atingidos"):
+                                    proj.alvos_atingidos = set()
+                                if "jogador" not in proj.alvos_atingidos:
+                                    proj.alvos_atingidos.add("jogador")
+                                    self.jogador.receber_dano(proj.dano)
+                                    self.aplicar_shake(6.0, 0.15)
+                            else:
+                                self.jogador.receber_dano(proj.dano)
+                                self.aplicar_shake(6.0, 0.15)
                                 proj.ativo = False
                                 break
 
-                    # Destruição de todos os drones companheiros por fogo amigo (inclusive com Railgun)
-                    drones_list = []
-                    if hasattr(self.jogador, "drones") and self.jogador.drones:
-                        drones_list = list(self.jogador.drones)
-                    elif getattr(self.jogador, "drone", None) is not None:
-                        drones_list = [self.jogador.drone]
+                    # Destruição de drones companheiros por fogo amigo (evitando auto-colisão do próprio DroneCombate no spawn)
+                    if getattr(proj, "sprite_key", "") != "projetil_drone" or dist_origem >= 28.0:
+                        drones_list = []
+                        if hasattr(self.jogador, "drones") and self.jogador.drones:
+                            drones_list = list(self.jogador.drones)
+                        elif getattr(self.jogador, "drone", None) is not None:
+                            drones_list = [self.jogador.drone]
 
-                    for dr in drones_list:
-                        if getattr(dr, "ativo", True):
-                            if colisao_aabb(proj.x, proj.y, proj.largura, proj.altura, dr.x, dr.y, dr.largura, dr.altura):
-                                dr.receber_dano(proj.dano)
-                                if not getattr(proj, "perfurante", False):
-                                    proj.ativo = False
-                                    break
+                        for dr in drones_list:
+                            if getattr(dr, "ativo", True):
+                                if colisao_aabb(proj.x, proj.y, proj.largura, proj.altura, dr.x, dr.y, dr.largura, dr.altura):
+                                    dr.receber_dano(proj.dano)
+                                    if not getattr(proj, "perfurante", False):
+                                        proj.ativo = False
+                                        break
                     if not proj.ativo:
                         break
 
@@ -1542,31 +1737,53 @@ class GameplayScene(BaseScene):
             self.sistema_particulas.low_graphics = baixa_qualidade
 
         # =========================================================================
-        # CAMADA 1: ESPAÇO DO MUNDO (TRANSFORMADO PELA CÂMERA)
+        # CAMADA 1: ESPAÇO DO MUNDO (TRANSFORMADO PELA CÂMERA, COM SUPORTE A ZOOM 75% FOV REAL)
         # =========================================================================
-        # Screen Shake: aplica jitter temporário à câmera durante renderização do mundo
+        val_zoom = str(self.config_sistema.obter_valor("zoom")) if hasattr(self, "config_sistema") and self.config_sistema else "100%"
         cam_orig_x = self.camera.x
         cam_orig_y = self.camera.y
+        cam_orig_w = getattr(self.camera, "largura", LARGURA_TELA)
+        cam_orig_h = getattr(self.camera, "altura", ALTURA_TELA)
+        jan_orig_w = getattr(self.janela, "largura", LARGURA_TELA)
+        jan_orig_h = getattr(self.janela, "altura", ALTURA_TELA)
+
+        if val_zoom == "75%":
+            view_w, view_h, cam_base_x, cam_base_y = self._obter_viewport_zoom75()
+            if self._zoom75_surf is None or self._zoom75_surf.get_size() != (view_w, view_h):
+                self._zoom75_surf = pygame.Surface((view_w, view_h))
+            world_surf = self._zoom75_surf
+            self.camera.x = cam_base_x
+            self.camera.y = cam_base_y
+            self.camera.largura = view_w
+            self.camera.altura = view_h
+            self.janela.screen = world_surf
+            self.janela.largura = view_w
+            self.janela.altura = view_h
+        else:
+            view_w, view_h = LARGURA_TELA, ALTURA_TELA
+            world_surf = screen
+
+        # Screen Shake: aplica jitter temporário à câmera durante renderização do mundo
         if self.shake_timer > 0.0 and self.shake_intensidade > 0.0:
             self.camera.x += random.uniform(-self.shake_intensidade, self.shake_intensidade)
             self.camera.y += random.uniform(-self.shake_intensidade, self.shake_intensidade)
 
         # Fundo da arena
-        screen.fill(CINZA_FUNDO)
+        world_surf.fill(CINZA_FUNDO)
 
         # Renderização do piso ladrilhado visível (ou grade fallback / baixa qualidade)
         tile_tam = 32
         inicio_tx = max(0, int(self.camera.x // tile_tam))
-        fim_tx = min(int(self.largura_arena // tile_tam), int((self.camera.x + LARGURA_TELA) // tile_tam) + 1)
+        fim_tx = min(int(self.largura_arena // tile_tam), int((self.camera.x + view_w) // tile_tam) + 1)
         inicio_ty = max(0, int(self.camera.y // tile_tam))
-        fim_ty = min(int(self.altura_arena // tile_tam), int((self.camera.y + ALTURA_TELA) // tile_tam) + 1)
+        fim_ty = min(int(self.altura_arena // tile_tam), int((self.camera.y + view_h) // tile_tam) + 1)
 
         if self._tile_piso is not None and not baixa_qualidade:
             for tx in range(inicio_tx, fim_tx):
                 for ty in range(inicio_ty, fim_ty):
                     wx = tx * tile_tam
                     wy = ty * tile_tam
-                    screen.blit(self._tile_piso, (self.camera.transform_x(wx), self.camera.transform_y(wy)))
+                    world_surf.blit(self._tile_piso, (self.camera.transform_x(wx), self.camera.transform_y(wy)))
         else:
             # Grade fallback caso textura não esteja em RAM ou graficos_qualidade == "baixa"
             for tx in range(inicio_tx, fim_tx):
@@ -1575,30 +1792,42 @@ class GameplayScene(BaseScene):
                     wy = ty * tile_tam
                     dx = self.camera.transform_x(wx)
                     dy = self.camera.transform_y(wy)
-                    pygame.draw.rect(screen, (28, 32, 42), (dx, dy, tile_tam, tile_tam), 1)
+                    pygame.draw.rect(world_surf, (28, 32, 42), (dx, dy, tile_tam, tile_tam), 1)
 
         # Linhas delimitadoras da arena
         borda_x0 = self.camera.transform_x(0)
         borda_y0 = self.camera.transform_y(0)
-        borda_x1 = self.camera.transform_x(self.largura_arena)
-        borda_y1 = self.camera.transform_y(self.altura_arena)
-        pygame.draw.rect(screen, AZUL_CIANO, (borda_x0, borda_y0, self.largura_arena, self.altura_arena), width=3)
+        pygame.draw.rect(world_surf, AZUL_CIANO, (borda_x0, borda_y0, self.largura_arena, self.altura_arena), width=3)
 
-        # Posição virtual do cursor do mouse em coordenadas de mundo
-        try:
-            mx, my = self.mouse.get_position()
-        except Exception:
-            mx, my = (LARGURA_TELA / 2.0, ALTURA_TELA / 2.0)
-        mouse_mundo_x = mx + self.camera.x
-        mouse_mundo_y = my + self.camera.y
+        # Posição virtual do cursor do mouse em coordenadas de mundo (respeitando keybinds e zoom)
+        val_keybinds_draw = str(self.config_sistema.obter_valor("keybinds")).lower() if hasattr(self, "config_sistema") and self.config_sistema else "padrao"
+        cx_mundo = self.jogador.x + self.jogador.largura / 2.0
+        cy_mundo = self.jogador.y + self.jogador.altura / 2.0
+        if val_keybinds_draw == "uma_mao":
+            dir_mov_d = getattr(self.jogador, "dir_movimento", (0.0, -1.0))
+            dmx, dmy = float(dir_mov_d[0]), float(dir_mov_d[1])
+            if dmx == 0.0 and dmy == 0.0:
+                dmx, dmy = 0.0, -1.0
+            mouse_mundo_x = cx_mundo + dmx * 160.0
+            mouse_mundo_y = cy_mundo + dmy * 160.0
+        else:
+            try:
+                mx, my = self.mouse.get_position()
+                if val_keybinds_draw == "pesadelo":
+                    my = ALTURA_TELA - my
+            except Exception:
+                mx, my = (LARGURA_TELA / 2.0, ALTURA_TELA / 2.0)
+            # Restaura temporariamente camera.x/y base para _obter_mouse_mundo
+            _cur_cx, _cur_cy = self.camera.x, self.camera.y
+            self.camera.x, self.camera.y = cam_orig_x, cam_orig_y
+            mouse_mundo_x, mouse_mundo_y = self._obter_mouse_mundo(mx, my)
+            self.camera.x, self.camera.y = _cur_cx, _cur_cy
 
-        # Indicador de alcance Melee quando empunhada (Antes do golpe - Cone direcional de 45°)
+        # Indicador de alcance Melee quando empunhada (Antes do golpe - Cone direcional)
         arma_ativa = self.jogador.obter_arma_ativa()
         if (isinstance(arma_ativa, Melee) or getattr(arma_ativa, "slot", None) == 1) and self.jogador.vivo:
             raio = getattr(arma_ativa, "alcance", 84.0)
             arco = getattr(arma_ativa, "arco_graus", 45.0)
-            cx_mundo = self.jogador.x + self.jogador.largura / 2.0
-            cy_mundo = self.jogador.y + self.jogador.altura / 2.0
             cx_tela = int(self.camera.transform_x(cx_mundo))
             cy_tela = int(self.camera.transform_y(cy_mundo))
 
@@ -1606,7 +1835,10 @@ class GameplayScene(BaseScene):
             meio_arco = math.radians(arco / 2.0)
 
             surf_dim = int(raio * 2 + 16)
-            surf_alcance = pygame.Surface((surf_dim, surf_dim), pygame.SRCALPHA)
+            if surf_dim not in self._melee_surf_cache:
+                self._melee_surf_cache[surf_dim] = pygame.Surface((surf_dim, surf_dim), pygame.SRCALPHA)
+            surf_alcance = self._melee_surf_cache[surf_dim]
+            surf_alcance.fill((0, 0, 0, 0))
             s_cx = surf_dim // 2
             s_cy = surf_dim // 2
 
@@ -1620,9 +1852,9 @@ class GameplayScene(BaseScene):
 
             pygame.draw.polygon(surf_alcance, (0, 220, 255, 25), pontos_setor)
             pygame.draw.polygon(surf_alcance, (0, 220, 255, 80), pontos_setor, width=1)
-            screen.blit(surf_alcance, (cx_tela - s_cx, cy_tela - s_cy))
+            world_surf.blit(surf_alcance, (cx_tela - s_cx, cy_tela - s_cy))
 
-        # Efeitos visuais de golpe Melee (Depois / Durante o golpe - Slash Fan de 45°)
+        # Efeitos visuais de golpe Melee (Depois / Durante o golpe - Slash Fan)
         for ef in self.efeitos_melee:
             raio_base = ef["alcance"]
             arco = ef.get("arco_graus", 45.0)
@@ -1636,7 +1868,10 @@ class GameplayScene(BaseScene):
             meio_arco = math.radians(arco / 2.0)
 
             surf_dim = int(raio_base * 2 + 16)
-            surf_golpe = pygame.Surface((surf_dim, surf_dim), pygame.SRCALPHA)
+            if surf_dim not in self._melee_surf_cache:
+                self._melee_surf_cache[surf_dim] = pygame.Surface((surf_dim, surf_dim), pygame.SRCALPHA)
+            surf_golpe = self._melee_surf_cache[surf_dim]
+            surf_golpe.fill((0, 0, 0, 0))
             s_cx = surf_dim // 2
             s_cy = surf_dim // 2
 
@@ -1650,10 +1885,11 @@ class GameplayScene(BaseScene):
 
             pygame.draw.polygon(surf_golpe, (255, 215, 0, alpha // 3), pontos_fan)
             pygame.draw.polygon(surf_golpe, (255, 255, 255, alpha), pontos_fan, width=2)
-            screen.blit(surf_golpe, (cx_tela - s_cx, cy_tela - s_cy))
+            world_surf.blit(surf_golpe, (cx_tela - s_cx, cy_tela - s_cy))
 
-        # Drops de itens e gemas de XP no chão da arena
-        self.sistema_drops.desenhar(self.janela, self.camera)
+        # Drops de itens e gemas de XP no chão da arena (pausando pisca durante Boss)
+        is_boss_lutando_draw = (self.chefe_final is not None and self.chefe_final.vivo)
+        self.sistema_drops.desenhar(self.janela, self.camera, pausar_despawn=is_boss_lutando_draw)
 
         # Inimigos
         for inimigo in self.inimigos:
@@ -1674,7 +1910,15 @@ class GameplayScene(BaseScene):
         if hud_visivel:
             self._desenhar_hp_in_world()
 
-        # Restaura a câmera antes dos efeitos de pós-processamento de tela e HUD
+        # Restaura a câmera e a janela antes dos efeitos de pós-processamento de tela e HUD
+        if val_zoom == "75%":
+            self.janela.screen = screen
+            self.janela.largura = jan_orig_w
+            self.janela.altura = jan_orig_h
+            self.camera.largura = cam_orig_w
+            self.camera.altura = cam_orig_h
+            pygame.transform.scale(world_surf, (LARGURA_TELA, ALTURA_TELA), screen)
+
         self.camera.x = cam_orig_x
         self.camera.y = cam_orig_y
 
@@ -1691,8 +1935,7 @@ class GameplayScene(BaseScene):
         elif self._motion_blur_surf is not None:
             self._motion_blur_surf = None
 
-        # Viewport Zoom (Config 9: zoom in 75%, 125%, 150%)
-        val_zoom = str(self.config_sistema.obter_valor("zoom")) if hasattr(self, "config_sistema") and self.config_sistema else "100%"
+        # Viewport Zoom (Config 9: zoom in 125%, 150%; 75% já escalado com FOV expandido 1067x800)
         if val_zoom in ("125%", "150%"):
             z = 1.25 if val_zoom == "125%" else 1.50
             crop_w = int(LARGURA_TELA / z)
@@ -1701,17 +1944,12 @@ class GameplayScene(BaseScene):
             pj_cy = int(self.camera.transform_y(self.jogador.y + self.jogador.altura / 2.0))
             crop_x = clamp(pj_cx - crop_w // 2, 0, LARGURA_TELA - crop_w)
             crop_y = clamp(pj_cy - crop_h // 2, 0, ALTURA_TELA - crop_h)
-            cropped = screen.subsurface(pygame.Rect(crop_x, crop_y, crop_w, crop_h)).copy()
-            pygame.transform.scale(cropped, (LARGURA_TELA, ALTURA_TELA), screen)
-        elif val_zoom == "75%":
-            scaled_w = int(LARGURA_TELA * 0.75)
-            scaled_h = int(ALTURA_TELA * 0.75)
-            off_x = (LARGURA_TELA - scaled_w) // 2
-            off_y = (ALTURA_TELA - scaled_h) // 2
-            scaled_surf = pygame.transform.scale(screen, (scaled_w, scaled_h))
-            screen.fill((10, 12, 16))
-            screen.blit(scaled_surf, (off_x, off_y))
-            pygame.draw.rect(screen, CINZA_BORDA, (off_x - 1, off_y - 1, scaled_w + 2, scaled_h + 2), width=1)
+            crop_key = (crop_w, crop_h)
+            if crop_key not in self._zoom_crop_cache:
+                self._zoom_crop_cache[crop_key] = pygame.Surface(crop_key)
+            crop_surf = self._zoom_crop_cache[crop_key]
+            crop_surf.blit(screen, (0, 0), area=pygame.Rect(crop_x, crop_y, crop_w, crop_h))
+            pygame.transform.scale(crop_surf, (LARGURA_TELA, ALTURA_TELA), screen)
 
         # Resolução / Pixelation do Mundo (Config 3: 75%, 50%, 25%)
         val_res = str(self.config_sistema.obter_valor("resolucao")) if hasattr(self, "config_sistema") and self.config_sistema else "100%"
@@ -1719,7 +1957,11 @@ class GameplayScene(BaseScene):
             fator = 0.75 if val_res == "75%" else (0.50 if val_res == "50%" else 0.25)
             small_w = max(10, int(LARGURA_TELA * fator))
             small_h = max(10, int(ALTURA_TELA * fator))
-            small_surf = pygame.transform.scale(screen, (small_w, small_h))
+            res_key = (small_w, small_h)
+            if res_key not in self._res_surf_cache:
+                self._res_surf_cache[res_key] = pygame.Surface(res_key)
+            small_surf = self._res_surf_cache[res_key]
+            pygame.transform.scale(screen, res_key, small_surf)
             pygame.transform.scale(small_surf, (LARGURA_TELA, ALTURA_TELA), screen)
 
         # Sincronização Vertical (Config 4: vsync == "desligado" -> vsync_tear_refraction)
@@ -1727,8 +1969,12 @@ class GameplayScene(BaseScene):
         if getattr(mods, "vsync_tear_refraction", False):
             tear_y = int(getattr(self, "vsync_tear_y", 0.0))
             band_y = max(0, tear_y - 10)
-            area_band = pygame.Rect(0, band_y, LARGURA_TELA, 20)
-            screen.blit(screen, (8, band_y), area=area_band)
+            band_h = min(20, ALTURA_TELA - band_y)
+            if band_h > 0:
+                if self._vsync_strip_surf is None:
+                    self._vsync_strip_surf = pygame.Surface((LARGURA_TELA, 20))
+                self._vsync_strip_surf.blit(screen, (0, 0), area=pygame.Rect(0, band_y, LARGURA_TELA, band_h))
+                screen.blit(self._vsync_strip_surf, (8, band_y), area=pygame.Rect(0, 0, LARGURA_TELA - 8, band_h))
             pygame.draw.line(screen, (255, 180, 255), (0, tear_y), (LARGURA_TELA, tear_y), width=2)
             pygame.draw.line(screen, AZUL_CIANO, (0, min(ALTURA_TELA - 1, tear_y + 2)), (LARGURA_TELA, min(ALTURA_TELA - 1, tear_y + 2)), width=1)
 
@@ -1739,8 +1985,23 @@ class GameplayScene(BaseScene):
                 self._fog_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
             fog = self._fog_surf
             fog.fill((8, 10, 15, 235))
-            pj_cx = int(self.camera.transform_x(self.jogador.x + self.jogador.largura / 2.0))
-            pj_cy = int(self.camera.transform_y(self.jogador.y + self.jogador.altura / 2.0))
+            if val_zoom == "75%":
+                fov_w, fov_h, cam75_x, cam75_y = self._obter_viewport_zoom75()
+                pj_cx = int((self.jogador.x + self.jogador.largura / 2.0 - cam75_x) * (LARGURA_TELA / float(fov_w)))
+                pj_cy = int((self.jogador.y + self.jogador.altura / 2.0 - cam75_y) * (ALTURA_TELA / float(fov_h)))
+            elif val_zoom in ("125%", "150%"):
+                z = 1.25 if val_zoom == "125%" else 1.50
+                crop_w = int(LARGURA_TELA / z)
+                crop_h = int(ALTURA_TELA / z)
+                raw_cx = int(self.camera.transform_x(self.jogador.x + self.jogador.largura / 2.0))
+                raw_cy = int(self.camera.transform_y(self.jogador.y + self.jogador.altura / 2.0))
+                crop_x = clamp(raw_cx - crop_w // 2, 0, LARGURA_TELA - crop_w)
+                crop_y = clamp(raw_cy - crop_h // 2, 0, ALTURA_TELA - crop_h)
+                pj_cx = int((raw_cx - crop_x) * z)
+                pj_cy = int((raw_cy - crop_y) * z)
+            else:
+                pj_cx = int(self.camera.transform_x(self.jogador.x + self.jogador.largura / 2.0))
+                pj_cy = int(self.camera.transform_y(self.jogador.y + self.jogador.altura / 2.0))
             pygame.draw.circle(fog, (0, 0, 0, 80), (pj_cx, pj_cy), 195)
             pygame.draw.circle(fog, (0, 0, 0, 0), (pj_cx, pj_cy), 170)
             screen.blit(fog, (0, 0))
@@ -1763,7 +2024,7 @@ class GameplayScene(BaseScene):
         # Overlays modais de Level Up, Overclock, Menu de Configurações, Debug, Vitória, Game Over e Pausa
         if self.modal_overclock.ativo or self.modal_overclock.tempo_transicao_saida > 0.0:
             self.modal_overclock.draw(screen)
-        elif self.modal_level_up.ativo:
+        elif self.modal_level_up.ativo or getattr(self.modal_level_up, "tempo_transicao_saida", 0.0) > 0.0:
             self.modal_level_up.draw(screen)
         elif self.menu_configs.ativo:
             self.menu_configs.draw(screen)
@@ -2012,6 +2273,40 @@ class GameplayScene(BaseScene):
             gear_rect = gear_surf.get_rect(centerx=768, centery=32)
             screen.blit(gear_surf, gear_rect)
 
+        # 7. Mira (Crosshair) na coordenada virtual clampada (ou direção de teclado em uma_mao)
+        em_combate_ativo = (
+            not self.pausado and not self.game_over and not self.vitoria and not self.boss_cutscene_ativa
+            and not self.menu_configs.ativo and not self.modal_level_up.ativo and not self.modal_overclock.ativo
+            and not (hasattr(self, "menu_debug") and self.menu_debug.ativo)
+        )
+        if em_combate_ativo and self.jogador.vivo:
+            val_kb = str(self.config_sistema.obter_valor("keybinds")).lower() if hasattr(self, "config_sistema") and self.config_sistema else "padrao"
+            if val_kb == "uma_mao":
+                dir_m = getattr(self.jogador, "dir_movimento", (0.0, -1.0))
+                dmx, dmy = float(dir_m[0]), float(dir_m[1])
+                if dmx == 0.0 and dmy == 0.0:
+                    dmx, dmy = 0.0, -1.0
+                cx_t = self.camera.transform_x(self.jogador.x + self.jogador.largura / 2.0)
+                cy_t = self.camera.transform_y(self.jogador.y + self.jogador.altura / 2.0)
+                mira_tx = int(clamp(cx_t + dmx * 72.0, 0.0, float(LARGURA_TELA)))
+                mira_ty = int(clamp(cy_t + dmy * 72.0, 0.0, float(ALTURA_TELA)))
+            else:
+                try:
+                    mx_c, my_c = self.mouse.get_position()
+                    if val_kb == "pesadelo":
+                        my_c = ALTURA_TELA - my_c
+                except Exception:
+                    mx_c, my_c = LARGURA_TELA // 2, ALTURA_TELA // 2
+                mira_tx = int(clamp(float(mx_c), 0.0, float(LARGURA_TELA)))
+                mira_ty = int(clamp(float(my_c), 0.0, float(ALTURA_TELA)))
+
+            if self._mira_crosshair_img is not None:
+                cw, ch = self._mira_crosshair_img.get_size()
+                screen.blit(self._mira_crosshair_img, (mira_tx - cw // 2, mira_ty - ch // 2))
+            else:
+                pygame.draw.circle(screen, AZUL_CIANO, (mira_tx, mira_ty), 6, width=1)
+                pygame.draw.circle(screen, DOURADO, (mira_tx, mira_ty), 2)
+
     def _desenhar_toasts(self, screen):
         """Renderiza toasts de coleta flutuantes com clamp horizontal em [12, LARGURA_TELA - 12]."""
         fonte_toast = self._fontes["toast"]
@@ -2124,9 +2419,10 @@ class GameplayScene(BaseScene):
         }
 
     def _acionar_vitoria(self):
-        """Executa a sequência de vitória de 10 minutos do Protocolo: Batata."""
+        """Executa a sequência de vitória pela derrota da Geladeira Tsunami."""
         try:
             pygame.mixer.music.fadeout(800)
+            pygame.mixer.music._current_track = None
         except Exception:
             pass
 
