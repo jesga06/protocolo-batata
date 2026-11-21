@@ -742,7 +742,9 @@ class Jogador:
             if self.escudo_fatal_cooldown == 0.0:
                 self.escudo_fatal_pronto = True
 
-        # Multithreading: atualiza ângulos de rotação dos 2 coprocessadores
+        # Multithreading: atualiza ângulos de rotação dos 2 coprocessadores e recarga do escudo orbital (4s)
+        if getattr(self, "coprocessador_escudo_timer", 0.0) > 0.0:
+            self.coprocessador_escudo_timer = max(0.0, self.coprocessador_escudo_timer - dt)
         if getattr(self, "multithreading", False):
             if not hasattr(self, "coprocessadores_angulos"):
                 self.coprocessadores_angulos = [0.0, 3.14159]

@@ -647,8 +647,9 @@ class ModalLevelUp:
             if self.cena and hasattr(self.cena, "pausado"):
                 self.cena.pausado = False
 
-            # Se o jogador atingiu o Nível 20 e completou os upgrades, inicia a cutscene do Chefe Final
-            if self.jogador and self.jogador.nivel >= 20:
+            # Se o jogador atingiu o nível máximo (12) e completou os upgrades, inicia a cutscene do Chefe Final
+            nivel_max = getattr(getattr(self.jogador, "sistema_xp", None), "nivel_max", 12) if self.jogador else 12
+            if self.jogador and self.jogador.nivel >= nivel_max:
                 if self.cena and hasattr(self.cena, "iniciar_boss_cutscene"):
                     self.cena.iniciar_boss_cutscene()
 

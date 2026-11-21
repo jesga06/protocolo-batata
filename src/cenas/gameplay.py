@@ -1071,7 +1071,7 @@ class GameplayScene(BaseScene):
 
                     mult_cadencia = 1.0
                     if getattr(self.jogador, "refrigeracao_nitrogenio", False):
-                        mult_cadencia *= 2.0 if getattr(self.jogador, "refrigeracao_overdrive_timer", 0.0) > 0.0 else 1.35
+                        mult_cadencia *= 1.20
                     if getattr(self.jogador, "buff_cadencia_timer", 0.0) > 0.0:
                         mult_cadencia *= 1.08
                     arma_pronta = arma_ativa.update_carga(dt * mult_cadencia)
@@ -1281,7 +1281,7 @@ class GameplayScene(BaseScene):
                                 arma_esp.iniciar_carga()
                             mult_cadencia = 1.0
                             if getattr(self.jogador, "refrigeracao_nitrogenio", False):
-                                mult_cadencia *= 2.0 if getattr(self.jogador, "refrigeracao_overdrive_timer", 0.0) > 0.0 else 1.35
+                                mult_cadencia *= 1.20
                             if getattr(self.jogador, "buff_cadencia_timer", 0.0) > 0.0:
                                 mult_cadencia *= 1.08
                             arma_pronta = arma_esp.update_carga(dt * mult_cadencia)
@@ -1702,8 +1702,23 @@ class GameplayScene(BaseScene):
                 proj.x = sub_x
                 proj.y = sub_y
 
-                # Projéteis de inimigos causam dano ao jogador
+                # Projéteis de inimigos podem ser bloqueados por núcleos de Multithreading (1 a cada 4s) ou causam dano ao jogador
                 if getattr(proj, "dono", "jogador") == "inimigo":
+                    if getattr(self.jogador, "vivo", True) and getattr(self.jogador, "multithreading", False) and getattr(self.jogador, "coprocessador_escudo_timer", 0.0) <= 0.0:
+                        px_c = proj.x + proj.largura / 2.0
+                        py_c = proj.y + proj.altura / 2.0
+                        bloqueado_cop = False
+                        for ang_cop in getattr(self.jogador, "coprocessadores_angulos", [0.0, 3.14159]):
+                            cop_x = centro_jogador_x + math.cos(ang_cop) * 34.0
+                            cop_y = centro_jogador_y + math.sin(ang_cop) * 34.0
+                            if distancia(px_c, py_c, cop_x, cop_y) <= 18.0:
+                                self.jogador.coprocessador_escudo_timer = 4.0
+                                self.sistema_particulas.emitir_faiscas(cop_x, cop_y, cor=(0, 240, 255), qtd=8)
+                                proj.ativo = False
+                                bloqueado_cop = True
+                                break
+                        if bloqueado_cop:
+                            break
                     if getattr(self.jogador, "vivo", True) and colisao_aabb(
                         proj.x, proj.y, proj.largura, proj.altura,
                         self.jogador.x, self.jogador.y, self.jogador.largura, self.jogador.altura
