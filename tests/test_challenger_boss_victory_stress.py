@@ -11,6 +11,7 @@ Testa exaustivamente:
 import unittest
 import math
 import os
+import tempfile
 import pygame
 from unittest.mock import MagicMock, patch
 
@@ -231,6 +232,13 @@ class TestChallengerVictoryConditionAndStateFreeze(unittest.TestCase):
     """
 
     def setUp(self):
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.temp_save = os.path.join(self._tmpdir.name, "save.json")
+        self._p1 = patch("src.utils.constantes.SAVE_FILE_PATH", self.temp_save)
+        self._p2 = patch("src.cenas.gameplay.SAVE_FILE_PATH", self.temp_save)
+        self._p1.start()
+        self._p2.start()
+
         self.janela_mock = MagicMock()
         self.janela_mock.delta_time.return_value = 0.01666
         self.janela_mock.screen = pygame.Surface((800, 600))
@@ -238,39 +246,38 @@ class TestChallengerVictoryConditionAndStateFreeze(unittest.TestCase):
         self.janela_mock.altura = 600
         self.janela_mock.get_fps.return_value = 60
 
-        with patch("src.cenas.gameplay.SAVE_FILE_PATH", "data/test_challenger_save.json"):
-            self.scene = GameplayScene()
-            self.scene.janela = self.janela_mock
+        self.scene = GameplayScene()
+        self.scene.janela = self.janela_mock
 
     def tearDown(self):
-        if os.path.exists("data/test_challenger_save.json"):
-            try:
-                os.remove("data/test_challenger_save.json")
-            except Exception:
-                pass
+        self._p2.stop()
+        self._p1.stop()
+        self._tmpdir.cleanup()
 
     def test_victory_boundary_599_9s_vs_600_0s_vs_600_1s(self):
-        """Testa o acionamento da vitória exatamente nos limites de tempo."""
-        # 1. 599.9 segundos: Ainda não venceu
-        self.scene.tempo_sobrevivencia = 599.9
-        self.scene.vitoria = False
-        self.scene.jogador.vivo = True
+        """Valida no loop real de GameplayScene que o timer de 600s não vence sozinho e que derrotar o Boss aciona vitória."""
+        from src.entidades.inimigos.geladeira_tsunami import GeladeiraTsunami
+        # 1. Passar de 600.0s sem Boss morto NÃO vence
+        self.scene.tempo_sobrevivencia = 600.0
+        self.scene.loop(dt=0.1)
+        self.assertFalse(self.scene.vitoria)
+        self.assertFalse(self.scene.partida_registrada)
 
+        # 2. Boss presente e vivo -> ainda não vence
+        boss = GeladeiraTsunami(x=400, y=300)
+        boss.intro_concluida = True
+        self.scene.chefe_final = boss
+        self.scene.inimigos = [boss]
+        self.scene.loop(dt=0.1)
         self.assertFalse(self.scene.vitoria)
 
-        # 2. Transição para 600.0 segundos
-        self.scene.tempo_sobrevivencia = 600.0
-        # Simula verificação de vitória no loop
-        if self.scene.tempo_sobrevivencia >= TEMPO_VITORIA and self.scene.jogador.vivo and not self.scene.vitoria:
-            self.scene.vitoria = True
-            self.scene._acionar_vitoria()
-
+        # 3. Boss derrotado e conclui cascata de morte -> GameplayScene.loop() dispara vitória real
+        boss.receber_dano(boss.hp + 9999)
+        boss.update(1.6, (self.scene.jogador.x, self.scene.jogador.y))
+        self.assertFalse(boss.vivo)
+        self.scene.loop(dt=0.016)
         self.assertTrue(self.scene.vitoria)
         self.assertTrue(self.scene.partida_registrada)
-
-        # 3. 600.1 segundos: Permanece vitorioso
-        self.scene.tempo_sobrevivencia = 600.1
-        self.assertTrue(self.scene.vitoria)
 
     def test_state_freeze_and_projectiles_cleared_on_victory(self):
         """Verifica que a vitória congela inimigos e remove projéteis."""
@@ -489,19 +496,17 @@ class TestChallengerPersistenceAndE2EGameplayStress(unittest.TestCase):
     """
 
     def setUp(self):
-        self.test_save_file = "data/test_challenger_persistence_stress.json"
-        if os.path.exists(self.test_save_file):
-            try:
-                os.remove(self.test_save_file)
-            except Exception:
-                pass
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.test_save_file = os.path.join(self._tmpdir.name, "save.json")
+        self._p1 = patch("src.utils.constantes.SAVE_FILE_PATH", self.test_save_file)
+        self._p2 = patch("src.cenas.gameplay.SAVE_FILE_PATH", self.test_save_file)
+        self._p1.start()
+        self._p2.start()
 
     def tearDown(self):
-        if os.path.exists(self.test_save_file):
-            try:
-                os.remove(self.test_save_file)
-            except Exception:
-                pass
+        self._p2.stop()
+        self._p1.stop()
+        self._tmpdir.cleanup()
 
     def test_save_persistence_stress_50_matches(self):
         """Registra 50 partidas consecutivas e verifica integridade dos dados e capping de histórico em 20."""
@@ -537,31 +542,23 @@ class TestChallengerPersistenceAndE2EGameplayStress(unittest.TestCase):
         self.assertEqual(len(stats_reloaded["historico"]), 20)
 
     def test_simulated_fast_forward_to_victory(self):
-        """Simula 10 minutos (600s) de jogo avançando em passos rápidos e valida integridade final."""
-        janela_mock = MagicMock()
-        janela_mock.delta_time.return_value = 1.0  # 1s por tick
-        janela_mock.screen = pygame.Surface((800, 600))
-        janela_mock.largura = 800
-        janela_mock.altura = 600
-        janela_mock.get_fps.return_value = 60
+        """Simula combate até a derrota da Geladeira Tsunami via GameplayScene.loop() real e valida vitória."""
+        from src.entidades.inimigos.geladeira_tsunami import GeladeiraTsunami
+        scene = GameplayScene()
+        scene.tempo_sobrevivencia = 600.0
+        boss = GeladeiraTsunami(x=400, y=300)
+        boss.intro_concluida = True
+        scene.chefe_final = boss
+        scene.inimigos = [boss]
 
-        with patch("src.cenas.gameplay.SAVE_FILE_PATH", self.test_save_file):
-            scene = GameplayScene()
-            scene.janela = janela_mock
+        with patch("pygame.mixer.music.fadeout"), patch("PPlay.sound.Sound.play"):
+            boss.receber_dano(boss.hp + 9999)
+            for _ in range(20):
+                scene.loop(dt=0.1)
 
-            # Desativa sons reais
-            with patch("pygame.mixer.music.fadeout"), patch("PPlay.sound.Sound.play"):
-                # Itera 601 segundos
-                for _ in range(601):
-                    if not scene.vitoria and not scene.game_over:
-                        scene.tempo_sobrevivencia += 1.0
-                        if scene.tempo_sobrevivencia >= TEMPO_VITORIA and scene.jogador.vivo and not scene.vitoria:
-                            scene.vitoria = True
-                            scene._acionar_vitoria()
-
-            self.assertTrue(scene.vitoria)
-            self.assertTrue(scene.partida_registrada)
-            self.assertGreaterEqual(scene.estatisticas_partida_resultado["score_final"], 10000)
+        self.assertTrue(scene.vitoria)
+        self.assertTrue(scene.partida_registrada)
+        self.assertGreaterEqual(scene.estatisticas_partida_resultado["score_final"], 10000)
 
 
 if __name__ == "__main__":

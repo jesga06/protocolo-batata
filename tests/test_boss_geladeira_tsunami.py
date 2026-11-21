@@ -11,7 +11,9 @@ import os
 import sys
 import math
 import random
+import tempfile
 import unittest
+from unittest.mock import patch
 
 # Inicialização headless do Pygame antes de qualquer módulo do jogo
 os.environ["SDL_VIDEODRIVER"] = "dummy"
@@ -72,10 +74,21 @@ class TestTier1FeatureCoverage(unittest.TestCase):
     """Testes unitários de conformidade com todos os requisitos R1 a R5."""
 
     def setUp(self):
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.temp_save = os.path.join(self._tmpdir.name, "save.json")
+        self._p1 = patch("src.utils.constantes.SAVE_FILE_PATH", self.temp_save)
+        self._p2 = patch("src.cenas.gameplay.SAVE_FILE_PATH", self.temp_save)
+        self._p1.start()
+        self._p2.start()
         self.jogador = Jogador(x=400, y=300)
         self.sistema_xp = SistemaXP()
         self.sistema_drops = SistemaDrops()
         self.spawner = SistemaSpawn()
+
+    def tearDown(self):
+        self._p2.stop()
+        self._p1.stop()
+        self._tmpdir.cleanup()
 
     # --- R2: XP Curve Smoothing ---
     def test_t1_xp_curve_smoothing_values(self):
@@ -597,6 +610,19 @@ class TestTier3CrossFeatureCombinations(unittest.TestCase):
 
 class TestTier4RealWorldScenarios(unittest.TestCase):
     """Simulação E2E de progressão de encontro do Chefe Final."""
+
+    def setUp(self):
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.temp_save = os.path.join(self._tmpdir.name, "save.json")
+        self._p1 = patch("src.utils.constantes.SAVE_FILE_PATH", self.temp_save)
+        self._p2 = patch("src.cenas.gameplay.SAVE_FILE_PATH", self.temp_save)
+        self._p1.start()
+        self._p2.start()
+
+    def tearDown(self):
+        self._p2.stop()
+        self._p1.stop()
+        self._tmpdir.cleanup()
 
     def test_t4_full_boss_encounter_progression_to_victory(self):
         """

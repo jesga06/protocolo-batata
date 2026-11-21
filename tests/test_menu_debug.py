@@ -274,19 +274,26 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         hud.desenhar_barra_boss(screen, boss)
 
     def test_in_world_hp_bar_centering(self):
-        """Valida que o centro da barra de HP está perfeitamente alinhado com o centro do avatar."""
+        """Valida que _desenhar_hp_in_world() desenha a barra de HP centralizada abaixo do avatar na surface."""
         from src.cenas.gameplay import GameplayScene
+        from src.utils.constantes import VERDE_CURA
         cena = GameplayScene()
+        cena.camera.x = 0.0
+        cena.camera.y = 0.0
         cena.jogador.x = 200.0
         cena.jogador.y = 200.0
+        cena.jogador.hp = cena.jogador.hp_max
 
-        # Avatar 42x42 -> centro em x = 221.0
-        # Barra de 40px -> x = 221.0 - 20.0 = 201.0
+        screen = cena.janela.screen
+        screen.fill((0, 0, 0))
+        cena._desenhar_hp_in_world()
+
         sprite_w = 42.0 if (hasattr(cena.jogador, "_sprite_idle") and cena.jogador._sprite_idle) else float(cena.jogador.largura)
-        centro_x = cena.jogador.x + sprite_w / 2.0
-        bar_w = 40.0
-        bar_x = centro_x - bar_w / 2.0
-        self.assertEqual(bar_x + bar_w / 2.0, centro_x)
+        sprite_h = 42.0 if (hasattr(cena.jogador, "_sprite_idle") and cena.jogador._sprite_idle) else float(cena.jogador.altura)
+        centro_x = int(cena.jogador.x + sprite_w / 2.0)
+        meio_y = int(cena.jogador.y + sprite_h + 7.0)
+
+        self.assertEqual(screen.get_at((centro_x, meio_y))[:3], VERDE_CURA)
 
     def test_menu_debug_spawning_all_drops_on_real_gameplay_scene(self):
         """Testa spawn e coleta de todas as categorias de drops na GameplayScene real sem exceções."""

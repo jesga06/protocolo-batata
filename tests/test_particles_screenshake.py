@@ -110,13 +110,12 @@ class TestParticlesScreenshake(unittest.TestCase):
         self.assertEqual(cena.shake_intensidade, 10.0)
         self.assertEqual(cena.shake_timer, 0.25)
 
-        # Simula passagem de tempo no loop
-        dt = 0.30
-        if cena.shake_timer > 0.0:
-            cena.shake_timer = max(0.0, cena.shake_timer - dt)
-            if cena.shake_timer == 0.0:
-                cena.shake_intensidade = 0.0
+        # Executa o loop real de GameplayScene com dt=0.10s (resta 0.15s) e depois dt=0.20s (zera)
+        cena.loop(dt=0.10)
+        self.assertAlmostEqual(cena.shake_timer, 0.15, places=4)
+        self.assertEqual(cena.shake_intensidade, 10.0)
 
+        cena.loop(dt=0.20)
         self.assertEqual(cena.shake_timer, 0.0)
         self.assertEqual(cena.shake_intensidade, 0.0)
 

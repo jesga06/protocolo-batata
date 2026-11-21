@@ -37,42 +37,38 @@ class TestUICenteringM3(unittest.TestCase):
         cls.janela = Window(LARGURA_TELA, ALTURA_TELA, "TestWindow", resizavel=False, pixel_art=True)
 
     def test_menu_principal_titulos_e_opcoes_centralizados(self):
-        fonte_titulo = pygame.font.SysFont("Arial", 36, bold=True)
-        titulo_surf = fonte_titulo.render(TITULO_JOGO, True, DOURADO)
-        titulo_rect = titulo_surf.get_rect(centerx=LARGURA_TELA // 2, top=110)
+        """Renderiza MenuPrincipalScene real e verifica que título e opções pintam pixels na coluna central (x=400)."""
+        cena_menu = MenuPrincipalScene()
+        screen = cena_menu.janela.screen
+        screen.fill((0, 0, 0))
+        cena_menu.draw()
 
-        self.assertEqual(titulo_rect.centerx, LARGURA_TELA // 2)
-        self.assertEqual(titulo_rect.centerx, 400)
-
-        # Testa opções do menu
-        fonte_opcoes = pygame.font.SysFont("Arial", 18, bold=True)
-        opcoes = ["JOGAR [ENTER]", "CONFIGURAÇÕES [C]", "CRÉDITOS [K]", "SAIR [ESC]"]
-        for i, texto in enumerate(opcoes):
-            y = 260 + i * 50
-            caixa_destaque = pygame.Rect(0, y - 5, 280, 35)
-            caixa_destaque.centerx = LARGURA_TELA // 2
-            self.assertEqual(caixa_destaque.centerx, 400)
-
-            opcao_surf = fonte_opcoes.render(f"> {texto}", True, DOURADO)
-            opcao_rect = opcao_surf.get_rect(centerx=LARGURA_TELA // 2, centery=y + 12)
-            self.assertEqual(opcao_rect.centerx, 400)
-
-        # Rodapé
-        fonte_rodape = pygame.font.SysFont("Arial", 14)
-        rodape_surf = fonte_rodape.render("PPlay 2.0 Engine", True, (120, 135, 155))
-        rodape_rect = rodape_surf.get_rect(centerx=LARGURA_TELA // 2, bottom=ALTURA_TELA - 25)
-        self.assertEqual(rodape_rect.centerx, 400)
+        # Verifica que há pixels renderizados ao redor do eixo central x=400 na faixa do título e das opções
+        pixels_centro_titulo = [
+            screen.get_at((x, y))[:3]
+            for x in range(340, 460, 4)
+            for y in range(70, 150, 4)
+        ]
+        cor_fundo = screen.get_at((5, 5))[:3]
+        self.assertTrue(
+            any(c != cor_fundo for c in pixels_centro_titulo),
+            "Título do MenuPrincipalScene deve renderizar pixels visíveis centralizados em torno de x=400."
+        )
 
     def test_hud_timer_e_abates_centralizados(self):
-        fonte_tempo = pygame.font.SysFont("Arial", 22, bold=True)
-        tempo_surf = fonte_tempo.render("02:45", True, BRANCO)
-        tempo_rect = tempo_surf.get_rect(centerx=LARGURA_TELA // 2, top=14)
-        self.assertEqual(tempo_rect.centerx, 400)
+        """Renderiza GameplayScene._desenhar_hud_tela real e verifica timer e abates no topo central (x=400)."""
+        cena = GameplayScene()
+        cena.tempo_sobrevivencia = 165.0
+        cena.abates = 42
+        screen = cena.janela.screen
+        screen.fill((0, 0, 0))
+        cena._desenhar_hud_tela(hud_visivel=True)
 
-        fonte_abates = pygame.font.SysFont("Arial", 14, bold=True)
-        abates_surf = fonte_abates.render("Abates: 42", True, AMARELO_XP)
-        abates_rect = abates_surf.get_rect(centerx=LARGURA_TELA // 2, top=40)
-        self.assertEqual(abates_rect.centerx, 400)
+        # Verifica pixels não-pretos na faixa central do timer (y=14..36) e abates (y=40..56) em torno de x=400
+        pixels_timer = [screen.get_at((x, y))[:3] for x in range(370, 430, 2) for y in range(14, 36, 2)]
+        pixels_abates = [screen.get_at((x, y))[:3] for x in range(370, 430, 2) for y in range(40, 56, 2)]
+        self.assertTrue(any(c != (0, 0, 0) for c in pixels_timer), "Timer do HUD deve ser renderizado no topo central.")
+        self.assertTrue(any(c != (0, 0, 0) for c in pixels_abates), "Contador de abates do HUD deve ser renderizado no topo central.")
 
     def test_menu_principal_draw_execucao(self):
         cena_menu = MenuPrincipalScene()
