@@ -55,11 +55,25 @@ def inicializar_jogo():
         resizavel=True,
         pixel_art=True
     )
+    janela.is_fullscreen = True
+    janela.largura_janela_atual = 1920
+    janela.altura_janela_atual = 1080
+    janela.real_screen = pygame.display.set_mode((1920, 1080), pygame.FULLSCREEN | pygame.DOUBLEBUF)
     janela.set_background_color((18, 22, 30))
 
     cena_inicial = MenuPrincipalScene()
     SceneManager.change_scene(cena_inicial)
     return janela
+
+
+def _parse_fps_alvo(val_fps) -> int:
+    """Converte o valor de fps_cap para inteiro (0 = ilimitado)."""
+    if val_fps is None or str(val_fps).strip().lower() == "ilimitado":
+        return 0
+    try:
+        return int(val_fps)
+    except Exception:
+        return FPS_PADRAO
 
 
 def main(limite_frames: int | None = None):
@@ -77,22 +91,14 @@ def main(limite_frames: int | None = None):
         # 2. Executa ciclo da cena ativa (loop + draw)
         SceneManager.run()
 
-        # 3. Obtém limite de taxa de quadros (FPS Cap configurado: 60, 45, 30, 15)
+        # 3. Obtém limite de taxa de quadros (FPS Cap configurado: ilimitado [0], 45, 30, 15)
         # Suporta GameplayScene, MenuPrincipalScene, TutorialScene e quaisquer cenas com gerenciador de config
         cena_atual = getattr(SceneManager, "_current_scene", None)
         fps_alvo = FPS_PADRAO
         if cena_atual and hasattr(cena_atual, "gerenciador_config") and cena_atual.gerenciador_config:
-            val_fps = cena_atual.gerenciador_config.obter_valor("fps_cap")
-            try:
-                fps_alvo = int(val_fps)
-            except Exception:
-                fps_alvo = FPS_PADRAO
+            fps_alvo = _parse_fps_alvo(cena_atual.gerenciador_config.obter_valor("fps_cap"))
         elif cena_atual and hasattr(cena_atual, "config_sistema") and cena_atual.config_sistema:
-            val_fps = cena_atual.config_sistema.obter_valor("fps_cap")
-            try:
-                fps_alvo = int(val_fps)
-            except Exception:
-                fps_alvo = FPS_PADRAO
+            fps_alvo = _parse_fps_alvo(cena_atual.config_sistema.obter_valor("fps_cap"))
         else:
             # Fallback para cenas como TutorialScene que podem não instanciar seu próprio gerenciador
             try:
@@ -100,8 +106,7 @@ def main(limite_frames: int | None = None):
                 from src.utils.constantes import SAVE_FILE_PATH
                 cfg = GerenciadorConfiguracoes()
                 cfg.carregar_arquivo(SAVE_FILE_PATH)
-                val_fps = cfg.obter_valor("fps_cap")
-                fps_alvo = int(val_fps)
+                fps_alvo = _parse_fps_alvo(cfg.obter_valor("fps_cap"))
             except Exception:
                 fps_alvo = FPS_PADRAO
 
