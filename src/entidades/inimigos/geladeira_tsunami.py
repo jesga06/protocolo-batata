@@ -17,6 +17,7 @@ from src.utils.constantes import (
     BOSS_GELADEIRA_HP_BASE, BOSS_GELADEIRA_DANO_CONTATO,
     BOSS_GELADEIRA_VELOCIDADE, BOSS_GELADEIRA_NOME,
     BOSS_GELADEIRA_FLAVOR, LARGURA_ARENA, ALTURA_ARENA,
+    LARGURA_TELA, ALTURA_TELA,
     BRANCO, PRETO, DOURADO, ROXO_ACENTO, ROXO_CLARO, VERMELHO_DANO,
     AZUL_CIANO, LARANJA_ALERTA
 )
@@ -28,6 +29,80 @@ ESTADO_FASE1 = "fase1"
 ESTADO_FASE2 = "fase2"
 ESTADO_FASE3 = "fase3"
 ESTADO_MORTE = "morte"
+
+
+class CaixaDeSomBoss(InimigoBase):
+    """
+    Caixa de Som (Subwoofer Totem destrutível) lançada pela Geladeira Tsunami.
+    Permanece fixa na arena emitindo ondas sonoras cruzadas até ser destruída pelos tiros do jogador.
+    Cria a pressão espacial natural para builds sem configurações, sem usar timers artificiais de morte.
+    """
+    def __init__(self, x: float, y: float, hp: int = 240):
+        super().__init__(
+            x=x,
+            y=y,
+            hp=hp,
+            velocidade=0.0,
+            dano_contato=12,
+            cooldown_contato=0.6,
+            xp_valor=0,
+            score_valor=150,
+            largura=40,
+            altura=40,
+            sprite_key="caixa_som_boss",
+            is_elite=False,
+            nome_elite="CAIXA DE SOM"
+        )
+        self.is_caixa_som = True
+        self.timer_onda = 0.8
+        self.intervalo_onda = 2.4
+        self.projeteis_pendentes: list[Projetil] = []
+        self.angulo_onda = 0.0
+
+    def update(self, dt: float, pos_alvo: tuple[float, float]):
+        if not self.vivo:
+            return
+        if self.flash_timer > 0.0:
+            self.flash_timer = max(0.0, self.flash_timer - dt)
+        if self.cooldown_contato_atual > 0.0:
+            self.cooldown_contato_atual = max(0.0, self.cooldown_contato_atual - dt)
+
+        self.timer_onda += dt
+        if self.timer_onda >= self.intervalo_onda:
+            self.timer_onda = 0.0
+            self.angulo_onda = (self.angulo_onda + 0.45) % (2.0 * math.pi)
+            cx = self.x + self.largura / 2.0
+            cy = self.y + self.altura / 2.0
+            for i in range(6):
+                ang = self.angulo_onda + i * (2.0 * math.pi / 6.0)
+                self.projeteis_pendentes.append(Projetil(
+                    x=cx - 5.0,
+                    y=cy - 5.0,
+                    dir_x=math.cos(ang),
+                    dir_y=math.sin(ang),
+                    velocidade=175.0,
+                    dano=10,
+                    tempo_vida=3.2,
+                    dono="inimigo",
+                    largura=10,
+                    altura=10,
+                    sprite_key="projetil_inimigo",
+                    cor=ROXO_CLARO
+                ))
+
+    def desenhar(self, janela, camera=None):
+        if not self.vivo:
+            return
+        super().desenhar(janela, camera)
+        try:
+            screen = getattr(janela, "screen", janela)
+            dx = camera.transform_x(self.x) if camera else self.x
+            dy = camera.transform_y(self.y) if camera else self.y
+            pct = clamp(self.hp / max(1, self.hp_max), 0.0, 1.0)
+            pygame.draw.rect(screen, (15, 18, 26), (int(dx), int(dy - 8), self.largura, 5), border_radius=2)
+            pygame.draw.rect(screen, ROXO_ACENTO, (int(dx + 1), int(dy - 7), int((self.largura - 2) * pct), 3), border_radius=2)
+        except Exception:
+            pass
 
 
 class GeladeiraTsunami(InimigoBase):
@@ -169,8 +244,15 @@ class GeladeiraTsunami(InimigoBase):
         self.shake_intensidade = 0.0
         self.particulas_explosao: list[dict] = []
 
-        # Filas de saída
+        # Filas de saída e mecânicas espaciais (Bass Push, Poças de Gelo, Caixas de Som, Drift Duplo, Sucção)
         self.projeteis_pendentes: list[Projetil] = []
+        self.caixas_som_pendentes: list[CaixaDeSomBoss] = []
+        self.pocas_gelo_pendentes: list[dict] = []
+        self.pulso_empurrao_pendente: bool = False
+        self.timer_cubo_gelo: float = 0.0
+        self.dashes_restantes_ciclo: int = 2
+        self.vortice_succao_ativo: bool = False
+        self.timer_vortice_fase3: float = 0.0
 
     @property
     def intro_concluida(self) -> bool:
@@ -372,11 +454,24 @@ class GeladeiraTsunami(InimigoBase):
         self.x += ux * self.velocidade * dt
         self.y += uy * self.velocidade * dt
 
-        # Ataque: Subwoofer Pulse (anéis sônicos com brecha para esquiva)
+        # Ataque: Subwoofer Pulse (anéis sônicos com brecha para esquiva + Bass Push)
         self.timer_pulso_fase1 += dt
         if self.timer_pulso_fase1 >= self.intervalo_pulso_fase1:
             self._disparar_pulso_subwoofer(pos_alvo)
+            self.pulso_empurrao_pendente = True
             self.timer_pulso_fase1 = 0.0
+
+        # Cubos de Gelo que geram poças congeladas no chão
+        self.timer_cubo_gelo = getattr(self, "timer_cubo_gelo", 0.0) + dt
+        if self.timer_cubo_gelo >= 4.2:
+            self.timer_cubo_gelo = 0.0
+            self.pocas_gelo_pendentes.append({
+                "x": clamp(tx + random.uniform(-60.0, 60.0), 80.0, float(LARGURA_ARENA - 80.0)),
+                "y": clamp(ty + random.uniform(-60.0, 60.0), 80.0, float(ALTURA_ARENA - 80.0)),
+                "raio": 68.0,
+                "tempo": 6.0,
+                "tempo_max": 6.0
+            })
 
     def _update_fase2(self, dt: float, pos_alvo: tuple[float, float], **kwargs):
         """Fase 2: Telegraphed Bass Rush Dash (420 px/s) + Subwoofer Totems."""
@@ -445,9 +540,22 @@ class GeladeiraTsunami(InimigoBase):
                 self.shake_intensidade = 12.0
                 self._disparar_estilhacos_acusticos()
 
-                # Retorna ao modo stalk
-                self.subestado_fase2 = "stalk"
-                self.timer_ciclo_fase2 = 0.0
+                # Drift Duplo: se ainda resta o segundo dash do par, recalcula curva para o jogador
+                if getattr(self, "dashes_restantes_ciclo", 1) > 1 and not bateu_parede:
+                    self.dashes_restantes_ciclo = 1
+                    self.dash_dir_x, self.dash_dir_y = vetor_direcao(
+                        self.x + self.largura / 2.0,
+                        self.y + self.altura / 2.0,
+                        tx,
+                        ty
+                    )
+                    if self.dash_dir_x == 0.0 and self.dash_dir_y == 0.0:
+                        self.dash_dir_x = 1.0
+                    self.timer_dash_fase2 = self.duracao_dash_max * 0.65
+                else:
+                    self.dashes_restantes_ciclo = 2
+                    self.subestado_fase2 = "stalk"
+                    self.timer_ciclo_fase2 = 0.0
 
     def _update_fase3(self, dt: float, pos_alvo: tuple[float, float]):
         """Fase 3: Center Stage Anchor + Sonic Tsunami Helix + Radial Bass Blasts."""
@@ -471,7 +579,10 @@ class GeladeiraTsunami(InimigoBase):
             self._disparar_helix_tsunami()
             self.timer_tiro_helix = 0.0
 
-        # Radial Bass Blasts periódicos
+        # Radial Bass Blasts periódicos + Vórtice de Sucção do Subwoofer
+        self.timer_vortice_fase3 = getattr(self, "timer_vortice_fase3", 0.0) + dt
+        self.vortice_succao_ativo = (4.5 <= (self.timer_vortice_fase3 % 7.5) <= 7.0)
+
         self.timer_bass_blast += dt
         if self.timer_bass_blast >= self.intervalo_bass_blast:
             self._disparar_blast_radial()
@@ -565,7 +676,7 @@ class GeladeiraTsunami(InimigoBase):
             self.projeteis_pendentes.append(proj)
 
     def _disparar_totem_acustico(self):
-        """Gera pulso radial concêntrico de 8 projéteis em velocidade moderada."""
+        """Gera pulso radial concêntrico de 8 projéteis e instala uma Caixa de Som destrutível na arena."""
         cx = self.x + self.largura / 2.0
         cy = self.y + self.altura / 2.0
 
@@ -585,6 +696,11 @@ class GeladeiraTsunami(InimigoBase):
                 sprite_key="projetil_inimigo"
             )
             self.projeteis_pendentes.append(proj)
+
+        ang_t = random.uniform(0.0, 2.0 * math.pi)
+        tx = clamp(cx + math.cos(ang_t) * 210.0 - 20.0, 60.0, float(LARGURA_ARENA - 100.0))
+        ty = clamp(cy + math.sin(ang_t) * 210.0 - 20.0, 60.0, float(ALTURA_ARENA - 100.0))
+        self.caixas_som_pendentes.append(CaixaDeSomBoss(x=tx, y=ty))
 
     def _disparar_helix_tsunami(self):
         """Dispara feixe duplo helicoidal rotativo a partir do centro do palco."""
@@ -684,9 +800,11 @@ class GeladeiraTsunami(InimigoBase):
         balao_x = draw_x + self.largura / 2.0 - balao_w / 2.0
         balao_y = draw_y - balao_h - 16
 
-        # Clamping na janela visível (800x600)
-        balao_x = clamp(balao_x, 10.0, 800.0 - balao_w - 10.0)
-        balao_y = clamp(balao_y, 10.0, 600.0 - balao_h - 10.0)
+        # Clamping na janela visível (1280x720 ou dimensão da surface)
+        sw_max = float(screen.get_width() if hasattr(screen, "get_width") else LARGURA_TELA)
+        sh_max = float(screen.get_height() if hasattr(screen, "get_height") else ALTURA_TELA)
+        balao_x = clamp(balao_x, 10.0, sw_max - balao_w - 10.0)
+        balao_y = clamp(balao_y, 10.0, sh_max - balao_h - 10.0)
 
         # 1. Caixa arredondada do balão
         balao_rect = pygame.Rect(int(balao_x), int(balao_y), int(balao_w), int(balao_h))
@@ -734,7 +852,9 @@ class GeladeiraTsunami(InimigoBase):
             draw_y = self.y
 
         # Não renderiza se fora da tela virtual visível (exceto durante ESTADO_INTRO com balão de fala visível)
-        if draw_x < -150 or draw_x > 950 or draw_y < -180 or draw_y > 780:
+        sw_vis = screen.get_width() if hasattr(screen, "get_width") else LARGURA_TELA
+        sh_vis = screen.get_height() if hasattr(screen, "get_height") else ALTURA_TELA
+        if draw_x < -150 or draw_x > sw_vis + 150 or draw_y < -180 or draw_y > sh_vis + 180:
             if self.estado == ESTADO_INTRO and self.mostrar_balao_fala:
                 self.desenhar_balao_fala(screen, draw_x, draw_y)
             return

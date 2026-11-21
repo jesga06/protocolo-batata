@@ -128,10 +128,11 @@ class TutorialScene(BaseScene):
             try:
                 if self.mouse.button_down(1):
                     mx, my = self.mouse.get_position()
-                    # Abas estão dispostas horizontalmente entre y=75 e y=105
+                    ox = (LARGURA_TELA - 800) // 2
+                    oy = (ALTURA_TELA - 600) // 2
                     for i in range(self.total_paginas):
-                        tx = 75 + i * 220
-                        rect_tab = pygame.Rect(tx, 75, 205, 30)
+                        tx = ox + 75 + i * 220
+                        rect_tab = pygame.Rect(tx, oy + 75, 205, 30)
                         if rect_tab.collidepoint(mx, my):
                             self.pagina_atual = i
                             return
@@ -161,29 +162,32 @@ class TutorialScene(BaseScene):
         screen = self.janela.screen
         screen.fill(CINZA_FUNDO)
 
+        ox = (LARGURA_TELA - 800) // 2
+        oy = (ALTURA_TELA - 600) // 2
+
         # Painel central estilizado
-        painel_rect = pygame.Rect(40, 30, 720, 540)
+        painel_rect = pygame.Rect(ox + 40, oy + 30, 720, 540)
         pygame.draw.rect(screen, CINZA_PAINEL, painel_rect, border_radius=8)
         pygame.draw.rect(screen, CINZA_BORDA, painel_rect, width=2, border_radius=8)
 
         # Cabeçalho
         fonte_tit = self._fonte_tit
-        tit_surf = fonte_tit.render("GUIA DE SOBREVIVENCIA - PROTOCOLO: BATATA", True, DOURADO)
-        tit_rect = tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=45)
+        tit_surf = fonte_tit.render("GUIA DE SOBREVIVÊNCIA - PROTOCOLO: BATATA", True, DOURADO)
+        tit_rect = tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 45)
         screen.blit(tit_surf, tit_rect)
 
         # Indicador de abas / páginas
         fonte_tab = self._fonte_tab
         tabs = ["[1] CONTROLES & HUD", "[2] DROPS & ARMAS", "[3] INIMIGOS & MECÂNICAS"]
         for i, nome_tab in enumerate(tabs):
-            tx = 80 + i * 220
+            tx = ox + 80 + i * 220
             cor_tab = DOURADO if i == self.pagina_atual else (120, 135, 155)
             tab_surf = fonte_tab.render(nome_tab, True, cor_tab)
-            screen.blit(tab_surf, (tx, 80))
+            screen.blit(tab_surf, (tx, oy + 80))
             if i == self.pagina_atual:
-                pygame.draw.line(screen, DOURADO, (tx, 98), (tx + tab_surf.get_width(), 98), 2)
+                pygame.draw.line(screen, DOURADO, (tx, oy + 98), (tx + tab_surf.get_width(), oy + 98), 2)
 
-        pygame.draw.line(screen, (45, 55, 75), (60, 105), (740, 105), 1)
+        pygame.draw.line(screen, (45, 55, 75), (ox + 60, oy + 105), (ox + 740, oy + 105), 1)
 
         fonte_sec = self._fonte_sec
         fonte_corpo = self._fonte_corpo
@@ -192,117 +196,117 @@ class TutorialScene(BaseScene):
         if self.pagina_atual == 0:
             # Página 1: Controles e HUD
             sec1_surf = fonte_sec.render("CONTROLES PRINCIPAIS", True, AZUL_CIANO)
-            screen.blit(sec1_surf, (70, 120))
+            screen.blit(sec1_surf, (ox + 70, oy + 120))
 
             controles = [
-                ("W, A, S, D", "Movimentação da Batata com normalização diagonal."),
-                ("MOUSE (MIRA)", "Aponta a mira das armas e a direção do cone de ataque."),
-                ("BOTÃO ESQUERDO", "Dispara a arma equipada. Segure para disparo contínuo."),
-                ("TECLAS 1, 2, 3, 4", "Alterna entre Melee [1], Pistola [2], Especial [3] e Drone [4]."),
-                ("TECLA ESC / C", "Abre o Menu de Configurações para ligar/desligar modificadores.")
+                ("W, A, S, D", "Move a Batata pela arena."),
+                ("MOUSE (MIRA)", "Aponta a mira das armas e o cone da Chave de Manutenção."),
+                ("BOTÃO ESQUERDO", "Atira com a arma equipada."),
+                ("TECLAS 1, 2, 3", "Alterna entre Chave Inglesa [1], Pistola [2] e Arma Especial [3]."),
+                ("TECLA ESC / C", "Abre o Menu de Configurações para ligar ou desligar modificadores.")
             ]
 
-            y_pos = 145
+            y_pos = oy + 145
             for tecla, desc in controles:
-                pygame.draw.rect(screen, (20, 26, 38), (70, y_pos, 150, 24), border_radius=4)
-                pygame.draw.rect(screen, (50, 65, 90), (70, y_pos, 150, 24), width=1, border_radius=4)
+                pygame.draw.rect(screen, (20, 26, 38), (ox + 70, y_pos, 150, 24), border_radius=4)
+                pygame.draw.rect(screen, (50, 65, 90), (ox + 70, y_pos, 150, 24), width=1, border_radius=4)
                 t_surf = fonte_destaque.render(tecla, True, AMARELO_XP)
-                screen.blit(t_surf, t_surf.get_rect(centerx=145, centery=y_pos + 12))
+                screen.blit(t_surf, t_surf.get_rect(centerx=ox + 145, centery=y_pos + 12))
 
                 d_surf = fonte_corpo.render(desc, True, BRANCO)
-                screen.blit(d_surf, (235, y_pos + 4))
+                screen.blit(d_surf, (ox + 235, y_pos + 4))
                 y_pos += 32
 
             sec2_surf = fonte_sec.render("ELEMENTOS DA INTERFACE (HUD)", True, AZUL_CIANO)
-            screen.blit(sec2_surf, (70, y_pos + 10))
+            screen.blit(sec2_surf, (ox + 70, y_pos + 10))
             y_pos += 35
 
             hud_itens = [
-                ("Barra Superior Central", "Exibe o Cronômetro de Sobrevivência e o Contador de Abates."),
-                ("Barra de Experiência", "Mostra o nível atual e a barra amarela de progresso para o próximo nível."),
-                ("Slots no Canto Superior", "Indicam as armas e drones equipados, com destaque no slot ativo e munição.")
+                ("Barra Superior Central", "Mostra o tempo de partida e o total de abates."),
+                ("Barra de Experiência", "Indica o nível atual e o progresso até o próximo nível."),
+                ("Slots no Canto Superior", "Mostram a arma ativa, a munição restante e os drones em órbita.")
             ]
             for tit_h, desc_h in hud_itens:
                 h_surf = fonte_destaque.render(f"- {tit_h}:", True, (200, 220, 240))
-                screen.blit(h_surf, (70, y_pos))
+                screen.blit(h_surf, (ox + 70, y_pos))
                 d_surf = fonte_corpo.render(desc_h, True, CINZA_TEXTO)
-                screen.blit(d_surf, (70, y_pos + 16))
+                screen.blit(d_surf, (ox + 70, y_pos + 16))
                 y_pos += 34
 
         elif self.pagina_atual == 1:
             # Página 2: Drops e Armas
-            sec1_surf = fonte_sec.render("DROPS E COLETÁVEIS (DURAM 60 SEGUNDOS NO CHÃO)", True, AZUL_CIANO)
-            screen.blit(sec1_surf, (70, 120))
+            sec1_surf = fonte_sec.render("ITENS E COLETÁVEIS (DURAM 60 SEGUNDOS NO CHÃO)", True, AZUL_CIANO)
+            screen.blit(sec1_surf, (ox + 70, oy + 120))
 
             drops_info = [
-                ("Gema Amarela de XP", "Concede experiência. Inimigos padrão dão 5 XP; inimigos maiores concedem mais."),
-                ("Caixa Vermelha de Cura", "Restaura imediatamente 35 pontos de vida (HP) da Batata."),
-                ("Caixa Dourada de Arma", "Equipa uma arma especial no Slot 3 com munição limitada."),
-                ("Caixa Laranja de Drone", "Ativa um drone de suporte orbital no Slot 4 com duração de 30 segundos."),
-                ("Núcleo de Overclock", "Drop exclusivo de Mini-Bosses que concede upgrades especiais de BIOS.")
+                ("Gema Amarela de XP", "Dá experiência para subir de nível."),
+                ("Caixa de Reparo", "Recupera 35 de vida na hora."),
+                ("Caixa de Arma Especial", "Equipa uma arma pesada no Slot 3 com munição limitada."),
+                ("Módulo de Drone", "Ativa um drone no Slot 4 por 30s ou evolui um drone ativo até MK-III."),
+                ("Núcleo de Overclock", "Drop de Mini-Boss que instala um módulo tático de BIOS.")
             ]
-            y_pos = 145
+            y_pos = oy + 145
             for nome_d, desc_d in drops_info:
                 d_surf = fonte_destaque.render(f"* {nome_d}:", True, AMARELO_XP)
-                screen.blit(d_surf, (70, y_pos))
+                screen.blit(d_surf, (ox + 70, y_pos))
                 desc_s = fonte_corpo.render(desc_d, True, BRANCO)
-                screen.blit(desc_s, (70, y_pos + 15))
+                screen.blit(desc_s, (ox + 70, y_pos + 15))
                 y_pos += 30
 
             sec2_surf = fonte_sec.render("ARSENAL DISPONÍVEL", True, AZUL_CIANO)
-            screen.blit(sec2_surf, (70, y_pos + 4))
+            screen.blit(sec2_surf, (ox + 70, y_pos + 4))
             y_pos += 26
 
             armas_info = [
-                ("Chave de Manutenção [1]", "Golpe melee em cone direcional de 60° com forte repulsão (knockback)."),
-                ("Pistola [2]", "Arma permanente de disparo contínuo (10 de dano por tiro, munição infinita)."),
-                ("Escopeta [3]", "Dispara 9 projéteis simultâneos com dispersão (10 de dano por projétil)."),
-                ("Railgun [3]", "Carrega por 1.0s e dispara um projétil de 50 de dano que atravessa todos os alvos."),
-                ("Minigun / Lança-Foguetes [3]", "Armas de alta cadência ou dano em área com munição finita.")
+                ("Chave de Manutenção [1]", "Golpe em arco que empurra inimigos e rebate projéteis inimigos (Parry)."),
+                ("Pistola [2]", "Munição infinita. Todo 4º disparo sai sobrecarregado e atravessa alvos."),
+                ("Escopeta [3]", "Dispara 9 chumbos em leque com alto empurrão a queima-roupa."),
+                ("Railgun [3]", "Carrega por 1.0s com mira laser e rasga a arena deixando trilha elétrica."),
+                ("Minigun / Foguetes / Granadas [3]", "Aceleração de giro, chão em chamas ou arco com fragmentação.")
             ]
             for nome_a, desc_a in armas_info:
                 a_surf = fonte_destaque.render(f"- {nome_a}:", True, DOURADO)
-                screen.blit(a_surf, (70, y_pos))
+                screen.blit(a_surf, (ox + 70, y_pos))
                 desc_a_s = fonte_corpo.render(desc_a, True, CINZA_TEXTO)
-                screen.blit(desc_a_s, (70, y_pos + 14))
+                screen.blit(desc_a_s, (ox + 70, y_pos + 14))
                 y_pos += 28
 
         elif self.pagina_atual == 2:
             # Página 3: Inimigos e Mecânicas
-            sec1_surf = fonte_sec.render("ARQUÉTIPOS DE INIMIGOS", True, AZUL_CIANO)
-            screen.blit(sec1_surf, (70, 120))
+            sec1_surf = fonte_sec.render("MÁQUINAS DO ESCRITÓRIO", True, AZUL_CIANO)
+            screen.blit(sec1_surf, (ox + 70, oy + 120))
 
             inimigos_info = [
-                ("Estagiário (Robô Azul)", "Inimigo padrão de perseguição beeline (40 HP, cede 5 XP)."),
-                ("Viciado em Cafeína (Verde)", "Inimigo ultra-rápido, morre com exatamente 2 tiros (20 HP, cede 8 XP)."),
-                ("Warranty Void (Fantasma Ciano)", "Alterna para forma etérea: projéteis e golpes passam direto sem dano."),
-                ("Ballistic Enthusiast (Blindado)", "Chassi reforçado com escudo que reduz dano frontal."),
-                ("Atirador Blaster (Ferrugem)", "Mantém distância tática e dispara projéteis vermelhos no jogador."),
-                ("Mini-Bosses e Chefe Final", "Elites periódicos (1m-4m) e a Geladeira Tsunami (Nv 20) com ataques mortais.")
+                ("Gabinete de Firma", "Perseguidor padrão do escritório (40 de vida)."),
+                ("Mouse Óptico", "Rápido e frágil, avança em alta velocidade (20 de vida)."),
+                ("Monitor de Tubo", "Entra em fase estática e fica temporariamente intangível."),
+                ("Triturador de Papel", "Chassi blindado que reduz dano recebido pela frente."),
+                ("Projetor Laser", "Mantém distância e dispara feixes que podem ser rebatidos na Chave Inglesa."),
+                ("Mini-Bosses e Geladeira Tsunami", "Abata Mini-Bosses em menos de 30s para bônus extra antes de encarar a Geladeira.")
             ]
-            y_pos = 145
+            y_pos = oy + 145
             for nome_i, desc_i in inimigos_info:
                 i_surf = fonte_destaque.render(f"* {nome_i}:", True, (255, 120, 120))
-                screen.blit(i_surf, (70, y_pos))
+                screen.blit(i_surf, (ox + 70, y_pos))
                 desc_i_s = fonte_corpo.render(desc_i, True, BRANCO)
-                screen.blit(desc_i_s, (70, y_pos + 15))
+                screen.blit(desc_i_s, (ox + 70, y_pos + 15))
                 y_pos += 31
 
-            sec2_surf = fonte_sec.render("PROGRESSÃO, LEVEL UP E OVERCLOCK", True, AZUL_CIANO)
-            screen.blit(sec2_surf, (70, y_pos + 4))
+            sec2_surf = fonte_sec.render("PROGRESSÃO, CÁPSULAS E CONFIGURAÇÕES", True, AZUL_CIANO)
+            screen.blit(sec2_surf, (ox + 70, y_pos + 4))
             y_pos += 26
 
             regras_info = [
-                ("Níveis Regulares", "Oferecem 3 opções de buffs ou utilitários consumíveis escalados para o nível."),
-                ("Níveis de Marco (a cada 5 níveis)", "A opção central é substituída por uma Configuração Amaldiçoada."),
-                ("Buffer de Pity", "Se não escolher a Configuração no nível 5, ela reaparece no nível seguinte."),
-                ("Mini-Bosses e Overclock", "Derrotar Mini-Bosses concede Núcleos de Overclock com upgrades de BIOS.")
+                ("Níveis Normais (Sem Pausa)", "Soltam uma onda de choque, curam 10 de vida e derrubam 2 Cápsulas no chão."),
+                ("Marcos de Configuração (Níveis 5 e 11)", "Abrem o painel para desbloquear uma Configuração permanente."),
+                ("Buffer de Misericórdia", "Se pular uma Configuração no marco, ela continua disponível no marco seguinte."),
+                ("Núcleos de Overclock", "Derrote Mini-Bosses antes de 60s para instalar módulos táticos de BIOS.")
             ]
             for nome_r, desc_r in regras_info:
                 r_surf = fonte_destaque.render(f"- {nome_r}:", True, DOURADO)
-                screen.blit(r_surf, (70, y_pos))
+                screen.blit(r_surf, (ox + 70, y_pos))
                 desc_r_s = fonte_corpo.render(desc_r, True, CINZA_TEXTO)
-                screen.blit(desc_r_s, (70, y_pos + 14))
+                screen.blit(desc_r_s, (ox + 70, y_pos + 14))
                 y_pos += 27
 
         # Rodapé de Instruções

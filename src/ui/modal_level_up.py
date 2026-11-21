@@ -105,153 +105,153 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
     card_cura_pequena = {
         "tipo": "cura",
         "subtipo": "cura_pequena",
-        "nome": "Cura Rápida",
+        "nome": "Reparo +25",
         "categoria": "Consumível",
         "icone_asset": "drop_cura",
         "valor": 25,
-        "buffs": ["Restaura +25 HP imediatamente"],
-        "nerfs": ["Nenhum sacrifício"],
-        "flavor_text": "Curativo biológico de ação rápida."
+        "buffs": ["Recupera 25 de vida na hora."],
+        "nerfs": [],
+        "flavor_text": ""
     }
 
     card_cura_grande = {
         "tipo": "cura",
         "subtipo": "cura_grande",
-        "nome": "Cura Enriquecida",
+        "nome": "Reparo +50",
         "categoria": "Consumível",
         "icone_asset": "drop_cura",
         "valor": 50,
-        "buffs": ["Restaura +50 HP imediatamente"],
-        "nerfs": ["Nenhum sacrifício"],
-        "flavor_text": "Regenerador celular enriquecido."
+        "buffs": ["Recupera 50 de vida na hora."],
+        "nerfs": [],
+        "flavor_text": ""
     }
 
     card_xp_pequeno = {
         "tipo": "xp",
         "subtipo": "xp_pequeno",
-        "nome": "Carga de Dados",
+        "nome": "Pacote de XP +15",
         "categoria": "Consumível",
         "icone_asset": "drop_xp",
         "valor": 15,
-        "buffs": ["+15 XP instantâneo para progressão"],
-        "nerfs": ["Nenhum sacrifício"],
-        "flavor_text": "Pequeno cluster de dados brutos."
+        "buffs": ["Concede 15 de XP imediatamente."],
+        "nerfs": [],
+        "flavor_text": ""
     }
 
     card_xp_grande = {
         "tipo": "xp",
         "subtipo": "xp_grande",
-        "nome": "Surto de Dados",
+        "nome": "Pacote de XP +30",
         "categoria": "Consumível",
         "icone_asset": "drop_xp",
         "valor": 30,
-        "buffs": ["+30 XP instantâneo para progressão"],
-        "nerfs": ["Nenhum sacrifício"],
-        "flavor_text": "Banco de dados concentrado descompactado."
+        "buffs": ["Concede 30 de XP imediatamente."],
+        "nerfs": [],
+        "flavor_text": ""
     }
 
     card_buff_dano = {
         "tipo": "buff_dano_temp",
         "subtipo": "buff_dano_temp",
-        "nome": "Calibração Térmica",
-        "categoria": "Consumível",
+        "nome": "Munição Superaquecida",
+        "categoria": "Power-Up",
         "icone_asset": "mira_crosshair",
         "valor": 0.05,
         "duracao": 15.0,
-        "descricao": "+5% Dano em todas as armas por 15s.",
-        "buffs": ["+5% Dano em todas as armas por 15s"],
-        "nerfs": ["Duração temporária (15 segundos)"],
-        "flavor_text": "Ajuste fino nos percursores de tiro."
+        "descricao": "+5% de dano. Tiros soltam brasas e atravessam +1 alvo por 15s.",
+        "buffs": ["+5% de dano por 15s. Seus tiros soltam brasas e atravessam +1 inimigo."],
+        "nerfs": [],
+        "flavor_text": ""
     }
 
     card_buff_vel = {
         "tipo": "buff_vel_temp",
         "subtipo": "buff_vel_temp",
-        "nome": "Sobrecarga de Passos",
-        "categoria": "Consumível",
+        "nome": "Passo Fantasma",
+        "categoria": "Power-Up",
         "icone_asset": "icon_vsync",
         "valor": 0.08,
         "duracao": 15.0,
-        "descricao": "+8% Velocidade de movimento por 15s.",
-        "buffs": ["+8% Velocidade de movimento por 15s"],
-        "nerfs": ["Duração temporária (15 segundos)"],
-        "flavor_text": "Lubrificação de emergência nas esteiras."
+        "descricao": "+8% de velocidade e desacelera inimigos colados em 40% por 15s.",
+        "buffs": ["+8% de velocidade por 15s. Desacelera inimigos muito próximos em 40%."],
+        "nerfs": [],
+        "flavor_text": ""
     }
 
     card_buff_cadencia = {
         "tipo": "buff_cadencia_temp",
         "subtipo": "buff_cadencia_temp",
-        "nome": "Acelerador de Gatilho",
-        "categoria": "Consumível",
+        "nome": "Gatilho Magnético",
+        "categoria": "Power-Up",
         "icone_asset": "icon_auto_fire",
         "valor": 0.08,
         "duracao": 15.0,
-        "descricao": "+8% Cadência de Tiro (-8% Cooldown) por 15s.",
-        "buffs": ["+8% Cadência de Tiro (-8% Cooldown) por 15s"],
-        "nerfs": ["Duração temporária (15 segundos)"],
-        "flavor_text": "Mecanismo de repetição acelerado."
+        "descricao": "+8% de cadência. Armas especiais não gastam munição por 15s.",
+        "buffs": ["+8% de cadência de tiro por 15s. Armas especiais não gastam munição."],
+        "nerfs": [],
+        "flavor_text": ""
     }
 
     card_buff_resistencia = {
         "tipo": "buff_resistencia_temp",
         "subtipo": "buff_resistencia_temp",
-        "nome": "Matriz Protetora",
-        "categoria": "Consumível",
+        "nome": "Casco Eletrostático",
+        "categoria": "Power-Up",
         "icone_asset": "icon_fps_cap",
         "valor": 0.08,
         "duracao": 15.0,
-        "descricao": "-8% Dano Recebido por 15s.",
-        "buffs": ["-8% Dano Recebido por 15s"],
-        "nerfs": ["Duração temporária (15 segundos)"],
-        "flavor_text": "Campos de dispersão de impacto."
+        "descricao": "-8% de dano recebido. Empurra e dá choque em quem encostar por 15s.",
+        "buffs": ["-8% de dano recebido por 15s. Empurra e dá choque em inimigos que encostarem."],
+        "nerfs": [],
+        "flavor_text": ""
     }
 
     card_escudo = {
         "tipo": "escudo",
         "subtipo": "escudo",
-        "nome": "Escudo Biológico",
-        "categoria": "Consumível",
+        "nome": "Escudo de Emergência",
+        "categoria": "Power-Up",
         "icone_asset": "drone_suporte",
         "valor": 1,
-        "buffs": ["Absorve 1 hit / 4s invulnerabilidade ao quebrar"],
-        "nerfs": ["Uso único"],
-        "flavor_text": "Película bioenergética repelente."
+        "buffs": ["Bloqueia o próximo dano recebido e garante 4s de invulnerabilidade."],
+        "nerfs": [],
+        "flavor_text": ""
     }
 
     card_pulso = {
         "tipo": "pulso_magnetico",
         "subtipo": "pulso_magnetico",
-        "nome": "Pulso Magnético",
+        "nome": "Ímã de Arena",
         "categoria": "Consumível",
         "icone_asset": "drop_xp",
         "valor": 1,
-        "buffs": ["Atrai instantaneamente todos os drops da arena"],
-        "nerfs": ["Uso instantâneo"],
-        "flavor_text": "Pulso eletromagnético sintonizado na frequência dos drops."
+        "buffs": ["Puxa todos os itens e gemas de XP da arena até você."],
+        "nerfs": [],
+        "flavor_text": ""
     }
 
     card_caixa_arma = {
         "tipo": "caixa_arma",
         "subtipo": "caixa_arma",
-        "nome": "Remessa Bélica",
-        "categoria": "Consumível",
+        "nome": "Caixa de Arma Especial",
+        "categoria": "Equipamento",
         "icone_asset": "drop_arma",
         "valor": 1,
-        "buffs": ["Equipa arma especial aleatória no Slot 3"],
-        "nerfs": ["Até esgotar munição"],
-        "flavor_text": "Suprimento tático direto das fábricas."
+        "buffs": ["Equipa uma arma especial aleatória no Slot 3."],
+        "nerfs": [],
+        "flavor_text": ""
     }
 
     card_caixa_equip = {
         "tipo": "caixa_equip",
         "subtipo": "caixa_equip",
-        "nome": "Drone Utilitário",
-        "categoria": "Consumível",
+        "nome": "Módulo de Drone",
+        "categoria": "Equipamento",
         "icone_asset": "drop_equipamento",
         "valor": 1,
-        "buffs": ["Spawna drone companheiro aleatório no Slot 4 (30s)"],
-        "nerfs": ["Duração de 30 segundos"],
-        "flavor_text": "Unidade orbital autônoma de assistência."
+        "buffs": ["Ativa um drone no Slot 4 por 30s (ou evolui um ativo para MK-II/MK-III)."],
+        "nerfs": [],
+        "flavor_text": ""
     }
 
     if tier == 1:
@@ -333,12 +333,13 @@ class ModalLevelUp:
         # Buffer de Misericórdia (Pity Buffer) para configurações não selecionadas em marcos
         self.config_pity_buffer: Optional[ConfiguracaoDef] = None
 
-        # Configuração visual das 3 cartas centralizadas na tela de 800x600
+        # Configuração visual das 3 cartas centralizadas na tela virtual (1280x720)
         # Largura: 210px, Altura: 330px, Espaçamento: 30px
         self.card_largura = 210
         self.card_altura = 330
-        self.card_y = 150
-        self.card_xs = [55, 295, 535]
+        self.card_y = (ALTURA_TELA - self.card_altura) // 2 + 15
+        start_x = (LARGURA_TELA - (3 * self.card_largura + 2 * 30)) // 2
+        self.card_xs = [start_x, start_x + self.card_largura + 30, start_x + 2 * (self.card_largura + 30)]
         self.card_rects = [
             pygame.Rect(x, self.card_y, self.card_largura, self.card_altura)
             for x in self.card_xs
@@ -496,7 +497,7 @@ class ModalLevelUp:
         pool_consumiveis = gerar_pool_consumiveis_por_tier(tier)
 
         bloqueadas = self.gerenciador_config.obter_bloqueadas()
-        is_marco = (nivel % 5 == 0)
+        is_marco = (nivel in (5, 11) or nivel % 5 == 0)
         tem_pity = (self.config_pity_buffer is not None and self.config_pity_buffer.id not in self.gerenciador_config.desbloqueadas)
 
         # Determina se o slot central terá uma configuração
@@ -854,34 +855,39 @@ class ModalLevelUp:
             div_cor = (80, 65, 30) if is_config else (60, 45, 85)
             pygame.draw.line(layer_surf, div_cor, (rect.x + 12, div_y), (rect.right - 12, div_y), 1)
 
-            # 4.7 Seção de Benefícios (BENEFICIOS em Verde)
+            # 4.7 Seção de Benefícios (EFEITO para Power-Ups/Consumíveis; BENEFICIOS + SACRIFICIO apenas para Configurações)
             y_cursor = div_y + 6
-            buff_header_surf = self._fonte_card_sec.render("BENEFICIOS:", True, VERDE_CURA)
+            header_label = "BENEFICIOS:" if is_config else "EFEITO:"
+            buff_header_surf = self._fonte_card_sec.render(header_label, True, VERDE_CURA)
             layer_surf.blit(buff_header_surf, (rect.x + 12, y_cursor))
-            y_cursor += 14
+            y_cursor += 15
 
             buffs = card.get("buffs", ["Nenhum"])
+            max_linhas_buff = 2 if is_config else 4
             for b_txt in buffs[:2]:
                 linhas_buff = _formatar_texto_wrap(b_txt, max_chars_por_linha=25)
-                for bl in linhas_buff[:2]:
-                    b_surf = self._fonte_card_corpo.render(f"+ {bl}", True, (160, 240, 170))
+                for idx_bl, bl in enumerate(linhas_buff[:max_linhas_buff]):
+                    prefixo = "+ " if idx_bl == 0 else "   "
+                    b_surf = self._fonte_card_corpo.render(f"{prefixo}{bl}", True, (160, 240, 170))
                     layer_surf.blit(b_surf, (rect.x + 14, y_cursor))
                     y_cursor += 13
 
-            # 4.8 Seção de Sacrifícios / Nerfs (SACRIFICIO em Laranja)
-            y_cursor = max(y_cursor + 4, div_y + 90)
-            nerf_header_surf = self._fonte_card_sec.render("SACRIFICIO:", True, LARANJA_ALERTA)
-            layer_surf.blit(nerf_header_surf, (rect.x + 12, y_cursor))
-            y_cursor += 14
+            # 4.8 Seção de Sacrifícios / Nerfs (EXCLUSIVA para Configurações)
+            if is_config:
+                y_cursor = max(y_cursor + 4, div_y + 90)
+                nerf_header_surf = self._fonte_card_sec.render("SACRIFICIO:", True, LARANJA_ALERTA)
+                layer_surf.blit(nerf_header_surf, (rect.x + 12, y_cursor))
+                y_cursor += 14
 
-            nerfs = card.get("nerfs", ["Nenhum"])
-            for n_txt in nerfs[:2]:
-                linhas_nerf = _formatar_texto_wrap(n_txt, max_chars_por_linha=25)
-                for nl in linhas_nerf[:2]:
-                    cor_n = (255, 180, 140) if nl != "Nenhum" and nl != "Nenhum sacrifício" else (130, 140, 155)
-                    n_surf = self._fonte_card_corpo.render(f"- {nl}", True, cor_n)
-                    layer_surf.blit(n_surf, (rect.x + 14, y_cursor))
-                    y_cursor += 13
+                nerfs = card.get("nerfs", ["Nenhum"])
+                for n_txt in nerfs[:2]:
+                    linhas_nerf = _formatar_texto_wrap(n_txt, max_chars_por_linha=25)
+                    for idx_nl, nl in enumerate(linhas_nerf[:2]):
+                        cor_n = (255, 180, 140) if nl != "Nenhum" and nl != "Nenhum sacrifício" else (130, 140, 155)
+                        prefixo_n = "- " if idx_nl == 0 else "   "
+                        n_surf = self._fonte_card_corpo.render(f"{prefixo_n}{nl}", True, cor_n)
+                        layer_surf.blit(n_surf, (rect.x + 14, y_cursor))
+                        y_cursor += 13
 
             # 4.9 Prompt de Escolha no Rodapé do Card
             prompt_cor = DOURADO if (is_hovered or is_config) else ROXO_CLARO

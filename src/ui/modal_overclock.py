@@ -19,44 +19,44 @@ CATALOGO_OVERCLOCKS = [
     {
         "id": "multithreading",
         "nome": "Multithreading",
-        "subtitulo": "EXECUÇÃO EM PARALELO",
-        "buff": "Gera 2 mini-processadores que orbitam a batata e disparam cópias da sua arma.",
-        "flavor": "Por que processar um projétil por vez quando você tem múltiplos núcleos?"
+        "subtitulo": "NÚCLEOS DE ESCOLTA",
+        "buff": "Gera 2 núcleos orbitais que disparam cópias leves e bloqueiam 1 projétil inimigo a cada 4s.",
+        "flavor": "Dois núcleos trabalhando para você não levar tiro de graça."
     },
     {
         "id": "refrigeracao",
         "nome": "Refrigeração a Nitrogênio",
-        "subtitulo": "OVERCLOCK TÉRMICO",
-        "buff": "+35% de Cadência de tiro global e atirar sem parar gera pico térmico com cadência dobrada.",
-        "flavor": "Congela os circuitos para extrair ciclos de clock impossíveis."
+        "subtitulo": "CONTROLE TÉRMICO",
+        "buff": "+20% de cadência base. Parar de atirar por 1.5s libera uma onda de frio que reduz a velocidade dos inimigos em 50%.",
+        "flavor": "Aproveita o resfriamento do cano para congelar quem estiver perto."
     },
     {
         "id": "overvolt",
         "nome": "Overvolt",
-        "subtitulo": "TENSÃO CRÍTICA",
-        "buff": "+30% de Chance de Crítico. Acertos críticos disparam faíscas elétricas em até 4 inimigos.",
-        "flavor": "Empurra a voltagem muito além dos limites seguros de fábrica."
+        "subtitulo": "DESCARGA ACUMULADA",
+        "buff": "+15% de chance de crítico. A cada 25 abates (ou acerto crítico), dispara um arco elétrico em até 4 inimigos.",
+        "flavor": "Sobe a tensão na marra até sair faísca nos alvos próximos."
     },
     {
         "id": "bios_modding",
         "nome": "BIOS Modding",
-        "subtitulo": "SLOT EXPANDIDO",
-        "buff": "Libera armas especiais no Slot 2 (volta para a Pistola se acabar a munição) e tiro duplo com Botão Esquerdo / Direito.",
-        "flavor": "Desbloqueia os barramentos ocultos da placa-mãe."
+        "subtitulo": "SLOT DUPLO",
+        "buff": "Permite equipar duas armas especiais (Botão Esquerdo / Direito) e recupera 15% de munição ao derrotar Mini-Bosses.",
+        "flavor": "Destrava o segundo barramento de armas da placa."
     },
     {
         "id": "protecao_surtos",
         "nome": "Proteção contra Surtos",
-        "subtitulo": "ESCUDO DE ENERGIA",
-        "buff": "+50 HP Máximo. Dano fatal desarma o disjuntor: congela a arena por 4s e recupera 50% de vida (Recarrega em 60s).",
-        "flavor": "Disjuntor de ação rápida que impede curto-circuitos letais."
+        "subtitulo": "DISJUNTOR DE EMERGÊNCIA",
+        "buff": "+50 de vida máxima. Dano fatal desarma o disjuntor: congela a arena por 4s e recupera 50% da vida (60s de recarga).",
+        "flavor": "Quando tudo dá errado, o disjuntor desarma antes de você queimar."
     },
     {
         "id": "upgrade_barramento",
         "nome": "Upgrade de Barramento",
-        "subtitulo": "ALTA LARGURA DE BANDA",
-        "buff": "+40% de Velocidade e puxa instantaneamente para você todos os drops no chão assim que caem.",
-        "flavor": "Trilhas de cobre puro que aceleram o tráfego de dados na arena."
+        "subtitulo": "COLETA DE CAMPO",
+        "buff": "+15% de velocidade de movimento fixa e puxa automaticamente itens e gemas de XP na arena.",
+        "flavor": "Trilhas de cobre limpas para puxar tudo o que cai no chão."
     }
 ]
 
@@ -110,8 +110,8 @@ class ModalOverclock:
         card_w = 210
         card_h = 330
         espacamento = 30
-        start_x = 55
-        start_y = 150
+        start_x = (LARGURA_TELA - (3 * card_w + 2 * espacamento)) // 2
+        start_y = (ALTURA_TELA - card_h) // 2 + 15
 
         for i in range(3):
             rx = start_x + i * (card_w + espacamento)
