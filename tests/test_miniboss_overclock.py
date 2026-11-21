@@ -213,18 +213,19 @@ class TestMiniBossOverclockSystem(unittest.TestCase):
         cena.mouse.get_position = lambda: (500, 300)
         cena.update(0.016)
 
-        # Deve haver 1 projétil disparado e 1 eco pendente na fila com timer=0.08
+        # Deve haver 1 projétil disparado e 2 ecos pendentes (1 por coprocessador orbital) na fila com timer=0.08
         self.assertEqual(len(cena.projeteis), 1)
-        self.assertEqual(len(cena.tiros_echo_pendentes), 1)
+        self.assertEqual(len(cena.tiros_echo_pendentes), 2)
         self.assertAlmostEqual(cena.tiros_echo_pendentes[0]["timer"], 0.08, delta=0.02)
+        self.assertAlmostEqual(cena.tiros_echo_pendentes[1]["timer"], 0.08, delta=0.02)
 
-        # Avança 0.09s -> O projétil de eco é instanciado
+        # Avança 0.09s -> Os 2 projéteis de eco dos coprocessadores são instanciados (total = 3)
         cena.update(0.09)
-        self.assertEqual(len(cena.projeteis), 2)
+        self.assertEqual(len(cena.projeteis), 3)
         self.assertEqual(len(cena.tiros_echo_pendentes), 0)
 
     def test_overclock_1_multithreading_shotgun_full_9_pellets(self):
-        """Valida que para a Shotgun o Multithreading dispara uma segunda salva completa de 9 pellets."""
+        """Valida que para a Shotgun o Multithreading dispara salvas completas de 9 pellets em ambos os coprocessadores."""
         cena = GameplayScene()
         cena.jogador.aplicar_overclock("multithreading")
         cena.jogador.arma_especial = Shotgun()
@@ -236,14 +237,15 @@ class TestMiniBossOverclockSystem(unittest.TestCase):
         cena.mouse.get_position = lambda: (500, 300)
         cena.update(0.016)
 
-        # Salva inicial de 9 pellets + 1 eco pendente contendo 9 pellets
+        # Salva inicial de 9 pellets + 2 ecos pendentes (ambos coprocessadores) contendo 9 pellets cada
         self.assertEqual(len(cena.projeteis), 9)
-        self.assertEqual(len(cena.tiros_echo_pendentes), 1)
+        self.assertEqual(len(cena.tiros_echo_pendentes), 2)
         self.assertEqual(len(cena.tiros_echo_pendentes[0]["projeteis"]), 9)
+        self.assertEqual(len(cena.tiros_echo_pendentes[1]["projeteis"]), 9)
 
-        # Avança 0.09s -> Totaliza 18 projéteis disparados (2 x 9 pellets)
+        # Avança 0.09s -> Totaliza 27 projéteis disparados (3 x 9 pellets)
         cena.update(0.09)
-        self.assertEqual(len(cena.projeteis), 18)
+        self.assertEqual(len(cena.projeteis), 27)
 
     def test_overclock_2_refrigeracao_nitrogenio_firerate(self):
         """Valida Overclock 2: Refrigeração a Nitrogênio (+35% de cadência de tiro)."""
@@ -366,18 +368,25 @@ class TestMiniBossOverclockSystem(unittest.TestCase):
         self.assertAlmostEqual(jogador.velocidade_atual, vel_base * 1.40, places=4)
 
     def test_hud_slot_3b_rendering(self):
-        """Valida que o HUD renderiza Slot 3B sem exceções quando BIOS Modding está ativo."""
-        hud = HUD()
-        screen = pygame.Surface((800, 600))
-        jogador = Jogador(x=400, y=300)
+        """Valida que GameplayScene._desenhar_hud_tela renderiza Slot 3B na tela quando BIOS Modding está ativo."""
+        cena = GameplayScene()
+        screen = cena.janela.screen
+        sx3b = 16 + 2 * (42 + 6)  # 112
+        sy3b = 14 + 42 + 4        # 60
 
-        # Sem BIOS Modding: não desenha 3B
-        hud.desenhar_slot_3b(screen, jogador, visivel=True)
+        # Sem BIOS Modding: região do Slot 3B permanece com a cor de fundo limpa
+        screen.fill((0, 0, 0))
+        cena._desenhar_hud_tela(hud_visivel=True)
+        cor_sem_3b = screen.get_at((sx3b + 2, sy3b + 2))[:3]
+        self.assertEqual(cor_sem_3b, (0, 0, 0))
 
-        # Com BIOS Modding ativo
-        jogador.aplicar_overclock("bios_modding")
-        jogador.arma_especial_secundaria = Shotgun()
-        hud.desenhar_slot_3b(screen, jogador, visivel=True)
+        # Com BIOS Modding ativo: Slot 3B é desenhado com fundo roxo escuro (35, 20, 50) / borda ROXO_ACENTO
+        cena.jogador.aplicar_overclock("bios_modding")
+        cena.jogador.arma_especial_secundaria = Shotgun()
+        screen.fill((0, 0, 0))
+        cena._desenhar_hud_tela(hud_visivel=True)
+        cor_com_3b = screen.get_at((sx3b + 10, sy3b + 10))[:3]
+        self.assertNotEqual(cor_com_3b, (0, 0, 0))
 
 
 if __name__ == "__main__":

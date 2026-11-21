@@ -5,7 +5,9 @@ cálculo exato de pontuação final e renderização do overlay de vitória sem 
 """
 
 import os
+import tempfile
 import unittest
+from unittest.mock import patch
 import pygame
 from src.cenas.gameplay import GameplayScene
 from src.entidades.inimigo_padrao import InimigoPadrao
@@ -21,8 +23,22 @@ class TestVitoriaStats(unittest.TestCase):
         pygame.init()
 
     def setUp(self):
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.temp_save_path = os.path.join(self._tmpdir.name, "save.json")
+        self._p1 = patch("src.utils.constantes.SAVE_FILE_PATH", self.temp_save_path)
+        self._p2 = patch("src.ui.modal_level_up.SAVE_FILE_PATH", self.temp_save_path)
+        self._p3 = patch("src.cenas.gameplay.SAVE_FILE_PATH", self.temp_save_path)
+        self._p1.start()
+        self._p2.start()
+        self._p3.start()
         self.janela = Window(800, 600)
         self.cena = GameplayScene()
+
+    def tearDown(self):
+        self._p3.stop()
+        self._p2.stop()
+        self._p1.stop()
+        self._tmpdir.cleanup()
 
     def test_tempo_vitoria_constante(self):
         """Verifica se a constante TEMPO_VITORIA equivale a 600.0s (10 minutos)."""

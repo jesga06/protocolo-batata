@@ -7,7 +7,9 @@ colisões balísticas, destruição de inimigos e contagem de abates.
 
 import os
 import sys
+import tempfile
 import unittest
+from unittest.mock import patch
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["SDL_AUDIODRIVER"] = "dummy"
@@ -56,12 +58,24 @@ class TestGameplayE2ESimulation(unittest.TestCase):
     """Simulação E2E de gameplay headless."""
 
     def setUp(self):
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.temp_save_path = os.path.join(self._tmpdir.name, "save.json")
+        self._p1 = patch("src.utils.constantes.SAVE_FILE_PATH", self.temp_save_path)
+        self._p2 = patch("src.ui.modal_level_up.SAVE_FILE_PATH", self.temp_save_path)
+        self._p3 = patch("src.cenas.gameplay.SAVE_FILE_PATH", self.temp_save_path)
+        self._p1.start()
+        self._p2.start()
+        self._p3.start()
         self.janela = Window(800, 600, "Protocolo: Batata", resizavel=True, pixel_art=True)
-        # Reseta save para estado padrão neutro nos testes E2E
         from src.sistemas.config_sistema import GerenciadorConfiguracoes
-        from src.utils.constantes import SAVE_FILE_PATH
         g = GerenciadorConfiguracoes()
-        g.salvar_arquivo(SAVE_FILE_PATH)
+        g.salvar_arquivo(self.temp_save_path)
+
+    def tearDown(self):
+        self._p3.stop()
+        self._p2.stop()
+        self._p1.stop()
+        self._tmpdir.cleanup()
 
     def test_gameplay_scene_execucao_60_frames(self):
         """Executa 60+ frames contínuos de simulação completa de gameplay."""

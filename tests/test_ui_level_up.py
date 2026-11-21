@@ -14,8 +14,9 @@ Valida:
 
 import os
 import sys
+import tempfile
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["SDL_AUDIODRIVER"] = "dummy"
@@ -39,9 +40,20 @@ class TestModalLevelUpTierAndMilestone(unittest.TestCase):
     """Testa as regras de tiers de consumíveis e posicionamento de marcos (múltiplos de 5)."""
 
     def setUp(self):
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.temp_save = os.path.join(self._tmpdir.name, "save.json")
+        self._p1 = patch("src.utils.constantes.SAVE_FILE_PATH", self.temp_save)
+        self._p2 = patch("src.ui.modal_level_up.SAVE_FILE_PATH", self.temp_save)
+        self._p1.start()
+        self._p2.start()
         self.gerenciador = GerenciadorConfiguracoes()
         self.jogador = Jogador(x=100, y=100)
         self.modal = ModalLevelUp(self.gerenciador, self.jogador)
+
+    def tearDown(self):
+        self._p2.stop()
+        self._p1.stop()
+        self._tmpdir.cleanup()
 
     def test_tier_calculation_by_level(self):
         """Verifica a categorização correta de tiers por faixa de nível."""
@@ -126,9 +138,20 @@ class TestModalLevelUpInteractionAndQueue(unittest.TestCase):
     """Testa controles (teclado/mouse), fila de múltiplos níveis e efeitos no jogador."""
 
     def setUp(self):
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.temp_save = os.path.join(self._tmpdir.name, "save.json")
+        self._p1 = patch("src.utils.constantes.SAVE_FILE_PATH", self.temp_save)
+        self._p2 = patch("src.ui.modal_level_up.SAVE_FILE_PATH", self.temp_save)
+        self._p1.start()
+        self._p2.start()
         self.gerenciador = GerenciadorConfiguracoes()
         self.jogador = Jogador(x=100, y=100)
         self.modal = ModalLevelUp(self.gerenciador, self.jogador)
+
+    def tearDown(self):
+        self._p2.stop()
+        self._p1.stop()
+        self._tmpdir.cleanup()
 
     def test_keyboard_selection_keys_1_2_3(self):
         """Testa acionamento via atalhos numéricos 1, 2 e 3."""
@@ -169,8 +192,8 @@ class TestModalLevelUpInteractionAndQueue(unittest.TestCase):
         self.assertEqual(self.modal.fila_level_ups, 0)
 
     def test_consumable_effects_applied_to_player(self):
-        """Valida que cartas de cura, vida máxima e velocidade alteram os atributos do Jogador."""
-        # 1. Cura
+        """Valida que cartas de consumíveis reais (cura, escudo e buff_vel_temp) alteram os atributos sem buff permanente de HP/vel."""
+        # 1. Cura (+50 HP)
         self.jogador.hp_max = 100
         self.jogador.hp = 20
         card_cura = {"tipo": "cura", "valor": 50, "nome": "Cura", "categoria": "Consumível"}
@@ -180,23 +203,25 @@ class TestModalLevelUpInteractionAndQueue(unittest.TestCase):
         self.modal.selecionar_card(0)
         self.assertEqual(self.jogador.hp, 70)
 
-        # 2. Vitalidade
-        card_vit = {"tipo": "vitalidade", "valor": 20, "nome": "Vitalidade", "categoria": "Consumível"}
-        self.modal.cards_sorteados = [card_vit]
+        # 2. Escudo Protetor (uso único, sem aumentar hp_max permanente)
+        card_escudo = {"tipo": "escudo", "valor": 1, "nome": "Escudo", "categoria": "Consumível"}
+        self.modal.cards_sorteados = [card_escudo]
         self.modal.ativo = True
         self.modal.fila_level_ups = 1
         self.modal.selecionar_card(0)
-        self.assertEqual(self.jogador.hp_max, 120)
-        self.assertEqual(self.jogador.hp, 90)
+        self.assertEqual(self.jogador.hp_max, 100)
+        self.assertTrue(self.jogador.escudo_ativo)
 
-        # 3. Velocidade
+        # 3. Velocidade Temporária (15s, +8% Golden Rule R3)
         vel_ant = self.jogador.velocidade_base
-        card_vel = {"tipo": "velocidade", "valor": 0.10, "nome": "Velocidade", "categoria": "Consumível"}
+        card_vel = {"tipo": "buff_vel_temp", "valor": 0.08, "duracao": 15.0, "nome": "Overclock de Pernas", "categoria": "Consumível"}
         self.modal.cards_sorteados = [card_vel]
         self.modal.ativo = True
         self.modal.fila_level_ups = 1
         self.modal.selecionar_card(0)
-        self.assertAlmostEqual(self.jogador.velocidade_base, vel_ant * 1.10)
+        self.assertEqual(self.jogador.buff_vel_timer, 15.0)
+        self.jogador.update(0.1)
+        self.assertAlmostEqual(self.jogador.velocidade_atual, vel_ant * 1.08)
 
     def test_full_unlock_fallback_all_consumables(self):
         """Quando todas as 20 configs estiverem desbloqueadas, o sorteio é 100% consumíveis."""

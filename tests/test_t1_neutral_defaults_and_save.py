@@ -11,7 +11,9 @@ Valida:
 import os
 import sys
 import json
+import tempfile
 import unittest
+from unittest.mock import patch
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["SDL_AUDIODRIVER"] = "dummy"
@@ -31,15 +33,17 @@ class TestNeutralDefaultStateAndSave(unittest.TestCase):
 
     def setUp(self):
         self.save_path = os.path.join(PROJECT_ROOT, "data", "save.json")
-        self.save_backup = None
-        if os.path.exists(self.save_path):
-            with open(self.save_path, "r", encoding="utf-8") as f:
-                self.save_backup = f.read()
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.temp_save_path = os.path.join(self._tmpdir.name, "save.json")
+        self._patcher_const = patch("src.utils.constantes.SAVE_FILE_PATH", self.temp_save_path)
+        self._patcher_modal = patch("src.ui.modal_level_up.SAVE_FILE_PATH", self.temp_save_path)
+        self._patcher_const.start()
+        self._patcher_modal.start()
 
     def tearDown(self):
-        if self.save_backup is not None:
-            with open(self.save_path, "w", encoding="utf-8") as f:
-                f.write(self.save_backup)
+        self._patcher_modal.stop()
+        self._patcher_const.stop()
+        self._tmpdir.cleanup()
 
     def test_all_20_gameplay_configs_have_empty_neutral_modifiers(self):
         """Verifica que cada uma das 20 configs possui modificadores vazios ({}) no valor padrão."""
