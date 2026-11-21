@@ -1,34 +1,29 @@
-# E2E Test Infra: Protocolo: Batata
+# E2E Test Infra: Protocolo: Batata — Boss & Endgame Progression
 
 ## Test Philosophy
-- Opaque-box & Requirement-driven derived from `ORIGINAL_REQUEST.md` and `CONFIGURACOES.md`.
-- Automated test command: `.venv\Scripts\python -m unittest discover -s tests` (or `python -m unittest discover -s tests`).
-- Methodology: Category-Partition + Boundary Value Analysis + Pairwise Combinatorial + Real-World Game Session Testing.
+- Opaque-box, requirement-driven, deterministic test suite.
+- Methodology: Category-Partition + Boundary Value Analysis + Pairwise Interaction Testing + End-to-End Game Scenarios.
 
-## Feature Inventory Test Mapping
-| # | Feature | Requirement | Tier 1 | Tier 2 | Tier 3 |
-|---|---------|-------------|:------:|:------:|:------:|
-| 1 | Neutral Defaults & Clean Save (R1) | ORIGINAL_REQUEST §1, CONFIGURACOES.md | 5 | 5 | ✓ |
-| 2 | Level-Up Neutral Unlock (R1) | ORIGINAL_REQUEST §1, modal_level_up | 5 | 5 | ✓ |
-| 3 | Configs 1-5 Effects (R2) | CONFIGURACOES.md §1-5 | 5 | 5 | ✓ |
-| 4 | Configs 6-10 Effects (R2) | CONFIGURACOES.md §6-10 | 5 | 5 | ✓ |
-| 5 | Configs 11-15 Effects (R2) | CONFIGURACOES.md §11-15 | 5 | 5 | ✓ |
-| 6 | Configs 16-20 Effects (R2) | CONFIGURACOES.md §16-20 | 5 | 5 | ✓ |
-| 7 | Consumables / Power-Ups Catalog (R3) | ORIGINAL_REQUEST §3 | 5 | 5 | ✓ |
-| 8 | Golden Rule Inequality Constraints (R3) | ORIGINAL_REQUEST §3 | 5 | 5 | ✓ |
-| 9 | Scavenger 10.0s Ground Delay AI | ORIGINAL_REQUEST §4 | 5 | 5 | ✓ |
+## Feature Inventory
+| # | Feature | Source | Tier 1 (Coverage) | Tier 2 (Boundary) | Tier 3 (Pairwise) | Tier 4 (Scenario) |
+|---|---------|--------|:-----------------:|:-----------------:|:-----------------:|:-----------------:|
+| 1 | XP Curve Smoothing (>Lvl 10) | ORIGINAL_REQUEST §R2 | 5 | 5 | ✓ | ✓ |
+| 2 | Victory Condition Decoupling | ORIGINAL_REQUEST §R2 | 5 | 5 | ✓ | ✓ |
+| 3 | 4-Tier Mini-Boss Schedule | ORIGINAL_REQUEST §R1 | 5 | 5 | ✓ | ✓ |
+| 4 | Mini-Boss 2x Scale & Hitbox | ORIGINAL_REQUEST §R1 | 5 | 5 | ✓ | ✓ |
+| 5 | Mini-Boss Anti-Stacking | ORIGINAL_REQUEST §R1 | 5 | 5 | ✓ | ✓ |
+| 6 | 60.0s Thermal Overload | ORIGINAL_REQUEST §R1 | 5 | 5 | ✓ | ✓ |
+| 7 | Overclock Drop & Modal | ORIGINAL_REQUEST §R1 | 5 | 5 | ✓ | ✓ |
+| 8 | 6 Overclock BIOS Modules | ORIGINAL_REQUEST §R1 | 6 | 6 | ✓ | ✓ |
+| 9 | Geladeira Tsunami Entity | ORIGINAL_REQUEST §R3 | 5 | 5 | ✓ | ✓ |
+| 10 | Boss Speech Balloon | ORIGINAL_REQUEST §R3 | 5 | 5 | ✓ | ✓ |
+| 11 | Boss 3-Phase FSM & Attacks | ORIGINAL_REQUEST §R3 | 5 | 5 | ✓ | ✓ |
+| 12 | 4-Phase Intro Cutscene | ORIGINAL_REQUEST §R4 | 5 | 5 | ✓ | ✓ |
+| 13 | Boss-Mode Drop Rules | ORIGINAL_REQUEST §R4 | 5 | 5 | ✓ | ✓ |
+| 14 | Boss-Mode Spawner Rules | ORIGINAL_REQUEST §R4 | 5 | 5 | ✓ | ✓ |
+| 15 | Debug Controls in MenuDebug | ORIGINAL_REQUEST §R5 | 5 | 5 | ✓ | ✓ |
 
 ## Test Architecture
-- Tier 1: Unit & Feature Coverage (>=5 per feature)
-- Tier 2: Boundary & Corner Cases (>=5 per feature, inequalities, 0/negative, max tiers, threshold 9.99s vs 10.01s)
-- Tier 3: Cross-Feature Combinations (pairwise interaction of config toggles, temporary buffs, and enemy modifiers)
-- Tier 4: Real-World Application Scenarios (full game runs, level-up milestones, boss waves, save-load cycles)
-
-## Real-World Application Scenarios (Tier 4)
-| # | Scenario | Features Exercised | Complexity |
-|---|----------|--------------------|------------|
-| 1 | Full Run with Config Unlocks | F1, F2, F9, F11, F12 | High |
-| 2 | Heavy Modifiers Combat Simulation | F3-F8, F11 | High |
-| 3 | Scavenger Survival Arena Simulation | F5, F12 | Medium |
-| 4 | Save/Load Cycle Across Multiple Levels | F1, F2, F9 | Medium |
-| 5 | All Consumables Usage Sequence | F9, F10, F11 | High |
+- Test Runner: Python standard `unittest` (`python -m unittest discover -s tests -p "test_*.py"`)
+- Main Target: `tests/test_boss_geladeira_tsunami.py` + 4 Forensic Regression Suites (`test_config_ssot_and_no_cheats.py`, `test_render_visibility_regression.py`, `test_mechanics_e2e_real_loop.py`, `test_engine_and_input_contracts.py`)
+- Pre-condition: All 389 tests covering 100% of subsystems continue passing with zero regressions.

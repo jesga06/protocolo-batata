@@ -22,9 +22,9 @@
 | Valor | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
 | **60 FPS** | Nenhum | Nenhum | *"O olho humano não consegue ver além de 30 FPS."* |
-| **45 FPS** | Fluidez reduzida a 45 FPS | Dano recebido de inimigos reduzido em **15%** ($\times 0.85$) | **Modo Performance**<br>*"Os inimigos também estão perdendo frames."* |
-| **30 FPS** | Fluidez reduzida a 30 FPS | Velocidade de movimento dos inimigos reduzida em **10%** ($\times 0.90$) | **Modo Slow Motion**<br>*"Só é lag se você estiver perdendo."* |
-| **15 FPS** | Experiência quase injogável | Dano de inimigos reduzido em **27.75%** ($\times 0.7225$) e velocidade reduzida em **19%** ($\times 0.81$) | **Experiência Cinematográfica**<br>*"Cada frame foi desenhado à mão por monges tibetanos."* |
+| **45 FPS** | Fluidez reduzida a 45 FPS | Dano recebido de inimigos reduzido em **15%** ($\times 0.85$) e micro-congelamentos de esquiva (`fps_stutter_dodge`: congela inimigos por 0.15s e concede **+0.35s** de i-frames aditivos) | **Economia de Energia**<br>*"Menos quadros, menos calor. Dá tempo de respirar."* |
+| **30 FPS** | Fluidez reduzida a 30 FPS | Velocidade de movimento dos inimigos reduzida em **10%** ($\times 0.90$) e micro-congelamentos de esquiva (`fps_stutter_dodge`: **+0.35s** de i-frames aditivos) | **Modo Econômico**<br>*"O monitor sofre, mas os inimigos sofrem mais."* |
+| **15 FPS** | Experiência quase injogável | Dano de inimigos reduzido em **27.75%** ($\times 0.7225$), velocidade reduzida em **19%** ($\times 0.81$) e micro-congelamentos de esquiva (`fps_stutter_dodge`: **+0.35s** de i-frames aditivos) | **Modo Slideshow**<br>*"Quase uma apresentação de PowerPoint, mas funcional."* |
 
 ---
 
@@ -35,8 +35,8 @@
 
 | Valor | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
-| **Alta** | Nenhum | Nenhum | *"Sprites nítidos para quem aprecia os pequenos detalhes."* |
-| **Baixa** | Todos os sprites viram retângulos e formas geométricas coloridas. Partículas simplificadas. | Vida máxima (HP) de todos os inimigos reduzida em **20%** | **Cortes no Orçamento**<br>*"Texturas são um luxo que o departamento financeiro cortou."* |
+| **Alta** | Nenhum | Nenhum | *"Texturas nítidas e detalhes visuais completos."* |
+| **Baixa** | Todos os sprites viram retângulos e formas geométricas coloridas. Partículas simplificadas. | HP dos inimigos **-20%** e cada inimigo abatido **solta 4 estilhaços low-poly perfurantes** | **Gráficos Integrados**<br>*"Sem placa de vídeo dedicada. A carcaça dos inimigos quebra em pedaços."* |
 
 ---
 
@@ -48,9 +48,9 @@
 | Valor | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
 | **Nativa (100%)** | Nenhum | Nenhum | *"Cada pixel em seu devido lugar."* |
-| **75%** | Visão levemente borrada e pixelada | Chance de drop de itens aumentada em **+10%** | **Anti-Aliasing Reverso**<br>*"Menos pixels na tela, mais caixas no chão."* |
-| **50%** | Visão consideravelmente pixelada | Chance de drop de itens aumentada em **+25%** | **Nostalgia Forçada**<br>*"Lembranças de uma época de monitores CRT."* |
-| **25%** | Praticamente indecifrável | Chance de drop de itens aumentada em **+50%** | **Arqueologia de Pixels**<br>*"Se você consegue contar os pixels nos dedos, está economizando processamento."* |
+| **75%** | Visão levemente borrada e pixelada | Chance de drop de itens aumentada em **+10%** e área de impacto dos tiros aumentada em **+25%** (hitbox $\times 1.25$) | **Upscaling Básico**<br>*"Resolução menor, renderização mais folgada."* |
+| **50%** | Visão consideravelmente pixelada | Chance de drop de itens aumentada em **+25%** e área de impacto dos tiros aumentada em **+50%** (hitbox $\times 1.50$) | **Modo Janela 800x600**<br>*"Pixels grandes facilitam achar sucata no chão."* |
+| **25%** | Praticamente indecifrável | Chance de drop de itens aumentada em **+50%** e área de impacto dos tiros dobrada (**+100%** / hitbox $\times 2.0$) | **320x240 CRT**<br>*"Na dúvida do que está na tela, qualquer tiro acerta."* |
 
 ---
 
@@ -61,8 +61,8 @@
 
 | Valor | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
-| **Ligado** | Nenhum | Nenhum | *"Estabilidade garantida para monitores sensíveis."* |
-| **Desligado** | Possível quebra de linha visual (*screen tearing*) | Velocidade de movimento da batata aumentada em **+10%** | **Morte por Mil Cortes**<br>*"Espero que seu monitor tenha FreeSync."* |
+| **Ligado** | Nenhum | Nenhum | *"Estabilidade garantida sem quebra de quadros."* |
+| **Desligado** | Linha de tearing varre a tela | **+10% de velocidade** e projéteis que cruzam o corte de tela **são duplicados** | **Linha de Rasgo**<br>*"Monitor sem sincronia. O corte na imagem divide seus tiros em dois."* |
 
 ---
 
@@ -74,7 +74,7 @@
 | Valor | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
 | **Desligado** | Nenhum | Nenhum | *"Uma experiência suave."* |
-| **Ligado** | A tela treme violentamente a cada disparo pesado, explosão e dano | Dano das armas explosivas (Lança-Foguetes e Lança-Granadas) aumentado em **+20%** | **Protocolo: Terremoto**<br>*"A tela treme. A sua mira também."* |
+| **Ligado** | A tela treme violentamente a cada disparo pesado, explosão e dano | **+20% de dano explosivo** e impactos de **tiros balísticos, melee e bombas** causam **tropeço (empurrão) e lentidão (50% slow)** nos inimigos atingidos (`screen_shake_stagger`) | **Pico de Vibração**<br>*"Cooler desbalanceado faz o gabinete inteiro tremer."* |
 
 ---
 
@@ -86,7 +86,7 @@
 | Valor | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
 | **Desligado** | Nenhum | Nenhum | *"Uma experiência suave."* |
-| **Ligado** | Rastro visual (*ghosting*) borra todos os elementos em movimento rápido | Velocidade de movimento da batata aumentada em **+15%** | **Fantasmagórico**<br>*"Você se move tão rápido que até seus pixels ficaram para trás."* |
+| **Ligado** | Rastro visual (*ghosting*) borra todos os elementos em movimento rápido | Velocidade de movimento da batata aumentada em **+15%** e o rastro fantasmagórico concede **+0.40s de invulnerabilidade aditiva** sobre os 0.20s base após dano ou dash (`motion_blur_ghosting`) | **Tempo de Resposta Alto**<br>*"Painel VA antigo. O rastro borrado ajuda a cortar caminho."* |
 
 ---
 
@@ -98,7 +98,7 @@
 | Valor | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
 | **Ligado** | Nenhum | Nenhum | *"Barras de vida, experiência, inventário e cronômetro visíveis."* |
-| **Desligado** | Oculta completamente HP, XP, inventário, munição e timer (resta apenas o ícone de pausar/configurar) | Ganho de experiência (XP) por inimigo derrotado aumentado em **+25%** | **"Trust Me Bro"**<br>*"Com certeza você ainda tem vida sobrando. Provavelmente."* |
+| **Desligado** | Oculta completamente HP, XP, inventário, munição e timer (resta apenas o ícone de pausar/configurar) | **+25% de XP** e **pulso magnético a cada 4s** puxa todos os drops da tela | **Monitor Secundário Queimado**<br>*"Sem HUD. O sensor puxa as sucatas da tela automaticamente."* |
 
 ---
 
@@ -110,7 +110,7 @@
 | Valor | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
 | **Desligado** | Nenhum | Nenhum (acertos críticos são desabilitados) | *"Inimigos sofrem dano em silêncio."* |
-| **Ligado** | Poluição visual com centenas de números flutuando sobre hordas de inimigos | **Habilita o sistema de Críticos**: **15%** de chance em cada projétil de causar **2× de dano** | **Aula de Matemática**<br>*"Finalmente uma aplicação prática para aritmética básica."* |
+| **Ligado** | Poluição visual com centenas de números flutuando sobre hordas de inimigos | **Habilita o sistema de Críticos**: **25% de chance de causar 2× de dano** e impacto empurra inimigos | **Log Verboso**<br>*"Cada número impresso no console tem peso físico e empurra o alvo."* |
 
 ---
 
@@ -121,10 +121,10 @@
 
 | Valor | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
-| **75% (Zoom Out)** | Câmera mais distante, sprites menores e mais difíceis de discernir | Tamanho da caixa de colisão (*hitbox*) de todos os projéteis aumentado em **+50%** | **Visão de Satélite**<br>*"Aquilo é uma batata ou uma formiga armada?"* |
+| **75% (Zoom Out)** | Câmera mais distante (**FOV real ampliado para $1067 \times 800$** escalado em tela cheia), sprites menores e mais difíceis de discernir | Tamanho da caixa de colisão (*hitbox*) de todos os projéteis aumentado em **+50%** (com mira do mouse realinhada via transformada inversa) | **Visão Panorâmica**<br>*"Visão ampla do mapa com hitboxes maiores."* |
 | **100%** | Nenhum | Nenhum | *"Campo de visão padrão e equilibrado."* |
-| **125% (Zoom In)** | Campo de visão periférico reduzido | Dano de todas as armas aumentado em **+10%** | **Lupa**<br>*"Foco total no que está na sua cara."* |
-| **150% (Zoom In)** | Visão extremamente restrita do mapa | Dano de todas as armas aumentado em **+20%** | **Modo Microscópio**<br>*"Você consegue ver de perto os inimigos."* |
+| **125% (Zoom In)** | Campo de visão periférico reduzido | Dano de todas as armas aumentado em **+10%** | **Foco Fechado**<br>*"Mira fechada para concentrar os tiros."* |
+| **150% (Zoom In)** | Visão extremamente restrita do mapa | Dano de todas as armas aumentado em **+20%** | **Zoom Máximo**<br>*"Quase em cima do alvo, garantindo dano concentrado."* |
 
 ---
 
@@ -136,7 +136,7 @@
 | Valor | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
 | **Desligado** | Nenhum (controle padrão via teclado) | Nenhum | *"Controle manual com pés firmes nas teclas."* |
-| **Ligado** | A batata caminha incessantemente na direção do cursor do mouse. Teclas de movimento desabilitadas. A batata nunca para a menos que o mouse esteja em cima dela. | Chance de drop multiplicativa aumentada em **+40%** | **Piloto Automático**<br>*"Para que servem as pernas quando o destino tem um cursor?"* |
+| **Ligado** | A batata caminha incessantemente na direção do cursor do mouse. Teclas de movimento desabilitadas. | **+40% de chance de drop** e colisões atropelam inimigos comuns causando dano de impacto | **Cursor Guia**<br>*"Movimentação direta pelo cursor. Atropela inimigos no caminho."* |
 
 ---
 
@@ -148,10 +148,10 @@
 | Preset | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
 | **Padrão** | Nenhum | Nenhum | *"Ergonomia convencional para seres humanos normais."* |
-| **Invertido** | Teclas de movimento invertidas (W: baixo, S: cima, A: direita, D: esquerda) | Dano de todas as armas aumentado em **+10%** | **Horizontes Invertidos**<br>*"Para cima é o novo para baixo."* |
-| **Arrow Keys** | Movimento transferido para as Setas direcionais | Velocidade de movimento da batata aumentada em **+15%** | **Nostalgia**<br>*"Lembranças dolorosas de jogar no teclado de 1998."* |
-| **Uma Mão Só** | Movimentação em `QWER`, ações apenas no teclado. Mouse não tem uso além de trocar configurações | Ganho de XP aumentado em **+20%** | **Uma Mão Só**<br>*"Uma mão no volante, a outra no carinho."* |
-| **Pesadelo** | Movimento em `IJKL` com eixo Y do mouse invertido | Dano de todas as armas aumentado em **+30%** | **Anarquia das Teclas**<br>*"Sua memória muscular acabou de pedir demissão."* |
+| **Invertido** | Teclas de movimento invertidas (W: baixo, S: cima, A: direita, D: esquerda) | Dano de todas as armas aumentado em **+10%** | **Layout Invertido**<br>*"Teclas de movimento trocadas."* |
+| **Arrow Keys** | Movimento transferido para as Setas direcionais | Velocidade de movimento da batata aumentada em **+15%** | **Teclado Compacto**<br>*"Movimento transferido para as setas."* |
+| **Uma Mão Só** | Movimentação em `QWER`, **mira e tiro 100% no teclado** (dispara na direção atual do movimento `(dx, dy)` ou **para cima `(0, -1)`** quando parado; tiro via `ESPAÇO`/`F`/`ENTER` ou automático com `auto_fire`, tiro secundário via `SHIFT`/`V`/`TAB`; mouse usado apenas em menus/`[C]`) | Ganho de XP aumentado em **+20%** e reversão brusca de direção dispara **Overdrive Dash** com pulso de choque (`keybinds_overdrive_dash`) | **Uma Mão no Teclado**<br>*"Todos os comandos concentrados em uma mão só."* |
+| **Pesadelo** | Movimento em `IJKL` com eixo Y do mouse invertido | Dano de todas as armas aumentado em **+30%** | **Mapeamento Caótico**<br>*"Esquema de controle totalmente fora do padrão."* |
 
 ---
 
@@ -163,7 +163,7 @@
 | Valor | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
 | **Ligado** | Nenhum (câmera com interpolação suave) | Nenhum | *"Transições suaves para evitar tontura."* |
-| **Desligado** | A câmera trava rigidamente no centro do jogador sem suavização | Velocidade de movimento da batata aumentada em **+8%** | **Raw Footage**<br>*"Estabilização de imagem é cobrada à parte."* |
+| **Desligado** | A câmera trava rigidamente no centro do jogador sem suavização | Velocidade de movimento da batata aumentada em **+8%** | **Trava Rígida**<br>*"Câmera fixa direto no centro sem interpolação."* |
 
 ---
 
@@ -174,8 +174,8 @@
 
 | Valor | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
-| **Ligado** | Nenhum (armas automáticas disparam continuamente ao segurar o botão) | Nenhum | *"Segure o botão e reze."* |
-| **Desligado** | É necessário **clicar manualmente a cada disparo** para todas as armas (inclusive Minigun e Rifle) | Dano de todas as armas aumentado em **+15%** | **Trigger Discipline**<br>*"Cada projétil disparado é uma decisão de vida ou morte."* |
+| **Ligado** | Nenhum (armas automáticas disparam continuamente ao segurar o botão) | Nenhum | *"Segure o botão e atire sem parar."* |
+| **Desligado** | É necessário **clicar manualmente a cada disparo** | **+15% de dano** e cada clique manual dispara uma **segunda salva instantânea** | **Gatilho Manual**<br>*"Cada clique manual dispara um tiro duplo concentrado."* |
 
 ---
 
@@ -186,8 +186,8 @@
 
 | Valor | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
-| **Desligado** | Nenhum (todos os inimigos causam dano apenas por contato corpo a corpo) | Nenhum | *"Inimigos civilizados."* |
-| **Ligado** | Inimigos com disparos à distância (*Ranged*) passam a spawnar no mapa | Inimigos Ranged possuem tabela de loot enriquecida (**alta chance de caixas de armas e equipamentos**) | **Evolução Tecnológica**<br>*"Eles finalmente descobriram a tecnologia dos projéteis balísticos."* |
+| **Desligado** | Nenhum (todos os inimigos causam dano apenas por contato corpo a corpo) | Nenhum | *"Inimigos comuns sem ataque de longo alcance."* |
+| **Ligado** | Inimigos com disparos à distância (*Ranged*) passam a spawnar no mapa | Inimigos Ranged possuem tabela de loot enriquecida (**alta chance de caixas de armas e equipamentos**) | **Inimigos com Disparo**<br>*"Adiciona inimigos que atiram de longe com melhores drops."* |
 
 ---
 
@@ -198,8 +198,8 @@
 
 | Valor | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
-| **Desligado** | Nenhum (inimigos ignoram completamente todas as caixas e itens no chão) | Nenhum | *"Raposo, não pegue."* |
-| **Ligado** | **Ativa a Coleta Inimiga (Scavenger)**: Após 1s de vida de um drop (tempo total de 10s no chão), 1 inimigo na tela tenta ativamente devorar o drop antes de você (selecionado pseudo-aleatoriamente, excluindo inimigos muito distantes e os 2–3 mais próximos). | **Todos os drops coletados pelo jogador valem 2×** (XP em dobro, cura em dobro, munição dobrada e dobro de duração/usos de equipamentos) | **Modo Raciocínio**<br>*"Os inimigos se sentiram inspirados pelo Gemini 3.7 Flash."* |
+| **Desligado** | Nenhum (inimigos ignoram completamente todas as caixas e itens no chão) | Nenhum | *"Inimigos ignoram os itens dropados."* |
+| **Ligado** | Inimigos tentam roubar drops após 10s de chão (Scavenger) | **Todos os drops coletados pelo jogador valem 2×** (XP, cura, munição e duração de drones) | **Coleta Competitiva**<br>*"Inimigos disputam os drops com você. Coletas valem o dobro."* |
 
 ---
 
@@ -210,9 +210,9 @@
 
 | Valor | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
-| **Normal** | Nenhum | Nenhum | *"Inimigos marcham normalmente."* |
-| **+25% Velocidade** | Todos os inimigos se movem 25% mais rápido | Ganho de XP por abate aumentado em **+20%** | **Overclock**<br>*"Eles encontraram o botão turbo."* |
-| **+50% Velocidade** | Todos os inimigos correm em disparada | Ganho de XP por abate aumentado em **+40%** | **Surto**<br>*"Injetaram energético na corrente de dados."* |
+| **Normal** | Nenhum | Nenhum | *"Inimigos marcham na velocidade normal."* |
+| **+25% Velocidade** | Todos os inimigos se movem 25% mais rápido | Ganho de XP por abate aumentado em **+20%** | **Inimigos Acelerados**<br>*"Inimigos mais rápidos, maior ganho de experiência."* |
+| **+50% Velocidade** | Todos os inimigos correm em disparada | Ganho de XP por abate aumentado em **+40%** | **Velocidade Máxima**<br>*"Inimigos em corrida constante com bônus alto de XP."* |
 
 ---
 
@@ -224,8 +224,8 @@
 | Valor | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
 | **Normal** | Nenhum | Nenhum | *"Inimigos com vida padrão."* |
-| **+50% HP** | Inimigos possuem 50% a mais de vida | Chance de drop de itens aumentada em **+20%** | **Blindados**<br>*"Blindagem adicional direto da fábrica."* |
-| **+100% HP** | Inimigos possuem o dobro de vida | Chance de drop de itens aumentada em **+40%** | **Pesados**<br>*"Eles estão mais densos."* |
+| **+50% HP** | Inimigos possuem 50% a mais de vida | Chance de drop de itens aumentada em **+20%** | **Inimigos Reforçados**<br>*"Inimigos com mais vida deixam mais itens ao morrer."* |
+| **+100% HP** | Inimigos possuem o dobro de vida | Chance de drop de itens aumentada em **+40%** | **Inimigos Blindados**<br>*"Inimigos com vida dobrada e taxa de drop máxima."* |
 
 ---
 
@@ -236,8 +236,8 @@
 
 | Valor | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
-| **Desligado** | Nenhum (mapa totalmente iluminado e visível) | Nenhum | *"Luz do dia perpétua sobre o campo de batalha."* |
-| **Ligado** | Névoa de escuridão (*fog of war*): campo de visão restrito ao redor da batata | Inimigos fora do cone de visão **causam 50% a menos de dano** | **Modo Escuridão**<br>*"Eles estão com dificuldade de te enxergar."* |
+| **Desligado** | Nenhum (mapa totalmente iluminado e visível) | Nenhum | *"Arena totalmente visível sem escuridão."* |
+| **Ligado** | Névoa de escuridão (*fog of war*): campo de visão restrito ao redor da batata | Inimigos fora do cone de visão **causam 50% a menos de dano** | **Lanterna de Bancada**<br>*"Visão restrita ao redor. Inimigos no escuro causam metade do dano."* |
 
 ---
 
@@ -248,8 +248,8 @@
 
 | Valor | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
-| **Desligado** | Nenhum | Nenhum | *"Paleta de cores original e aconchegante."* |
-| **Ligado** | Inversão total de RGB da tela (estética de negativo fotográfico) | Dano global de todas as armas aumentado em **+20%** | **Espaço Negativo**<br>*"Seus olhos registraram uma reclamação no Procon."* |
+| **Desligado** | Nenhum | Nenhum | *"Paleta de cores padrão."* |
+| **Ligado** | Inversão total de RGB da tela | Dano global de todas as armas aumentado em **+20%** | **Cores Invertidas**<br>*"Inverte todas as cores da tela e concede aumento de dano."* |
 
 ---
 
@@ -261,7 +261,7 @@
 | Valor | Sacrifício (Nerf) | Benefício (Buff) | Flavor Text |
 |---|---|---|---|
 | **Desligado** | Nenhum | Nenhum | *"Seus tiros e explosões atravessam você inofensivamente."* |
-| **Ligado** | Seus próprios projéteis e explosões causam dano à batata. Drones/equipamentos têm 1 HP e são destruídos instantaneamente por fogo amigo. | Dano global de todas as armas aumentado em **+25%** | **Collateral Damage**<br>*"Aparentemente, estilhaços de granada não leem crachá de identificação."* |
+| **Ligado** | Seus próprios projéteis e explosões causam dano à batata e destroem drones | **+25% de dano global** e explosões aplicam **impulso de rocket-jump** | **Curto-Circuito**<br>*"Tiros e explosões acertam você, mas geram impulso de salto."* |
 
 ---
 
