@@ -103,29 +103,29 @@ class GameplayScene(BaseScene):
         self.partida_registrada = False
         self.estatisticas_partida_resultado = {}
 
-        # Cache de fontes para alta performance (evita lookups de SysFont em tempo de execução)
+        # Cache de fontes para alta performance (escala nativa 1280x720)
         self._fontes = {
-            "slots": pygame.font.SysFont("Arial", 9, bold=True),
-            "municao": pygame.font.SysFont("Arial", 10, bold=True),
-            "tempo": pygame.font.SysFont("Arial", 22, bold=True),
-            "abates": pygame.font.SysFont("Arial", 14, bold=True),
-            "buff": pygame.font.SysFont("Arial", 9, bold=True),
-            "timer": pygame.font.SysFont("Arial", 9, bold=True),
-            "toast": pygame.font.SysFont("Arial", 12, bold=True),
-            "fps": pygame.font.SysFont("Arial", 14),
-            "tit_vit": pygame.font.SysFont("Arial", 24, bold=True),
-            "sub_vit": pygame.font.SysFont("Arial", 13),
-            "stat_label": pygame.font.SysFont("Arial", 14),
-            "stat_val": pygame.font.SysFont("Arial", 14, bold=True),
-            "stat_destaque": pygame.font.SysFont("Arial", 20, bold=True),
-            "btn": pygame.font.SysFont("Arial", 14, bold=True),
-            "btn_sub": pygame.font.SysFont("Arial", 13),
-            "tit_pausa": pygame.font.SysFont("Arial", 34, bold=True),
-            "sub_pausa": pygame.font.SysFont("Arial", 18, bold=True),
-            "tit_go": pygame.font.SysFont("Arial", 36, bold=True),
-            "sub_go": pygame.font.SysFont("Arial", 16),
-            "stat_go": pygame.font.SysFont("Arial", 16, bold=True),
-            "prompt_go": pygame.font.SysFont("Arial", 15, bold=True),
+            "slots": pygame.font.SysFont("Arial", 12, bold=True),
+            "municao": pygame.font.SysFont("Arial", 13, bold=True),
+            "tempo": pygame.font.SysFont("Arial", 28, bold=True),
+            "abates": pygame.font.SysFont("Arial", 18, bold=True),
+            "buff": pygame.font.SysFont("Arial", 11, bold=True),
+            "timer": pygame.font.SysFont("Arial", 11, bold=True),
+            "toast": pygame.font.SysFont("Arial", 14, bold=True),
+            "fps": pygame.font.SysFont("Arial", 16),
+            "tit_vit": pygame.font.SysFont("Arial", 30, bold=True),
+            "sub_vit": pygame.font.SysFont("Arial", 16),
+            "stat_label": pygame.font.SysFont("Arial", 16),
+            "stat_val": pygame.font.SysFont("Arial", 16, bold=True),
+            "stat_destaque": pygame.font.SysFont("Arial", 24, bold=True),
+            "btn": pygame.font.SysFont("Arial", 16, bold=True),
+            "btn_sub": pygame.font.SysFont("Arial", 15),
+            "tit_pausa": pygame.font.SysFont("Arial", 40, bold=True),
+            "sub_pausa": pygame.font.SysFont("Arial", 20, bold=True),
+            "tit_go": pygame.font.SysFont("Arial", 42, bold=True),
+            "sub_go": pygame.font.SysFont("Arial", 18),
+            "stat_go": pygame.font.SysFont("Arial", 18, bold=True),
+            "prompt_go": pygame.font.SysFont("Arial", 16, bold=True),
         }
         self._fonte_toast = self._fontes["toast"]
 
@@ -219,7 +219,7 @@ class GameplayScene(BaseScene):
             if caminho and os.path.isfile(caminho):
                 try:
                     img = pygame.image.load(caminho).convert_alpha()
-                    cls._icones_slots[chave] = pygame.transform.scale(img, (26, 26))
+                    cls._icones_slots[chave] = pygame.transform.scale(img, (34, 34))
                 except Exception:
                     cls._icones_slots[chave] = None
             else:
@@ -394,12 +394,9 @@ class GameplayScene(BaseScene):
         if not novos_tiros:
             return
 
-        # 1. Refrigeração a Nitrogênio
+        # 1. Refrigeração a Nitrogênio: atirar reinicia o timer de resfriamento
         if getattr(self.jogador, "refrigeracao_nitrogenio", False):
-            self.jogador.refrigeracao_carga = min(1.0, getattr(self.jogador, "refrigeracao_carga", 0.0) + 0.15)
-            if self.jogador.refrigeracao_carga >= 1.0:
-                self.jogador.refrigeracao_overdrive_timer = 6.0
-                self.jogador.refrigeracao_carga = 0.0
+            self.jogador.timer_sem_atirar_refrig = 0.0
 
         # 2. Multithreading (Overclock BIOS): dispara eco via coprocessadores orbitais com 0.08s de delay
         if getattr(self.jogador, "multithreading", False):
@@ -877,17 +874,26 @@ class GameplayScene(BaseScene):
             )
             hitbox_mult = (getattr(mods, "hitbox_projeteis_mult", 1.0) if mods else 1.0) * (getattr(mods, "resolucao_chunky_hitbox", 1.0) if mods else 1.0)
             mult_dano_buff = 1.05 if getattr(self.jogador, "buff_dano_timer", 0.0) > 0.0 else 1.0
-            mult_cad_drone = 1.0
-            if getattr(self.jogador, "refrigeracao_nitrogenio", False):
-                mult_cad_drone *= 2.0 if getattr(self.jogador, "refrigeracao_overdrive_timer", 0.0) > 0.0 else 1.35
-            if getattr(self.jogador, "buff_cadencia_timer", 0.0) > 0.0:
-                mult_cad_drone *= 1.08
 
             tiros_drone = self.jogador.update(
                 dt,
                 drops=self.sistema_drops.drops,
                 inimigos=self.inimigos
             )
+            self._clamp_entidade_arena(self.jogador)
+            if getattr(self.jogador, "pulso_frio_pronto", False):
+                self.jogador.pulso_frio_pronto = False
+                cx_j = self.jogador.x + self.jogador.largura / 2.0
+                cy_j = self.jogador.y + self.jogador.altura / 2.0
+                self.sistema_particulas.emitir_onda_choque(cx_j, cy_j, raio_max=220.0, cor=(100, 220, 255))
+                self.sistema_particulas.emitir_faiscas(cx_j, cy_j, cor=(140, 235, 255), qtd=14)
+                for inim_frio in self.inimigos:
+                    if getattr(inim_frio, "vivo", True):
+                        icx_fr = inim_frio.x + getattr(inim_frio, "largura", 28) / 2.0
+                        icy_fr = inim_frio.y + getattr(inim_frio, "altura", 28) / 2.0
+                        if distancia(cx_j, cy_j, icx_fr, icy_fr) <= 220.0:
+                            inim_frio.slow_timer = max(getattr(inim_frio, "slow_timer", 0.0), 3.0)
+                            inim_frio.slow_fator = min(getattr(inim_frio, "slow_fator", 1.0), 0.50)
             if getattr(self.jogador, "evento_cura_drone", 0) > 0:
                 val_c = self.jogador.evento_cura_drone
                 self.jogador.evento_cura_drone = 0
@@ -1335,12 +1341,26 @@ class GameplayScene(BaseScene):
 
             if self.chefe_final is not None and self.chefe_final.vivo:
                 if getattr(self.chefe_final, "estado", "") not in ("morte", ESTADO_MORTE):
-                    # Durante o Chefe Final: 20% de densidade com apenas InimigoPadrao e teto de 10 mobs
+                    # Durante o Chefe Final: horda de apoio ativa (Padrão, Rápido e Projetor Laser) até 22 mobs
                     from src.entidades.inimigo_padrao import InimigoPadrao
-                    mobs_comuns = [e for e in self.inimigos if e.vivo and e != self.chefe_final]
-                    if len(mobs_comuns) < 10 and random.random() < 0.20 * dt * 4.0:
-                        ex, ey = self.spawner.gerar_posicao_spawn(self.camera.x, self.camera.y)
-                        mob_boss = InimigoPadrao(x=ex, y=ey)
+                    from src.entidades.inimigo_rapido import InimigoRapido
+                    from src.entidades.inimigo_ranged import InimigoRanged
+                    mobs_comuns = [e for e in self.inimigos if e.vivo and e != self.chefe_final and not getattr(e, "is_caixa_som", False)]
+                    if len(mobs_comuns) < 22 and random.random() < 0.85 * dt * 4.0:
+                        ex, ey = self.spawner.gerar_posicao_spawn(
+                            self.camera.x, self.camera.y,
+                            view_w=LARGURA_TELA, view_h=ALTURA_TELA,
+                            arena_w=self.largura_arena, arena_h=self.altura_arena
+                        )
+                        r_mob = random.random()
+                        if r_mob < 0.25:
+                            mob_boss = InimigoRapido(x=ex, y=ey)
+                        elif r_mob < 0.38:
+                            mob_boss = InimigoRanged(x=ex, y=ey)
+                            if fogo_cruzado_ranged:
+                                mob_boss.rajada_tripla = True
+                        else:
+                            mob_boss = InimigoPadrao(x=ex, y=ey)
                         mob_boss.hp_max = max(1, int(round(mob_boss.hp_max * hp_inim_mult)))
                         mob_boss.hp = mob_boss.hp_max
                         mob_boss.velocidade = float(mob_boss.velocidade) * vel_inim_mult
@@ -1486,7 +1506,7 @@ class GameplayScene(BaseScene):
                         self.sistema_particulas.emitir_debris(icx_e, icy_e, cor=LARANJA_ALERTA, qtd=18)
                         self.aplicar_shake(14.0, 0.35)
                         if distancia(icx_e, icy_e, centro_jogador_x, centro_jogador_y) <= 150.0:
-                            self.jogador.receber_dano(25)
+                            self.jogador.receber_dano(25, causa_morte="Explosão de Mini-Boss (Superaquecimento)")
                         inimigo.vivo = False
                         self.toasts_coleta.append({
                             "texto": "O MINI-BOSS SUPERAQUECEU. VOCÊ NÃO RECEBERÁ RECOMPENSAS POR ELE.",
@@ -1503,7 +1523,7 @@ class GameplayScene(BaseScene):
                     icy_f = inimigo.y + getattr(inimigo, "altura", 28) / 2.0
                     self.sistema_particulas.emitir_onda_choque(icx_f, icy_f, raio_max=125.0, cor=LARANJA_ALERTA)
                     if distancia(icx_f, icy_f, centro_jogador_x, centro_jogador_y) <= 125.0:
-                        self.jogador.receber_dano(18)
+                        self.jogador.receber_dano(18, causa_morte="Pulso Elétrico (Fonte Genérica 500W)")
                 if getattr(inimigo, "projeteis_elite_pendentes", None):
                     self.projeteis.extend(inimigo.projeteis_elite_pendentes)
                     inimigo.projeteis_elite_pendentes.clear()
@@ -1555,7 +1575,8 @@ class GameplayScene(BaseScene):
                         if dist_vis > 195.0:
                             mult_dano_inim *= getattr(mods, "dano_fora_visao_mult", 0.50)
                     dano_efetivo_contato = max(1, int(round(dano_contato_base * mult_dano_inim)))
-                    self.jogador.receber_dano(dano_efetivo_contato)
+                    nome_inim = getattr(inimigo, "nome_elite", "") or type(inimigo).__name__
+                    self.jogador.receber_dano(dano_efetivo_contato, causa_morte=f"Contato com {nome_inim}")
                     inimigo.cooldown_contato_atual = getattr(inimigo, "cooldown_contato_max", 0.4)
                     self.aplicar_shake(6.0, 0.15)
                     # Casco Eletrostático (buff_resistencia_timer > 0): empurra e dá choque em quem encostar
@@ -1598,9 +1619,12 @@ class GameplayScene(BaseScene):
                 bcy = self.chefe_final.y + self.chefe_final.altura / 2.0
                 if distancia(bcx, bcy, centro_jogador_x, centro_jogador_y) <= 210.0:
                     dx_b, dy_b = vetor_direcao(bcx, bcy, centro_jogador_x, centro_jogador_y)
-                    self.jogador.x += dx_b * 46.0
-                    self.jogador.y += dy_b * 46.0
-                    self._clamp_entidade_arena(self.jogador)
+                    if hasattr(self.jogador, "aplicar_knockback"):
+                        self.jogador.aplicar_knockback(dx_b, dy_b, forca=360.0)
+                    else:
+                        self.jogador.x += dx_b * 46.0
+                        self.jogador.y += dy_b * 46.0
+                        self._clamp_entidade_arena(self.jogador)
             if getattr(self.chefe_final, "vortice_succao_ativo", False) and not self.boss_cutscene_ativa:
                 bcx = self.chefe_final.x + self.chefe_final.largura / 2.0
                 bcy = self.chefe_final.y + self.chefe_final.altura / 2.0
@@ -1636,7 +1660,8 @@ class GameplayScene(BaseScene):
                         if dist_vis > 195.0:
                             mult_dano_inim *= getattr(mods, "dano_fora_visao_mult", 0.50)
                     dano_efetivo_contato = max(1, int(round(dano_contato_base * mult_dano_inim)))
-                    self.jogador.receber_dano(dano_efetivo_contato)
+                    nome_inim = getattr(inimigo, "nome_elite", "") or type(inimigo).__name__
+                    self.jogador.receber_dano(dano_efetivo_contato, causa_morte=f"Contato com {nome_inim}")
                     self.chefe_final.cooldown_contato_atual = getattr(self.chefe_final, "cooldown_contato_max", 0.4)
                     self.aplicar_shake(10.0, 0.25)
 
@@ -1691,7 +1716,7 @@ class GameplayScene(BaseScene):
                             if dist_vis > 195.0:
                                 mult_dano_inim *= getattr(mods, "dano_fora_visao_mult", 0.50)
                         dano_proj = max(1, int(round(proj.dano * mult_dano_inim)))
-                        self.jogador.receber_dano(dano_proj)
+                        self.jogador.receber_dano(dano_proj, causa_morte="Projétil Inimigo / Ondas da Geladeira")
                         self.aplicar_shake(6.0, 0.15)
                         proj.ativo = False
                         break
@@ -1784,12 +1809,16 @@ class GameplayScene(BaseScene):
                             alvo_direto=alvo_direto
                         )
 
-                        # Rocket-Jump (Fogo Amigo Ligado) com clamp de arena
+                        # Rocket-Jump (Fogo Amigo Ligado) com animação suave de knockback
                         if getattr(mods, "fogo_amigo_rocket_jump", False) and distancia(p_cx, p_cy, centro_jogador_x, centro_jogador_y) < r_exp:
                             dir_rj_x, dir_rj_y = vetor_direcao(p_cx, p_cy, centro_jogador_x, centro_jogador_y)
-                            self.jogador.x += dir_rj_x * 48.0
-                            self.jogador.y += dir_rj_y * 48.0
-                            self._clamp_entidade_arena(self.jogador)
+                            if hasattr(self.jogador, "aplicar_knockback"):
+                                self.jogador.aplicar_knockback(dir_rj_x, dir_rj_y, forca=420.0)
+                                self.sistema_particulas.emitir_faiscas(centro_jogador_x, centro_jogador_y, dir_x=dir_rj_x, dir_y=dir_rj_y, cor=(255, 190, 90), qtd=8)
+                            else:
+                                self.jogador.x += dir_rj_x * 48.0
+                                self.jogador.y += dir_rj_y * 48.0
+                                self._clamp_entidade_arena(self.jogador)
 
                         for inim in afetados:
                             dano_base_exp = int(getattr(proj, "dano", 35) * mult_explosivo)
@@ -1915,10 +1944,10 @@ class GameplayScene(BaseScene):
                                     proj.alvos_atingidos = set()
                                 if "jogador" not in proj.alvos_atingidos:
                                     proj.alvos_atingidos.add("jogador")
-                                    self.jogador.receber_dano(proj.dano)
+                                    self.jogador.receber_dano(proj.dano, causa_morte="Fogo Amigo (Seu próprio projétil)")
                                     self.aplicar_shake(6.0, 0.15)
                             else:
-                                self.jogador.receber_dano(proj.dano)
+                                self.jogador.receber_dano(proj.dano, causa_morte="Fogo Amigo (Seu próprio projétil)")
                                 self.aplicar_shake(6.0, 0.15)
                                 proj.ativo = False
                                 break
@@ -2510,8 +2539,8 @@ class GameplayScene(BaseScene):
         screen = self.janela.screen
 
         if hud_visivel:
-            # 1. Slots de inventário (Top-Left: 16, 14) com destaque para o slot ativo
-            slot_tam = 42
+            # 1. Slots de inventário (Top-Left: 16, 14) com destaque para o slot ativo (escala 1280x720)
+            slot_tam = 54
             slot_ativo = getattr(self.jogador, "slot_ativo", 2)
 
             fonte_slots = self._fontes["slots"]
@@ -2606,7 +2635,7 @@ class GameplayScene(BaseScene):
                         cor_badge = AZUL_CIANO
 
                 if icone_img is not None:
-                    screen.blit(icone_img, (sx + (slot_tam - 26) // 2, sy + (slot_tam - 26) // 2))
+                    screen.blit(icone_img, (sx + (slot_tam - 34) // 2, sy + (slot_tam - 34) // 2))
 
                 if texto_badge is not None:
                     badge_surf = fonte_municao.render(texto_badge, True, cor_badge)
@@ -2644,7 +2673,7 @@ class GameplayScene(BaseScene):
                         icone_img = self._obter_sprite_icone("arma_rifle")
 
                     if icone_img:
-                        screen.blit(icone_img, (sx3b + (slot_tam - 26) // 2, sy3b + (slot_tam - 26) // 2))
+                        screen.blit(icone_img, (sx3b + (slot_tam - 34) // 2, sy3b + (slot_tam - 34) // 2))
 
                     mun = getattr(self.jogador.arma_especial_secundaria, "municao_atual", 0)
                     texto_badge = str(mun)
@@ -2668,7 +2697,7 @@ class GameplayScene(BaseScene):
             texto_abates = f"Abates: {self.abates}"
             fonte_abates = self._fontes["abates"]
             abates_surf = fonte_abates.render(texto_abates, True, AMARELO_XP)
-            abates_rect = abates_surf.get_rect(centerx=LARGURA_TELA // 2, top=40)
+            abates_rect = abates_surf.get_rect(centerx=LARGURA_TELA // 2, top=44)
             screen.blit(abates_surf, abates_rect)
 
             # 3. Barra de Progresso de XP (Top-Center: top=62, 360x10 px)
@@ -2776,9 +2805,9 @@ class GameplayScene(BaseScene):
         fonte_timer = self._fontes["timer"]
 
         start_x = 16
-        start_y = 110 if getattr(self.jogador, "bios_modding", False) else 62
-        badge_w = 112
-        badge_h = 16
+        start_y = 132 if getattr(self.jogador, "bios_modding", False) else 76
+        badge_w = 152
+        badge_h = 22
 
         for b in buffs:
             bg_rect = (start_x, start_y, badge_w, badge_h)
@@ -3006,38 +3035,42 @@ class GameplayScene(BaseScene):
         fonte_prompt = self._fontes["prompt_go"]
 
         tit_surf = fonte_tit.render("FIM DE LINHA", True, VERMELHO_HP)
-        screen.blit(tit_surf, tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 130))
+        screen.blit(tit_surf, tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 115))
 
         sub_surf = fonte_sub.render("As máquinas do escritório drenaram a bateria de Cleiton.", True, (200, 180, 180))
-        screen.blit(sub_surf, sub_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 175))
+        screen.blit(sub_surf, sub_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 162))
+
+        causa_str = getattr(self.jogador, "ultima_causa_morte", "") or "Dano fatal no escritório"
+        causa_surf = fonte_stat.render(f"Causa da Morte: {causa_str}", True, LARANJA_ALERTA)
+        screen.blit(causa_surf, causa_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 190))
 
         minutos = int(self.tempo_sobrevivencia // 60)
         segundos = int(self.tempo_sobrevivencia % 60)
 
         # Quadro escuro
-        quadro_rect = pygame.Rect(ox + 180, oy + 210, 440, 200)
-        pygame.draw.rect(screen, (28, 15, 20), quadro_rect, border_radius=6)
-        pygame.draw.rect(screen, (80, 40, 50), quadro_rect, width=1, border_radius=6)
+        quadro_rect = pygame.Rect(ox + 150, oy + 225, 500, 210)
+        pygame.draw.rect(screen, (28, 15, 20), quadro_rect, border_radius=8)
+        pygame.draw.rect(screen, (80, 40, 50), quadro_rect, width=1, border_radius=8)
 
         tempo_surf = fonte_stat.render(f"Tempo de Partida: {minutos:02d}:{segundos:02d}", True, BRANCO)
-        screen.blit(tempo_surf, tempo_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 230))
+        screen.blit(tempo_surf, tempo_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 242))
 
         abates_surf = fonte_stat.render(f"Total de Abates: {self.abates}", True, AMARELO_XP)
-        screen.blit(abates_surf, abates_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 265))
+        screen.blit(abates_surf, abates_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 278))
 
         dano_surf = fonte_stat.render(f"Dano Total: {self.dano_total_causado:,}", True, (255, 120, 120))
-        screen.blit(dano_surf, dano_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 300))
+        screen.blit(dano_surf, dano_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 314))
 
         score_val = self.estatisticas_partida_resultado.get("score_final", self.pontos)
         pontos_surf = fonte_stat.render(f"Pontuação Final: {score_val:,} PTS", True, DOURADO)
-        screen.blit(pontos_surf, pontos_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 335))
+        screen.blit(pontos_surf, pontos_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 350))
 
         if self.estatisticas_partida_resultado.get("novo_recorde_pontos", False):
             rec_surf = fonte_stat.render("[NOVO RECORDE DE PONTOS!]", True, AMARELO_XP)
-            screen.blit(rec_surf, rec_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 370))
+            screen.blit(rec_surf, rec_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 386))
 
         prompt_surf = fonte_prompt.render("Pressione [ENTER] para Jogar Novamente ou [ESC] para o Menu", True, DOURADO)
-        screen.blit(prompt_surf, prompt_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 440))
+        screen.blit(prompt_surf, prompt_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 458))
 
 
     def _reiniciar_partida(self):

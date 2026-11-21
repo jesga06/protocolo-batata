@@ -208,7 +208,10 @@ class Projetil:
             j_cy = jogador.y + getattr(jogador, "altura", 32) / 2.0
             dist_j = distancia(centro_x, centro_y, j_cx, j_cy)
             if dist_j <= self.raio_explosao:
-                jogador.receber_dano(dano_efetivo)
+                try:
+                    jogador.receber_dano(dano_efetivo, causa_morte="Fogo Amigo (Explosão própria)")
+                except TypeError:
+                    jogador.receber_dano(dano_efetivo)
 
             # Destruição de todos os drones companheiros por fogo amigo (1 HP)
             drones_list = []

@@ -62,6 +62,9 @@ class Jogador:
         self.coprocessador_escudo_timer = 0.0
 
         self.vivo = True
+        self.ultima_causa_morte = ""
+        self.vx_knockback = 0.0
+        self.vy_knockback = 0.0
         self.facing_right = True
         self.flash_dano_timer = 0.0
         self.invulnerabilidade_timer = 0.0
@@ -112,13 +115,20 @@ class Jogador:
         self.ultima_dir_dy = -1.0
         self.dir_movimento = (0.0, -1.0)
 
+    def aplicar_knockback(self, dir_x: float, dir_y: float, forca: float):
+        """Aplica impulso suave de repulsão (ex: Rocket-Jump, Bass Push) decaindo ao longo dos frames."""
+        self.vx_knockback += float(dir_x) * float(forca)
+        self.vy_knockback += float(dir_y) * float(forca)
+
     def aplicar_pulso_magnetico(self, drops: list):
-        """Puxa instantaneamente todos os drops ativos na arena diretamente para a coordenada da Batata."""
+        """Puxa instantaneamente os drops ativos na arena (exceto cápsulas de escolha) para a Batata."""
         if not drops:
             return
         cx = self.x + self.largura / 2.0
         cy = self.y + self.altura / 2.0
         for drop in drops:
+            if getattr(drop, "tipo", "") == "capsula_powerup":
+                continue
             if getattr(drop, "ativo", False) and not getattr(drop, "coletado", False):
                 drop.x = cx - getattr(drop, "largura", 16) / 2.0
                 drop.y = cy - getattr(drop, "altura", 16) / 2.0
@@ -479,8 +489,8 @@ class Jogador:
             elif dx > 0:
                 self.facing_right = True
 
-    def receber_dano(self, quantidade: int):
-        """Aplica dano ao jogador, aciona flash visual e testa condição de morte."""
+    def receber_dano(self, quantidade: int, causa_morte: str = ""):
+        """Aplica dano ao jogador, aciona flash visual, registra causa da morte e testa condição de morte."""
         if not self.vivo or getattr(self, "modo_deus", False) or getattr(self, "invulneravel", False):
             return
 
@@ -537,6 +547,7 @@ class Jogador:
 
         if self.hp <= 0:
             self.vivo = False
+            self.ultima_causa_morte = causa_morte or "Dano fatal no escritório"
             try:
                 from PPlay.sound import Sound
                 sfx = Sound(obter_caminho_asset("sfx_morte_jogador"))
@@ -672,7 +683,17 @@ class Jogador:
         return ativos
 
     def update(self, dt: float, drops: list = None, inimigos: list = None):
-        """Atualiza timers de flash de dano, armas, buffs temporários e drone companheiro."""
+        """Atualiza timers de flash de dano, knockback suave, armas, buffs temporários e drone companheiro."""
+        if abs(self.vx_knockback) > 1.0 or abs(self.vy_knockback) > 1.0:
+            self.x += self.vx_knockback * dt
+            self.y += self.vy_knockback * dt
+            fator_decay = 0.85 ** (dt * 60.0)
+            self.vx_knockback *= fator_decay
+            self.vy_knockback *= fator_decay
+        else:
+            self.vx_knockback = 0.0
+            self.vy_knockback = 0.0
+
         if self.flash_dano_timer > 0.0:
             self.flash_dano_timer = max(0.0, self.flash_dano_timer - dt)
 
@@ -728,16 +749,14 @@ class Jogador:
             self.coprocessadores_angulos[0] = (self.coprocessadores_angulos[0] + 2.5 * dt) % (2.0 * 3.14159265)
             self.coprocessadores_angulos[1] = (self.coprocessadores_angulos[1] + 2.5 * dt) % (2.0 * 3.14159265)
 
-        # Refrigeração a Nitrogênio: cadência base + pico térmico e decaimento de carga quando ocioso
+        # Refrigeração a Nitrogênio: +20% cadência base e onda de frio após 1.5s sem atirar
         mult_refrigeracao = 1.0
         if getattr(self, "refrigeracao_nitrogenio", False):
-            if getattr(self, "refrigeracao_overdrive_timer", 0.0) > 0.0:
-                self.refrigeracao_overdrive_timer = max(0.0, self.refrigeracao_overdrive_timer - dt)
-                mult_refrigeracao = 2.0
-            else:
-                mult_refrigeracao = 1.35
-                if getattr(self, "refrigeracao_carga", 0.0) > 0.0:
-                    self.refrigeracao_carga = max(0.0, self.refrigeracao_carga - 0.10 * dt)
+            mult_refrigeracao = 1.20
+            self.timer_sem_atirar_refrig = getattr(self, "timer_sem_atirar_refrig", 0.0) + dt
+            if self.timer_sem_atirar_refrig >= 1.5:
+                self.timer_sem_atirar_refrig = 0.0
+                self.pulso_frio_pronto = True
 
         mult_cadencia = mult_refrigeracao * (1.08 if self.buff_cadencia_timer > 0.0 else 1.0)
         dt_armas = dt * mult_cadencia

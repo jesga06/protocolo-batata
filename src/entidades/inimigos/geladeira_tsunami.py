@@ -211,28 +211,28 @@ class GeladeiraTsunami(InimigoBase):
 
         # Fase 1: Heavy Stalk + Subwoofer Pulse (anéis sônicos com brecha de esquiva)
         self.timer_pulso_fase1 = 0.0
-        self.intervalo_pulso_fase1 = 2.2
+        self.intervalo_pulso_fase1 = 1.45
 
-        # Fase 2: Telegraphed Bass Rush Dash (420 px/s) + Subwoofer Totems
+        # Fase 2: Telegraphed Bass Rush Dash (500 px/s) + Subwoofer Totems
         self.subestado_fase2 = "stalk"  # "stalk", "telegraph", "dash"
         self.timer_ciclo_fase2 = 0.0
-        self.intervalo_dash_fase2 = 3.5
+        self.intervalo_dash_fase2 = 2.6
         self.timer_telegraph_fase2 = 0.0
-        self.duracao_telegraph = 0.8
+        self.duracao_telegraph = 0.65
         self.timer_dash_fase2 = 0.0
-        self.duracao_dash_max = 1.0
+        self.duracao_dash_max = 0.90
         self.dash_dir_x = 0.0
         self.dash_dir_y = 0.0
-        self.dash_velocidade = 420.0
+        self.dash_velocidade = 500.0
         self.timer_totem_fase2 = 0.0
-        self.intervalo_totem_fase2 = 2.8
+        self.intervalo_totem_fase2 = 2.2
 
         # Fase 3: Center Stage Anchor + Sonic Tsunami Helix
         self.angulo_helix = 0.0
         self.timer_tiro_helix = 0.0
-        self.intervalo_tiro_helix = 0.12
+        self.intervalo_tiro_helix = 0.09
         self.timer_bass_blast = 0.0
-        self.intervalo_bass_blast = 2.0
+        self.intervalo_bass_blast = 1.40
         self.centro_arena_x = (LARGURA_ARENA - self.largura) / 2.0
         self.centro_arena_y = (ALTURA_ARENA - self.altura) / 2.0
 
@@ -361,10 +361,10 @@ class GeladeiraTsunami(InimigoBase):
             return
 
         pct_hp = self.hp / max(1, self.hp_max)
-        if pct_hp <= 0.33:
+        if pct_hp <= 0.35:
             if self.estado != ESTADO_FASE3:
                 self.estado = ESTADO_FASE3
-        elif pct_hp <= 0.66:
+        elif pct_hp <= 0.70:
             if self.estado != ESTADO_FASE2:
                 self.estado = ESTADO_FASE2
                 self.subestado_fase2 = "stalk"
@@ -572,8 +572,8 @@ class GeladeiraTsunami(InimigoBase):
             self.x = self.centro_arena_x
             self.y = self.centro_arena_y
 
-        # Sonic Tsunami Helix (feixes em espiral rotativa contínua)
-        self.angulo_helix += 3.5 * dt
+        # Sonic Tsunami Helix (feixes em espiral tripla rotativa contínua)
+        self.angulo_helix += 4.2 * dt
         self.timer_tiro_helix += dt
         if self.timer_tiro_helix >= self.intervalo_tiro_helix:
             self._disparar_helix_tsunami()
@@ -628,10 +628,10 @@ class GeladeiraTsunami(InimigoBase):
         tx, ty = pos_alvo
         ang_jogador = math.atan2(ty - cy, tx - cx)
 
-        num_tiros = 14
+        num_tiros = 18
         for i in range(num_tiros):
             ang = i * (2.0 * math.pi / num_tiros)
-            # Cria brechas nos ângulos diretamente alinhados com o jogador (+-20 graus)
+            # Cria brechas nos ângulos diretamente alinhados com o jogador (+-16 graus)
             diff_ang = abs((ang - ang_jogador + math.pi) % (2.0 * math.pi) - math.pi)
             if diff_ang < 0.25:
                 continue  # Brecha para esquiva habilidosa
@@ -643,7 +643,7 @@ class GeladeiraTsunami(InimigoBase):
                 y=cy - 6.0,
                 dir_x=dir_x,
                 dir_y=dir_y,
-                velocidade=200.0,
+                velocidade=250.0,
                 dano=15,
                 tempo_vida=3.8,
                 dono="inimigo",
@@ -703,18 +703,18 @@ class GeladeiraTsunami(InimigoBase):
         self.caixas_som_pendentes.append(CaixaDeSomBoss(x=tx, y=ty))
 
     def _disparar_helix_tsunami(self):
-        """Dispara feixe duplo helicoidal rotativo a partir do centro do palco."""
+        """Dispara feixe triplo helicoidal rotativo a partir do centro do palco."""
         cx = self.x + self.largura / 2.0
         cy = self.y + self.altura / 2.0
 
-        for offset in (0.0, math.pi):
+        for offset in (0.0, 2.0 * math.pi / 3.0, 4.0 * math.pi / 3.0):
             ang = self.angulo_helix + offset
             proj = Projetil(
                 x=cx - 5.0,
                 y=cy - 5.0,
                 dir_x=math.cos(ang),
                 dir_y=math.sin(ang),
-                velocidade=220.0,
+                velocidade=255.0,
                 dano=10,
                 tempo_vida=4.5,
                 dono="inimigo",
@@ -725,11 +725,11 @@ class GeladeiraTsunami(InimigoBase):
             self.projeteis_pendentes.append(proj)
 
     def _disparar_blast_radial(self):
-        """Dispara uma explosão omnidirecional de 16 ondas de choque de alta velocidade."""
+        """Dispara uma explosão omnidirecional de 20 ondas de choque de alta velocidade."""
         cx = self.x + self.largura / 2.0
         cy = self.y + self.altura / 2.0
 
-        num_blast = 16
+        num_blast = 20
         for i in range(num_blast):
             ang = i * (2.0 * math.pi / num_blast)
             proj = Projetil(
@@ -737,7 +737,7 @@ class GeladeiraTsunami(InimigoBase):
                 y=cy - 6.0,
                 dir_x=math.cos(ang),
                 dir_y=math.sin(ang),
-                velocidade=290.0,
+                velocidade=320.0,
                 dano=12,
                 tempo_vida=3.5,
                 dono="inimigo",
