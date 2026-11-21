@@ -111,7 +111,7 @@ class TestPowerupsAndConsumablesCatalog(unittest.TestCase):
         self.assertAlmostEqual(self.jogador.buff_dano_timer, 14.0)
 
     def test_06_buff_vel_temp_15s(self):
-        """6. buff_vel_temp ativa timer de 15.0s e aplica +12% à velocidade atual."""
+        """6. buff_vel_temp ativa timer de 15.0s e aplica +8% à velocidade atual (Golden Rule R3)."""
         vel_base = self.jogador.velocidade_base
         card = {"tipo": "buff_vel_temp", "duracao": 15.0}
         self.modal.cards_sorteados = [card]
@@ -121,7 +121,7 @@ class TestPowerupsAndConsumablesCatalog(unittest.TestCase):
         self.assertEqual(self.jogador.buff_vel_timer, 15.0)
 
         self.jogador.update(0.1)
-        self.assertAlmostEqual(self.jogador.velocidade_atual, vel_base * 1.12)
+        self.assertAlmostEqual(self.jogador.velocidade_atual, vel_base * 1.08)
 
     def test_07_buff_cadencia_temp_15s(self):
         """7. buff_cadencia_temp ativa timer de 15.0s."""
@@ -133,7 +133,7 @@ class TestPowerupsAndConsumablesCatalog(unittest.TestCase):
         self.assertEqual(self.jogador.buff_cadencia_timer, 15.0)
 
     def test_08_buff_resistencia_temp_15s(self):
-        """8. buff_resistencia_temp reduz dano sofrido em 15%."""
+        """8. buff_resistencia_temp reduz dano sofrido em 8% (Golden Rule R3)."""
         card = {"tipo": "buff_resistencia_temp", "duracao": 15.0}
         self.modal.cards_sorteados = [card]
         self.modal.ativo = True
@@ -141,11 +141,11 @@ class TestPowerupsAndConsumablesCatalog(unittest.TestCase):
         self.modal.selecionar_card(0)
         self.assertEqual(self.jogador.buff_resistencia_timer, 15.0)
 
-        # Recebe 100 de dano -> sofre 85 (redução de 15%)
+        # Recebe 100 de dano -> sofre 92 (redução de 8%)
         self.jogador.hp_max = 200
         self.jogador.hp = 200
         self.jogador.receber_dano(100)
-        self.assertEqual(self.jogador.hp, 200 - 85)
+        self.assertEqual(self.jogador.hp, 200 - 92)
 
     def test_09_escudo_protetor_absorbs_hit_and_grants_invulnerability(self):
         """9. escudo absorve 1 hit e concede 4.0s de invulnerabilidade."""

@@ -305,9 +305,9 @@ class TestChallengerShieldAndInvulnerabilityStress(unittest.TestCase):
         self.assertEqual(self.jogador.invulnerabilidade_timer, 0.0)
         self.assertAlmostEqual(self.jogador.buff_resistencia_timer, 10.95, places=2)
 
-        # Hit 2 -> Dano 100 com -15% resistência -> sofre 85 de dano
+        # Hit 2 -> Dano 100 com -8% resistência (Golden Rule R3) -> sofre 92 de dano
         self.jogador.receber_dano(100)
-        self.assertEqual(self.jogador.hp, 150 - 85)  # 65 HP
+        self.assertEqual(self.jogador.hp, 150 - 92)  # 58 HP
 
 
 class TestChallengerTemporaryBuffsTimersAndExpiry(unittest.TestCase):
@@ -337,17 +337,17 @@ class TestChallengerTemporaryBuffsTimersAndExpiry(unittest.TestCase):
     def test_buff_velocidade_15s_effect_application_and_clean_removal(self):
         """
         Buff de velocidade:
-        - Aplica +12% durante 15.0s (velocidade_atual = 200 * 1.12 = 224.0).
+        - Aplica +8% durante 15.0s (velocidade_atual = 200 * 1.08 = 216.0).
         - Exatamente em t >= 15.0s, velocidade_atual volta para 200.0.
         """
         self.jogador.buff_vel_timer = 15.0
         self.jogador.update(0.1)
-        self.assertAlmostEqual(self.jogador.velocidade_atual, 224.0, places=3)
+        self.assertAlmostEqual(self.jogador.velocidade_atual, 216.0, places=3)
 
         # Avança até 14.9s
         self.jogador.update(14.8)
         self.assertGreater(self.jogador.buff_vel_timer, 0.0)
-        self.assertAlmostEqual(self.jogador.velocidade_atual, 224.0, places=3)
+        self.assertAlmostEqual(self.jogador.velocidade_atual, 216.0, places=3)
 
         # Avança +0.2s (total 15.1s) -> buff expira
         self.jogador.update(0.2)
@@ -357,16 +357,16 @@ class TestChallengerTemporaryBuffsTimersAndExpiry(unittest.TestCase):
     def test_buff_cadencia_15s_multiplier_to_weapons(self):
         """
         Buff de cadência:
-        - Enquanto ativo, acelera update das armas por fator 1.30.
+        - Enquanto ativo, acelera update das armas por fator 1.08.
         - Quando inativo, armas recebem fator 1.0.
         """
         self.jogador.buff_cadencia_timer = 15.0
         pistola = self.jogador.armas[1]
         pistola.tempo_recarga_restante = 1.0
 
-        # Com buff: update(0.1) reduz tempo_recarga_restante por 0.1 * 1.30 = 0.130
+        # Com buff: update(0.1) reduz tempo_recarga_restante por 0.1 * 1.08 = 0.108
         self.jogador.update(0.1)
-        self.assertAlmostEqual(pistola.tempo_recarga_restante, 1.0 - 0.130, places=4)
+        self.assertAlmostEqual(pistola.tempo_recarga_restante, 1.0 - 0.108, places=4)
 
         # Expira o buff
         self.jogador.update(15.0)
@@ -380,16 +380,16 @@ class TestChallengerTemporaryBuffsTimersAndExpiry(unittest.TestCase):
     def test_buff_resistencia_15s_damage_reduction_and_expiry(self):
         """
         Buff de resistência:
-        - Enquanto ativo, dano 100 -> sofre 85.
+        - Enquanto ativo, dano 100 -> sofre 92 (-8% Golden Rule R3).
         - Quando inativo, dano 100 -> sofre 100.
         """
         self.jogador.hp = 200
         self.jogador.hp_max = 200
         self.jogador.buff_resistencia_timer = 15.0
 
-        # Ativo: 100 dano -> 85 dano
+        # Ativo: 100 dano -> 92 dano
         self.jogador.receber_dano(100)
-        self.assertEqual(self.jogador.hp, 115)
+        self.assertEqual(self.jogador.hp, 108)
 
         # Expira
         self.jogador.update(15.1)
@@ -397,7 +397,7 @@ class TestChallengerTemporaryBuffsTimersAndExpiry(unittest.TestCase):
 
         # Inativo: 50 dano -> 50 dano
         self.jogador.receber_dano(50)
-        self.assertEqual(self.jogador.hp, 65)
+        self.assertEqual(self.jogador.hp, 58)
 
     def test_buff_timer_refresh_on_repeated_selection(self):
         """Selecionar o card de buff novamente reseta o timer para 15.0s."""

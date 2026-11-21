@@ -28,21 +28,18 @@ class TestConfigCatalogAndStructure(unittest.TestCase):
     """Testa a integridade do catálogo e definições de configurações."""
 
     def test_all_25_configs_cataloged(self):
-        """Verifica a presença exata de 20 configs de gameplay e 5 sistêmicas."""
+        """Verifica a presença exata de 20 configs de gameplay e 3 sistêmicas de áudio (23 total)."""
         self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 20)
-        self.assertEqual(len(CONFIGURACOES_SISTEMA), 5)
-        self.assertEqual(len(TODAS_CONFIGURACOES), 25)
+        self.assertEqual(len(CONFIGURACOES_SISTEMA), 3)
+        self.assertEqual(len(TODAS_CONFIGURACOES), 23)
 
-        # Verifica presença da configuração sistêmica obrigatória S5
-        self.assertIn("escala_global", CONFIGURACOES_SISTEMA)
-        self.assertIn("escala_global", TODAS_CONFIGURACOES)
-        self.assertFalse(CONFIGURACOES_SISTEMA["escala_global"].is_gameplay)
-
-        # Verifica configs de sistema de áudio e acessibilidade
+        # Verifica configs de sistema de áudio e ausência de stubs S4/S5
         self.assertIn("volume_master", CONFIGURACOES_SISTEMA)
         self.assertIn("volume_musica", CONFIGURACOES_SISTEMA)
         self.assertIn("volume_sfx", CONFIGURACOES_SISTEMA)
-        self.assertIn("filtro_daltonico", CONFIGURACOES_SISTEMA)
+        self.assertFalse(CONFIGURACOES_SISTEMA["volume_master"].is_gameplay)
+        self.assertNotIn("filtro_daltonico", CONFIGURACOES_SISTEMA)
+        self.assertNotIn("escala_global", CONFIGURACOES_SISTEMA)
 
         # Verifica presença das 20 de gameplay
         chaves_gameplay_esperadas = [

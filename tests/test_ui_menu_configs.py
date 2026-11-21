@@ -95,7 +95,7 @@ class TestMenuConfigsLogicAndNavigation(unittest.TestCase):
         self.assertEqual(self.gerenciador.obter_valor("fps_cap"), "60")
 
     def test_system_settings_sliders_and_selectors(self):
-        """Valida ajustes na aba de sistema (volumes, filtro daltônico e escala global)."""
+        """Valida ajustes na aba de sistema (3 sliders de áudio: master, música e SFX)."""
         # Volume Master
         self.menu.definir_volume_sistema("volume_master", 75)
         self.assertEqual(self.gerenciador.obter_valor("volume_master"), 75)
@@ -108,13 +108,11 @@ class TestMenuConfigsLogicAndNavigation(unittest.TestCase):
         self.menu.definir_volume_sistema("volume_sfx", 90)
         self.assertEqual(self.gerenciador.obter_valor("volume_sfx"), 90)
 
-        # Filtro Daltônico (S4)
-        self.gerenciador.definir_valor("filtro_daltonico", "protanopia")
-        self.assertEqual(self.gerenciador.obter_valor("filtro_daltonico"), "protanopia")
-
-        # Escala Global (S5)
-        self.gerenciador.definir_valor("escala_global", "150%")
-        self.assertEqual(self.gerenciador.obter_valor("escala_global"), "150%")
+        # Stubs S4/S5 removidos devem ser rejeitados
+        self.assertFalse(self.gerenciador.definir_valor("filtro_daltonico", "protanopia"))
+        self.assertIsNone(self.gerenciador.obter_valor("filtro_daltonico"))
+        self.assertFalse(self.gerenciador.definir_valor("escala_global", "150%"))
+        self.assertIsNone(self.gerenciador.obter_valor("escala_global"))
 
 
 class TestMenuConfigsIntegrationAndPersistence(unittest.TestCase):

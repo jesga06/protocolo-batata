@@ -113,10 +113,10 @@ class TestConstantesEConfiguracoes(unittest.TestCase):
 
     def test_total_configs_sistema(self):
         self.assertEqual(
-            len(CONFIGURACOES_SISTEMA), 5,
-            "Devem existir exatamente 5 configurações de sistema (volume_master, volume_musica, volume_sfx, filtro_daltonico, escala_global)!"
+            len(CONFIGURACOES_SISTEMA), 3,
+            "Devem existir exatamente 3 configurações de sistema (volume_master, volume_musica, volume_sfx)!"
         )
-        for chave in ["volume_master", "volume_musica", "volume_sfx", "filtro_daltonico", "escala_global"]:
+        for chave in ["volume_master", "volume_musica", "volume_sfx"]:
             self.assertIn(chave, CONFIGURACOES_SISTEMA)
 
     def test_estrutura_cada_config_gameplay(self):
