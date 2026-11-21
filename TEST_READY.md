@@ -2,7 +2,7 @@
 
 ## Test Runner
 - Command: `python -m unittest discover -s tests -p "test_*.py"` (or `.\.venv\Scripts\python -m unittest discover -s tests -p "test_*.py"`)
-- Expected: All 389 tests pass with exit code 0 (including 38 dedicated Boss & Endgame tests and 19 forensic adversarial regression tests)
+- Expected: All 393 tests pass with exit code 0 (including dedicated Boss & Endgame tests and forensic adversarial regression tests)
 
 ## Coverage Summary
 | Tier | Count | Description |

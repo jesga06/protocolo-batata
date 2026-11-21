@@ -49,7 +49,7 @@
 |---|---|---|---|
 | **Nativa (100%)** | Nenhum | Nenhum | *"Cada pixel em seu devido lugar."* |
 | **75%** | Visão levemente borrada e pixelada | Chance de drop de itens aumentada em **+10%** e área de impacto dos tiros aumentada em **+25%** (hitbox $\times 1.25$) | **Upscaling Básico**<br>*"Resolução menor, renderização mais folgada."* |
-| **50%** | Visão consideravelmente pixelada | Chance de drop de itens aumentada em **+25%** e área de impacto dos tiros aumentada em **+50%** (hitbox $\times 1.50$) | **Modo Janela 800x600**<br>*"Pixels grandes facilitam achar sucata no chão."* |
+| **50%** | Visão consideravelmente pixelada | Chance de drop de itens aumentada em **+25%** e área de impacto dos tiros aumentada em **+50%** (hitbox $\times 1.50$) | **Modo Retro**<br>*"Pixels grandes facilitam achar sucata no chão."* |
 | **25%** | Praticamente indecifrável | Chance de drop de itens aumentada em **+50%** e área de impacto dos tiros dobrada (**+100%** / hitbox $\times 2.0$) | **320x240 CRT**<br>*"Na dúvida do que está na tela, qualquer tiro acerta."* |
 
 ---

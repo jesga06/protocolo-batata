@@ -26,4 +26,4 @@
 ## Test Architecture
 - Test Runner: Python standard `unittest` (`python -m unittest discover -s tests -p "test_*.py"`)
 - Main Target: `tests/test_boss_geladeira_tsunami.py` + 4 Forensic Regression Suites (`test_config_ssot_and_no_cheats.py`, `test_render_visibility_regression.py`, `test_mechanics_e2e_real_loop.py`, `test_engine_and_input_contracts.py`)
-- Pre-condition: All 389 tests covering 100% of subsystems continue passing with zero regressions.
+- Pre-condition: All 393 tests covering 100% of subsystems continue passing with zero regressions.
