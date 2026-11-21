@@ -8,7 +8,9 @@ Valida:
 
 import os
 import sys
+import tempfile
 import unittest
+from unittest.mock import patch
 import pygame
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
@@ -36,27 +38,41 @@ class TestUICenteringM3(unittest.TestCase):
         pygame.font.init()
         cls.janela = Window(LARGURA_TELA, ALTURA_TELA, "TestWindow", resizavel=False, pixel_art=True)
 
+    def setUp(self):
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.temp_save = os.path.join(self._tmpdir.name, "save.json")
+        self._p1 = patch("src.utils.constantes.SAVE_FILE_PATH", self.temp_save)
+        self._p2 = patch("src.cenas.gameplay.SAVE_FILE_PATH", self.temp_save)
+        self._p1.start()
+        self._p2.start()
+
+    def tearDown(self):
+        self._p2.stop()
+        self._p1.stop()
+        self._tmpdir.cleanup()
+
     def test_menu_principal_titulos_e_opcoes_centralizados(self):
-        """Renderiza MenuPrincipalScene real e verifica que título e opções pintam pixels na coluna central (x=400)."""
+        """Renderiza MenuPrincipalScene real e verifica que título e opções pintam pixels na coluna central (x=640)."""
         cena_menu = MenuPrincipalScene()
         screen = cena_menu.janela.screen
         screen.fill((0, 0, 0))
         cena_menu.draw()
 
-        # Verifica que há pixels renderizados ao redor do eixo central x=400 na faixa do título e das opções
+        # Verifica que há pixels renderizados ao redor do eixo central x=640 na faixa do título e das opções
+        centro_x = LARGURA_TELA // 2
         pixels_centro_titulo = [
             screen.get_at((x, y))[:3]
-            for x in range(340, 460, 4)
+            for x in range(centro_x - 60, centro_x + 60, 4)
             for y in range(70, 150, 4)
         ]
         cor_fundo = screen.get_at((5, 5))[:3]
         self.assertTrue(
             any(c != cor_fundo for c in pixels_centro_titulo),
-            "Título do MenuPrincipalScene deve renderizar pixels visíveis centralizados em torno de x=400."
+            "Título do MenuPrincipalScene deve renderizar pixels visíveis centralizados em torno de x=640."
         )
 
     def test_hud_timer_e_abates_centralizados(self):
-        """Renderiza GameplayScene._desenhar_hud_tela real e verifica timer e abates no topo central (x=400)."""
+        """Renderiza GameplayScene._desenhar_hud_tela real e verifica timer e abates no topo central (x=640)."""
         cena = GameplayScene()
         cena.tempo_sobrevivencia = 165.0
         cena.abates = 42
@@ -64,9 +80,10 @@ class TestUICenteringM3(unittest.TestCase):
         screen.fill((0, 0, 0))
         cena._desenhar_hud_tela(hud_visivel=True)
 
-        # Verifica pixels não-pretos na faixa central do timer (y=14..36) e abates (y=40..56) em torno de x=400
-        pixels_timer = [screen.get_at((x, y))[:3] for x in range(370, 430, 2) for y in range(14, 36, 2)]
-        pixels_abates = [screen.get_at((x, y))[:3] for x in range(370, 430, 2) for y in range(40, 56, 2)]
+        # Verifica pixels não-pretos na faixa central do timer (y=14..36) e abates (y=40..56) em torno de x=640
+        centro_x = LARGURA_TELA // 2
+        pixels_timer = [screen.get_at((x, y))[:3] for x in range(centro_x - 30, centro_x + 30, 2) for y in range(14, 36, 2)]
+        pixels_abates = [screen.get_at((x, y))[:3] for x in range(centro_x - 30, centro_x + 30, 2) for y in range(40, 56, 2)]
         self.assertTrue(any(c != (0, 0, 0) for c in pixels_timer), "Timer do HUD deve ser renderizado no topo central.")
         self.assertTrue(any(c != (0, 0, 0) for c in pixels_abates), "Contador de abates do HUD deve ser renderizado no topo central.")
 
@@ -80,7 +97,18 @@ class TestWeaponSwitchingAndClickInputsM3(unittest.TestCase):
     """Testa troca de armas (1, 2, 3) e mecânica de disparo por clique."""
 
     def setUp(self):
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.temp_save = os.path.join(self._tmpdir.name, "save.json")
+        self._p1 = patch("src.utils.constantes.SAVE_FILE_PATH", self.temp_save)
+        self._p2 = patch("src.cenas.gameplay.SAVE_FILE_PATH", self.temp_save)
+        self._p1.start()
+        self._p2.start()
         self.jogador = Jogador(x=400, y=300)
+
+    def tearDown(self):
+        self._p2.stop()
+        self._p1.stop()
+        self._tmpdir.cleanup()
 
     def test_selecao_e_obtencao_de_arma_ativa(self):
         # Por padrão slot_ativo é 2 (Pistola)

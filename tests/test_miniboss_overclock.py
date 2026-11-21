@@ -5,7 +5,9 @@ Modal de Overclock e os 6 Módulos de BIOS.
 """
 
 import os
+import tempfile
 import unittest
+from unittest.mock import patch
 import math
 import pygame
 
@@ -36,9 +38,20 @@ class TestMiniBossOverclockSystem(unittest.TestCase):
         pygame.init()
 
     def setUp(self):
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.temp_save = os.path.join(self._tmpdir.name, "save.json")
+        self._p1 = patch("src.utils.constantes.SAVE_FILE_PATH", self.temp_save)
+        self._p2 = patch("src.cenas.gameplay.SAVE_FILE_PATH", self.temp_save)
+        self._p1.start()
+        self._p2.start()
         self.jogador = Jogador(x=400, y=300)
         self.spawner = SistemaSpawn()
         self.sistema_drops = SistemaDrops()
+
+    def tearDown(self):
+        self._p2.stop()
+        self._p1.stop()
+        self._tmpdir.cleanup()
 
     def test_miniboss_schedule_4_tiers_and_names(self):
         """Valida a configuração oficial dos 4 tiers de mini-bosses."""
@@ -355,7 +368,7 @@ class TestMiniBossOverclockSystem(unittest.TestCase):
         self.assertTrue(jogador.escudo_fatal_pronto)
 
     def test_overclock_6_upgrade_barramento_speed(self):
-        """Valida Overclock 6: Upgrade de Barramento (+40% velocidade de movimento)."""
+        """Valida Overclock 6: Upgrade de Barramento (+15% velocidade de movimento)."""
         jogador = Jogador(x=400, y=300)
         vel_base = jogador.velocidade_base
 
@@ -365,7 +378,7 @@ class TestMiniBossOverclockSystem(unittest.TestCase):
         jogador.aplicar_overclock("upgrade_barramento")
         self.assertTrue(jogador.upgrade_barramento)
         jogador.update(0.1)
-        self.assertAlmostEqual(jogador.velocidade_atual, vel_base * 1.40, places=4)
+        self.assertAlmostEqual(jogador.velocidade_atual, vel_base * 1.15, places=4)
 
     def test_hud_slot_3b_rendering(self):
         """Valida que GameplayScene._desenhar_hud_tela renderiza Slot 3B na tela quando BIOS Modding está ativo."""

@@ -122,7 +122,9 @@ class TestEmpiricalChallengerMultipliers(unittest.TestCase):
         # Executa update do jogador
         jogador.update(0.1)
 
-        esperado_total = jogador.velocidade_base * esperado_config * 1.08 * 1.15 * 1.15
+        # Com a mecânica de fusão de Drones (MK-I -> MK-II), 2 drones de suporte fundem-se em 1 drone MK-II
+        # aplicando o multiplicador de suporte (x1.15)
+        esperado_total = jogador.velocidade_base * esperado_config * 1.08 * 1.15
         self.assertAlmostEqual(jogador.velocidade_atual, esperado_total, places=3)
 
     def test_extreme_enemy_debuffs_and_scaling_combination(self):

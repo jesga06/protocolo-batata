@@ -54,7 +54,7 @@ from src.entidades.jogador import Jogador
 from src.entidades.drop import ItemDrop
 from src.entidades.projetil import Projetil
 from src.entidades.inimigos.geladeira_tsunami import (
-    GeladeiraTsunami, ESTADO_INTRO, ESTADO_FASE1,
+    GeladeiraTsunami, CaixaDeSomBoss, ESTADO_INTRO, ESTADO_FASE1,
     ESTADO_FASE2, ESTADO_FASE3, ESTADO_MORTE
 )
 from src.armas import (
@@ -284,7 +284,7 @@ class TestTier1FeatureCoverage(unittest.TestCase):
         jogador.aplicar_overclock("upgrade_barramento")
         self.assertTrue(jogador.upgrade_barramento)
         jogador.update(0.01)
-        self.assertAlmostEqual(jogador.velocidade_atual, jogador.velocidade_base * 1.40, delta=0.5)
+        self.assertAlmostEqual(jogador.velocidade_atual, jogador.velocidade_base * 1.15, delta=0.5)
 
     # --- R3: Geladeira Tsunami Entity Dimensions & Assets ---
     def test_t1_geladeira_tsunami_entity_dimensions_and_assets(self):
@@ -508,9 +508,9 @@ class TestTier2BoundaryAndCornerCases(unittest.TestCase):
         self.assertEqual(self.sistema_xp.nivel, 12)
         self.assertEqual(self.sistema_xp.xp_atual, 100)
 
-        # Teto no Nível 20 Máximo
+        # Teto no Nível 12 Máximo
         self.sistema_xp.adicionar_xp(999999)
-        self.assertEqual(self.sistema_xp.nivel, 20)
+        self.assertEqual(self.sistema_xp.nivel, 12)
 
     def test_t2_fatal_shield_cooldown_starts_after_invuln(self):
         """Valida que o cooldown de 60s do Escudo Fatal só começa APÓS os 4s de invulnerabilidade."""
@@ -657,13 +657,13 @@ class TestTier4RealWorldScenarios(unittest.TestCase):
         self.assertFalse(cena.boss_cutscene_ativa)
         self.assertEqual(boss.estado, ESTADO_FASE1)
 
-        # 5. Combate Fase 1 -> Dano até 60% HP -> Fase 2
-        boss.receber_dano(1000)
+        # 5. Combate Fase 1 -> Dano até 60% HP (<= 3900 de 6500) -> Fase 2
+        boss.receber_dano(2700)
         boss.update(0.1, (cena.jogador.x, cena.jogador.y))
         self.assertEqual(boss.estado, ESTADO_FASE2)
 
-        # 6. Combate Fase 2 -> Dano até 20% HP -> Fase 3
-        boss.receber_dano(1000)
+        # 6. Combate Fase 2 -> Dano até 20% HP (<= 1300 de 6500) -> Fase 3
+        boss.receber_dano(2700)
         boss.update(0.1, (cena.jogador.x, cena.jogador.y))
         self.assertEqual(boss.estado, ESTADO_FASE3)
 
@@ -678,6 +678,35 @@ class TestTier4RealWorldScenarios(unittest.TestCase):
         # 9. GameplayScene detecta morte e aciona Vitória
         cena.loop()
         self.assertTrue(cena.vitoria)
+
+    def test_boss_cutscene_nao_instancia_chefe_durante_whiteout_e_blackout(self):
+        """Valida que iniciar_boss_cutscene não instancia chefe_final durante whiteout e blackout."""
+        cena = GameplayScene()
+        cena.iniciar_boss_cutscene()
+        self.assertTrue(cena.boss_cutscene_ativa)
+        self.assertEqual(cena.boss_cutscene_fase, "whiteout")
+        self.assertIsNone(cena.chefe_final)
+
+        # Transição para blackout
+        cena.boss_cutscene_timer = 2.0
+        cena.loop()
+        self.assertEqual(cena.boss_cutscene_fase, "blackout")
+        self.assertIsNone(cena.chefe_final)
+
+        # Transição para musica_in -> chefe_final é instanciado
+        cena.boss_cutscene_timer = 1.0
+        cena.loop()
+        self.assertEqual(cena.boss_cutscene_fase, "musica_in")
+        self.assertIsNotNone(cena.chefe_final)
+
+    def test_caixa_de_som_boss_atributos_e_comportamento(self):
+        """Valida propriedades de CaixaDeSomBoss (hp == 240, is_caixa_som == True)."""
+        caixa = CaixaDeSomBoss(x=100.0, y=150.0)
+        self.assertEqual(caixa.hp, 240)
+        self.assertTrue(getattr(caixa, "is_caixa_som", False))
+        self.assertEqual(caixa.largura, 40)
+        self.assertEqual(caixa.altura, 40)
+        self.assertEqual(caixa.velocidade, 0.0)
 
 
 
