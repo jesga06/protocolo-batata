@@ -15,7 +15,7 @@ from src.utils.constantes import (
 
 class LancaFoguetes(ArmaBase):
     """
-    Lança-Foguetes com 12 munições e detonação AoE de 80px.
+    Lança-Foguetes com 18 munições e detonação AoE de 80px.
     """
 
     def __init__(

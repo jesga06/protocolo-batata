@@ -16,7 +16,7 @@ from src.utils.constantes import (
 
 class Minigun(ArmaBase):
     """
-    Minigun de alta cadência com 150 tiros e leve dispersão angular.
+    Minigun de alta cadência com 225 tiros e leve dispersão angular.
     """
 
     def __init__(

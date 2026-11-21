@@ -31,6 +31,14 @@ class ArmaBase(ABC):
         self.slot = int(slot)
         self.icone_asset = icone_asset
 
+    @property
+    def cooldown_atual(self) -> float:
+        return self.tempo_recarga_restante
+
+    @cooldown_atual.setter
+    def cooldown_atual(self, valor: float):
+        self.tempo_recarga_restante = float(valor)
+
     def update(self, dt: float):
         """Decrementa o tempo de recarga com base no Delta Time."""
         if self.tempo_recarga_restante > 0.0:

@@ -16,7 +16,7 @@ from src.utils.constantes import (
 
 class Shotgun(ArmaBase):
     """
-    Escopeta de 30 cartuchos com dispersão de 5 pellets em um cone de 0.35 rad.
+    Escopeta de 45 cartuchos com dispersão de 9 pellets em um cone de 0.45 rad.
     """
 
     def __init__(
@@ -43,7 +43,7 @@ class Shotgun(ArmaBase):
 
     def disparar(self, origem_x: float, origem_y: float, destino_x: float, destino_y: float) -> list[Projetil]:
         """
-        Dispara 5 pellets distribuídos simetricamente no arco angular de 0.35 rad e consome 1 cartucho.
+        Dispara 9 pellets distribuídos simetricamente no arco angular de 0.45 rad e consome 1 cartucho.
         """
         if not self.pode_atirar():
             return []

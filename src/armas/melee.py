@@ -52,12 +52,13 @@ class Melee(ArmaBase):
         mira_x: float = None,
         mira_y: float = None,
         angulo_mira: float = None,
-        arco_graus: float = None
+        arco_graus: float = None,
+        aplicar_dano: bool = True
     ) -> list:
         """
-        Executa o golpe corpo-a-corpo: causa dano a todos os inimigos no cone direcional de alcance
+        Executa o golpe corpo-a-corpo: causa dano a todos os inimigos no cone direcional de alcance (109px)
         e aplica knockback aos alvos mais próximos.
-        Se mira_x/mira_y ou angulo_mira for fornecido, filtra estritamente pelo cone de arco_graus (45°).
+        Se mira_x/mira_y ou angulo_mira for fornecido, filtra estritamente pelo cone de arco_graus (60°).
         Caso contrário, mantém compatibilidade radial.
         Retorna a lista de inimigos atingidos.
         """
@@ -109,10 +110,21 @@ class Melee(ArmaBase):
         # Ordena do mais próximo para o mais distante
         atingidos.sort(key=lambda item: item[1])
 
-        # Aplica dano a todos os atingidos no cone
+        # Aplica dano a todos os atingidos no cone se aplicar_dano for True
         inimigos_afetados = []
         for idx, (inimigo, dist, cx, cy) in enumerate(atingidos):
-            inimigo.receber_dano(self.dano)
+            if aplicar_dano:
+                ang_base = ang_mira if ang_mira is not None else math.atan2(cy - origem_y, cx - origem_x)
+                dir_ataque = (math.cos(ang_base), math.sin(ang_base))
+                try:
+                    inimigo.receber_dano(
+                        self.dano,
+                        origem_x=origem_x,
+                        origem_y=origem_y,
+                        dir_ataque=dir_ataque
+                    )
+                except TypeError:
+                    inimigo.receber_dano(self.dano)
             inimigos_afetados.append(inimigo)
 
             # Aplica knockback aos N alvos mais próximos

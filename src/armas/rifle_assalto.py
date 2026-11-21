@@ -14,7 +14,7 @@ from src.utils.constantes import (
 
 class RifleAssalto(ArmaBase):
     """
-    Rifle de assalto com 60 tiros, alta cadência e máxima precisão linear.
+    Rifle de assalto com 90 tiros, alta cadência e máxima precisão linear.
     """
 
     def __init__(

@@ -15,7 +15,7 @@ from src.utils.constantes import (
 
 class LancaGranadas(ArmaBase):
     """
-    Lança-Granadas com 16 projéteis explosivos de raio 65px.
+    Lança-Granadas com 24 projéteis explosivos de raio 65px.
     """
 
     def __init__(

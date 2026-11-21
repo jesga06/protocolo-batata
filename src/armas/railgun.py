@@ -100,8 +100,8 @@ class Railgun(ArmaBase):
             dir_x = 1.0
 
         projetil_perfurante = Projetil(
-            x=origem_x - 4,
-            y=origem_y - 4,
+            x=origem_x - 6,
+            y=origem_y - 6,
             dir_x=dir_x,
             dir_y=dir_y,
             velocidade=self.velocidade_projetil,
