@@ -61,6 +61,7 @@ class InimigoRanged(InimigoBase):
         self.timer_tiro = 0.0
         self.dano_projetil = int(dano_projetil)
         self.vel_projetil = float(vel_projetil)
+        self.rajada_tripla: bool = False
         self.projeteis_pendentes: list[Projetil] = []
         self._ultima_pos_alvo: tuple[float, float] = None
         self._vel_alvo_estimada: tuple[float, float] = (0.0, 0.0)
@@ -152,21 +153,49 @@ class InimigoRanged(InimigoBase):
                 base_dir_x = 1.0
             dir_x, dir_y = base_dir_x, base_dir_y
 
-        proj = Projetil(
-            x=cx - 5.0,
-            y=cy - 5.0,
-            dir_x=dir_x,
-            dir_y=dir_y,
-            velocidade=self.vel_projetil,
-            dano=self.dano_projetil,
-            tempo_vida=3.5,
-            dono="inimigo",
-            largura=10,
-            altura=10,
-            sprite_key="projetil_inimigo"
-        )
-        self.projeteis_pendentes.append(proj)
-        return proj
+        ang_central = math.atan2(dir_y, dir_x)
+
+        if getattr(self, "rajada_tripla", False):
+            offsets = [-0.28, 0.0, 0.28]
+            primeiro_proj = None
+            for off in offsets:
+                ang_tiro = ang_central + off
+                p_dir_x = math.cos(ang_tiro)
+                p_dir_y = math.sin(ang_tiro)
+                proj = Projetil(
+                    x=cx - 5.0,
+                    y=cy - 5.0,
+                    dir_x=p_dir_x,
+                    dir_y=p_dir_y,
+                    velocidade=250.0,
+                    dano=self.dano_projetil,
+                    tempo_vida=3.5,
+                    dono="inimigo",
+                    largura=10,
+                    altura=10,
+                    sprite_key="projetil_inimigo"
+                )
+                self.projeteis_pendentes.append(proj)
+                if primeiro_proj is None:
+                    primeiro_proj = proj
+            return primeiro_proj
+        else:
+            vel_tiro = float(getattr(self, "vel_projetil", 250.0))
+            proj = Projetil(
+                x=cx - 5.0,
+                y=cy - 5.0,
+                dir_x=dir_x,
+                dir_y=dir_y,
+                velocidade=vel_tiro,
+                dano=self.dano_projetil,
+                tempo_vida=3.5,
+                dono="inimigo",
+                largura=10,
+                altura=10,
+                sprite_key="projetil_inimigo"
+            )
+            self.projeteis_pendentes.append(proj)
+            return proj
 
     def obter_projeteis_pendentes(self) -> list[Projetil]:
         """Retorna e limpa a fila de projéteis disparados pelo inimigo."""

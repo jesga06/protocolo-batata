@@ -72,17 +72,24 @@ class SistemaSpawn:
         """
         Seleciona a classe do inimigo a ser gerado com base no tempo de sobrevivência.
         Distribuição suavizada com Tank reduzido para 5% dos spawns avançados.
-        Se permitir_ranged for False, InimigoRanged é substituído por InimigoPadrao.
+        A partir de 35s inclui InimigoRanged nativamente (12% sem permitir_ranged, 25% com permitir_ranged).
         """
         if tempo_s < 25.0:
             return InimigoPadrao
 
         r = random.random()
+
+        # A partir de 35.0s, inclui InimigoRanged nativamente
+        if tempo_s >= 35.0:
+            chance_ranged = 0.25 if permitir_ranged else 0.12
+            if r < chance_ranged:
+                return InimigoRanged
+
         if tempo_s < 55.0:
-            # 75% Padrão, 25% Rápido
+            # Padrão e Rápido
             return InimigoRapido if r < 0.25 else InimigoPadrao
         elif tempo_s < 90.0:
-            # 40% Padrão, 30% Rápido, 15% Phasing, 15% Blindado
+            # Padrão, Rápido, Phasing, Blindado
             if r < 0.30:
                 return InimigoRapido
             elif r < 0.45:
@@ -91,7 +98,7 @@ class SistemaSpawn:
                 return InimigoBlindado
             return InimigoPadrao
         else:
-            # Mistura avançada: Rápido (25%), Ranged (18%), Phasing (14%), Blindado (13%), Tank (5%), Padrão (25%)
+            # Mistura avançada
             if r < 0.25:
                 return InimigoRapido
             elif r < 0.43:
@@ -179,6 +186,13 @@ class SistemaSpawn:
                         arena_h=arena_h
                     )
                     boss_elite = cls_elite(x=ex, y=ey, is_elite=True, nome_elite=nome_elite)
+                    mapa_arq = {
+                        1: "impressora_matricial",
+                        2: "fonte_generica",
+                        3: "roteador_corporativo",
+                        4: "nobreak_chumbado"
+                    }
+                    boss_elite.arquetipo_miniboss = mapa_arq.get(idx_boss + 1, "")
                     if hp_mult != 1.0:
                         boss_elite.hp_max = max(1, int(round(boss_elite.hp_max * hp_mult)))
                         boss_elite.hp = boss_elite.hp_max
@@ -213,6 +227,8 @@ class SistemaSpawn:
                         sx = clamp(sx, 0.0, max(0.0, arena_w - 42.0))
                         sy = clamp(sy, 0.0, max(0.0, arena_h - 42.0))
                     novo = cls_arquetipo(x=sx, y=sy)
+                    if cls_arquetipo == InimigoRanged and permitir_ranged:
+                        novo.rajada_tripla = True
                     if hp_mult != 1.0:
                         novo.hp_max = max(1, int(round(novo.hp_max * hp_mult)))
                         novo.hp = novo.hp_max

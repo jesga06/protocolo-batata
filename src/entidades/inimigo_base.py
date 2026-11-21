@@ -8,8 +8,10 @@ recebimento de dano, knockback e renderização.
 import os
 import math
 import pygame
-from src.utils.constantes import ASSETS_DIR, ASSET_PATHS, obter_caminho_asset, INIMIGO_PADRAO_HP
-from src.utils.math_utils import vetor_direcao, colisao_aabb, lerp
+from src.utils.constantes import ASSETS_DIR, ASSET_PATHS, obter_caminho_asset, INIMIGO_PADRAO_HP, LARGURA_TELA, ALTURA_TELA
+from src.utils.math_utils import vetor_direcao, colisao_aabb, lerp, normalizar_vetor, rotacionar_vetor
+from src.utils.pixel_art_sprites import obter_sprite_inimigo
+from src.entidades.projetil import Projetil
 
 
 class InimigoBase:
@@ -81,6 +83,24 @@ class InimigoBase:
         self.vy_knockback = 0.0
         self.sprite_key = sprite_key
 
+        self.anim_timer = 0.0
+        self.arquetipo_miniboss = ""
+        self.timer_habilidade_elite = 0.0
+        self.subestado_elite = "normal"
+        self.projeteis_elite_pendentes = []
+        self.pulso_eletrico_pendente = False
+        self.aviso_curto_circuito = False
+        self.em_sobrecarga_final = False
+        self.explodiu_sobrecarga = False
+        self.elegivel_abate_rapido = False
+        self._dir_mov = (1.0, 0.0)
+
+    def obter_projeteis_pendentes(self) -> list[Projetil]:
+        """Retorna e esvazia a lista de projéteis gerados pelo inimigo ou mini-boss."""
+        projeteis = list(self.projeteis_elite_pendentes)
+        self.projeteis_elite_pendentes.clear()
+        return projeteis
+
 
     @classmethod
     def _obter_sprite(cls, chave):
@@ -114,34 +134,165 @@ class InimigoBase:
         if not self.vivo:
             return
 
+        self.anim_timer += dt
+
+        # Gerenciamento de vida e sobrecarga de Mini-Boss / Elite
+        if self.is_elite and self.tempo_vida_restante is not None:
+            self.tempo_vida_restante -= dt
+            self.thermal_overload_timer = self.tempo_vida_restante
+            self.tempo_vida_elite = self.tempo_vida_restante
+            self.elegivel_abate_rapido = (self.tempo_vida_restante >= 30.0)
+
+            if 0.0 < self.tempo_vida_restante <= 15.0:
+                self.em_sobrecarga_final = True
+            else:
+                self.em_sobrecarga_final = False
+
+            if self.tempo_vida_restante <= 0.0:
+                self.tempo_vida_restante = 0.0
+                self.thermal_overload_timer = 0.0
+                self.tempo_vida_elite = 0.0
+                self.superaqueceu = True
+                self.explodiu_sobrecarga = True
+                self.vivo = False
+                self.xp_valor = 0
+                return
+
         cx = self.x + self.largura / 2.0
         cy = self.y + self.altura / 2.0
         tx, ty = getattr(self, "pos_alvo_override", None) or pos_alvo
 
         # Cálculo do vetor unitário beeline a partir do centro real
         ux, uy = vetor_direcao(cx, cy, tx, ty)
+        if ux != 0.0 or uy != 0.0:
+            self._dir_mov = (ux, uy)
 
-        # Atualiza posição combinando velocidade própria (respeitando slow_timer) e knockback residual
+        # Atualiza posição combinando velocidade própria (respeitando slow_timer e sobrecarga) e knockback residual
         vel_efetiva = self.velocidade * (self.slow_fator if getattr(self, "slow_timer", 0.0) > 0.0 else 1.0)
+        if getattr(self, "em_sobrecarga_final", False):
+            vel_efetiva *= 1.35
+
+        # Comportamentos específicos dos 4 Mini-Bosses
+        if self.is_elite and not getattr(self, "is_boss", False) and self.arquetipo_miniboss:
+            arq = self.arquetipo_miniboss
+            self.timer_habilidade_elite += dt
+
+            if arq == "impressora_matricial":
+                # Arrancada a cada 3.2s (380 px/s por 0.5s) e dispara 2 projéteis perpendiculares
+                if self.subestado_elite == "dash":
+                    if self.timer_habilidade_elite >= 0.5:
+                        self.subestado_elite = "normal"
+                        self.timer_habilidade_elite = 0.0
+                    else:
+                        vel_efetiva = 380.0
+                        dash_dir = getattr(self, "_dash_dir", (ux, uy))
+                        ux, uy = dash_dir
+                else:
+                    if self.timer_habilidade_elite >= 3.2:
+                        self.subestado_elite = "dash"
+                        self.timer_habilidade_elite = 0.0
+                        self._dash_dir = (ux, uy) if (ux != 0.0 or uy != 0.0) else (1.0, 0.0)
+                        dx, dy = self._dash_dir
+                        # 2 projéteis perpendiculares: rotação +90° e -90° (ou (+dy, -dx) e (-dy, +dx))
+                        perp1 = (-dy, dx)
+                        perp2 = (dy, -dx)
+                        for px_dir, py_dir in [perp1, perp2]:
+                            p = Projetil(
+                                x=cx - 4.0,
+                                y=cy - 4.0,
+                                dir_x=px_dir,
+                                dir_y=py_dir,
+                                velocidade=240.0,
+                                dano=12,
+                                tempo_vida=3.0,
+                                dono="inimigo",
+                                largura=8,
+                                altura=8,
+                                sprite_key="projetil_inimigo"
+                            )
+                            self.projeteis_elite_pendentes.append(p)
+
+            elif arq == "fonte_generica":
+                # A cada 5.0s, aviso de curto-circuito por 0.7s (fica parado) e então pulso elétrico + 6 projéteis radiais
+                if self.subestado_elite == "aviso":
+                    vel_efetiva = 0.0
+                    if self.timer_habilidade_elite >= 0.7:
+                        self.subestado_elite = "normal"
+                        self.timer_habilidade_elite = 0.0
+                        self.aviso_curto_circuito = False
+                        self.pulso_eletrico_pendente = True
+                        for i in range(6):
+                            ang = (2.0 * math.pi / 6.0) * i
+                            p = Projetil(
+                                x=cx - 4.0,
+                                y=cy - 4.0,
+                                dir_x=math.cos(ang),
+                                dir_y=math.sin(ang),
+                                velocidade=220.0,
+                                dano=14,
+                                tempo_vida=3.0,
+                                dono="inimigo",
+                                largura=8,
+                                altura=8,
+                                sprite_key="projetil_inimigo"
+                            )
+                            self.projeteis_elite_pendentes.append(p)
+                else:
+                    if self.timer_habilidade_elite >= 5.0:
+                        self.subestado_elite = "aviso"
+                        self.timer_habilidade_elite = 0.0
+                        self.aviso_curto_circuito = True
+                        vel_efetiva = 0.0
+
+            elif arq == "roteador_corporativo":
+                # A cada 3.5s, anel radial de 8 projéteis
+                if self.timer_habilidade_elite >= 3.5:
+                    self.timer_habilidade_elite = 0.0
+                    for i in range(8):
+                        ang = (2.0 * math.pi / 8.0) * i
+                        p = Projetil(
+                            x=cx - 4.0,
+                            y=cy - 4.0,
+                            dir_x=math.cos(ang),
+                            dir_y=math.sin(ang),
+                            velocidade=230.0,
+                            dano=12,
+                            tempo_vida=3.0,
+                            dono="inimigo",
+                            largura=8,
+                            altura=8,
+                            sprite_key="projetil_inimigo"
+                        )
+                        self.projeteis_elite_pendentes.append(p)
+
+            elif arq == "nobreak_chumbado":
+                # A cada 2.6s, leque de 5 projéteis (spread total 0.6 rad) na direção de pos_alvo
+                if self.timer_habilidade_elite >= 2.6:
+                    self.timer_habilidade_elite = 0.0
+                    ang_alvo = math.atan2(ty - cy, tx - cx)
+                    step_ang = 0.6 / 4.0  # 5 tiros no intervalo [-0.3, +0.3]
+                    for i in range(5):
+                        ang = ang_alvo - 0.3 + i * step_ang
+                        p = Projetil(
+                            x=cx - 4.0,
+                            y=cy - 4.0,
+                            dir_x=math.cos(ang),
+                            dir_y=math.sin(ang),
+                            velocidade=250.0,
+                            dano=14,
+                            tempo_vida=3.0,
+                            dono="inimigo",
+                            largura=8,
+                            altura=8,
+                            sprite_key="projetil_inimigo"
+                        )
+                        self.projeteis_elite_pendentes.append(p)
+
         vx = ux * vel_efetiva + self.vx_knockback
         vy = uy * vel_efetiva + self.vy_knockback
 
         self.x += vx * dt
         self.y += vy * dt
-
-        # Decrementa timer de superaquecimento para Mini-Bosses / Elites (60s)
-        if self.is_elite and self.tempo_vida_restante is not None:
-            self.tempo_vida_restante -= dt
-            self.thermal_overload_timer = self.tempo_vida_restante
-            self.tempo_vida_elite = self.tempo_vida_restante
-            if self.tempo_vida_restante <= 0.0:
-                self.tempo_vida_restante = 0.0
-                self.thermal_overload_timer = 0.0
-                self.tempo_vida_elite = 0.0
-                self.superaqueceu = True
-                self.vivo = False
-                self.xp_valor = 0
-                return
 
         # Decaimento suave do knockback
         self.vx_knockback = lerp(self.vx_knockback, 0.0, min(1.0, 10.0 * dt))
@@ -185,6 +336,28 @@ class InimigoBase:
             return 0
 
         dano_aplicado = int(quantidade)
+        dir_ataque = kwargs.get("dir_ataque", None)
+        if dir_ataque is None and len(args) >= 3:
+            dir_ataque = args[2]
+
+        if getattr(self, "arquetipo_miniboss", "") == "nobreak_chumbado" and dir_ataque is not None:
+            adx, ady = normalizar_vetor(dir_ataque[0], dir_ataque[1])
+            # Direção de movimento do boss (prioriza facing_x/facing_y de inimigo blindado, depois _dir_mov)
+            if hasattr(self, "facing_x") and hasattr(self, "facing_y"):
+                mx, my = self.facing_x, self.facing_y
+            elif hasattr(self, "_dir_mov"):
+                mx, my = self._dir_mov
+            elif hasattr(self, "_dash_dir"):
+                mx, my = self._dash_dir
+            else:
+                mx, my = (0.0, 0.0)
+
+            if (mx != 0.0 or my != 0.0) and (adx != 0.0 or ady != 0.0):
+                # Produto escalar entre vetor de ataque e vetor de movimento
+                dot = adx * mx + ady * my
+                if dot < -0.2:
+                    dano_aplicado = max(1, int(dano_aplicado * 0.5))
+
         self.hp -= dano_aplicado
         self.flash_timer = 0.10
 
@@ -230,8 +403,8 @@ class InimigoBase:
         draw_y = camera.transform_y(self.y) if camera else self.y
 
         # Não desenha se fora da tela (margem dinâmica baseada no tamanho da entidade)
-        largura_tela = getattr(janela, "largura", 800)
-        altura_tela = getattr(janela, "altura", 600)
+        largura_tela = getattr(janela, "largura", LARGURA_TELA)
+        altura_tela = getattr(janela, "altura", ALTURA_TELA)
         margem = max(80, self.largura, self.altura)
         if draw_x < -margem or draw_x > largura_tela + margem or draw_y < -margem or draw_y > altura_tela + margem:
             return
@@ -278,6 +451,15 @@ class InimigoBase:
                 pygame.draw.rect(screen, (255, 215, 0), (ix - 2, iy - 2, w + 4, h + 4), width=2)
             return
 
+        # Bobbing vertical e aviso de curto circuito para Mini-Boss
+        offset_bob = int(abs(math.sin(self.anim_timer * 8.0)) * 3.0)
+        draw_y -= offset_bob
+
+        if getattr(self, "aviso_curto_circuito", False):
+            centro_aviso_x = int(draw_x + self.largura / 2.0)
+            centro_aviso_y = int(draw_y + self.altura / 2.0)
+            pygame.draw.circle(screen, (255, 140, 0), (centro_aviso_x, centro_aviso_y), 110, width=2)
+
         # Renderiza aura pulsante roxa e dourada se for Elite/Mini-Boss
         display_inited = pygame.display.get_init()
         if getattr(self, "is_elite", False):
@@ -307,7 +489,21 @@ class InimigoBase:
             except Exception:
                 pass
 
-        sprite = self._obter_sprite(self.sprite_key)
+        sprite = None
+        if not getattr(self, "is_boss", False):
+            try:
+                sprite = obter_sprite_inimigo(
+                    self.sprite_key,
+                    self.largura,
+                    self.altura,
+                    self.is_elite,
+                    getattr(self, "arquetipo_miniboss", "")
+                )
+            except Exception:
+                sprite = None
+
+        if sprite is None:
+            sprite = self._obter_sprite(self.sprite_key)
         if sprite is not None:
             if getattr(self, "is_elite", False):
                 cache_key = (self.sprite_key, self.largura, self.altura)
