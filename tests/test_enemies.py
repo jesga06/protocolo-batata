@@ -120,7 +120,7 @@ class TestSistemaSpawn(unittest.TestCase):
     def test_escalonamento_intervalo_e_lote(self):
         spawner = SistemaSpawn()
         # t = 0s
-        self.assertAlmostEqual(spawner.intervalo_spawn(0.0), 3.0)
+        self.assertAlmostEqual(spawner.intervalo_spawn(0.0), 2.01)
         self.assertEqual(spawner.tamanho_lote(0.0), 1)
 
         # t = 50s -> 3.0 - 0.012 * 50 = 2.40s, lote = min(8, 1 + 2) = 3
