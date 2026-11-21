@@ -91,15 +91,8 @@ class InimigoRanged(InimigoBase):
             self._vel_alvo_estimada = (vx_est, vy_est)
         self._ultima_pos_alvo = (tx, ty)
 
-        if abs(self.y - ty) < 1e-4:
-            dist = abs(tx - self.x)
-            ux, uy = (1.0 if tx > self.x else -1.0), 0.0
-        elif abs(self.x - tx) < 1e-4:
-            dist = abs(ty - self.y)
-            ux, uy = 0.0, (1.0 if ty > self.y else -1.0)
-        else:
-            dist = distancia(cx, cy, tx, ty)
-            ux, uy = vetor_direcao(cx, cy, tx, ty)
+        dist = distancia(cx, cy, tx, ty)
+        ux, uy = vetor_direcao(cx, cy, tx, ty)
 
         # Comportamento de Movimentação: stand-off a 280px
         if dist > self.distancia_standoff:
@@ -134,7 +127,6 @@ class InimigoRanged(InimigoBase):
 
     def disparar(self, pos_alvo: tuple[float, float], vel_alvo: tuple[float, float] = None) -> Projetil:
         """Gera e enfileira um novo projétil inimigo com previsão de movimento (Lead Target) e imperfeição."""
-        import random
         cx = self.x + self.largura / 2.0
         cy = self.y + self.altura / 2.0
         tx, ty = pos_alvo
@@ -155,19 +147,14 @@ class InimigoRanged(InimigoBase):
             dir_x = math.cos(ang_disp)
             dir_y = math.sin(ang_disp)
         else:
-            if abs(self.y - ty) < 1e-4:
-                base_dir_x, base_dir_y = (1.0 if tx > self.x else -1.0), 0.0
-            elif abs(self.x - tx) < 1e-4:
-                base_dir_x, base_dir_y = 0.0, (1.0 if ty > self.y else -1.0)
-            else:
-                base_dir_x, base_dir_y = vetor_direcao(cx, cy, tx, ty)
+            base_dir_x, base_dir_y = vetor_direcao(cx, cy, tx, ty)
             if base_dir_x == 0.0 and base_dir_y == 0.0:
                 base_dir_x = 1.0
             dir_x, dir_y = base_dir_x, base_dir_y
 
         proj = Projetil(
-            x=cx - 4.0,
-            y=cy - 4.0,
+            x=cx - 5.0,
+            y=cy - 5.0,
             dir_x=dir_x,
             dir_y=dir_y,
             velocidade=self.vel_projetil,

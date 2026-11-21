@@ -326,11 +326,13 @@ class Jogador:
             elif hasattr(teclado, "key_down") and teclado.key_down("3"):
                 self.selecionar_slot(3)
 
-        if mov_mouse and mouse is not None:
+        if mov_mouse and preset_teclas != "uma_mao" and mouse is not None:
             try:
                 import math
                 mx, my = mouse.get_position()
-                if camera is not None:
+                if camera is not None and hasattr(camera, "obter_mouse_mundo"):
+                    mx, my = camera.obter_mouse_mundo(mx, my)
+                elif camera is not None:
                     mx += camera.x
                     my += camera.y
                 cx = self.x + self.largura / 2.0
@@ -397,6 +399,7 @@ class Jogador:
             dy *= 0.70710678118
 
         # Fix 5.3: keybinds_overdrive_dash (direction-reversal dash impulse & shockwave trigger)
+        self.dir_movimento_atual = (dx, dy)
         if dx != 0.0 or dy != 0.0:
             self.ultima_dir_dx = dx
             self.ultima_dir_dy = dy
@@ -412,6 +415,9 @@ class Jogador:
                     if getattr(self, "motion_blur_ghosting", False):
                         self.invulnerabilidade_timer = max(self.invulnerabilidade_timer, 0.40)
             self._ult_dir_x, self._ult_dir_y = dx, dy
+        else:
+            # No modo uma_mao (100% teclado), dispara para cima (0.0, -1.0) quando parado
+            self.dir_movimento = (0.0, -1.0)
 
         # Atualiza posição com velocidade por segundo
         self.x += dx * self.velocidade_atual * dt
@@ -424,10 +430,17 @@ class Jogador:
         self.y = clamp(self.y, 0.0, max_y)
 
         # Orientação visual (facing) baseado na posição virtual do mouse ou na direção
-        if mouse is not None:
+        if preset_teclas == "uma_mao":
+            if dx < 0:
+                self.facing_right = False
+            elif dx > 0:
+                self.facing_right = True
+        elif mouse is not None:
             try:
                 mx, _ = mouse.get_position()
-                if camera is not None:
+                if camera is not None and hasattr(camera, "obter_mouse_mundo"):
+                    mx, _ = camera.obter_mouse_mundo(mx, 0.0)
+                elif camera is not None:
                     mx += camera.x
                 # Se mouse estiver à esquerda do centro do jogador, vira para a esquerda
                 if mx < self.x + self.largura / 2.0:

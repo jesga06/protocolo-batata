@@ -18,6 +18,7 @@ class InimigoBase:
     """
     _sprite_cache = {}
     _aura_cache = {}
+    _flash_cache = {}
 
     def __init__(
         self,
@@ -117,13 +118,8 @@ class InimigoBase:
         cy = self.y + self.altura / 2.0
         tx, ty = getattr(self, "pos_alvo_override", None) or pos_alvo
 
-        # Cálculo do vetor unitário beeline
-        if abs(self.y - ty) < 1e-4:
-            ux, uy = (1.0 if tx > self.x else -1.0), 0.0
-        elif abs(self.x - tx) < 1e-4:
-            ux, uy = 0.0, (1.0 if ty > self.y else -1.0)
-        else:
-            ux, uy = vetor_direcao(cx, cy, tx, ty)
+        # Cálculo do vetor unitário beeline a partir do centro real
+        ux, uy = vetor_direcao(cx, cy, tx, ty)
 
         # Atualiza posição combinando velocidade própria (respeitando slow_timer) e knockback residual
         vel_efetiva = self.velocidade * (self.slow_fator if getattr(self, "slow_timer", 0.0) > 0.0 else 1.0)
@@ -183,12 +179,13 @@ class InimigoBase:
                 return True
         return False
 
-    def receber_dano(self, quantidade: int, *args, **kwargs):
-        """Reduz o HP do inimigo, aciona flash de hit e dispara destruição ao zerar."""
-        if not self.vivo:
-            return
+    def receber_dano(self, quantidade: int, *args, **kwargs) -> int:
+        """Reduz o HP do inimigo, aciona flash de hit, dispara destruição ao zerar e retorna o dano efetivo aplicado."""
+        if not self.vivo or int(quantidade) <= 0:
+            return 0
 
-        self.hp -= int(quantidade)
+        dano_aplicado = int(quantidade)
+        self.hp -= dano_aplicado
         self.flash_timer = 0.10
 
         if self.hp <= 0:
@@ -199,6 +196,7 @@ class InimigoBase:
                 sfx.play()
             except Exception:
                 pass
+        return dano_aplicado
 
     def aplicar_knockback(self, dir_x: float, dir_y: float, forca: float):
         """Aplica impulso de repulsão na direção especificada."""
@@ -231,10 +229,11 @@ class InimigoBase:
         draw_x = camera.transform_x(self.x) if camera else self.x
         draw_y = camera.transform_y(self.y) if camera else self.y
 
-        # Não desenha se fora da tela
+        # Não desenha se fora da tela (margem dinâmica baseada no tamanho da entidade)
         largura_tela = getattr(janela, "largura", 800)
         altura_tela = getattr(janela, "altura", 600)
-        if draw_x < -80 or draw_x > largura_tela + 80 or draw_y < -80 or draw_y > altura_tela + 80:
+        margem = max(80, self.largura, self.altura)
+        if draw_x < -margem or draw_x > largura_tela + margem or draw_y < -margem or draw_y > altura_tela + margem:
             return
 
         screen = getattr(janela, "screen", janela)
@@ -280,25 +279,27 @@ class InimigoBase:
             return
 
         # Renderiza aura pulsante roxa e dourada se for Elite/Mini-Boss
+        display_inited = pygame.display.get_init()
         if getattr(self, "is_elite", False):
             try:
-                ticks = pygame.time.get_ticks() if pygame.display.get_init() else 0
+                ticks = pygame.time.get_ticks() if display_inited else 0
                 pulso = math.sin(ticks / 150.0) * 4.0
                 raio_aura = max(self.largura, self.altura) / 2.0 + 8.0 + pulso
                 centro_x = int(draw_x + self.largura / 2.0)
                 centro_y = int(draw_y + self.altura / 2.0)
 
                 dim_aura = max(10, int((raio_aura + 4.0) * 2))
-                if dim_aura not in self._aura_cache:
+                if display_inited and dim_aura in self._aura_cache:
+                    aura_surf = self._aura_cache[dim_aura]
+                else:
                     aura_surf = pygame.Surface((dim_aura, dim_aura), pygame.SRCALPHA)
                     aura_cx = dim_aura // 2
                     aura_cy = dim_aura // 2
                     raio_desenho = max(1, int(raio_aura))
                     pygame.draw.circle(aura_surf, (175, 75, 255, 90), (aura_cx, aura_cy), raio_desenho)
                     pygame.draw.circle(aura_surf, (255, 215, 0, 180), (aura_cx, aura_cy), raio_desenho, width=2)
-                    self._aura_cache[dim_aura] = aura_surf
-                else:
-                    aura_surf = self._aura_cache[dim_aura]
+                    if display_inited:
+                        self._aura_cache[dim_aura] = aura_surf
 
                 aura_cx = dim_aura // 2
                 aura_cy = dim_aura // 2
@@ -313,13 +314,21 @@ class InimigoBase:
                 if cache_key not in self._sprite_cache:
                     self._sprite_cache[cache_key] = pygame.transform.scale(sprite, (self.largura, self.altura))
                 sprite = self._sprite_cache[cache_key]
+            sw, sh = sprite.get_width(), sprite.get_height()
+            blit_x = int(draw_x + (self.largura - sw) // 2)
+            blit_y = int(draw_y + (self.altura - sh) // 2)
             if self.flash_timer > 0.0:
-                # Efeito flash: desenha versão avermelhada/brilhante
-                sprite_flash = sprite.copy()
-                sprite_flash.fill((255, 200, 200, 200), special_flags=pygame.BLEND_ADD)
-                screen.blit(sprite_flash, (int(draw_x), int(draw_y)))
+                flash_key = (id(sprite), sw, sh)
+                if display_inited and flash_key in self._flash_cache:
+                    sprite_flash = self._flash_cache[flash_key]
+                else:
+                    sprite_flash = sprite.copy()
+                    sprite_flash.fill((255, 200, 200, 200), special_flags=pygame.BLEND_ADD)
+                    if display_inited:
+                        self._flash_cache[flash_key] = sprite_flash
+                screen.blit(sprite_flash, (blit_x, blit_y))
             else:
-                screen.blit(sprite, (int(draw_x), int(draw_y)))
+                screen.blit(sprite, (blit_x, blit_y))
         else:
             cor = (255, 255, 255) if self.flash_timer > 0.0 else (220, 50, 50)
             pygame.draw.rect(
