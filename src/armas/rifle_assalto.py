@@ -34,6 +34,7 @@ class RifleAssalto(ArmaBase):
             icone_asset="arma_rifle"
         )
         self.velocidade_projetil = float(velocidade_projetil)
+        self.contador_disparos: int = 0
 
     def disparar(self, origem_x: float, origem_y: float, destino_x: float, destino_y: float) -> list[Projetil]:
         """
@@ -44,6 +45,8 @@ class RifleAssalto(ArmaBase):
 
         self.tempo_recarga_restante = self.cooldown
         self.municao_atual -= 1
+        self.contador_disparos += 1
+        is_crit = (self.contador_disparos % 3 == 0)
 
         dir_x, dir_y = vetor_direcao(origem_x, origem_y, destino_x, destino_y)
         if dir_x == 0.0 and dir_y == 0.0:
@@ -60,7 +63,10 @@ class RifleAssalto(ArmaBase):
             dono="jogador",
             largura=10,
             altura=10,
-            sprite_key="projetil_rifle"
+            sprite_key="projetil_rifle",
+            critico_nativo=is_crit,
+            chance_critico_arma=0.30,
+            cor=(255, 225, 60) if is_crit else None
         )
 
         try:

@@ -66,7 +66,9 @@ class LancaGranadas(ArmaBase):
             sprite_key="projetil_granada",
             explosivo=True,
             raio_explosao=self.raio_explosao,
-            desaceleracao=self.velocidade_projetil
+            desaceleracao=self.velocidade_projetil,
+            arco_parabolico=True,
+            fragmentar=True
         )
 
         try:

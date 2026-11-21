@@ -112,7 +112,9 @@ class Railgun(ArmaBase):
             altura=12,
             sprite_key="projetil_pistola",
             explosivo=False,
-            perfurante=True
+            perfurante=True,
+            trilha_plasma=True,
+            origem_trilha=(origem_x, origem_y)
         )
 
         return [projetil_perfurante]
