@@ -54,15 +54,15 @@ class SistemaSpawn:
         alinhado com o CATALOGO_ARQUITETURAL.md.
         """
         catalogo = {
-            1: (InimigoRapido, "MINI-BOSS: ESTAGIÁRIO SÊNIOR"),
-            2: (InimigoTank, "MINI-BOSS: ARQUIVO MORTO PRIORITÁRIO"),
-            3: (InimigoPhasing, "MINI-BOSS: FANTASMA DO RH"),
-            4: (InimigoBlindado, "MINI-BOSS: SEGURANÇA-CHEFE"),
-            5: (InimigoRanged, "MINI-BOSS: SUPERVISOR TERCEIRIZADO"),
-            6: (InimigoTank, "MINI-BOSS: PROCESSO EM ESPERA ETERNA"),
-            7: (InimigoPhasing, "MINI-BOSS: DIRETOR FANTASMA"),
-            8: (InimigoBlindado, "MINI-BOSS: DIRETOR DE SEGURANÇA PATRIMONIAL"),
-            9: (InimigoRanged, "MINI-BOSS: GERENTE DA TERCEIRIZADA"),
+            1: (InimigoRapido, "MINI-BOSS: IMPRESSORA MATRICIAL"),
+            2: (InimigoTank, "MINI-BOSS: FONTE GENÉRICA 500W"),
+            3: (InimigoPhasing, "MINI-BOSS: ROTEADOR CORPORATIVO"),
+            4: (InimigoBlindado, "MINI-BOSS: NO-BREAK CHUMBADO"),
+            5: (InimigoRanged, "MINI-BOSS: PROJETOR CORPORATIVO"),
+            6: (InimigoTank, "MINI-BOSS: SERVIDOR RACK 42U"),
+            7: (InimigoPhasing, "MINI-BOSS: SWITCH DE REDE FANTASMA"),
+            8: (InimigoBlindado, "MINI-BOSS: COFRE DIGITAL BLINDADO"),
+            9: (InimigoRanged, "MINI-BOSS: SCANNER LASER INDUSTRIAL"),
         }
         if boss_idx in catalogo:
             return catalogo[boss_idx]

@@ -13,8 +13,9 @@ from src.utils.constantes import (
 
 class InimigoTank(InimigoBase):
     """
-    Inimigo tanque com carcaça de 62x62px e alta barra de vida.
+    Inimigo tanque (Copiadora Xerox) com carcaça de 62x62px e alta barra de vida.
     """
+    nome_exibicao = "Copiadora Xerox"
 
     def __init__(
         self,

@@ -13,8 +13,9 @@ from src.utils.constantes import (
 
 class InimigoPadrao(InimigoBase):
     """
-    Inimigo rastejante padrão com HP baixo, velocidade média e dano de contato moderado.
+    Inimigo rastejante padrão (Gabinete de Firma) com HP baixo, velocidade média e dano de contato moderado.
     """
+    nome_exibicao = "Gabinete de Firma"
 
     def __init__(
         self,

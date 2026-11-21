@@ -1575,7 +1575,7 @@ class GameplayScene(BaseScene):
                         if dist_vis > 195.0:
                             mult_dano_inim *= getattr(mods, "dano_fora_visao_mult", 0.50)
                     dano_efetivo_contato = max(1, int(round(dano_contato_base * mult_dano_inim)))
-                    nome_inim = getattr(inimigo, "nome_elite", "") or type(inimigo).__name__
+                    nome_inim = getattr(inimigo, "nome_elite", "") or getattr(inimigo, "nome_exibicao", "") or type(inimigo).__name__
                     self.jogador.receber_dano(dano_efetivo_contato, causa_morte=f"Contato com {nome_inim}")
                     inimigo.cooldown_contato_atual = getattr(inimigo, "cooldown_contato_max", 0.4)
                     self.aplicar_shake(6.0, 0.15)
@@ -1660,7 +1660,7 @@ class GameplayScene(BaseScene):
                         if dist_vis > 195.0:
                             mult_dano_inim *= getattr(mods, "dano_fora_visao_mult", 0.50)
                     dano_efetivo_contato = max(1, int(round(dano_contato_base * mult_dano_inim)))
-                    nome_inim = getattr(inimigo, "nome_elite", "") or type(inimigo).__name__
+                    nome_inim = getattr(inimigo, "nome_elite", "") or getattr(inimigo, "nome_exibicao", "") or type(inimigo).__name__
                     self.jogador.receber_dano(dano_efetivo_contato, causa_morte=f"Contato com {nome_inim}")
                     self.chefe_final.cooldown_contato_atual = getattr(self.chefe_final, "cooldown_contato_max", 0.4)
                     self.aplicar_shake(10.0, 0.25)
