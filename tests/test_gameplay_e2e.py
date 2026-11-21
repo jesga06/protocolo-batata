@@ -145,7 +145,7 @@ class TestGameplayE2ESimulation(unittest.TestCase):
         # Avança 30 frames de física (~0.5s) para o projétil atingir o alvo
         for _ in range(30):
             cena.spawner.timer_spawn = 0.0
-            cena.loop()
+            cena.loop(dt=0.016)
             self.janela.update()
 
         # O inimigo sofreu dano da pistola (10 dano de 40 HP)
@@ -159,7 +159,7 @@ class TestGameplayE2ESimulation(unittest.TestCase):
                 cena.projeteis.extend(novos_tiros)
                 for _ in range(30):
                     cena.spawner.timer_spawn = 0.0
-                    cena.loop()
+                    cena.loop(dt=0.016)
                     self.janela.update()
 
         # Verifica que o inimigo foi destruído e removido da lista ativa

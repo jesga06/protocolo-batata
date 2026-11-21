@@ -186,7 +186,7 @@ class TestTier1FeatureCoverage(unittest.TestCase):
             self.assertEqual(rect_elite, (100.0, 100.0, w_base * 2, h_base * 2))
 
             # 3x HP base
-            self.assertEqual(elite.hp_max, hp_base * 3)
+            self.assertEqual(elite.hp_max, hp_base * 24)
 
     # --- R1: Mini-Boss Anti-Stacking ---
     def test_t1_mini_boss_anti_stacking(self):
@@ -815,6 +815,101 @@ class TestRegressionBossCutsceneDeadlock(unittest.TestCase):
             len(tiros_segundo), 0,
             "obter_projeteis_pendentes() deve esvaziar a fila a cada chamada"
         )
+
+
+class TestBossCutsceneWhiteoutSlowMo(unittest.TestCase):
+    """Valida que o whiteout da cutscene do boss continua rodando com desaceleração progressiva e sem círculo na batata."""
+
+    def test_whiteout_jogo_continua_rodando_e_desacelera_progressivamente(self):
+        """Durante whiteout, o jogo avança mas dt efetivo diminui progressivamente até o blackout."""
+        from src.entidades.projetil import Projetil
+        from src.entidades.inimigo_padrao import InimigoPadrao
+
+        cena = GameplayScene()
+        proj = Projetil(x=200.0, y=200.0, dir_x=1.0, dir_y=0.0, velocidade=200.0, dano=10, dono="jogador")
+        inimigo = InimigoPadrao(x=600.0, y=600.0)
+        cena.projeteis.append(proj)
+        cena.inimigos.append(inimigo)
+
+        cena.iniciar_boss_cutscene()
+        self.assertEqual(cena.boss_cutscene_fase, "whiteout")
+        self.assertEqual(len(cena.projeteis), 1, "Projéteis não devem ser apagados no início do whiteout")
+
+        # Passo 1: início do whiteout (t = 0.0 -> 0.2s): jogo ainda roda quase em velocidade normal
+        t_antes = cena.tempo_sobrevivencia
+        px_antes = proj.x
+        cena.loop(dt=0.2)
+        delta_t_inicio = cena.tempo_sobrevivencia - t_antes
+        delta_px_inicio = proj.x - px_antes
+        self.assertGreater(delta_t_inicio, 0.0)
+        self.assertGreater(delta_px_inicio, 0.0)
+        self.assertEqual(cena.boss_cutscene_fase, "whiteout")
+
+        # Passo 2: próximo do fim do whiteout (t = 1.6s -> 1.8s): jogo roda bem mais devagar
+        cena.boss_cutscene_timer = 1.6
+        t_antes_fim = cena.tempo_sobrevivencia
+        px_antes_fim = proj.x
+        cena.loop(dt=0.2)
+        delta_t_fim = cena.tempo_sobrevivencia - t_antes_fim
+        delta_px_fim = proj.x - px_antes_fim
+        self.assertGreater(delta_t_fim, 0.0)
+        self.assertGreater(delta_px_fim, 0.0)
+        self.assertLess(delta_t_fim, delta_t_inicio, "Tempo de jogo deve avançar mais devagar perto do fim do whiteout")
+        self.assertLess(delta_px_fim, delta_px_inicio, "Projétil deve se mover mais devagar perto do fim do whiteout")
+
+        # Passo 3: ao completar 2.0s, transiciona para blackout e limpa inimigos/drops/projéteis/partículas/efeitos, preservando buffs
+        from src.entidades.drop import ItemDrop
+        cena.sistema_drops.drops.append(ItemDrop(x=300.0, y=300.0, tipo="xp", valor=10))
+        cena.sistema_particulas.emitir_faiscas(300.0, 300.0, qtd=5)
+        cena.sistema_particulas.emitir_onda_choque(300.0, 300.0, raio_max=80.0)
+        cena.sistema_particulas.emitir_texto_dano(300.0, 300.0, 25)
+        cena.efeitos_melee.append({"x": 300, "y": 300, "tempo": 0.5, "tempo_max": 0.5, "ang": 0.0, "raio": 60})
+        cena.zonas_fogo.append({"x": 300.0, "y": 300.0, "raio": 40.0, "tempo": 2.0, "tick": 0.0})
+        cena.trilhas_plasma.append({"x1": 0, "y1": 0, "x2": 10, "y2": 10, "tempo": 1.0, "tempo_max": 1.0})
+        cena.zonas_estase.append({"x": 300.0, "y": 300.0, "raio": 40.0, "tempo": 2.0})
+        cena.pocas_gelo.append({"x": 300.0, "y": 300.0, "raio": 40.0, "tempo": 2.0})
+        cena.toasts_coleta.append({"texto": "+10 HP", "cor": (0, 255, 0), "x": 300.0, "y": 300.0, "tempo": 1.0, "tempo_max": 1.0})
+        cena.jogador.buff_dano_timer = 10.0
+
+        cena.boss_cutscene_timer = 1.9
+        cena.loop(dt=0.2)
+        self.assertEqual(cena.boss_cutscene_fase, "blackout")
+        self.assertEqual(len(cena.inimigos), 0)
+        self.assertEqual(len(cena.sistema_drops.drops), 0)
+        self.assertEqual(len(cena.projeteis), 0)
+        self.assertEqual(len(cena.tiros_echo_pendentes), 0)
+        self.assertEqual(len(cena.sistema_particulas.particulas), 0)
+        self.assertEqual(len(cena.sistema_particulas.ondas_choque), 0)
+        self.assertEqual(len(cena.sistema_particulas.textos_dano), 0)
+        self.assertEqual(len(cena.efeitos_melee), 0)
+        self.assertEqual(len(cena.zonas_fogo), 0)
+        self.assertEqual(len(cena.trilhas_plasma), 0)
+        self.assertEqual(len(cena.zonas_estase), 0)
+        self.assertEqual(len(cena.pocas_gelo), 0)
+        self.assertEqual(len(cena.toasts_coleta), 0)
+        self.assertGreater(cena.jogador.buff_dano_timer, 0.0, "Buffs do jogador devem ser preservados")
+
+    def test_whiteout_overlay_sem_circulo_recorte_na_batata(self):
+        """Overlay do whiteout deve ser branco uniforme ao redor da batata, sem círculo escuro de recorte."""
+        cena = GameplayScene()
+        cena.camera.follow(cena.jogador, suavizacao=1.0)
+        cena.iniciar_boss_cutscene()
+        cena.boss_cutscene_timer = 1.0
+        cena.overlay_cutscene_cor = (255, 255, 255)
+        cena.overlay_cutscene_alpha = 128
+
+        cena.draw()
+
+        pj_sx = int(cena.camera.transform_x(cena.jogador.x + cena.jogador.largura / 2.0))
+        pj_sy = int(cena.camera.transform_y(cena.jogador.y + cena.jogador.altura / 2.0))
+        cor_no_centro_batata = cena._overlay_surf.get_at((pj_sx, pj_sy))
+        cor_na_borda = cena._overlay_surf.get_at((5, 5))
+        self.assertEqual(
+            tuple(cor_no_centro_batata),
+            tuple(cor_na_borda),
+            "Overlay de whiteout não deve ter círculo ao redor da batata",
+        )
+        self.assertEqual(tuple(cor_no_centro_batata), (255, 255, 255, 128))
 
 
 if __name__ == "__main__":

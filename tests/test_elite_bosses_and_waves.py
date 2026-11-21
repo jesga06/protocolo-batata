@@ -37,8 +37,8 @@ class TestEliteBossesAndWaves(unittest.TestCase):
         self.assertEqual(inim_normal.xp_valor, 5)
 
         self.assertTrue(inim_elite.is_elite)
-        self.assertEqual(inim_elite.hp, 120)
-        self.assertEqual(inim_elite.hp_max, 120)
+        self.assertEqual(inim_elite.hp, 960)
+        self.assertEqual(inim_elite.hp_max, 960)
         self.assertEqual(inim_elite.score_valor, 1000)
         self.assertEqual(inim_elite.xp_valor, 50)
         self.assertEqual(inim_elite.nome_elite, "MINI-BOSS: ESTAGIÁRIO SÊNIOR")
@@ -49,8 +49,8 @@ class TestEliteBossesAndWaves(unittest.TestCase):
         tank_elite = InimigoTank(0, 0, is_elite=True, nome_elite="MINI-BOSS: ARQUIVO MORTO PRIORITÁRIO")
 
         self.assertEqual(tank_normal.hp, 120)
-        self.assertEqual(tank_elite.hp, 360)
-        self.assertEqual(tank_elite.hp_max, 360)
+        self.assertEqual(tank_elite.hp, 2880)
+        self.assertEqual(tank_elite.hp_max, 2880)
         self.assertEqual(tank_elite.score_valor, 3000)
         self.assertEqual(tank_elite.xp_valor, 50)
 
