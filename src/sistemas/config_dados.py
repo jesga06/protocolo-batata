@@ -112,7 +112,7 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="alta",
                 label="Alta",
                 modificadores={},
-                flavor_text="Sprites nítidos para quem aprecia os pequenos detalhes.",
+                flavor_text="Tudo bonito enquanto a placa aguenta.",
                 nerf_text="Nenhum",
                 buff_text="Nenhum"
             ),
@@ -120,9 +120,9 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="baixa",
                 label="Baixa",
                 modificadores={"hp_inimigos_mult": 0.80, "graficos_shrapnel": True},
-                flavor_text="Texturas são um luxo que o departamento financeiro cortou.",
-                nerf_text="Sprites e partículas simplificados.",
-                buff_text="HP de inimigos -20% e inimigos mortos estilhaçam em polígonos que furam outros alvos"
+                flavor_text="O verdadeiro modo batata.",
+                nerf_text="Cenário e partículas simplificados",
+                buff_text="-20% de vida nos inimigos e estilhaços perfurantes ao abatê-los"
             ),
         }
     ),
@@ -184,7 +184,7 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="ligado",
                 label="Ligado",
                 modificadores={},
-                flavor_text="Estabilidade garantida para monitores sensíveis.",
+                flavor_text="Sem cortes na tela.",
                 nerf_text="Nenhum",
                 buff_text="Nenhum"
             ),
@@ -193,8 +193,8 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 label="Desligado",
                 modificadores={"vel_jogador_mult": 1.10, "vsync_tear_refraction": True},
                 flavor_text="Espero que seu monitor tenha FreeSync.",
-                nerf_text="Possível quebra de linha visual (screen tearing)",
-                buff_text="Velocidade +10% e projéteis que cruzam a linha de rasgo se duplicam em dois"
+                nerf_text="Faixa horizontal de rasgo na tela",
+                buff_text="+10% de velocidade e projéteis que cruzam o rasgo saem duplicados"
             ),
         }
     ),
@@ -212,7 +212,7 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="desligado",
                 label="Desligado",
                 modificadores={},
-                flavor_text="Uma experiência suave.",
+                flavor_text="Câmera firme no tripé.",
                 nerf_text="Nenhum",
                 buff_text="Nenhum"
             ),
@@ -221,8 +221,8 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 label="Ligado",
                 modificadores={"dano_explosivos_mult": 1.20, "screen_shake_stagger": True},
                 flavor_text="A tela treme. A sua mira também.",
-                nerf_text="A tela treme violentamente a cada disparo pesado, explosão e dano",
-                buff_text="Dano explosivo +20% e ondas de choque de tiros e bombas causam tropeço e lentidão em área"
+                nerf_text="A tela treme em disparos pesados, explosões e dano",
+                buff_text="+20% de dano explosivo e impactos de tiros e bombas empurram e desaceleram inimigos"
             ),
         }
     ),
@@ -240,7 +240,7 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="desligado",
                 label="Desligado",
                 modificadores={},
-                flavor_text="Uma experiência suave.",
+                flavor_text="Imagem limpa em movimento.",
                 nerf_text="Nenhum",
                 buff_text="Nenhum"
             ),
@@ -248,9 +248,9 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="ligado",
                 label="Ligado",
                 modificadores={"vel_jogador_mult": 1.15, "motion_blur_ghosting": True},
-                flavor_text="Você se move tão rápido que até seus pixels ficaram para trás.",
-                nerf_text="Rastro visual (ghosting) borra elementos em movimento",
-                buff_text="Velocidade de movimento aumentada em +15% (x1.15) e rastro fantasmagórico concede +0.40s de i-frames"
+                flavor_text="Parece que passaram vaselina na lente.",
+                nerf_text="Rastro visual borra a tela em movimento",
+                buff_text="+15% de velocidade e +0.40s de i-frames após sofrer dano"
             ),
         }
     ),
@@ -504,7 +504,7 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="desligado",
                 label="Desligado",
                 modificadores={},
-                flavor_text="Inimigos civilizados.",
+                flavor_text="Por enquanto eles só sabem correr atrás de você.",
                 nerf_text="Nenhum",
                 buff_text="Nenhum"
             ),
@@ -512,9 +512,9 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="ligado",
                 label="Ligado",
                 modificadores={"loot_enriquecido": True},
-                flavor_text="Eles finalmente descobriram a tecnologia dos projéteis balísticos.",
-                nerf_text="Inimigos com disparos à distância passam a spawnar",
-                buff_text="Inimigos Ranged possuem alta chance de caixas de armas"
+                flavor_text="Alguém deu um apontador laser para o escritório inteiro.",
+                nerf_text="Dobra a presença de Projetores Laser e ativa disparos em rajada tripla",
+                buff_text="Inimigos à distância têm alta chance de dropar caixas e suprimentos"
             ),
         }
     ),
@@ -540,9 +540,9 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="ligado",
                 label="Ligado",
                 modificadores={"drops_valor_mult": 2.0, "coleta_inimiga": True},
-                flavor_text="Os inimigos se sentiram inspirados pelo Gemini 3.7 Flash.",
-                nerf_text="Ativa Scavenger: inimigos tentam devorar drops após 10s",
-                buff_text="Todos os drops coletados pelo jogador valem 2x (XP e cura em dobro)"
+                flavor_text="Achado não é roubado.",
+                nerf_text="Inimigos roubam itens que ficarem mais de 10s no chão",
+                buff_text="Todos os drops coletados por você valem o dobro (2x XP e cura)"
             ),
         }
     ),
@@ -560,7 +560,7 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="normal",
                 label="Normal",
                 modificadores={},
-                flavor_text="Inimigos marcham normalmente.",
+                flavor_text="Ritmo normal de segunda-feira.",
                 nerf_text="Nenhum",
                 buff_text="Nenhum"
             ),
@@ -568,17 +568,17 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="+25%",
                 label="+25% Velocidade",
                 modificadores={"vel_inimigos_mult": 1.25, "xp_ganho_mult": 1.20},
-                flavor_text="Eles encontraram o botão turbo.",
-                nerf_text="Todos os inimigos se movem 25% mais rápido",
-                buff_text="Ganho de XP por abate aumentado em +20% (x1.20)"
+                flavor_text="Acharam o botão turbo do gabinete.",
+                nerf_text="Inimigos 25% mais rápidos",
+                buff_text="+20% de XP por abate"
             ),
             "+50%": OpcaoConfig(
                 id="+50%",
                 label="+50% Velocidade",
                 modificadores={"vel_inimigos_mult": 1.50, "xp_ganho_mult": 1.40},
-                flavor_text="Injetaram energético na corrente de dados.",
-                nerf_text="Todos os inimigos correm em disparada (+50%)",
-                buff_text="Ganho de XP por abate aumentado em +40% (x1.40)"
+                flavor_text="Derramaram café na placa-mãe.",
+                nerf_text="Inimigos 50% mais rápidos",
+                buff_text="+40% de XP por abate"
             ),
         }
     ),
@@ -596,7 +596,7 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="normal",
                 label="Normal",
                 modificadores={},
-                flavor_text="Inimigos com vida padrão.",
+                flavor_text="Carcaça padrão de plástico.",
                 nerf_text="Nenhum",
                 buff_text="Nenhum"
             ),
@@ -604,17 +604,17 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="+50%",
                 label="+50% HP",
                 modificadores={"hp_inimigos_mult": 1.50, "drop_chance_bonus": 0.20},
-                flavor_text="Blindagem adicional direto da fábrica.",
-                nerf_text="Inimigos possuem 50% a mais de vida",
-                buff_text="Chance de drop de itens aumentada em +20%"
+                flavor_text="Chassi reforçado com fita isolante.",
+                nerf_text="Inimigos com +50% de vida",
+                buff_text="+20% de chance de drop de itens"
             ),
             "+100%": OpcaoConfig(
                 id="+100%",
                 label="+100% HP",
                 modificadores={"hp_inimigos_mult": 2.00, "drop_chance_bonus": 0.40},
-                flavor_text="Eles estão mais densos.",
-                nerf_text="Inimigos possuem o dobro de vida (+100%)",
-                buff_text="Chance de drop de itens aumentada em +40%"
+                flavor_text="Feitos com o mesmo plástico do Nokia tijolão.",
+                nerf_text="Inimigos com o dobro de vida (+100%)",
+                buff_text="+40% de chance de drop de itens"
             ),
         }
     ),
@@ -632,7 +632,7 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="desligado",
                 label="Desligado",
                 modificadores={},
-                flavor_text="Luz do dia perpétua sobre o campo de batalha.",
+                flavor_text="Luz acesa o tempo todo.",
                 nerf_text="Nenhum",
                 buff_text="Nenhum"
             ),
@@ -640,9 +640,9 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="ligado",
                 label="Ligado",
                 modificadores={"dano_fora_visao_mult": 0.50},
-                flavor_text="Eles estão com dificuldade de te enxergar.",
-                nerf_text="Névoa de escuridão: campo de visão restrito ao redor da batata",
-                buff_text="Inimigos fora do cone de visão causam 50% a menos de dano (x0.50)"
+                flavor_text="Esqueceram de pagar a conta de luz do escritório.",
+                nerf_text="Escuridão ao redor da batata limita a visão da arena",
+                buff_text="-50% de dano recebido de inimigos fora do círculo de luz"
             ),
         }
     ),
@@ -660,7 +660,7 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="desligado",
                 label="Desligado",
                 modificadores={},
-                flavor_text="Paleta de cores original e aconchegante.",
+                flavor_text="Cores normais de fábrica.",
                 nerf_text="Nenhum",
                 buff_text="Nenhum"
             ),
@@ -668,9 +668,9 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="ligado",
                 label="Ligado",
                 modificadores={"dano_armas_mult": 1.20},
-                flavor_text="Seus olhos registraram uma reclamação no Procon.",
-                nerf_text="Inversão total de RGB da tela (estética de negativo)",
-                buff_text="Dano global de todas as armas aumentado em +20% (x1.20)"
+                flavor_text="Cabo VGA mal encaixado.",
+                nerf_text="Inverte todas as cores da tela",
+                buff_text="+20% de dano em todas as armas"
             ),
         }
     ),
@@ -688,7 +688,7 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="desligado",
                 label="Desligado",
                 modificadores={},
-                flavor_text="Seus tiros e explosões atravessam você inofensivamente.",
+                flavor_text="Seus tiros sabem quem é o dono.",
                 nerf_text="Nenhum",
                 buff_text="Nenhum"
             ),
@@ -696,9 +696,9 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="ligado",
                 label="Ligado",
                 modificadores={"dano_armas_mult": 1.25, "auto_dano": True, "fogo_amigo_rocket_jump": True},
-                flavor_text="Aparentemente, estilhaços de granada não leem crachá de identificação.",
-                nerf_text="Seus próprios tiros e explosões causam dano à batata",
-                buff_text="Dano +25% e explosões te arremessam longe, permitindo rocket-jump"
+                flavor_text="A boa notícia é que dá o dobro de dano. A má é que você também apanha dos seus tiros.",
+                nerf_text="Seus tiros e explosões causam dano a você e aos seus drones",
+                buff_text="+25% de dano e explosões impulsionam a batata (rocket-jump)"
             ),
         }
     ),
