@@ -74,7 +74,7 @@ class TestRenderVisibilityRegression(unittest.TestCase):
         self.assertEqual(px_inv, (255 - px_normal[0], 255 - px_normal[1], 255 - px_normal[2]))
 
     def test_gear_button_visible_when_hud_disabled(self):
-        """Mesmo com hud='desligado', o botão de engrenagem [C] em (752..784, 16..48) deve ser desenhado."""
+        """Mesmo com hud='desligado', o botão de engrenagem [C] em (LARGURA_TELA - 48 .. LARGURA_TELA - 16, 16..48) deve ser desenhado."""
         self.cena.gerenciador_config.desbloquear_config("hud")
         self.cena.gerenciador_config.definir_valor("hud", "desligado")
         self.cena.aplicar_modificadores()
@@ -83,9 +83,11 @@ class TestRenderVisibilityRegression(unittest.TestCase):
         screen.fill((0, 0, 0))
         self.cena._desenhar_hud_tela(hud_visivel=False)
 
+        x_ini = LARGURA_TELA - 48 + 2
+        x_fim = LARGURA_TELA - 16 - 2
         pixels_gear = [
             screen.get_at((x, y))[:3]
-            for x in range(754, 782, 2)
+            for x in range(x_ini, x_fim, 2)
             for y in range(18, 46, 2)
         ]
         self.assertTrue(any(p != (0, 0, 0) for p in pixels_gear), "Botão [C] deve ser renderizado mesmo com hud='desligado'.")
@@ -113,14 +115,14 @@ class TestRenderVisibilityRegression(unittest.TestCase):
         self.assertTrue(boss.mostrar_balao_fala)
 
     def test_zoom_75_expands_real_fov_and_aligns_inverse_mouse(self):
-        """zoom='75%' deve expandir o FOV real para 1067x800 (sem barras pretas) e alinhar _obter_mouse_mundo()."""
+        """zoom='75%' deve expandir o FOV real para 1707x960 (sem barras pretas) e alinhar _obter_mouse_mundo()."""
         self.cena.camera.follow(self.cena.jogador, suavizacao=1.0)
         self.cena.gerenciador_config.desbloquear_config("zoom")
         self.cena.gerenciador_config.definir_valor("zoom", "75%")
         self.cena.aplicar_modificadores()
 
         fov_w, fov_h, cam75_x, cam75_y = self.cena._obter_viewport_zoom75()
-        self.assertEqual((fov_w, fov_h), (1067, 800))
+        self.assertEqual((fov_w, fov_h), (1707, 960))
 
         # Verifica transformação inversa exata do mouse nos extremos da tela
         wx0, wy0 = self.cena._obter_mouse_mundo(0.0, 0.0)
@@ -130,22 +132,22 @@ class TestRenderVisibilityRegression(unittest.TestCase):
         self.assertAlmostEqual(wx1, cam75_x + fov_w, places=3)
         self.assertAlmostEqual(wy1, cam75_y + fov_h, places=3)
 
-        # Renderiza em low_graphics um inimigo posicionado a +460px do centro (fora de 800x600, mas dentro de 1067x800)
+        # Renderiza em low_graphics um inimigo posicionado a +700px do centro (fora de 1280x720, mas dentro de 1707x960)
         self.cena.gerenciador_config.desbloquear_config("graficos_qualidade")
         self.cena.gerenciador_config.definir_valor("graficos_qualidade", "baixa")
         self.cena.aplicar_modificadores()
 
         cx_jog = self.cena.jogador.x + self.cena.jogador.largura / 2.0
         cy_jog = self.cena.jogador.y + self.cena.jogador.altura / 2.0
-        inim_fov = InimigoPadrao(x=cx_jog + 450.0, y=cy_jog - 14.0)
+        inim_fov = InimigoPadrao(x=cx_jog + 700.0, y=cy_jog - 14.0)
         self.cena.inimigos = [inim_fov]
         self.cena.draw()
 
-        # Posição esperada na tela 800x600 após escala de 1067x800 -> 800x600
+        # Posição esperada na tela 1280x720 após escala de 1707x960 -> 1280x720
         sx = int(((inim_fov.x + 14.0) - cam75_x) * (LARGURA_TELA / float(fov_w)))
         sy = int(((inim_fov.y + 14.0) - cam75_y) * (ALTURA_TELA / float(fov_h)))
         cor_inim = self.cena.janela.screen.get_at((sx, sy))[:3]
-        self.assertEqual(cor_inim, (220, 50, 50), "Inimigo na borda do FOV expandido (1067x800) deve aparecer na tela.")
+        self.assertEqual(cor_inim, (220, 50, 50), "Inimigo na borda do FOV expandido (1707x960) deve aparecer na tela.")
 
 
 if __name__ == "__main__":

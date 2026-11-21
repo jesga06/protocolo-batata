@@ -79,15 +79,15 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         """Verifica se as constantes de combate e munição foram atualizadas corretamente."""
         self.assertEqual(MELEE_ALCANCE, 109.0)
         self.assertEqual(MELEE_ARCO_GRAUS, 60.0)
-        self.assertEqual(MINIGUN_MUNICIAO_MAX, 225)
-        self.assertEqual(SHOTGUN_MUNICIAO_MAX, 45)
-        self.assertEqual(RIFLE_MUNICIAO_MAX, 90)
-        self.assertEqual(FOGUETES_MUNICIAO_MAX, 18)
-        self.assertEqual(GRANADAS_MUNICIAO_MAX, 24)
-        self.assertEqual(RAILGUN_MUNICIAO_MAX, 22)
+        self.assertEqual(MINIGUN_MUNICIAO_MAX, 300)
+        self.assertEqual(SHOTGUN_MUNICIAO_MAX, 60)
+        self.assertEqual(RIFLE_MUNICIAO_MAX, 120)
+        self.assertEqual(FOGUETES_MUNICIAO_MAX, 24)
+        self.assertEqual(GRANADAS_MUNICIAO_MAX, 32)
+        self.assertEqual(RAILGUN_MUNICIAO_MAX, 30)
 
     def test_weapon_instances_initial_ammo(self):
-        """Verifica se instâncias das armas nascem com +50% de munição."""
+        """Verifica se instâncias das armas nascem com munição balanceada para a Sprint 2."""
         minigun = Minigun()
         shotgun = Shotgun()
         rifle = RifleAssalto()
@@ -95,12 +95,12 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         granadas = LancaGranadas()
         railgun = Railgun()
 
-        self.assertEqual(minigun.municao_atual, 225)
-        self.assertEqual(shotgun.municao_atual, 45)
-        self.assertEqual(rifle.municao_atual, 90)
-        self.assertEqual(foguetes.municao_atual, 18)
-        self.assertEqual(granadas.municao_atual, 24)
-        self.assertEqual(railgun.municao_atual, 22)
+        self.assertEqual(minigun.municao_atual, 300)
+        self.assertEqual(shotgun.municao_atual, 60)
+        self.assertEqual(rifle.municao_atual, 120)
+        self.assertEqual(foguetes.municao_atual, 24)
+        self.assertEqual(granadas.municao_atual, 32)
+        self.assertEqual(railgun.municao_atual, 30)
 
     def test_debug_menu_toggle_open_close(self):
         """Valida abertura, fechamento e controle de pausa da partida."""

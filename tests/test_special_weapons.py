@@ -19,8 +19,12 @@ if PROJECT_ROOT not in sys.path:
 from src.armas import (
     ArmaBase, Pistola, Melee,
     Minigun, Shotgun, RifleAssalto,
-    LancaFoguetes, LancaGranadas
+    LancaFoguetes, LancaGranadas, Railgun
 )
+from src.entidades.projetil import Projetil
+from src.equipamentos.drone_cura import DroneCura
+from src.equipamentos.drone_combate import DroneCombate
+from src.equipamentos.drone_suporte import DroneSuporte
 from src.entidades.jogador import Jogador
 from src.entidades.inimigo_padrao import InimigoPadrao
 from src.entidades.drop import ItemDrop
@@ -29,28 +33,28 @@ from src.sistemas.config_sistema import GerenciadorConfiguracoes
 
 
 class TestMinigun(unittest.TestCase):
-    """Testa a Minigun (225 munições, 0.08s cooldown, dano 6, alta cadência)."""
+    """Testa a Minigun (300 munições, 0.08s cooldown, dano 6, alta cadência)."""
 
     def test_minigun_inicializacao_e_atributos(self):
         m = Minigun()
         self.assertEqual(m.nome, "Minigun")
         self.assertEqual(m.dano, 6)
         self.assertEqual(m.cooldown, 0.08)
-        self.assertEqual(m.municao_max, 225)
-        self.assertEqual(m.municao_atual, 225)
+        self.assertEqual(m.municao_max, 300)
+        self.assertEqual(m.municao_atual, 300)
         self.assertFalse(m.municao_infinita)
         self.assertEqual(m.slot, 3)
 
     def test_minigun_disparo_consumo_e_esgotamento(self):
         m = Minigun()
-        # Dispara 225 vezes com update de cooldown entre disparos
-        for i in range(225):
+        # Dispara 300 vezes com update de cooldown entre disparos
+        for i in range(300):
             self.assertTrue(m.pode_atirar())
             tiros = m.disparar(100.0, 100.0, 300.0, 100.0)
             self.assertEqual(len(tiros), 1)
             self.assertEqual(tiros[0].dano, 6)
             self.assertEqual(tiros[0].sprite_key, "projetil_minigun")
-            self.assertEqual(m.municao_atual, 225 - (i + 1))
+            self.assertEqual(m.municao_atual, 300 - (i + 1))
             m.update(0.08)
 
         # Munição zerada: não pode mais atirar
@@ -61,15 +65,15 @@ class TestMinigun(unittest.TestCase):
 
 
 class TestShotgun(unittest.TestCase):
-    """Testa a Escopeta (45 cartuchos, 0.70s cooldown, 9 pellets em leque de 0.45 rad, dano 10/pellet)."""
+    """Testa a Escopeta (60 cartuchos, 0.70s cooldown, 9 pellets em leque de 0.45 rad, dano 10/pellet)."""
 
     def test_shotgun_inicializacao_e_atributos(self):
         s = Shotgun()
         self.assertEqual(s.nome, "Escopeta")
         self.assertEqual(s.dano, 10)
         self.assertEqual(s.cooldown, 0.70)
-        self.assertEqual(s.municao_max, 45)
-        self.assertEqual(s.municao_atual, 45)
+        self.assertEqual(s.municao_max, 60)
+        self.assertEqual(s.municao_atual, 60)
         self.assertEqual(s.pellets, 9)
         self.assertAlmostEqual(s.spread_angulo, 0.45)
 
@@ -80,7 +84,7 @@ class TestShotgun(unittest.TestCase):
         # Disparo horizontal para a direita: (100, 100) -> (300, 100)
         tiros = s.disparar(100.0, 100.0, 300.0, 100.0)
         self.assertEqual(len(tiros), 9)
-        self.assertEqual(s.municao_atual, 44)
+        self.assertEqual(s.municao_atual, 59)
 
         # Valida que todos os pellets têm dano 10 e sprite correto
         for proj in tiros:
@@ -95,14 +99,14 @@ class TestShotgun(unittest.TestCase):
 
 
 class TestRifleAssalto(unittest.TestCase):
-    """Testa o Rifle de Assalto (90 tiros, 0.18s cooldown, dano 18, 650 px/s)."""
+    """Testa o Rifle de Assalto (120 tiros, 0.18s cooldown, dano 18, 650 px/s)."""
 
     def test_rifle_inicializacao_e_disparo_preciso(self):
         r = RifleAssalto()
         self.assertEqual(r.dano, 18)
         self.assertEqual(r.cooldown, 0.18)
-        self.assertEqual(r.municao_max, 90)
-        self.assertEqual(r.municao_atual, 90)
+        self.assertEqual(r.municao_max, 120)
+        self.assertEqual(r.municao_atual, 120)
 
         tiros = r.disparar(100.0, 200.0, 500.0, 200.0)
         self.assertEqual(len(tiros), 1)
@@ -121,7 +125,7 @@ class TestArmasExplosivas(unittest.TestCase):
         foguetes = LancaFoguetes()
         self.assertEqual(foguetes.dano, 60)
         self.assertEqual(foguetes.raio_explosao, 80.0)
-        self.assertEqual(foguetes.municao_max, 18)
+        self.assertEqual(foguetes.municao_max, 24)
 
         tiros = foguetes.disparar(100.0, 100.0, 300.0, 100.0)
         self.assertEqual(len(tiros), 1)
@@ -147,7 +151,7 @@ class TestArmasExplosivas(unittest.TestCase):
         granadas = LancaGranadas()
         self.assertEqual(granadas.dano, 45)
         self.assertEqual(granadas.raio_explosao, 65.0)
-        self.assertEqual(granadas.municao_max, 24)
+        self.assertEqual(granadas.municao_max, 32)
 
         tiros = granadas.disparar(100.0, 100.0, 200.0, 100.0)
         proj = tiros[0]
@@ -205,6 +209,62 @@ class TestSlot3LifecycleAndAmmoDepletion(unittest.TestCase):
         self.assertIsNone(self.jogador.arma_especial)
         self.assertEqual(self.jogador.slot_ativo, 2)
         self.assertIsInstance(self.jogador.obter_arma_ativa(), Pistola)
+
+    def test_parry_melee_reflete_projetil_inimigo(self):
+        """Valida que Melee.rebater_projeteis rebate projétil inimigo aumentando velocidade e dano em 2.5x."""
+        melee = Melee()
+        proj_inimigo = Projetil(
+            x=430.0,
+            y=300.0,
+            dir_x=-1.0,
+            dir_y=0.0,
+            velocidade=200.0,
+            dano=10,
+            dono="inimigo"
+        )
+        proj_inimigo.ativo = True
+
+        rebatidos = melee.rebater_projeteis(
+            origem_x=400.0,
+            origem_y=300.0,
+            lista_projeteis=[proj_inimigo],
+            mira_x=500.0,
+            mira_y=300.0
+        )
+        self.assertEqual(len(rebatidos), 1)
+        p = rebatidos[0]
+        self.assertEqual(p.dono, "jogador")
+        self.assertTrue(p.parried)
+        self.assertEqual(p.dano, 25)  # 10 * 2.5 = 25
+        self.assertGreaterEqual(p.velocidade, 320.0)
+
+    def test_fusao_drones_mk_progression(self):
+        """Valida a progressão MK dos drones (MK-I -> MK-II -> MK-III) ao adicionar repetidos."""
+        jog = self.jogador
+        d1 = DroneCombate()
+        self.assertEqual(d1.nivel_mk, 1)
+
+        jog.adicionar_drone(d1)
+        self.assertEqual(len(jog.drones), 1)
+        self.assertEqual(jog.drones[0].nivel_mk, 1)
+
+        # Adiciona segundo drone combate: deve evoluir para MK-II
+        d2 = DroneCombate()
+        jog.adicionar_drone(d2)
+        self.assertEqual(len(jog.drones), 1)
+        self.assertEqual(jog.drones[0].nivel_mk, 2)
+
+        # Adiciona terceiro drone combate: deve evoluir para MK-III
+        d3 = DroneCombate()
+        jog.adicionar_drone(d3)
+        self.assertEqual(len(jog.drones), 1)
+        self.assertEqual(jog.drones[0].nivel_mk, 3)
+
+        # Adiciona quarto: satura em MK-III
+        d4 = DroneCombate()
+        jog.adicionar_drone(d4)
+        self.assertEqual(len(jog.drones), 1)
+        self.assertEqual(jog.drones[0].nivel_mk, 3)
 
 
 if __name__ == "__main__":

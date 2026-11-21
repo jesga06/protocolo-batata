@@ -58,14 +58,14 @@ class TestEngineAndInputContracts(unittest.TestCase):
         self.assertEqual(kb._get_code("KP1"), pygame.K_KP1)
         self.assertEqual(kb._get_code("BACKQUOTE"), pygame.K_BACKQUOTE)
 
-        jan = Janela(800, 600, "Teste", resizavel=True, pixel_art=True)
+        jan = Janela(1280, 720, "Teste", resizavel=True, pixel_art=True)
         pygame.event.post(pygame.event.Event(pygame.VIDEORESIZE, {"w": 1280, "h": 720, "size": (1280, 720)}))
         jan.processar_eventos()
         self.assertEqual((jan.largura_janela_atual, jan.altura_janela_atual), (1280, 720))
         dest_x, dest_y, dest_w, dest_h, _ = jan._calcular_viewport(1280, 720)
-        # Proporção 4:3 dentro de 1280x720 -> altura 720, largura 960
-        self.assertEqual((dest_w, dest_h), (960, 720))
-        self.assertEqual((dest_x, dest_y), (160, 0))
+        # Proporção 16:9 nativa dentro de 1280x720 -> viewport 1280x720 sem letterboxing
+        self.assertEqual((dest_w, dest_h), (1280, 720))
+        self.assertEqual((dest_x, dest_y), (0, 0))
 
     def test_scavenger_clears_override_and_drop_separates_tempo_despawn(self):
         """SistemaScavenger limpa pos_alvo_override ao descartar scavenger e ItemDrop separa tempo_despawn."""
