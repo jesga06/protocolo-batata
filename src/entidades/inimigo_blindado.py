@@ -9,6 +9,7 @@ from src.utils.math_utils import vetor_direcao, normalizar_vetor
 
 
 class InimigoBlindado(InimigoBase):
+    nome_exibicao = "Triturador Blindado"
     """
     Inimigo com couraça protetora reforçada e placa balística frontal (Ballistic Enthusiast).
     Possui redução de 30% de dano para impactos frontais (cone de 90° ao redor da direção que o inimigo olha).

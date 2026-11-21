@@ -9,6 +9,7 @@ from src.utils.constantes import (
 
 
 class InimigoPhasing(InimigoBase):
+    nome_exibicao = "Monitor CRT"
     """
     Inimigo etéreo que alterna ciclicamente entre o estado tangível e o estado em fase (Warranty Void).
     Ciclo de 3.0s: durante 1.2s entra em fase, tornando-se semi-transparente (alpha ~90) e

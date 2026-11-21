@@ -16,6 +16,7 @@ from src.utils.math_utils import distancia, vetor_direcao, lerp
 
 
 class InimigoRanged(InimigoBase):
+    nome_exibicao = "Projetor Laser"
     """
     Inimigo armado com canhão balístico que mantém distância de tiro (stand-off de 280px)
     e dispara periodicamente projéteis vermelhos no jogador a cada 1.2s em alcance <= 350px.
