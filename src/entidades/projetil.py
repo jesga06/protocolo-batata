@@ -36,7 +36,8 @@ class Projetil:
         desaceleracao: float = 0.0,
         vx: float = None,
         vy: float = None,
-        cor=None
+        cor=None,
+        **kwargs
     ):
         self.x = float(x)
         self.y = float(y)
@@ -68,6 +69,21 @@ class Projetil:
         self._cached_rot_surf = None
         self._cached_rot_key = None
 
+        self.parried: bool = bool(kwargs.get("parried", False))
+        self.superaquecido: bool = bool(kwargs.get("superaquecido", False))
+        self.sobrecarregado: bool = bool(kwargs.get("sobrecarregado", False))
+        self.perfuracoes_restantes: int = int(kwargs.get("perfuracoes_restantes", 0))
+        self.knockback_forca: float = float(kwargs.get("knockback_forca", 0.0))
+        self.aceleracao: float = float(kwargs.get("aceleracao", 0.0))
+        self.chao_em_chamas: bool = bool(kwargs.get("chao_em_chamas", False))
+        self.arco_parabolico: bool = bool(kwargs.get("arco_parabolico", False))
+        self.fragmentar: bool = bool(kwargs.get("fragmentar", False))
+        self.critico_nativo: bool = bool(kwargs.get("critico_nativo", False))
+        self.chance_critico_arma: float = float(kwargs.get("chance_critico_arma", 0.0))
+        self.trilha_plasma: bool = bool(kwargs.get("trilha_plasma", False))
+        self.origem_trilha: tuple = kwargs.get("origem_trilha", (self.x_origem, self.y_origem))
+        self.recuo_autor: float = float(kwargs.get("recuo_autor", 0.0))
+
     @property
     def vx(self) -> float:
         return self.dir_x * self.velocidade
@@ -93,6 +109,9 @@ class Projetil:
         """Atualiza a posição do projétil, desacelera se aplicável e decrementa o tempo de vida."""
         if not self.ativo:
             return
+
+        if getattr(self, "aceleracao", 0.0) > 0.0:
+            self.velocidade = min(850.0, self.velocidade + self.aceleracao * dt)
 
         if self.desaceleracao > 0.0:
             self.velocidade = max(0.0, self.velocidade - self.desaceleracao * dt)
@@ -281,6 +300,20 @@ class Projetil:
         clone.x_origem = self.x_origem
         clone.y_origem = self.y_origem
         clone.alvos_atingidos = set(self.alvos_atingidos)
+        clone.parried = getattr(self, "parried", False)
+        clone.superaquecido = getattr(self, "superaquecido", False)
+        clone.sobrecarregado = getattr(self, "sobrecarregado", False)
+        clone.perfuracoes_restantes = getattr(self, "perfuracoes_restantes", 0)
+        clone.knockback_forca = getattr(self, "knockback_forca", 0.0)
+        clone.aceleracao = getattr(self, "aceleracao", 0.0)
+        clone.chao_em_chamas = getattr(self, "chao_em_chamas", False)
+        clone.arco_parabolico = getattr(self, "arco_parabolico", False)
+        clone.fragmentar = getattr(self, "fragmentar", False)
+        clone.critico_nativo = getattr(self, "critico_nativo", False)
+        clone.chance_critico_arma = getattr(self, "chance_critico_arma", 0.0)
+        clone.trilha_plasma = getattr(self, "trilha_plasma", False)
+        clone.origem_trilha = getattr(self, "origem_trilha", (self.x_origem, self.y_origem))
+        clone.recuo_autor = getattr(self, "recuo_autor", 0.0)
         return clone
 
     def desenhar(self, janela, camera=None):
@@ -300,6 +333,13 @@ class Projetil:
         if draw_x < -30 or draw_x > largura_janela + 30 or draw_y < -30 or draw_y > altura_janela + 30:
             return
 
+        if getattr(self, "arco_parabolico", False):
+            prog = 1.0 - (self.tempo_vida_restante / max(0.01, self.tempo_vida))
+            altura_z = math.sin(max(0.0, min(1.0, prog)) * math.pi) * 28.0
+            sombra_rect = pygame.Rect(int(draw_x), int(draw_y + self.altura), self.largura, max(4, self.altura // 2))
+            pygame.draw.ellipse(screen, (10, 12, 18), sombra_rect)
+            draw_y -= altura_z
+
         # Fallback/cor configurada ou derivada do sprite
         cor = self.cor
         if cor is None:
@@ -316,6 +356,10 @@ class Projetil:
                 cor,
                 (int(draw_x), int(draw_y), self.largura, self.altura)
             )
+            if getattr(self, "parried", False) or getattr(self, "sobrecarregado", False) or getattr(self, "critico_nativo", False):
+                raio_dourado = max(self.largura, self.altura) // 2 + 3
+                centro_dourado = (int(draw_x + self.largura / 2.0), int(draw_y + self.altura / 2.0))
+                pygame.draw.circle(screen, (255, 215, 0), centro_dourado, raio_dourado, width=1)
             return
 
         sprite = self._carregar_sprite(self.sprite_key)
@@ -346,3 +390,8 @@ class Projetil:
                 cor,
                 (int(draw_x), int(draw_y), self.largura, self.altura)
             )
+
+        if getattr(self, "parried", False) or getattr(self, "sobrecarregado", False) or getattr(self, "critico_nativo", False):
+            raio_dourado = max(self.largura, self.altura) // 2 + 3
+            centro_dourado = (int(draw_x + self.largura / 2.0), int(draw_y + self.altura / 2.0))
+            pygame.draw.circle(screen, (255, 215, 0), centro_dourado, raio_dourado, width=1)

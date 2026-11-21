@@ -37,6 +37,14 @@ class Minigun(ArmaBase):
         )
         self.velocidade_projetil = float(velocidade_projetil)
         self.spread_max_rad = float(spread_max_rad)
+        self.fator_spin: float = 0.0
+        self.tempo_sem_atirar: float = 0.0
+
+    def update(self, dt: float):
+        super().update(dt)
+        self.tempo_sem_atirar += dt
+        if self.tempo_sem_atirar > 0.22:
+            self.fator_spin = max(0.0, self.fator_spin - dt * 1.4)
 
     def disparar(self, origem_x: float, origem_y: float, destino_x: float, destino_y: float) -> list[Projetil]:
         """
@@ -45,7 +53,9 @@ class Minigun(ArmaBase):
         if not self.pode_atirar():
             return []
 
-        self.tempo_recarga_restante = self.cooldown
+        self.tempo_sem_atirar = 0.0
+        self.fator_spin = min(1.0, self.fator_spin + 0.08)
+        self.tempo_recarga_restante = self.cooldown * (1.0 - 0.45 * self.fator_spin)
         self.municao_atual -= 1
 
         dir_x, dir_y = vetor_direcao(origem_x, origem_y, destino_x, destino_y)
@@ -68,7 +78,8 @@ class Minigun(ArmaBase):
             dono="jogador",
             largura=6,
             altura=6,
-            sprite_key="projetil_minigun"
+            sprite_key="projetil_minigun",
+            recuo_autor=16.0
         )
 
         try:

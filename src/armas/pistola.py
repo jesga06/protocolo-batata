@@ -34,6 +34,7 @@ class Pistola(ArmaBase):
         )
         self.velocidade_projetil = float(velocidade_projetil)
         self.tempo_vida_projetil = float(tempo_vida_projetil)
+        self.contador_tiros: int = 0
 
     def disparar(self, origem_x: float, origem_y: float, destino_x: float, destino_y: float) -> list[Projetil]:
         """
@@ -48,18 +49,36 @@ class Pistola(ArmaBase):
         if dir_x == 0.0 and dir_y == 0.0:
             dir_x = 1.0  # Direção padrão para a direita se coincidirem
 
-        projetil = Projetil(
-            x=origem_x - 4.0,
-            y=origem_y - 4.0,
-            dir_x=dir_x,
-            dir_y=dir_y,
-            velocidade=self.velocidade_projetil,
-            dano=self.dano,
-            tempo_vida=self.tempo_vida_projetil,
-            dono="jogador",
-            largura=8,
-            altura=8
-        )
+        self.contador_tiros += 1
+        if self.contador_tiros % 4 == 0:
+            projetil = Projetil(
+                x=origem_x - 6.0,
+                y=origem_y - 6.0,
+                dir_x=dir_x,
+                dir_y=dir_y,
+                velocidade=self.velocidade_projetil,
+                dano=int(round(self.dano * 1.5)),
+                tempo_vida=self.tempo_vida_projetil,
+                dono="jogador",
+                largura=12,
+                altura=12,
+                perfurante=True,
+                cor=(0, 230, 255),
+                sobrecarregado=True
+            )
+        else:
+            projetil = Projetil(
+                x=origem_x - 4.0,
+                y=origem_y - 4.0,
+                dir_x=dir_x,
+                dir_y=dir_y,
+                velocidade=self.velocidade_projetil,
+                dano=self.dano,
+                tempo_vida=self.tempo_vida_projetil,
+                dono="jogador",
+                largura=8,
+                altura=8
+            )
 
         # Tenta reproduzir efeito sonoro de tiro de forma segura
         try:

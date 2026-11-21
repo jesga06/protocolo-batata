@@ -75,7 +75,8 @@ class Shotgun(ArmaBase):
                 dono="jogador",
                 largura=6,
                 altura=6,
-                sprite_key="projetil_shotgun"
+                sprite_key="projetil_shotgun",
+                knockback_forca=42.0
             )
             projeteis.append(proj)
 

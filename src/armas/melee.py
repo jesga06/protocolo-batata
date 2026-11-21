@@ -157,3 +157,51 @@ class Melee(ArmaBase):
                     inimigo.aplicar_knockback(dir_x, dir_y, self.knockback_forca)
 
         return inimigos_afetados
+
+    def rebater_projeteis(
+        self,
+        origem_x: float,
+        origem_y: float,
+        lista_projeteis: list,
+        mira_x: float = None,
+        mira_y: float = None,
+        angulo_mira: float = None
+    ) -> list:
+        """Rebate (Parry) projéteis inimigos dentro do cone de alcance da Chave de Manutenção."""
+        if not lista_projeteis:
+            return []
+        ang_base = None
+        if angulo_mira is not None:
+            ang_base = float(angulo_mira)
+        elif mira_x is not None and mira_y is not None:
+            ang_base = math.atan2(mira_y - origem_y, mira_x - origem_x)
+
+        meio_arco_rad = math.radians((self.arco_graus + 20.0) / 2.0)
+        rebatidos = []
+        for p in lista_projeteis:
+            if not getattr(p, "ativo", False) or getattr(p, "dono", "") != "inimigo":
+                continue
+            pcx = p.x + getattr(p, "largura", 8) / 2.0
+            pcy = p.y + getattr(p, "altura", 8) / 2.0
+            dist = distancia(origem_x, origem_y, pcx, pcy)
+            if dist <= self.alcance + 18.0:
+                no_cone = True
+                if ang_base is not None and dist > 1e-4:
+                    ang_p = math.atan2(pcy - origem_y, pcx - origem_x)
+                    delta = abs(math.atan2(math.sin(ang_p - ang_base), math.cos(ang_p - ang_base)))
+                    no_cone = (delta <= meio_arco_rad)
+                if no_cone:
+                    dir_reb_x = math.cos(ang_base) if ang_base is not None else -getattr(p, "dir_x", 1.0)
+                    dir_reb_y = math.sin(ang_base) if ang_base is not None else -getattr(p, "dir_y", 0.0)
+                    p.dono = "jogador"
+                    p.parried = True
+                    p.dano = max(25, int(round(p.dano * 2.5)))
+                    p.velocidade = max(500.0, float(getattr(p, "velocidade", 300.0)) * 1.6)
+                    p.dir_x = dir_reb_x
+                    p.dir_y = dir_reb_y
+                    p.cor = (255, 215, 0)
+                    p.tempo_vida_restante = max(float(getattr(p, "tempo_vida_restante", 1.0)), 1.6)
+                    if hasattr(p, "alvos_atingidos"):
+                        p.alvos_atingidos.clear()
+                    rebatidos.append(p)
+        return rebatidos
