@@ -111,8 +111,8 @@ class TestChallengerEliteSpawningAndCadence(unittest.TestCase):
             elite_instance = cls_enemy(x=0, y=0, is_elite=True, nome_elite="TEST BOSS")
 
             # 3x HP
-            self.assertEqual(elite_instance.hp_max, base_instance.hp_max * 24)
-            self.assertEqual(elite_instance.hp, base_instance.hp * 24)
+            self.assertEqual(elite_instance.hp_max, base_instance.hp_max * 45)
+            self.assertEqual(elite_instance.hp, base_instance.hp * 45)
 
             # 10x Score
             self.assertEqual(elite_instance.score_valor, base_instance.score_valor * 10)
@@ -154,17 +154,17 @@ class TestChallengerExtremeDamageAndBossBarHUD(unittest.TestCase):
         self.screen = pygame.Surface((800, 600))
 
     def test_extreme_underkill_1_damage_per_hit(self):
-        """Inimigo Elite com 2880 HP submetido a 2880 golpes de 1 de dano."""
+        """Inimigo Elite com 5400 HP submetido a 5400 golpes de 1 de dano."""
         boss = InimigoTank(x=100, y=100, is_elite=True, nome_elite="BOSS RESISTENTE")
-        self.assertEqual(boss.hp, 2880)
+        self.assertEqual(boss.hp, 5400)
 
-        for i in range(2879):
+        for i in range(5399):
             boss.receber_dano(1)
             self.assertTrue(boss.vivo, f"Boss morreu prematuramente no golpe {i+1}")
-            self.assertEqual(boss.hp, 2880 - (i + 1))
+            self.assertEqual(boss.hp, 5400 - (i + 1))
             self.assertAlmostEqual(boss.flash_timer, 0.10)
 
-        # 2880º golpe: deve morrer
+        # 5400º golpe: deve morrer
         boss.receber_dano(1)
         self.assertFalse(boss.vivo)
         self.assertEqual(boss.hp, 0)
