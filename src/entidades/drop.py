@@ -21,6 +21,7 @@ MAPA_CORES_FALLBACK = {
     "equipamento": (255, 160, 50),
     "config": ROXO_ACENTO,
     "overclock": ROXO_ACENTO,
+    "capsula_powerup": AZUL_CIANO,
 }
 
 
@@ -38,7 +39,11 @@ class ItemDrop:
         tempo_vida: float = DROP_TEMPO_DESAPARECER,
         tempo_scavenger: float = DROP_TEMPO_SCAVENGER_ATIVAR,
         largura: int = DROP_LARGURA,
-        altura: int = DROP_ALTURA
+        altura: int = DROP_ALTURA,
+        subtipo: str = "",
+        rotulo: str = "",
+        par_id: int = None,
+        bonus_municao_mult: float = 1.0
     ):
         self.x = float(x)
         self.y = float(y)
@@ -53,6 +58,11 @@ class ItemDrop:
         self.tempo_scavenger = float(tempo_scavenger)
         self.tempo_decorrido = 0.0
         self.tempo_despawn = 0.0
+
+        self.subtipo = str(subtipo)
+        self.rotulo = str(rotulo)
+        self.par_id = par_id
+        self.bonus_municao_mult = float(bonus_municao_mult)
 
         self.ativo = True
         self.coletado = False
@@ -181,3 +191,16 @@ class ItemDrop:
             rect_x = cx - tam // 2
             rect_y = cy - tam // 2
             pygame.draw.rect(screen, cor_fallback, (rect_x, rect_y, tam, tam), border_radius=4)
+
+        if self.rotulo:
+            try:
+                if not hasattr(self.__class__, "_fonte_rotulo") or self.__class__._fonte_rotulo is None:
+                    self.__class__._fonte_rotulo = pygame.font.SysFont("Arial", 11, bold=True)
+                lbl_surf = self.__class__._fonte_rotulo.render(self.rotulo, True, BRANCO)
+                lbl_rect = lbl_surf.get_rect(centerx=cx, bottom=int(draw_y) - 4)
+                bg_r = lbl_rect.inflate(8, 4)
+                pygame.draw.rect(screen, (15, 20, 30), bg_r, border_radius=3)
+                pygame.draw.rect(screen, cor_fallback, bg_r, width=1, border_radius=3)
+                screen.blit(lbl_surf, lbl_rect)
+            except Exception:
+                pass

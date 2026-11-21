@@ -477,11 +477,14 @@ class Janela(metaclass=JanelaMeta):
 
         # 3. Escalonamento e Projeção na Tela Real
         try:
-            if self.pixel_art:
+            if nova_w == self.largura and nova_h == self.altura:
+                self.real_screen.blit(self.screen, (pos_x, pos_y))
+            elif self.pixel_art:
                 scaled = pygame.transform.scale(self.screen, (nova_w, nova_h))
+                self.real_screen.blit(scaled, (pos_x, pos_y))
             else:
                 scaled = pygame.transform.smoothscale(self.screen, (nova_w, nova_h))
-            self.real_screen.blit(scaled, (pos_x, pos_y))
+                self.real_screen.blit(scaled, (pos_x, pos_y))
         except Exception:
             self.real_screen.blit(self.screen, (0, 0))
 

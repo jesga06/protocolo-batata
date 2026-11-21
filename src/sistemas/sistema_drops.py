@@ -25,6 +25,8 @@ class SistemaDrops:
 
     def __init__(self):
         self.drops: list[ItemDrop] = []
+        self.cooldown_caixa_atual: float = 0.0
+        self._proximo_par_capsula_id: int = 1
 
     def _adicionar_drop(self, drop: ItemDrop):
         """Adiciona um drop respeitando o limite MAX_DROPS (remove o drop mais antigo se exceder)."""
@@ -44,7 +46,8 @@ class SistemaDrops:
         chance_arma: float = None,
         chance_equipamento: float = None,
         is_elite: bool = False,
-        modo_boss: bool = False
+        modo_boss: bool = False,
+        abate_rapido: bool = False
     ) -> list[ItemDrop]:
         """
         Gera os drops ao eliminar um inimigo:
@@ -125,6 +128,8 @@ class SistemaDrops:
                 tempo_vida=DROP_TEMPO_DESAPARECER,
                 tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
             )
+            if abate_rapido:
+                drop_arma.bonus_municao_mult = 1.5
             novos_drops.append(drop_arma)
             self._adicionar_drop(drop_arma)
 
@@ -152,13 +157,13 @@ class SistemaDrops:
             novos_drops.append(drop_overclock)
             self._adicionar_drop(drop_overclock)
 
-            # 5. Caixa de Cura (50% de chance para Mini-Boss)
-            if random.random() < 0.50:
+            # 5. Caixa de Cura (50% de chance para Mini-Boss, ou 100% com dobro de valor se abate_rapido)
+            if abate_rapido or random.random() < 0.50:
                 drop_cura = ItemDrop(
                     x=x - 8.0,
                     y=y + 24.0,
                     tipo="cura",
-                    valor=DROP_CURA_VALOR_BASE,
+                    valor=DROP_CURA_VALOR_BASE * 2 if abate_rapido else DROP_CURA_VALOR_BASE,
                     tempo_vida=DROP_TEMPO_DESAPARECER,
                     tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
                 )
@@ -197,14 +202,22 @@ class SistemaDrops:
             novos_drops.append(drop_cura)
             self._adicionar_drop(drop_cura)
 
-        # 3. Chance de Drop de Arma / Caixa Especial (+40% de frequência)
+        # 3. Chance de Drop de Arma / Caixa Especial (+40% de frequência com chance explícita ou base dinâmica com cooldown)
+        gerar_arma = False
         if chance_arma is not None:
             chance_arma_base = float(chance_arma) * 1.40
+            chance_arma_efetiva = min(1.0, chance_arma_base * (1.0 + bonus_chance_drop) * mult_chance_drop)
+            if random.random() < chance_arma_efetiva:
+                gerar_arma = True
         else:
-            chance_arma_base = (0.15 if (loot_enriquecido or tipo_inimigo == "ranged") else 0.04) * 1.40
+            if self.cooldown_caixa_atual <= 0.0:
+                chance_arma_base = (0.06 if (loot_enriquecido or tipo_inimigo == "ranged") else 0.012)
+                chance_arma_efetiva = min(1.0, chance_arma_base * (1.0 + bonus_chance_drop) * mult_chance_drop)
+                if random.random() < chance_arma_efetiva:
+                    gerar_arma = True
+                    self.cooldown_caixa_atual = 6.0
 
-        chance_arma_efetiva = min(1.0, chance_arma_base * (1.0 + bonus_chance_drop) * mult_chance_drop)
-        if random.random() < chance_arma_efetiva:
+        if gerar_arma:
             offset_x = random.uniform(-16.0, 16.0)
             offset_y = random.uniform(-16.0, 16.0)
             drop_arma = ItemDrop(
@@ -218,14 +231,22 @@ class SistemaDrops:
             novos_drops.append(drop_arma)
             self._adicionar_drop(drop_arma)
 
-        # 4. Chance de Drop de Equipamento / Drone (+40% de frequência)
+        # 4. Chance de Drop de Equipamento / Drone (+40% de frequência com chance explícita ou base dinâmica com cooldown)
+        gerar_equip = False
         if chance_equipamento is not None:
             chance_equip_base = float(chance_equipamento) * 1.40
+            chance_equip_efetiva = min(1.0, chance_equip_base * (1.0 + bonus_chance_drop) * mult_chance_drop)
+            if random.random() < chance_equip_efetiva:
+                gerar_equip = True
         else:
-            chance_equip_base = (0.15 if (loot_enriquecido or tipo_inimigo == "ranged") else 0.03) * 1.40
+            if self.cooldown_caixa_atual <= 0.0:
+                chance_equip_base = (0.05 if (loot_enriquecido or tipo_inimigo == "ranged") else 0.012)
+                chance_equip_efetiva = min(1.0, chance_equip_base * (1.0 + bonus_chance_drop) * mult_chance_drop)
+                if random.random() < chance_equip_efetiva:
+                    gerar_equip = True
+                    self.cooldown_caixa_atual = 6.0
 
-        chance_equip_efetiva = min(1.0, chance_equip_base * (1.0 + bonus_chance_drop) * mult_chance_drop)
-        if random.random() < chance_equip_efetiva:
+        if gerar_equip:
             offset_x = random.uniform(-16.0, 16.0)
             offset_y = random.uniform(-16.0, 16.0)
             drop_equip = ItemDrop(
@@ -241,9 +262,32 @@ class SistemaDrops:
 
         return novos_drops
 
+    def gerar_capsulas_powerup(self, centro_x: float, centro_y: float, opcoes: list[dict]) -> list[ItemDrop]:
+        """Gera 2 cápsulas holográficas de escolha de power-up na arena vinculadas pelo mesmo par_id."""
+        par_id = self._proximo_par_capsula_id
+        self._proximo_par_capsula_id += 1
+        criadas = []
+        offsets_x = [-75.0, 75.0]
+        for idx, op in enumerate(opcoes[:2]):
+            ox = offsets_x[idx] if idx < len(offsets_x) else 0.0
+            cap = ItemDrop(
+                x=centro_x + ox - float(DROP_LARGURA) / 2.0,
+                y=centro_y - float(DROP_ALTURA) / 2.0,
+                tipo="capsula_powerup",
+                valor=int(op.get("valor", 1) if isinstance(op.get("valor", 1), (int, float)) and op.get("valor", 1) >= 1 else 1),
+                tempo_vida=15.0,
+                tempo_scavenger=999.0,
+                subtipo=str(op.get("subtipo", op.get("tipo", "buff_dano_temp"))),
+                rotulo=str(op.get("nome", "Suprimento")),
+                par_id=par_id
+            )
+            criadas.append(cap)
+            self._adicionar_drop(cap)
+        return criadas
 
     def update(self, dt: float, pausar_despawn: bool = False):
         """Atualiza timers de todos os drops e remove expirados."""
+        self.cooldown_caixa_atual = max(0.0, self.cooldown_caixa_atual - dt)
         for drop in self.drops:
             drop.update(dt, pausar_despawn=pausar_despawn)
 
@@ -271,6 +315,12 @@ class SistemaDrops:
                 drop.coletado = True
                 drop.ativo = False
 
+                if getattr(drop, "par_id", None) is not None:
+                    for d in self.drops:
+                        if d is not drop and getattr(d, "par_id", None) == drop.par_id:
+                            d.ativo = False
+                            d.coletado = True
+
                 valor_efetivo = int(round(drop.valor * mult_valor_drop))
                 sfx_nome = "sfx_pickup_xp"
 
@@ -297,6 +347,11 @@ class SistemaDrops:
                     # Se Config 15 (coleta_inimiga) ativa (mult_valor_drop >= 2.0), dobra a munição
                     if mult_valor_drop > 1.0:
                         nova_arma.municao_max = int(round(nova_arma.municao_max * mult_valor_drop))
+                        nova_arma.municao_atual = nova_arma.municao_max
+
+                    bonus_mun = float(getattr(drop, "bonus_municao_mult", 1.0))
+                    if bonus_mun > 1.0:
+                        nova_arma.municao_max = int(round(nova_arma.municao_max * bonus_mun))
                         nova_arma.municao_atual = nova_arma.municao_max
 
                     if hasattr(jogador, "equipar_arma_especial"):

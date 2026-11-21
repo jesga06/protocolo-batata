@@ -6,13 +6,15 @@ tratamento de overflow multi-nível e limite máximo (Nível 20).
 
 from src.utils.math_utils import clamp
 
+NIVEIS_MARCO_CONFIG = (5, 11)
+
 
 class SistemaXP:
     """
     Gerenciador de experiência e evolução de níveis da Batata.
     """
 
-    def __init__(self, nivel_inicial: int = 1, nivel_maximo: int = 20):
+    def __init__(self, nivel_inicial: int = 1, nivel_maximo: int = 12):
         self.nivel: int = int(nivel_inicial)
         self.nivel_max: int = int(nivel_maximo)
         self.xp_atual: int = 0
@@ -23,6 +25,11 @@ class SistemaXP:
         """Registra uma função ou método a ser executado ao subir de nível."""
         if callable(callback) and callback not in self._callbacks_level_up:
             self._callbacks_level_up.append(callback)
+
+    def eh_nivel_marco_config(self, nivel: int = None) -> bool:
+        """Retorna True se o nível informado (ou nível atual) for um marco de Configuração (5 ou 11)."""
+        lvl = self.nivel if nivel is None else int(nivel)
+        return lvl in NIVEIS_MARCO_CONFIG
 
     @property
     def xp_necessario(self) -> int:
