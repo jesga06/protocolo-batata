@@ -202,7 +202,7 @@ class InimigoBase:
                                 y=cy - 4.0,
                                 dir_x=px_dir,
                                 dir_y=py_dir,
-                                velocidade=240.0,
+                                velocidade=276.0,
                                 dano=12,
                                 tempo_vida=3.0,
                                 dono="inimigo",
@@ -228,7 +228,7 @@ class InimigoBase:
                                 y=cy - 4.0,
                                 dir_x=math.cos(ang),
                                 dir_y=math.sin(ang),
-                                velocidade=220.0,
+                                velocidade=253.0,
                                 dano=14,
                                 tempo_vida=3.0,
                                 dono="inimigo",
@@ -255,7 +255,7 @@ class InimigoBase:
                             y=cy - 4.0,
                             dir_x=math.cos(ang),
                             dir_y=math.sin(ang),
-                            velocidade=230.0,
+                            velocidade=264.5,
                             dano=12,
                             tempo_vida=3.0,
                             dono="inimigo",
@@ -278,7 +278,7 @@ class InimigoBase:
                             y=cy - 4.0,
                             dir_x=math.cos(ang),
                             dir_y=math.sin(ang),
-                            velocidade=250.0,
+                            velocidade=287.5,
                             dano=14,
                             tempo_vida=3.0,
                             dono="inimigo",
@@ -490,7 +490,7 @@ class InimigoBase:
                 pass
 
         sprite = None
-        if not getattr(self, "is_boss", False):
+        if not getattr(self, "is_boss", False) and (getattr(self, "is_elite", False) or getattr(self, "is_caixa_som", False)):
             try:
                 sprite = obter_sprite_inimigo(
                     self.sprite_key,

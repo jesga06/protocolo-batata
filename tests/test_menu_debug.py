@@ -288,8 +288,8 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         screen.fill((0, 0, 0))
         cena._desenhar_hp_in_world()
 
-        sprite_w = 42.0 if (hasattr(cena.jogador, "_sprite_idle") and cena.jogador._sprite_idle) else float(cena.jogador.largura)
-        sprite_h = 42.0 if (hasattr(cena.jogador, "_sprite_idle") and cena.jogador._sprite_idle) else float(cena.jogador.altura)
+        sprite_w = float(cena.jogador.largura)
+        sprite_h = float(cena.jogador.altura)
         centro_x = int(cena.jogador.x + sprite_w / 2.0)
         meio_y = int(cena.jogador.y + sprite_h + 7.0)
 
