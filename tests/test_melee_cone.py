@@ -47,7 +47,7 @@ class TestMeleeDirectionalCone(unittest.TestCase):
         self.assertEqual(melee_padrao.alcance, 109.0)
         self.assertEqual(melee_padrao.knockback_forca, 360.0)
         self.assertEqual(melee_padrao.max_alvos_knockback, 2)
-        self.assertEqual(melee_padrao.arco_graus, 120.0)
+        self.assertEqual(melee_padrao.arco_graus, 90.0)
 
     def test_directional_filtering_in_cone(self):
         """

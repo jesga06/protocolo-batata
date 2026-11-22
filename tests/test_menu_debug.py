@@ -78,7 +78,7 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
     def test_rebalance_constants_values(self):
         """Verifica se as constantes de combate e munição foram atualizadas corretamente."""
         self.assertEqual(MELEE_ALCANCE, 109.0)
-        self.assertEqual(MELEE_ARCO_GRAUS, 120.0)
+        self.assertEqual(MELEE_ARCO_GRAUS, 90.0)
         self.assertEqual(MINIGUN_MUNICIAO_MAX, 300)
         self.assertEqual(SHOTGUN_MUNICIAO_MAX, 60)
         self.assertEqual(RIFLE_MUNICIAO_MAX, 120)
@@ -163,7 +163,7 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         # 8. Ação Desbloquear Todas Configurações
         self.debug_menu.indice_foco = 11
         self.debug_menu._executar_acao_selecionada()
-        self.assertEqual(len(self.cena.config_sistema.desbloqueadas), 20)
+        self.assertEqual(len(self.cena.config_sistema.desbloqueadas), 23)
 
     def test_debug_menu_spawn_drops_and_enemies(self):
         """Testa geração de drops e inimigos nas coordenadas do mundo com centro alinhado."""
@@ -233,7 +233,7 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         """Testa que o ataque Melee atinge alvos no novo alcance de 109px e arco de 120º."""
         melee = Melee()
         self.assertEqual(melee.alcance, 109.0)
-        self.assertEqual(melee.arco_graus, 120.0)
+        self.assertEqual(melee.arco_graus, 90.0)
 
         # Inimigo com centro em (494, 300) a 94px do jogador (dentro de 109px, mas além do alcance antigo de 84px)
         inimigo_alcance_novo = InimigoPadrao(x=480.0, y=286.0)
@@ -252,14 +252,14 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         """Valida que adicionar_xp, ganhar_xp e xp_necessario funcionam de forma idêntica."""
         from src.sistemas.sistema_xp import SistemaXP
         xp_sys = SistemaXP()
-        self.assertEqual(xp_sys.xp_necessario, 65)
-        self.assertEqual(xp_sys.xp_para_proximo_nivel(), 65)
+        self.assertEqual(xp_sys.xp_necessario, 103)
+        self.assertEqual(xp_sys.xp_para_proximo_nivel(), 103)
 
         # Testa ganhar_xp
-        niveis = xp_sys.ganhar_xp(65)
+        niveis = xp_sys.ganhar_xp(103)
         self.assertEqual(xp_sys.nivel, 2)
         self.assertIn(2, niveis)
-        self.assertEqual(xp_sys.xp_necessario, 115)
+        self.assertEqual(xp_sys.xp_necessario, 192)
 
     def test_hud_xp_and_boss_bar_vertical_separation(self):
         """Valida que a barra de XP (y=58..68) e o texto/barra do Mini-Boss (y=74..102) não se sobrepõem."""

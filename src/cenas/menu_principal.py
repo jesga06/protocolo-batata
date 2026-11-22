@@ -69,7 +69,9 @@ class MenuPrincipalScene(BaseScene):
         super().__init__()
         self.tempo_acumulado = 0.0
         self.opcao_selecionada = 0
-        self.opcoes = ["JOGAR [ENTER]", "CONFIGURAÇÕES [C]", "TUTORIAL [T]", "SAIR [ESC]"]
+        self.opcoes = ["JOGAR [ENTER]", "CONFIGURAÇÕES [C]", "TUTORIAL [T]", "RESETAR DADOS SALVOS", "SAIR [ESC]"]
+        self.confirmar_reset_save = False
+        self.aviso_reset_timer = 0.0
         self.cooldown_input = 0.0
 
         # Sistema de configurações e Menu de Configurações
@@ -191,8 +193,17 @@ class MenuPrincipalScene(BaseScene):
         # Navegação com Teclado
         if self.teclado.key_down("UP") or self.teclado.key_down("w"):
             self.opcao_selecionada = (self.opcao_selecionada - 1) % len(self.opcoes)
+            self.confirmar_reset_save = False
+            self.opcoes[3] = "RESETAR DADOS SALVOS"
         elif self.teclado.key_down("DOWN") or self.teclado.key_down("s"):
             self.opcao_selecionada = (self.opcao_selecionada + 1) % len(self.opcoes)
+            self.confirmar_reset_save = False
+            self.opcoes[3] = "RESETAR DADOS SALVOS"
+
+        if getattr(self, "aviso_reset_timer", 0.0) > 0.0:
+            self.aviso_reset_timer = max(0.0, self.aviso_reset_timer - dt)
+            if self.aviso_reset_timer <= 0.0:
+                self.opcoes[3] = "RESETAR DADOS SALVOS"
 
         # Seleção de opções
         if self.teclado.key_down("ENTER") or self.teclado.key_down("SPACE"):
@@ -209,6 +220,16 @@ class MenuPrincipalScene(BaseScene):
         elif self.opcao_selecionada == 2:
             self.abrir_tutorial()
         elif self.opcao_selecionada == 3:
+            if not getattr(self, "confirmar_reset_save", False):
+                self.confirmar_reset_save = True
+                self.opcoes[3] = "CONFIRMAR RESET?"
+            else:
+                self.confirmar_reset_save = False
+                self.gerenciador_config.from_dict({})
+                self.gerenciador_config.salvar_arquivo()
+                self.opcoes[3] = "DADOS RESETADOS!"
+                self.aviso_reset_timer = 2.0
+        elif self.opcao_selecionada == 4:
             self.sair_jogo()
 
     def abrir_tutorial(self):

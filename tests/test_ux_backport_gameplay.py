@@ -98,7 +98,7 @@ class TestStage1ConstantsAndWindow(unittest.TestCase):
     def test_constants_dt_clamp_and_camera_damping(self):
         self.assertAlmostEqual(DT_CLAMP_MAX, 0.05)
         self.assertAlmostEqual(CAMERA_DAMPING_K, 0.115)
-        self.assertAlmostEqual(MELEE_ARCO_GRAUS, 120.0)
+        self.assertAlmostEqual(MELEE_ARCO_GRAUS, 90.0)
         self.assertAlmostEqual(DASH_DURACAO, 0.22)
         self.assertAlmostEqual(DASH_MULT_VEL, 2.6)
         self.assertAlmostEqual(DASH_IFRAMES_BASE, 0.35)
@@ -225,19 +225,19 @@ class TestMeleeParryAndPistolOverload(unittest.TestCase):
 
     def test_melee_120_arc_and_parry_window_reflection(self):
         melee = Melee()
-        self.assertEqual(melee.arco_graus, 120.0)
-        self.assertAlmostEqual(melee.parry_duracao, 0.18)
-        self.assertAlmostEqual(melee.parry_alcance, 109.0 * 1.18, places=2)
+        self.assertEqual(melee.arco_graus, 90.0)
+        self.assertAlmostEqual(melee.parry_duracao, 0.12)
+        self.assertAlmostEqual(melee.parry_alcance, 109.0 * 1.0, places=2)
 
         # Executing attack opens parry window even with empty enemy list
         melee.executar_ataque(200.0, 200.0, [], angulo_mira=0.0)
-        self.assertAlmostEqual(melee.parry_janela_restante, 0.18)
+        self.assertAlmostEqual(melee.parry_janela_restante, 0.12)
 
-        # Projectile at +55° (inside 120° arc = +-60°) and distance ~120px (inside ~128.6px)
-        ang_55 = math.radians(55.0)
+        # Projectile at +35° (inside 90° arc = +-45°) and distance ~100px (inside 109px)
+        ang_35 = math.radians(35.0)
         p_hit = Projetil(
-            x=200.0 + 120.0 * math.cos(ang_55) - 4.0,
-            y=200.0 + 120.0 * math.sin(ang_55) - 4.0,
+            x=200.0 + 100.0 * math.cos(ang_35) - 4.0,
+            y=200.0 + 100.0 * math.sin(ang_35) - 4.0,
             dir_x=-1.0,
             dir_y=0.0,
             velocidade=240.0,
@@ -245,7 +245,7 @@ class TestMeleeParryAndPistolOverload(unittest.TestCase):
             tempo_vida=1.0,
             dono="inimigo",
         )
-        # Projectile at +80° (outside 120° arc)
+        # Projectile at +80° (outside 90° arc)
         ang_80 = math.radians(80.0)
         p_miss = Projetil(
             x=200.0 + 100.0 * math.cos(ang_80) - 4.0,
@@ -292,7 +292,7 @@ class TestMeleeParryAndPistolOverload(unittest.TestCase):
                 cena.projeteis = [proj_inim]
                 rebatidos = cena._processar_parry_ativo(melee, cx, cy, angulo_mira=0.0)
                 self.assertEqual(len(rebatidos), 1)
-                self.assertAlmostEqual(cena.hitstop_timer, 0.08, places=4)
+                self.assertAlmostEqual(cena.hitstop_timer, 0.10, places=4)
 
                 # Now simulate reflected projectile hitting direct enemy + nearby enemy within 90px
                 e_direct = InimigoPadrao(x=cx + 200.0, y=cy - 14.0)
@@ -458,6 +458,67 @@ class TestAutoFireFloorPersistenceAndVisualMeta(unittest.TestCase):
             self.assertAlmostEqual(self.janela.escala_resolucao_mundo, expected_scale)
             self.assertEqual((self.janela.largura_janela_atual, self.janela.altura_janela_atual), (1280, 720))
             cena.draw()
+
+
+class TestPhase2ParryDuelNinjaTankAndBoss(unittest.TestCase):
+    """Valida whiff lockout/Exposed, Tank Controls HP proporcional, InimigoNinja, Impressora Térmica e Boss."""
+
+    def test_parry_whiff_lockout_exposed_ninja_duel_and_tank_controls(self):
+        from src.entidades.inimigo_ninja import InimigoNinja
+        from src.entidades.inimigo_impressora import InimigoImpressoraTermica
+        from src.entidades.inimigos.geladeira_tsunami import GeladeiraTsunami
+        from src.sistemas.sistema_spawn import SistemaSpawn
+
+        # 1. Parry whiff adds +0.8s lockout, 0.20s hitstop, and Exposed (+25% dmg)
+        cena = GameplayScene()
+        melee = cena._obter_arma_melee()
+        melee.tempo_recarga_restante = 0.6
+        melee.iniciar_golpe_parry(0.0, punir_whiff=True)
+        melee.atualizar(0.20)
+        self.assertAlmostEqual(melee.tempo_recarga_restante, 1.4, places=3)
+        self.assertAlmostEqual(cena.hitstop_timer, 0.20, places=3)
+        self.assertGreater(cena.jogador.exposed_timer, 1.0)
+
+        # 2. Tank Controls proportional HP scaling (125/250 <-> 75/150)
+        cena.jogador.atualizar_modo_tanque(True)
+        self.assertEqual(cena.jogador.hp_max, 250)
+        cena.jogador.hp = 125
+        cena.jogador.atualizar_modo_tanque(False)
+        self.assertEqual(cena.jogador.hp_max, 150)
+        self.assertEqual(cena.jogador.hp, 75)
+
+        # 3. InimigoNinja max-2 & 20s spawn cooldown
+        sp = SistemaSpawn(max_ativos=50)
+        sp.tempo_decorrido = 80.0
+        novos = sp.update(dt=0.1, camera_x=0.0, camera_y=0.0, total_inimigos_vivos=0, ninjas_vivos=2)
+        self.assertFalse(any(getattr(e, "is_ninja", False) for e in novos))
+        novos_ok = sp.update(dt=0.1, camera_x=0.0, camera_y=0.0, total_inimigos_vivos=0, ninjas_vivos=1)
+        self.assertTrue(any(getattr(e, "is_ninja", False) for e in novos_ok))
+        novos_cd = sp.update(dt=0.1, camera_x=0.0, camera_y=0.0, total_inimigos_vivos=0, ninjas_vivos=1)
+        self.assertFalse(any(getattr(e, "is_ninja", False) for e in novos_cd))
+
+        # 4. InimigoImpressoraTermica fires Overload Core
+        imp = InimigoImpressoraTermica(x=200.0, y=200.0)
+        imp.timer_tiro = 2.5
+        imp.update(0.1, (400.0, 224.0))
+        cores = imp.obter_projeteis_pendentes()
+        self.assertEqual(len(cores), 1)
+        self.assertTrue(cores[0].sobrecarga_termica)
+
+        # 5. GeladeiraTsunami speed 268.0 and aimed Phase 1 shots (18 ring + 5 aimed fan)
+        boss = GeladeiraTsunami(x=300.0, y=300.0)
+        self.assertAlmostEqual(boss.velocidade, 268.0)
+        boss._disparar_pulso_subwoofer((600.0, 378.0))
+        tiros_boss = boss.obter_projeteis_pendentes()
+        self.assertGreaterEqual(len(tiros_boss), 23)
+
+        # 6. Rocket starts slower (140 px/s) and accelerates smoothly
+        from src.armas.lanca_foguetes import LancaFoguetes
+        lf = LancaFoguetes()
+        foguete = lf.disparar(100.0, 100.0, 300.0, 100.0)[0]
+        self.assertAlmostEqual(foguete.velocidade, 140.0)
+        foguete.update(0.5)
+        self.assertAlmostEqual(foguete.velocidade, 480.0)
 
 
 if __name__ == "__main__":

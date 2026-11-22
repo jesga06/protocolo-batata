@@ -130,6 +130,30 @@ class Jogador:
         self.dash_dir: tuple[float, float] = (1.0, 0.0)
         self.dash_stutter_trigger: bool = False
 
+        # Estado Exposto (punição de whiff no parry / duelo) e Controles de Tanque
+        self.exposed_timer: float = 0.0
+        self.exposed_mult: float = 1.25
+        self.dano_recebido_mult: float = 1.0
+        self.controles_tanque: bool = False
+        self._tanque_ativo_anterior: bool = False
+        self.angulo_tanque: float = -math.pi / 2.0
+        self.tanque_avancando: bool = False
+        self.tanque_parado: bool = True
+
+    def atualizar_modo_tanque(self, ativo: bool):
+        """Alterna Controles de Tanque escalando hp_max (250 <-> 150) e hp atual proporcionalmente."""
+        ativo_bool = bool(ativo)
+        self.controles_tanque = ativo_bool
+        if ativo_bool == self._tanque_ativo_anterior:
+            return
+        old_max = max(1, int(self.hp_max))
+        extra_surtos = 50 if getattr(self, "protecao_surtos", False) else 0
+        new_max = (250 if ativo_bool else int(JOGADOR_HP_MAX_PADRAO)) + extra_surtos
+        self.hp_max = new_max
+        if self.vivo:
+            self.hp = max(1, min(new_max, int(round(self.hp * (new_max / float(old_max))))))
+        self._tanque_ativo_anterior = ativo_bool
+
     def iniciar_dash(self, dx: float, dy: float, mods=None) -> bool:
         """
         Aciona o Dash direcional permanente se desbloqueado e fora de cooldown.
@@ -428,6 +452,23 @@ class Jogador:
                     dy = (my - cy) / dist_mouse
             except Exception:
                 pass
+        elif getattr(self, "controles_tanque", False) and teclado is not None:
+            rot_vel = 3.2
+            dt_rot = max(0.0, float(dt))
+            if teclado.key_pressed("a") or teclado.key_pressed("left") or teclado.key_pressed("LEFT"):
+                self.angulo_tanque -= rot_vel * dt_rot
+            if teclado.key_pressed("d") or teclado.key_pressed("right") or teclado.key_pressed("RIGHT"):
+                self.angulo_tanque += rot_vel * dt_rot
+            avanco = 0.0
+            if teclado.key_pressed("w") or teclado.key_pressed("up") or teclado.key_pressed("UP"):
+                avanco += 1.0
+            if teclado.key_pressed("s") or teclado.key_pressed("down") or teclado.key_pressed("DOWN"):
+                avanco -= 1.0
+            self.tanque_avancando = (avanco > 0.0)
+            self.tanque_parado = (avanco == 0.0)
+            if avanco != 0.0:
+                dx = math.cos(self.angulo_tanque) * avanco
+                dy = math.sin(self.angulo_tanque) * avanco
         elif teclado is not None:
             if preset_teclas == "invertido":
                 if teclado.key_pressed("a") or teclado.key_pressed("left") or teclado.key_pressed("LEFT"):
@@ -606,6 +647,10 @@ class Jogador:
             return
 
         dano_a_aplicar = int(quantidade)
+        if getattr(self, "dano_recebido_mult", 1.0) != 1.0:
+            dano_a_aplicar = max(1, int(round(dano_a_aplicar * float(self.dano_recebido_mult))))
+        if getattr(self, "exposed_timer", 0.0) > 0.0:
+            dano_a_aplicar = max(1, int(round(dano_a_aplicar * float(getattr(self, "exposed_mult", 1.25)))))
         if self.buff_resistencia_timer > 0.0:
             dano_a_aplicar = max(1, int(round(dano_a_aplicar * 0.92)))
 
@@ -786,6 +831,9 @@ class Jogador:
 
         if getattr(self, "stutter_freeze_timer", 0.0) > 0.0:
             self.stutter_freeze_timer = max(0.0, self.stutter_freeze_timer - dt)
+
+        if getattr(self, "exposed_timer", 0.0) > 0.0:
+            self.exposed_timer = max(0.0, self.exposed_timer - dt)
 
         if getattr(self, "overdrive_dash_cooldown", 0.0) > 0.0:
             self.overdrive_dash_cooldown = max(0.0, self.overdrive_dash_cooldown - dt)
@@ -1105,6 +1153,34 @@ class Jogador:
                 cor,
                 (int(draw_x), int(draw_y), self.largura, self.altura),
                 border_radius=8
+            )
+
+        # Anel vermelho pulsante quando Exposto (punição de whiff / duelo)
+        if getattr(self, "exposed_timer", 0.0) > 0.0:
+            cx_exp = draw_x + self.largura / 2.0
+            cy_exp = draw_y + self.altura / 2.0
+            pygame.draw.circle(screen, (239, 68, 68), (int(cx_exp), int(cy_exp)), 24, 2)
+
+        # Seta direcional rotativa dos Controles de Tanque
+        if getattr(self, "controles_tanque", False):
+            cx_t = draw_x + self.largura / 2.0
+            cy_t = draw_y + self.altura / 2.0
+            ang_t = float(getattr(self, "angulo_tanque", -math.pi / 2.0))
+            ponta_x = cx_t + math.cos(ang_t) * 32.0
+            ponta_y = cy_t + math.sin(ang_t) * 32.0
+            base_x = cx_t + math.cos(ang_t) * 18.0
+            base_y = cy_t + math.sin(ang_t) * 18.0
+            perp_x = -math.sin(ang_t) * 6.0
+            perp_y = math.cos(ang_t) * 6.0
+            pygame.draw.line(screen, (250, 204, 21), (int(cx_t), int(cy_t)), (int(ponta_x), int(ponta_y)), 2)
+            pygame.draw.polygon(
+                screen,
+                (250, 204, 21),
+                [
+                    (int(ponta_x), int(ponta_y)),
+                    (int(base_x + perp_x), int(base_y + perp_y)),
+                    (int(base_x - perp_x), int(base_y - perp_y)),
+                ],
             )
 
         # Multithreading: renderiza 2 mini-coprocessadores orbitais

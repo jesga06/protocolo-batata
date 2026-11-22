@@ -500,6 +500,26 @@ def obter_sprite_inimigo(
         "inimigo_phasing": GRID_INIMIGO_PHASING,
         "inimigo_blindado": GRID_INIMIGO_BLINDADO,
         "inimigo_ranged": GRID_INIMIGO_RANGED,
+        "inimigo_impressora": GRID_MINIBOSS_IMPRESSORA,
+        "inimigo_ninja": [
+            ".....OOOOOO.....",
+            "...OOKKKKKKOO...",
+            "..OKKPPPPPPKKO..",
+            "..OKOOOOOOOOOKO.",
+            "..OKOCOCCCCCOCK.",
+            "..OKOOOOOOOOOKO.",
+            "...OOKKKKKKOO...",
+            "..OKKLPKKPLKKO..",
+            ".OKKLPKKKKPLKKO.",
+            ".OCKKKKKKKKKKKO.",
+            ".OCCKKKKKKKKKKO.",
+            "..O.OKKKKKKO.O..",
+            "....OOOOOOOO....",
+            "....OKK..KKO....",
+            "....OKK..KKO....",
+            "....OOO..OOO....",
+        ],
+        "cubo_criogenico": GRID_INIMIGO_BLINDADO,
     }
     grid = mapa_comuns.get(sprite_key, GRID_INIMIGO_PADRAO)
     return _renderizar_grid(grid, largura, altura)

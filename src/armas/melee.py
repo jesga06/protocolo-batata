@@ -25,7 +25,7 @@ class Melee(ArmaBase):
         alcance: float = MELEE_ALCANCE,
         knockback_forca: float = MELEE_KNOCKBACK,
         max_alvos_knockback: int = MELEE_ALVOS_MAX,
-        arco_graus: float = 120.0
+        arco_graus: float = MELEE_ARCO_GRAUS
     ):
         super().__init__(
             nome="Chave de Manutenção",
@@ -39,14 +39,20 @@ class Melee(ArmaBase):
         self.knockback_forca = float(knockback_forca)
         self.max_alvos_knockback = int(max_alvos_knockback)
         self.arco_graus = float(arco_graus)
-        self.parry_duracao: float = 0.18
-        self.parry_alcance_mult: float = 1.18
+        self.parry_duracao: float = 0.12
+        self.parry_alcance_mult: float = 1.0
         self.parry_janela_restante: float = 0.0
         self.parry_angulo: float = 0.0
+        self.parry_acertou: bool = False
+        self.parry_pode_punir_whiff: bool = False
+        self.parry_whiff_penalidade_cd: float = 0.8
+        self.parry_dano_mult: float = 1.0
+        self.parry_splash_raio: float = 90.0
+        self.whiff_callback = None
 
     @property
     def parry_alcance(self) -> float:
-        """Alcance efetivo da janela ativa de parry (~128.6px no alcance base de 109px)."""
+        """Alcance efetivo da janela ativa de parry."""
         return self.alcance * self.parry_alcance_mult
 
     @property
@@ -55,14 +61,22 @@ class Melee(ArmaBase):
         return self.parry_janela_restante > 0.0
 
     def atualizar(self, dt: float):
-        """Decrementa a janela ativa de parry com base no Delta Time."""
+        """Decrementa a janela ativa de parry e aplica punição de whiff se expirar sem acerto."""
         if self.parry_janela_restante > 0.0:
             self.parry_janela_restante = max(0.0, self.parry_janela_restante - max(0.0, float(dt)))
+            if self.parry_janela_restante <= 0.0:
+                if self.parry_pode_punir_whiff and not self.parry_acertou:
+                    self.tempo_recarga_restante += float(self.parry_whiff_penalidade_cd)
+                    if callable(self.whiff_callback):
+                        self.whiff_callback()
+                self.parry_pode_punir_whiff = False
 
-    def iniciar_golpe_parry(self, angulo: float = 0.0):
+    def iniciar_golpe_parry(self, angulo: float = 0.0, punir_whiff: bool = True):
         """Abre a janela ativa de parry na direção informada."""
         self.parry_janela_restante = float(self.parry_duracao)
         self.parry_angulo = float(angulo) if angulo is not None else 0.0
+        self.parry_acertou = False
+        self.parry_pode_punir_whiff = bool(punir_whiff)
 
     def disparar(self, origem_x: float, origem_y: float, destino_x: float, destino_y: float) -> list:
         """Melee não dispara projéteis balísticos convencionais."""
@@ -108,7 +122,7 @@ class Melee(ArmaBase):
             ang_mira = math.atan2(mira_y - origem_y, mira_x - origem_x)
 
         # Abre janela ativa de parry sempre que o golpe melee é executado
-        self.iniciar_golpe_parry(ang_mira if ang_mira is not None else 0.0)
+        self.iniciar_golpe_parry(ang_mira if ang_mira is not None else 0.0, punir_whiff=True)
 
         arco_efetivo = self.arco_graus if arco_graus is None else float(arco_graus)
         meio_arco_rad = math.radians(arco_efetivo / 2.0)
@@ -183,6 +197,9 @@ class Melee(ArmaBase):
                 if hasattr(inimigo, "aplicar_knockback"):
                     inimigo.aplicar_knockback(dir_x, dir_y, self.knockback_forca)
 
+        if aplicar_dano and len(inimigos_afetados) > 0:
+            self.parry_pode_punir_whiff = False
+
         return inimigos_afetados
 
     def tentar_parry_projeteis(
@@ -236,12 +253,12 @@ class Melee(ArmaBase):
 
             p.dono = "jogador"
             p.velocidade = float(getattr(p, "velocidade", 300.0)) * 1.5
-            p.dano = max(1, int(round(getattr(p, "dano", 1) * 3.0)))
+            p.dano = max(1, int(round(getattr(p, "dano", 1) * 3.0 * float(getattr(self, "parry_dano_mult", 1.0)))))
             p.dir_x = dir_reb_x
             p.dir_y = dir_reb_y
             p.refletido_parry = True
             p.parried = True
-            p.raio_explosao = 90.0
+            p.raio_explosao = float(getattr(self, "parry_splash_raio", 90.0))
             p.splash_mult = 0.75
             p.cor = (255, 225, 90)
             p.tempo_vida = max(float(getattr(p, "tempo_vida", 0.0)), 2.0)
@@ -249,6 +266,9 @@ class Melee(ArmaBase):
             if hasattr(p, "alvos_atingidos"):
                 p.alvos_atingidos.clear()
             refletidos.append(p)
+
+        if refletidos:
+            self.parry_acertou = True
 
         return refletidos
 

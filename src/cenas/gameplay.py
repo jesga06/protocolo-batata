@@ -26,9 +26,9 @@ from PPlay.camera import Camera
 from PPlay.scenemanager import SceneManager
 from src.utils.constantes import (
     LARGURA_TELA, ALTURA_TELA, LARGURA_ARENA, ALTURA_ARENA,
-    CAMERA_DAMPING_K, DT_CLAMP_MAX, DASH_PARRY_META,
+    CAMERA_DAMPING_K, DT_CLAMP_MAX, DASH_PARRY_META, MELEE_ARCO_GRAUS,
     BRANCO, PRETO, CINZA_FUNDO, CINZA_PAINEL, CINZA_BORDA,
-    VERMELHO_HP, VERDE_CURA, AMARELO_XP, AZUL_CIANO, DOURADO, LARANJA_ALERTA,
+    VERMELHO_HP, VERMELHO_DANO, VERDE_CURA, AMARELO_XP, AZUL_CIANO, DOURADO, LARANJA_ALERTA,
     ROXO_ACENTO, ROXO_CLARO, ROXO_ESCURO,
     BOSS_GELADEIRA_LARGURA, BOSS_GELADEIRA_ALTURA,
     obter_caminho_asset, SAVE_FILE_PATH
@@ -374,7 +374,7 @@ class GameplayScene(BaseScene):
                 "tempo": 1.8,
                 "tempo_max": 1.8
             })
-            if int(novo_nivel) >= getattr(self.jogador.sistema_xp, "nivel_max", 12):
+            if int(novo_nivel) >= getattr(self.jogador.sistema_xp, "nivel_max", 12) and getattr(self, "tempo_sobrevivencia", 0.0) >= 270.0:
                 self.iniciar_boss_grace_period()
 
     def aplicar_modificadores(self):
@@ -388,6 +388,38 @@ class GameplayScene(BaseScene):
         self.jogador.fps_stutter_dodge = getattr(mods, "fps_stutter_dodge", False)
         self.jogador.motion_blur_ghosting = getattr(mods, "motion_blur_ghosting", False)
         self.jogador.keybinds_overdrive_dash = getattr(mods, "keybinds_overdrive_dash", False)
+        self.jogador.dano_recebido_mult = float(getattr(mods, "dano_recebido_mult", 1.0))
+        if hasattr(self.jogador, "atualizar_modo_tanque"):
+            self.jogador.atualizar_modo_tanque(getattr(mods, "controles_tanque", False))
+
+        # Calibragem & Efeito de Parry
+        parry_prec = getattr(mods, "parry_precisao", "padrao")
+        parry_ef = getattr(mods, "parry_efeito", "padrao")
+        self.jogador.exposed_mult = 1.45 if parry_ef == "pulso_emp" else 1.25
+        arma_melee = self._obter_arma_melee()
+        if arma_melee is not None:
+            arma_melee.whiff_callback = self._ao_errar_parry
+            if parry_prec == "cirurgico":
+                arma_melee.arco_graus = 65.0
+                arma_melee.parry_duracao = 0.09
+                arma_melee.parry_alcance_mult = 0.85
+                arma_melee.parry_dano_mult = 1.75
+                arma_melee.parry_splash_raio = 140.0
+                arma_melee.cooldown = 0.6
+            elif parry_prec == "amplificado":
+                arma_melee.arco_graus = 135.0
+                arma_melee.parry_duracao = 0.17
+                arma_melee.parry_alcance_mult = 1.25
+                arma_melee.parry_dano_mult = 0.70
+                arma_melee.parry_splash_raio = 90.0
+                arma_melee.cooldown = 0.85
+            else:
+                arma_melee.arco_graus = float(MELEE_ARCO_GRAUS)
+                arma_melee.parry_duracao = 0.12
+                arma_melee.parry_alcance_mult = 1.0
+                arma_melee.parry_dano_mult = 1.0
+                arma_melee.parry_splash_raio = 90.0
+                arma_melee.cooldown = 0.6
 
         for arma in self.jogador.armas:
             if not hasattr(arma, "_dano_original"):
@@ -540,8 +572,26 @@ class GameplayScene(BaseScene):
                 return arma
         return None
 
+    def _ao_errar_parry(self):
+        """Callback acionado quando a janela de parry expira sem refletir projéteis: hitstop 0.2s, som triste e Exposto."""
+        self.hitstop_timer = max(getattr(self, "hitstop_timer", 0.0), 0.20)
+        self.aplicar_shake(7.0, 0.22)
+        if hasattr(self, "sistema_audio") and self.sistema_audio is not None and hasattr(self.sistema_audio, "tocar_parry_whiff"):
+            self.sistema_audio.tocar_parry_whiff()
+        if hasattr(self, "jogador") and self.jogador is not None:
+            self.jogador.exposed_timer = max(getattr(self.jogador, "exposed_timer", 0.0), 1.5)
+            cx = self.jogador.x + self.jogador.largura / 2.0
+            self.toasts_coleta.append({
+                "texto": "EXPOSTO! (+DANO RECEBIDO)",
+                "cor": VERMELHO_DANO,
+                "x": cx,
+                "y": self.jogador.y - 24,
+                "tempo": 1.6,
+                "tempo_max": 1.6
+            })
+
     def _processar_parry_ativo(self, arma_melee, cx: float, cy: float, angulo_mira: float | None = None) -> list:
-        """Verifica e processa parries ativos da janela de parry do Melee."""
+        """Verifica e processa parries ativos (padrão, Contra-Detonação, Duelo 3-Estágios e Configs)."""
         if arma_melee is None or not hasattr(arma_melee, "tentar_parry_projeteis"):
             return []
         rebatidos = arma_melee.tentar_parry_projeteis(
@@ -550,28 +600,111 @@ class GameplayScene(BaseScene):
         if not rebatidos:
             return []
 
-        self.hitstop_timer = max(getattr(self, "hitstop_timer", 0.0), 0.08)
-        self.aplicar_shake(8.0, 0.20)
+        mods = self.gerenciador_config.obter_modificadores() if hasattr(self, "gerenciador_config") and self.gerenciador_config else None
+        parry_ef = getattr(mods, "parry_efeito", "padrao") if mods else "padrao"
+
+        eh_pesado = any(
+            getattr(pr, "sobrecarga_termica", False) or int(getattr(pr, "duel_stage", 0)) >= 3
+            for pr in rebatidos
+        )
+        max_stage = max([int(getattr(pr, "duel_stage", 0)) for pr in rebatidos] + [0])
+        pitch_clang = 1.5 if max_stage >= 3 else (1.25 if max_stage == 2 else 1.0)
+
+        self.hitstop_timer = max(getattr(self, "hitstop_timer", 0.0), 0.18 if eh_pesado else 0.10)
+        self.aplicar_shake(12.0 if eh_pesado else 8.0, 0.25 if eh_pesado else 0.20)
         if hasattr(self, "sistema_audio") and self.sistema_audio is not None:
-            self.sistema_audio.tocar_parry_clang()
+            self.sistema_audio.tocar_parry_clang(pitch_mult=pitch_clang)
 
         ang_parry = angulo_mira if angulo_mira is not None else getattr(arma_melee, "parry_angulo", 0.0)
-        raio_parry = getattr(arma_melee, "parry_alcance", 128.6)
-        arco_parry = getattr(arma_melee, "arco_graus", 120.0)
+        raio_parry = getattr(arma_melee, "parry_alcance", 109.0)
+        arco_parry = getattr(arma_melee, "arco_graus", 90.0)
         if hasattr(self.sistema_particulas, "adicionar_arco_parry"):
             self.sistema_particulas.adicionar_arco_parry(
                 cx, cy, ang_parry, raio=raio_parry, arco_graus=arco_parry
             )
 
+        if parry_ef == "pulso_emp":
+            self.sistema_particulas.emitir_onda_choque(cx, cy, raio_max=150.0, cor=(56, 189, 248))
+            for inim in getattr(self, "inimigos", []):
+                if getattr(inim, "vivo", True) and not getattr(inim, "is_boss", False):
+                    icx = inim.x + getattr(inim, "largura", 28) / 2.0
+                    icy = inim.y + getattr(inim, "altura", 28) / 2.0
+                    if distancia(cx, cy, icx, icy) <= 165.0:
+                        inim.slow_timer = max(getattr(inim, "slow_timer", 0.0), 1.2)
+                        inim.slow_fator = 0.0
+
+        extras_gerados = []
         for pr in rebatidos:
+            px_c = pr.x + getattr(pr, "largura", 8) / 2.0
+            py_c = pr.y + getattr(pr, "altura", 8) / 2.0
             self.sistema_particulas.emitir_faiscas(
-                pr.x + getattr(pr, "largura", 8) / 2.0,
-                pr.y + getattr(pr, "altura", 8) / 2.0,
-                dir_x=math.cos(ang_parry),
-                dir_y=math.sin(ang_parry),
-                cor=DOURADO,
-                qtd=8
+                px_c, py_c, dir_x=math.cos(ang_parry), dir_y=math.sin(ang_parry), cor=DOURADO, qtd=8
             )
+
+            # Duelo de Parry em 3 Estágios (Ninja / Boss Core)
+            stage = int(getattr(pr, "duel_stage", 0))
+            owner = getattr(pr, "duel_owner", None)
+            if stage in (1, 2) and owner is not None and getattr(owner, "vivo", False) and hasattr(owner, "disparar_contra_ataque_duelo"):
+                pr.ativo = False
+                owner.disparar_contra_ataque_duelo(stage + 1, (cx, cy))
+                self.toasts_coleta.append({
+                    "texto": f"DUELO PARRY {stage}/3!",
+                    "cor": (251, 146, 60),
+                    "x": cx, "y": self.jogador.y - 22, "tempo": 1.2, "tempo_max": 1.2
+                })
+            elif stage >= 3:
+                self.sistema_particulas.emitir_onda_choque(cx, cy, raio_max=180.0, cor=DOURADO)
+                self.jogador.curar(15)
+                if owner is not None and getattr(owner, "vivo", False):
+                    if getattr(owner, "is_boss", False):
+                        owner.stagger_timer = max(getattr(owner, "stagger_timer", 0.0), 0.6)
+                        owner.receber_dano(1200)
+                        self.pocas_gelo = [p for p in self.pocas_gelo if distancia(cx, cy, p["x"], p["y"]) > 220.0]
+                    else:
+                        owner.receber_dano(9999, fonte="parry_ninja_proprio")
+                        if not owner.vivo:
+                            self._registrar_abate_inimigo(owner, mods)
+                self.toasts_coleta.append({
+                    "texto": "DUELO VENCIDO! +15 HP",
+                    "cor": DOURADO,
+                    "x": cx, "y": self.jogador.y - 26, "tempo": 1.8, "tempo_max": 1.8
+                })
+
+            # Contra-Detonação (Impressora Térmica / Núcleo Criogênico)
+            if getattr(pr, "sobrecarga_termica", False):
+                self.sistema_particulas.emitir_onda_choque(px_c, py_c, raio_max=180.0, cor=(251, 146, 60))
+                if getattr(pr, "criogenico", False) and self.chefe_final is not None and getattr(self.chefe_final, "vivo", False):
+                    self.chefe_final.stagger_timer = max(getattr(self.chefe_final, "stagger_timer", 0.0), 0.6)
+                    self.pocas_gelo = [p for p in self.pocas_gelo if distancia(px_c, py_c, p["x"], p["y"]) > 220.0]
+                alvos_vivos = [e for e in getattr(self, "inimigos", []) if getattr(e, "vivo", True)]
+                alvos_vivos.sort(key=lambda e: distancia(px_c, py_c, e.x + getattr(e, "largura", 28) / 2.0, e.y + getattr(e, "altura", 28) / 2.0))
+                for idx_s in range(4):
+                    if idx_s < len(alvos_vivos):
+                        alvo_s = alvos_vivos[idx_s]
+                        sdx, sdy = vetor_direcao(px_c, py_c, alvo_s.x + getattr(alvo_s, "largura", 28) / 2.0, alvo_s.y + getattr(alvo_s, "altura", 28) / 2.0)
+                    else:
+                        ang_s = ang_parry + (idx_s - 1.5) * 0.45
+                        sdx, sdy = math.cos(ang_s), math.sin(ang_s)
+                    extras_gerados.append(Projetil(
+                        x=px_c - 4.0, y=py_c - 4.0, dir_x=sdx, dir_y=sdy,
+                        velocidade=520.0, dano=max(35, pr.dano), tempo_vida=2.0,
+                        dono="jogador", largura=9, altura=9, sprite_key="projetil_pistola",
+                        perfurante=True, cor=(253, 224, 71), refletido_parry=True
+                    ))
+
+            # Config efeito_parry == "estilhaco"
+            if parry_ef == "estilhaco" and pr.ativo:
+                pr.raio_explosao = 0.0
+                pr.perfurante = True
+                pr.dano = max(1, int(round(pr.dano * 0.75)))
+                ang_base = math.atan2(pr.dir_y, pr.dir_x)
+                for off_est in (-0.22, 0.22):
+                    extras_gerados.append(pr.clonar(
+                        vx=math.cos(ang_base + off_est) * pr.velocidade,
+                        vy=math.sin(ang_base + off_est) * pr.velocidade,
+                        dano=pr.dano
+                    ))
+
             if hasattr(self, "config_sistema") and self.config_sistema is not None and hasattr(self.config_sistema, "registrar_parry"):
                 total_parries, recem_desbloqueou = self.config_sistema.registrar_parry(DASH_PARRY_META)
                 if recem_desbloqueou:
@@ -583,29 +716,23 @@ class GameplayScene(BaseScene):
                     self.toasts_coleta.append({
                         "texto": "DASH DESBLOQUEADO [ESPAÇO]",
                         "cor": AZUL_CIANO,
-                        "x": cx,
-                        "y": self.jogador.y - 22,
-                        "tempo": 2.6,
-                        "tempo_max": 2.6
+                        "x": cx, "y": self.jogador.y - 22, "tempo": 2.6, "tempo_max": 2.6
                     })
-                elif total_parries in (5, 10):
+                elif total_parries % 10 == 0:
                     self.toasts_coleta.append({
                         "texto": f"PARRY {total_parries}/{DASH_PARRY_META}",
                         "cor": DOURADO,
-                        "x": cx,
-                        "y": self.jogador.y - 18,
-                        "tempo": 1.8,
-                        "tempo_max": 1.8
+                        "x": cx, "y": self.jogador.y - 18, "tempo": 1.8, "tempo_max": 1.8
                     })
-                else:
+                elif stage == 0:
                     self.toasts_coleta.append({
                         "texto": "PARRY!",
                         "cor": DOURADO,
-                        "x": cx,
-                        "y": self.jogador.y - 16,
-                        "tempo": 1.0,
-                        "tempo_max": 1.0
+                        "x": cx, "y": self.jogador.y - 16, "tempo": 1.0, "tempo_max": 1.0
                     })
+
+        if extras_gerados:
+            self.projeteis.extend(extras_gerados)
         return rebatidos
 
     def _executar_golpe_melee(
@@ -1078,13 +1205,8 @@ class GameplayScene(BaseScene):
                 self._voltar_menu()
                 return
             elif pode_abrir_menu:
-                if not self.pausado:
-                    self.menu_configs.abrir()
-                    self.pausado = True
-                    self.buffer_tiro = 0.0
-                else:
-                    self.pausado = False
-                    self.buffer_tiro = 0.0
+                self.pausado = not self.pausado
+                self.buffer_tiro = 0.0
                 return
 
         # Comportamento no estado de Vitória
@@ -1569,6 +1691,10 @@ class GameplayScene(BaseScene):
                                     p.height = p.altura
                                 if mult_dano_buff != 1.0:
                                     p.dano = max(1, math.ceil(p.dano * mult_dano_buff))
+                                if getattr(self.jogador, "controles_tanque", False):
+                                    p.perfuracoes_restantes = int(getattr(p, "perfuracoes_restantes", 0)) + 1
+                            if getattr(self.jogador, "controles_tanque", False) and getattr(self.jogador, "tanque_parado", False):
+                                arma_ativa.tempo_recarga_restante *= 0.80
                             self.projeteis.extend(novos_tiros)
                             self.buffer_tiro = 0.0
                             self._aplicar_efeitos_disparo_extras(novos_tiros, mods)
@@ -1746,7 +1872,8 @@ class GameplayScene(BaseScene):
                     hp_mult=hp_inim_mult,
                     vel_mult=vel_inim_mult,
                     permitir_ranged=permitir_ranged,
-                    possui_elite_vivo=possui_elite
+                    possui_elite_vivo=possui_elite,
+                    ninjas_vivos=len([e for e in self.inimigos if getattr(e, "vivo", True) and getattr(e, "is_ninja", False)])
                 )
                 if fogo_cruzado_ranged:
                     for ni in novos_inimigos:
@@ -1754,9 +1881,13 @@ class GameplayScene(BaseScene):
                             ni.rajada_tripla = True
                 self.inimigos.extend(novos_inimigos)
 
-                # Gatilho "Jogar aos Lobos": após o ciclo dos Mini-Bosses (~5:00), a Geladeira Tsunami entra mesmo se o jogador estiver em nível baixo
-                if self.chefe_final is None and not self.boss_cutscene_ativa and not self.boss_grace_period_ativo and not possui_elite and getattr(self.spawner, "tempo_elite", 0.0) >= 300.0:
-                    self.iniciar_boss_grace_period()
+                # Gatilho Nível 12 após 4:30 (270s) OU "Jogar aos Lobos" (tempo_elite >= 300s)
+                nivel_max = getattr(getattr(self.jogador, "sistema_xp", None), "nivel_max", 12)
+                if self.chefe_final is None and not self.boss_cutscene_ativa and not self.boss_grace_period_ativo:
+                    if getattr(self.jogador, "nivel", 1) >= nivel_max and getattr(self, "tempo_sobrevivencia", 0.0) >= 270.0:
+                        self.iniciar_boss_grace_period()
+                    elif not possui_elite and getattr(self.spawner, "tempo_elite", 0.0) >= 300.0:
+                        self.iniciar_boss_grace_period()
 
         # =========================================================================
         # 4. FÍSICA DOS PROJÉTEIS
@@ -1927,20 +2058,25 @@ class GameplayScene(BaseScene):
             if cutscene_congelada:
                 continue
 
-            # Atropelamento (Movimento pelo Mouse)
-            if getattr(mods, "movimento_ram_collision", False) and not getattr(inimigo, "is_elite", False):
+            # Atropelamento (Movimento pelo Mouse ou Controles de Tanque Bulldozer)
+            tanque_bulldozer = getattr(self.jogador, "controles_tanque", False) and getattr(self.jogador, "tanque_avancando", False)
+            ram_imune_contato = False
+            if (getattr(mods, "movimento_ram_collision", False) or tanque_bulldozer) and not getattr(inimigo, "is_elite", False):
                 if getattr(inimigo, "cooldown_ram_atual", 0.0) <= 0.0:
                     if colisao_aabb(inimigo.x, inimigo.y, inimigo.largura, inimigo.altura,
                                     self.jogador.x, self.jogador.y, self.jogador.largura, self.jogador.altura):
                         i_cx = inimigo.x + getattr(inimigo, "largura", 28) / 2.0
                         i_cy = inimigo.y + getattr(inimigo, "altura", 28) / 2.0
                         dir_ram_x, dir_ram_y = vetor_direcao(centro_jogador_x, centro_jogador_y, i_cx, i_cy)
-                        inimigo.x += dir_ram_x * 24.0
-                        inimigo.y += dir_ram_y * 24.0
+                        dist_push = 40.0 if tanque_bulldozer else 24.0
+                        dano_ram_base = 25 if tanque_bulldozer else 15
+                        inimigo.x += dir_ram_x * dist_push
+                        inimigo.y += dir_ram_y * dist_push
                         self._clamp_entidade_arena(inimigo)
-                        ret_d = inimigo.receber_dano(15, origem_x=centro_jogador_x, origem_y=centro_jogador_y, dir_ataque=(dir_ram_x, dir_ram_y))
-                        dano_ram = int(ret_d) if isinstance(ret_d, (int, float)) else 15
+                        ret_d = inimigo.receber_dano(dano_ram_base, origem_x=centro_jogador_x, origem_y=centro_jogador_y, dir_ataque=(dir_ram_x, dir_ram_y))
+                        dano_ram = int(ret_d) if isinstance(ret_d, (int, float)) else dano_ram_base
                         inimigo.cooldown_ram_atual = 0.35
+                        ram_imune_contato = tanque_bulldozer
                         self.dano_total_causado += dano_ram
                         if hasattr(self, "config_sistema") and str(self.config_sistema.obter_valor("damage_numbers")).lower() in ("ligado", "true", "1"):
                             self.sistema_particulas.emitir_texto_dano(
@@ -1954,7 +2090,7 @@ class GameplayScene(BaseScene):
                             continue
 
             # Checa dano de contato com reduções da configuração (Iluminação fora de visão)
-            if inimigo.vivo and colisao_aabb(inimigo.x, inimigo.y, inimigo.largura, inimigo.altura,
+            if not ram_imune_contato and inimigo.vivo and colisao_aabb(inimigo.x, inimigo.y, inimigo.largura, inimigo.altura,
                             self.jogador.x, self.jogador.y, self.jogador.largura, self.jogador.altura):
                 if getattr(inimigo, "cooldown_contato_atual", 0.0) <= 0.0:
                     dano_contato_base = getattr(inimigo, "dano_contato", 10)
@@ -1988,10 +2124,24 @@ class GameplayScene(BaseScene):
             and (not self.boss_cutscene_ativa or (self.boss_cutscene_fase == "musica_in" and self.chefe_final.estado == "intro"))
         )
         if _boss_pode_atualizar and (not pular_ia_inimigos or self.chefe_final.estado == "intro"):
-            self.chefe_final.update(dt, (centro_jogador_x, centro_jogador_y), limite_arena=(self.largura_arena, self.altura_arena))
+            bass_energy = 0.0
+            if hasattr(self, "analisador_fft_boss") and self.analisador_fft_boss is not None:
+                pos_ms = -1
+                try:
+                    if pygame.mixer.get_init():
+                        pos_ms = pygame.mixer.music.get_pos()
+                except Exception:
+                    pos_ms = -1
+                if pos_ms is None or pos_ms < 0:
+                    pos_ms = self.tempo_sobrevivencia * 1000.0
+                bass_energy = self.analisador_fft_boss.obter_energia_grave(float(pos_ms), dt=dt)
+            self.chefe_final.update(dt, (centro_jogador_x, centro_jogador_y), limite_arena=(self.largura_arena, self.altura_arena), bass_energy=bass_energy)
             novos_tiros_boss = self.chefe_final.obter_projeteis_pendentes()
             if novos_tiros_boss:
                 self.projeteis.extend(novos_tiros_boss)
+            if getattr(self.chefe_final, "goons_pendentes", None):
+                self.inimigos.extend(self.chefe_final.goons_pendentes)
+                self.chefe_final.goons_pendentes.clear()
             if getattr(self.chefe_final, "caixas_som_pendentes", None):
                 caixas_ativas = [e for e in self.inimigos if getattr(e, "vivo", True) and getattr(e, "is_caixa_som", False)]
                 for cx_som in self.chefe_final.caixas_som_pendentes:
@@ -2120,6 +2270,16 @@ class GameplayScene(BaseScene):
                             if dist_vis > 195.0:
                                 mult_dano_inim *= getattr(mods, "dano_fora_visao_mult", 0.50)
                         dano_proj = max(1, int(round(proj.dano * mult_dano_inim)))
+                        duel_stg = int(getattr(proj, "duel_stage", 0))
+                        if duel_stg >= 2:
+                            dano_proj = max(1, int(round(dano_proj * (2.2 if duel_stg == 2 else 3.0))))
+                            self.jogador.exposed_timer = max(getattr(self.jogador, "exposed_timer", 0.0), 2.0)
+                            self.aplicar_shake(14.0, 0.30)
+                            self.toasts_coleta.append({
+                                "texto": "FALHA NO DUELO DE PARRY!",
+                                "cor": VERMELHO_DANO,
+                                "x": centro_jogador_x, "y": self.jogador.y - 26, "tempo": 1.8, "tempo_max": 1.8
+                            })
                         self.jogador.receber_dano(dano_proj, causa_morte="Projétil Inimigo / Ondas da Geladeira")
                         self.aplicar_shake(6.0, 0.15)
                         proj.ativo = False
@@ -2257,6 +2417,19 @@ class GameplayScene(BaseScene):
                             if getattr(inimigo, "em_fase", False):
                                 continue
 
+                            if getattr(inimigo, "is_ninja", False) and not getattr(proj, "refletido_parry", False) and hasattr(inimigo, "aparar_projetil_jogador") and inimigo.pode_aparar_projetil():
+                                rebatido_n = inimigo.aparar_projetil_jogador(proj, (centro_jogador_x, centro_jogador_y))
+                                if rebatido_n is not None:
+                                    if hasattr(self, "sistema_audio") and self.sistema_audio is not None:
+                                        self.sistema_audio.tocar_parry_clang(pitch_mult=1.25)
+                                    self.sistema_particulas.emitir_faiscas(
+                                        inimigo.x + inimigo.largura / 2.0,
+                                        inimigo.y + inimigo.altura / 2.0,
+                                        cor=(192, 132, 252),
+                                        qtd=8
+                                    )
+                                    break
+
                             if getattr(proj, "perfurante", False):
                                 if not hasattr(proj, "alvos_atingidos"):
                                     proj.alvos_atingidos = set()
@@ -2303,11 +2476,17 @@ class GameplayScene(BaseScene):
                                 inimigo.slow_timer = max(getattr(inimigo, "slow_timer", 0.0), 1.2)
                                 inimigo.slow_fator = 0.50
 
+                            fonte_dano = (
+                                "parry_ninja_proprio"
+                                if (getattr(proj, "refletido_parry", False) and getattr(proj, "duel_owner", None) is inimigo)
+                                else ("parry_outro" if getattr(proj, "refletido_parry", False) else "projetil_jogador")
+                            )
                             ret_d = inimigo.receber_dano(
                                 dano_final,
                                 origem_x=proj.x,
                                 origem_y=proj.y,
-                                dir_ataque=(dx_k, dy_k)
+                                dir_ataque=(dx_k, dy_k),
+                                fonte=fonte_dano
                             )
                             dano_efetivo_b = int(ret_d) if isinstance(ret_d, (int, float)) else dano_final
 

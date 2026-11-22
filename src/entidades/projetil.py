@@ -89,6 +89,10 @@ class Projetil:
         self.trilha_plasma: bool = bool(kwargs.get("trilha_plasma", False))
         self.origem_trilha: tuple = kwargs.get("origem_trilha", (self.x_origem, self.y_origem))
         self.recuo_autor: float = float(kwargs.get("recuo_autor", 0.0))
+        self.sobrecarga_termica: bool = bool(kwargs.get("sobrecarga_termica", False))
+        self.criogenico: bool = bool(kwargs.get("criogenico", False))
+        self.duel_stage: int = int(kwargs.get("duel_stage", 0))
+        self.duel_owner = kwargs.get("duel_owner", None)
 
     @property
     def vx(self) -> float:
@@ -326,6 +330,10 @@ class Projetil:
         clone.trilha_plasma = getattr(self, "trilha_plasma", False)
         clone.origem_trilha = getattr(self, "origem_trilha", (self.x_origem, self.y_origem))
         clone.recuo_autor = getattr(self, "recuo_autor", 0.0)
+        clone.sobrecarga_termica = getattr(self, "sobrecarga_termica", False)
+        clone.criogenico = getattr(self, "criogenico", False)
+        clone.duel_stage = getattr(self, "duel_stage", 0)
+        clone.duel_owner = getattr(self, "duel_owner", None)
         return clone
 
     def desenhar(self, janela, camera=None):
@@ -354,18 +362,32 @@ class Projetil:
 
         # Fallback/cor configurada ou derivada do sprite
         cor = self.cor
-        if cor is None:
+        duel_stage = int(getattr(self, "duel_stage", 0))
+        if duel_stage >= 3:
+            cor = (255, 250, 205)
+        elif duel_stage == 2:
+            cor = (255, 110, 40)
+        elif getattr(self, "sobrecarga_termica", False):
+            cor = (244, 63, 94)
+        elif getattr(self, "criogenico", False):
+            cor = (103, 232, 249)
+        elif cor is None:
             cor = AMARELO_XP
             if "foguete" in self.sprite_key or "granada" in self.sprite_key:
                 cor = LARANJA_ALERTA
             elif "inimigo" in self.sprite_key:
                 cor = VERMELHO_DANO
 
-        # Trilhas de alto contraste para projéteis refletidos por parry e tiros sobrecarregados
+        # Trilhas de alto contraste para projéteis refletidos por parry, duelos e tiros sobrecarregados
         cx_proj = draw_x + self.largura / 2.0
         cy_proj = draw_y + self.altura / 2.0
-        is_refletido = getattr(self, "refletido_parry", False) or getattr(self, "parried", False)
+        is_refletido = getattr(self, "refletido_parry", False) or getattr(self, "parried", False) or duel_stage >= 2
         is_sobrecarregado = getattr(self, "sobrecarregado", False)
+
+        if getattr(self, "sobrecarga_termica", False):
+            raio_core = max(8, int(max(self.largura, self.altura) * 0.65))
+            pygame.draw.circle(screen, (251, 146, 60), (int(cx_proj), int(cy_proj)), raio_core, 2)
+            pygame.draw.circle(screen, (253, 224, 71), (int(cx_proj), int(cy_proj)), max(3, raio_core // 2))
 
         if is_refletido:
             tail_len = 28.0 if not is_low_graphics else 18.0

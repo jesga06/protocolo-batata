@@ -151,13 +151,33 @@ INIMIGO_RANGED_COOLDOWN_ATAQUE = 1.2
 INIMIGO_RANGED_XP = 15
 INIMIGO_RANGED_DISTANCIA_TIRO = 280.0
 
+# Inimigo Impressora Térmica (Artilharia Pesada - 75 HP)
+INIMIGO_IMPRESSORA_HP = 75
+INIMIGO_IMPRESSORA_VELOCIDADE = 85.0
+INIMIGO_IMPRESSORA_DANO = 12
+INIMIGO_IMPRESSORA_XP = 22
+
+# Inimigo Ninja (Assassino de TI - Dash + Parry, máx 2 ativos, 20s spawn CD)
+INIMIGO_NINJA_HP = 55
+INIMIGO_NINJA_VELOCIDADE = 195.0
+INIMIGO_NINJA_DANO = 14
+INIMIGO_NINJA_XP = 28
+NINJA_MAX_ATIVOS = 2
+NINJA_COOLDOWN_SPAWN = 20.0
+
+# Cubo Criogênico (Goon de Gelo do Boss)
+INIMIGO_CUBO_CRIOGENICO_HP = 45
+INIMIGO_CUBO_CRIOGENICO_VELOCIDADE = 155.0
+INIMIGO_CUBO_CRIOGENICO_DANO = 12
+INIMIGO_CUBO_CRIOGENICO_XP = 10
+
 # Mini-Boss e Chefe Final (Geladeira Tsunami)
 MINIBOSS_TEMPO_SOBREAQUECIMENTO = 60.0
 BOSS_GELADEIRA_LARGURA = 112
 BOSS_GELADEIRA_ALTURA = 156
 BOSS_GELADEIRA_HP_BASE = 50000
 BOSS_GELADEIRA_DANO_CONTATO = 30
-BOSS_GELADEIRA_VELOCIDADE = 149.5
+BOSS_GELADEIRA_VELOCIDADE = 268.0
 BOSS_GELADEIRA_NOME = "GELADEIRA TSUNAMI"
 BOSS_GELADEIRA_FLAVOR = "The Perfect Sound™"
 
@@ -165,7 +185,7 @@ GELADEIRA_TSUNAMI_LARGURA = 112
 GELADEIRA_TSUNAMI_ALTURA = 156
 GELADEIRA_TSUNAMI_HP = 50000
 GELADEIRA_TSUNAMI_DANO = 30
-GELADEIRA_TSUNAMI_VELOCIDADE = 149.5
+GELADEIRA_TSUNAMI_VELOCIDADE = 268.0
 GELADEIRA_TSUNAMI_NOME = "GELADEIRA TSUNAMI"
 GELADEIRA_TSUNAMI_FLAVOR = "The Perfect Sound™"
 
@@ -190,7 +210,7 @@ MELEE_COOLDOWN = 0.6
 MELEE_ALCANCE = 109.0  # +25px de alcance base
 MELEE_KNOCKBACK = 360.0
 MELEE_ALVOS_MAX = 2
-MELEE_ARCO_GRAUS = 120.0  # Abertura de cone ampliada para 120º (alinhado com parry)
+MELEE_ARCO_GRAUS = 90.0  # Abertura de cone exigindo precisão no parry (90º)
 
 # Slot 2: Pistola (Padrão de Fábrica - 10 Dano)
 PISTOLA_DANO = 10
@@ -218,7 +238,7 @@ RIFLE_MUNICIAO_MAX = 120
 
 FOGUETES_DANO = 60
 FOGUETES_COOLDOWN = 1.20
-FOGUETES_VELOCIDADE_PROJETIL = 300.0
+FOGUETES_VELOCIDADE_PROJETIL = 140.0
 FOGUETES_RAIO_EXPLOSAO = 80.0
 FOGUETES_MUNICIAO_MAX = 24
 
@@ -262,7 +282,7 @@ DROP_ALTURA = 42
 # 10. CATÁLOGO COMPLETO DE CONFIGURAÇÕES (SSOT: src.sistemas.config_dados)
 # =============================================================================
 
-TOTAL_CONFIGS_GAMEPLAY = 20
+TOTAL_CONFIGS_GAMEPLAY = 23
 
 # Re-export de CONFIGURACOES_GAMEPLAY, CONFIGURACOES_CATALOGO e CONFIGURACOES_SISTEMA
 # localizado ao final do módulo para evitar importação circular de pacotes.
@@ -284,6 +304,7 @@ ASSET_PATHS = {
     "inimigo_phasing": "sprites/inimigos/inimigo_phasing.png",
     "inimigo_blindado": "sprites/inimigos/inimigo_blindado.png",
     "inimigo_ranged": "sprites/inimigos/inimigo_ranged.png",
+    "inimigo_ninja": "sprites/inimigos/inimigo_ninja.png",
     "boss_geladeira_tsunami": "sprites/inimigos/geladeira_tsunami.png",
 
     # Armas
@@ -335,8 +356,10 @@ ASSET_PATHS = {
     # UI - Ícones de Configurações
     "icon_auto_fire": "ui/icones_configs/icon_auto_fire.png",
     "icon_coleta_inimiga": "ui/icones_configs/icon_coleta_inimiga.png",
+    "icon_controles_tanque": "ui/icones_configs/icon_controles_tanque.png",
     "icon_cores_invertidas": "ui/icones_configs/icon_cores_invertidas.png",
     "icon_damage_numbers": "ui/icones_configs/icon_damage_numbers.png",
+    "icon_efeito_parry": "ui/icones_configs/icon_efeito_parry.png",
     "icon_fogo_amigo": "ui/icones_configs/icon_fogo_amigo.png",
     "icon_fps_cap": "ui/icones_configs/icon_fps_cap.png",
     "icon_graficos_qualidade": "ui/icones_configs/icon_graficos_qualidade.png",
@@ -346,6 +369,7 @@ ASSET_PATHS = {
     "icon_keybinds": "ui/icones_configs/icon_keybinds.png",
     "icon_motion_blur": "ui/icones_configs/icon_motion_blur.png",
     "icon_movimento_mouse": "ui/icones_configs/icon_movimento_mouse.png",
+    "icon_precisao_parry": "ui/icones_configs/icon_precisao_parry.png",
     "icon_resolucao": "ui/icones_configs/icon_resolucao.png",
     "icon_screen_shake": "ui/icones_configs/icon_screen_shake.png",
     "icon_suavizacao_camera": "ui/icones_configs/icon_suavizacao_camera.png",
