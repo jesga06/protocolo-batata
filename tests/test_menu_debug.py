@@ -78,13 +78,13 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
     def test_rebalance_constants_values(self):
         """Verifica se as constantes de combate e munição foram atualizadas corretamente."""
         self.assertEqual(MELEE_ALCANCE, 109.0)
-        self.assertEqual(MELEE_ARCO_GRAUS, 60.0)
+        self.assertEqual(MELEE_ARCO_GRAUS, 120.0)
         self.assertEqual(MINIGUN_MUNICIAO_MAX, 300)
         self.assertEqual(SHOTGUN_MUNICIAO_MAX, 60)
         self.assertEqual(RIFLE_MUNICIAO_MAX, 120)
         self.assertEqual(FOGUETES_MUNICIAO_MAX, 24)
         self.assertEqual(GRANADAS_MUNICIAO_MAX, 32)
-        self.assertEqual(RAILGUN_MUNICIAO_MAX, 30)
+        self.assertEqual(RAILGUN_MUNICIAO_MAX, 10)
 
     def test_weapon_instances_initial_ammo(self):
         """Verifica se instâncias das armas nascem com munição balanceada para a Sprint 2."""
@@ -100,7 +100,7 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         self.assertEqual(rifle.municao_atual, 120)
         self.assertEqual(foguetes.municao_atual, 24)
         self.assertEqual(granadas.municao_atual, 32)
-        self.assertEqual(railgun.municao_atual, 30)
+        self.assertEqual(railgun.municao_atual, 10)
 
     def test_debug_menu_toggle_open_close(self):
         """Valida abertura, fechamento e controle de pausa da partida."""
@@ -230,10 +230,10 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         self.assertNotIn(inimigo_distante, afetados)
 
     def test_melee_increased_reach_and_cone_arc(self):
-        """Testa que o ataque Melee atinge alvos no novo alcance de 109px e arco de 60º."""
+        """Testa que o ataque Melee atinge alvos no novo alcance de 109px e arco de 120º."""
         melee = Melee()
         self.assertEqual(melee.alcance, 109.0)
-        self.assertEqual(melee.arco_graus, 60.0)
+        self.assertEqual(melee.arco_graus, 120.0)
 
         # Inimigo com centro em (494, 300) a 94px do jogador (dentro de 109px, mas além do alcance antigo de 84px)
         inimigo_alcance_novo = InimigoPadrao(x=480.0, y=286.0)

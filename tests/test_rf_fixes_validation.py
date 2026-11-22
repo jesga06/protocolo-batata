@@ -63,30 +63,19 @@ class TestRFFixesValidation(unittest.TestCase):
         self.assertFalse(granada.ativo)
         self.assertTrue(granada.requer_detonacao_ao_expirar)
 
-    def test_rf2_7_railgun_charge_cycle(self):
-        """RF2/7: Railgun requer 1.0s de carga contínua antes de liberar o feixe."""
+    def test_rf2_7_railgun_instant_hitscan_v2_port(self):
+        """RF2/7 (Port v2): Railgun dispara instantaneamente sem carga com stats da v2 (165 dano, 10 cargas, 0.95s cd)."""
         railgun = Railgun()
-        self.assertFalse(railgun.carregando)
-        self.assertEqual(railgun.progresso_carga, 0.0)
+        self.assertEqual(railgun.dano, 165)
+        self.assertEqual(railgun.municao_max, 10)
+        self.assertAlmostEqual(railgun.cooldown, 0.95, places=2)
+        self.assertEqual(railgun.icone_asset, "arma_railgun")
 
-        railgun.iniciar_carga()
-        self.assertTrue(railgun.carregando)
-
-        # Atualiza 0.5s -> carga em 50% e não pronta
-        pronta = railgun.update_carga(0.5)
-        self.assertFalse(pronta)
-        self.assertAlmostEqual(railgun.progresso_carga, 0.5, places=2)
-
-        # Cancela carga
-        railgun.cancelar_carga()
-        self.assertFalse(railgun.carregando)
-        self.assertEqual(railgun.progresso_carga, 0.0)
-
-        # Carrega 1.0s completo -> retorna pronta = True
-        railgun.iniciar_carga()
-        railgun.update_carga(0.6)
-        pronta = railgun.update_carga(0.4)
-        self.assertTrue(pronta)
+        feixe = railgun.disparar_feixe(100.0, 100.0, 500.0, 100.0)
+        self.assertIsNotNone(feixe)
+        self.assertEqual(feixe["dano"], 165)
+        self.assertAlmostEqual(feixe["x2"], 1900.0, places=1)
+        self.assertEqual(railgun.municao_atual, 9)
 
     def test_rf3_5_railgun_destroys_drone_under_friendly_fire(self):
         """RF3/5: Projétil perfurante da Railgun destrói drones orbitando o jogador com Fogo Amigo."""
