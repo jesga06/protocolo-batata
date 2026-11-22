@@ -199,11 +199,11 @@ class TutorialScene(BaseScene):
             screen.blit(sec1_surf, (ox + 70, oy + 120))
 
             controles = [
-                ("W, A, S, D", "Move a Batata pela arena."),
-                ("MOUSE (MIRA)", "Aponta a mira das armas e o cone da Chave de Manutenção."),
-                ("BOTÃO ESQUERDO", "Atira com a arma equipada."),
-                ("TECLAS 1, 2, 3", "Alterna entre Chave Inglesa [1], Pistola [2] e Arma Especial [3]."),
-                ("TECLA ESC / C", "Abre o Menu de Configurações para ligar ou desligar modificadores.")
+                ("W, A, S, D", "Move Cleiton pelo escritório."),
+                ("MOUSE (MIRA)", "Aponta os disparos e o alcance da Chave de Manutenção."),
+                ("BOTÃO ESQUERDO", "Ataca com a arma equipada (segure para disparo contínuo)."),
+                ("TECLAS 1, 2, 3", "Alterna entre Chave [1], Pistola [2] e Arma Especial [3]."),
+                ("TECLA ESC / C", "Abre as Configurações para ligar modificadores e ajustar áudio.")
             ]
 
             y_pos = oy + 145
@@ -222,9 +222,9 @@ class TutorialScene(BaseScene):
             y_pos += 35
 
             hud_itens = [
-                ("Barra Superior Central", "Mostra o tempo de partida e o total de abates."),
-                ("Barra de Experiência", "Indica o nível atual e o progresso até o próximo nível."),
-                ("Slots no Canto Superior", "Mostram a arma ativa, a munição restante e os drones em órbita.")
+                ("Topo Central", "Mostra o cronômetro, os abates, a barra de XP e a vida dos chefes."),
+                ("Canto Superior Esquerdo", "Exibe os 4 slots de armas/drones, munição restante e buffs ativos."),
+                ("Abaixo de Cleiton", "Barra verde de vida e barreira azul de sobrevida, quando ativa.")
             ]
             for tit_h, desc_h in hud_itens:
                 h_surf = fonte_destaque.render(f"- {tit_h}:", True, (200, 220, 240))
@@ -239,11 +239,11 @@ class TutorialScene(BaseScene):
             screen.blit(sec1_surf, (ox + 70, oy + 120))
 
             drops_info = [
-                ("Gema Amarela de XP", "Dá experiência para subir de nível."),
+                ("Gema Amarela de XP", "Dá experiência para subir até o nível 12."),
                 ("Caixa de Reparo", "Recupera 35 de vida na hora."),
-                ("Caixa de Arma Especial", "Equipa uma arma pesada no Slot 3 com munição limitada."),
-                ("Módulo de Drone", "Ativa um drone no Slot 4 por 30s ou evolui um drone ativo até MK-III."),
-                ("Núcleo de Overclock", "Drop de Mini-Boss que instala um módulo tático de BIOS.")
+                ("Caixa de Arma Especial", "Equipa uma das 6 armas pesadas no Slot 3 com munição limitada."),
+                ("Módulo de Drone", "Ativa um drone no Slot 4 por 30s ou evolui um ativo (MK-I até MK-III)."),
+                ("Núcleo de Overclock", "Cai de Mini-Bosses derrotados em até 60s e instala uma melhoria de BIOS.")
             ]
             y_pos = oy + 145
             for nome_d, desc_d in drops_info:
@@ -258,11 +258,11 @@ class TutorialScene(BaseScene):
             y_pos += 26
 
             armas_info = [
-                ("Chave de Manutenção [1]", "Golpe em arco que empurra inimigos e rebate projéteis inimigos (Parry)."),
-                ("Pistola [2]", "Munição infinita. Todo 4º disparo sai sobrecarregado e atravessa alvos."),
-                ("Escopeta [3]", "Dispara 9 chumbos em leque com alto empurrão a queima-roupa."),
-                ("Railgun [3]", "Carrega por 1.0s com mira laser e rasga a arena deixando trilha elétrica."),
-                ("Minigun / Foguetes / Granadas [3]", "Aceleração de giro, chão em chamas ou arco com fragmentação.")
+                ("Chave de Manutenção [1]", "Empurra inimigos de perto e rebate tiros inimigos de volta (Parry)."),
+                ("Pistola [2]", "Munição infinita. Todo 4º disparo sai mais forte e atravessa inimigos."),
+                ("Escopeta / Rifle [3]", "Escopeta dispara 9 chumbos com empurrão; Rifle garante crítico a cada 3º tiro."),
+                ("Minigun / Foguetes / Granadas [3]", "Giro acelerado, piso em chamas ou granadas com sub-explosões."),
+                ("Railgun [3]", "Carrega por 1s com mira laser e atravessa a fila inteira deixando plasma.")
             ]
             for nome_a, desc_a in armas_info:
                 a_surf = fonte_destaque.render(f"- {nome_a}:", True, DOURADO)
@@ -277,30 +277,30 @@ class TutorialScene(BaseScene):
             screen.blit(sec1_surf, (ox + 70, oy + 120))
 
             inimigos_info = [
-                ("Gabinete de Firma", "Perseguidor padrão do escritório (40 de vida)."),
-                ("Mouse Óptico", "Rápido e frágil, avança em alta velocidade (20 de vida)."),
-                ("Monitor de Tubo", "Entra em fase estática e fica temporariamente intangível."),
-                ("Triturador de Papel", "Chassi blindado que reduz dano recebido pela frente."),
-                ("Projetor Laser", "Mantém distância e dispara feixes que podem ser rebatidos na Chave Inglesa."),
-                ("Mini-Bosses e Geladeira Tsunami", "Abata Mini-Bosses em menos de 30s para bônus extra antes de encarar a Geladeira.")
+                ("Gabinete de Firma", "Perseguidor padrão do escritório (40 HP)."),
+                ("Mouse Óptico", "Corre rápido, mas cai com poucos tiros (20 HP)."),
+                ("Copiadora Xerox", "Lenta, resistente (120 HP) e causa bastante dano de contato."),
+                ("Monitor CRT", "Fica translúcido e imune a qualquer dano por 1,2s a cada 3s."),
+                ("Triturador Blindado", "Corta 30% do dano pela frente; ataque pelos lados ou costas."),
+                ("Projetor Laser", "Mantém distância e atira feixes que podem ser rebatidos com a Chave [1].")
             ]
             y_pos = oy + 145
             for nome_i, desc_i in inimigos_info:
                 i_surf = fonte_destaque.render(f"* {nome_i}:", True, (255, 120, 120))
                 screen.blit(i_surf, (ox + 70, y_pos))
                 desc_i_s = fonte_corpo.render(desc_i, True, BRANCO)
-                screen.blit(desc_i_s, (ox + 70, y_pos + 15))
-                y_pos += 31
+                screen.blit(desc_i_s, (ox + 70, y_pos + 14))
+                y_pos += 29
 
-            sec2_surf = fonte_sec.render("PROGRESSÃO, CÁPSULAS E CONFIGURAÇÕES", True, AZUL_CIANO)
+            sec2_surf = fonte_sec.render("PROGRESSÃO, MINI-BOSSES E CHEFE FINAL", True, AZUL_CIANO)
             screen.blit(sec2_surf, (ox + 70, y_pos + 4))
-            y_pos += 26
+            y_pos += 25
 
             regras_info = [
-                ("Níveis Normais (Sem Pausa)", "Soltam uma onda de choque, curam 10 de vida e derrubam 2 Cápsulas no chão."),
-                ("Marcos de Configuração (Níveis 5 e 11)", "Abrem o painel para desbloquear uma Configuração permanente."),
-                ("Buffer de Misericórdia", "Se pular uma Configuração no marco, ela continua disponível no marco seguinte."),
-                ("Núcleos de Overclock", "Derrote Mini-Bosses antes de 60s para instalar módulos táticos de BIOS.")
+                ("Níveis Normais (Sem Pausa)", "Curam 10 HP, empurram inimigos e soltam 2 Cápsulas para escolher uma."),
+                ("Níveis 5 e 11 (Configurações)", "Pausam o jogo para desbloquear 1 Configuração (que começa desligada)."),
+                ("Mini-Bosses (1 a 4 min)", "Superaquecem em 60s sem deixar prêmio; abater em menos de 30s dá bônus."),
+                ("Geladeira Tsunami", "Entra no nível 12 (ou após os Mini-Bosses) depois de um aviso de 10s.")
             ]
             for nome_r, desc_r in regras_info:
                 r_surf = fonte_destaque.render(f"- {nome_r}:", True, DOURADO)
