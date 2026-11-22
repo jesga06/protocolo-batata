@@ -5,15 +5,48 @@ caminhos de assets e catálogo de configurações (alinhado com CONFIGURACOES.md
 """
 
 import os
+import sys
 
 # =============================================================================
 # 1. DIRETÓRIOS E CAMINHOS
 # =============================================================================
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+def _obter_data_dir(project_root: str) -> str:
+    """Retorna diretório gravável para saves, suportando execução normal e empacotada (PyInstaller)."""
+    if not getattr(sys, "frozen", False):
+        return os.path.join(project_root, "data")
+
+    app_name = "ProtocoloBatata"
+    exec_dir = os.path.dirname(os.path.abspath(sys.executable))
+
+    # No macOS, bundles .app podem ser somente leitura (App Translocation)
+    if sys.platform != "darwin":
+        portable_dir = os.path.join(exec_dir, "data")
+        try:
+            os.makedirs(portable_dir, exist_ok=True)
+            if os.access(portable_dir, os.W_OK):
+                return portable_dir
+        except OSError:
+            pass
+
+    if sys.platform == "win32":
+        base = os.environ.get("APPDATA") or os.path.expanduser("~")
+        return os.path.join(base, app_name)
+    if sys.platform == "darwin":
+        return os.path.expanduser(f"~/Library/Application Support/{app_name}")
+    base = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
+    return os.path.join(base, app_name)
+
+
+if getattr(sys, "frozen", False):
+    PROJECT_ROOT = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(sys.executable)))
+else:
+    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 SRC_DIR = os.path.join(PROJECT_ROOT, "src")
 ASSETS_DIR = os.path.join(PROJECT_ROOT, "assets")
-DATA_DIR = os.path.join(PROJECT_ROOT, "data")
+DATA_DIR = _obter_data_dir(PROJECT_ROOT)
 SAVE_FILE_PATH = os.path.join(DATA_DIR, "save.json")
 
 # =============================================================================
@@ -26,6 +59,8 @@ LARGURA_ARENA = 2240
 ALTURA_ARENA = 1560
 TITULO_JOGO = "Protocolo: Batata"
 FPS_PADRAO = 0  # 0 = Ilimitado (sem cap de FPS)
+CAMERA_DAMPING_K = 0.115
+DT_CLAMP_MAX = 0.05
 
 # =============================================================================
 # 3. PALETA DE CORES (RGB / RGBA)
@@ -55,11 +90,18 @@ DOURADO = (255, 215, 0)
 # =============================================================================
 
 JOGADOR_HP_MAX_PADRAO = 150
-JOGADOR_VELOCIDADE_PADRAO = 200.0  # pixels por segundo
+JOGADOR_VELOCIDADE_PADRAO = 260.0  # pixels por segundo (+30%)
 JOGADOR_LARGURA = 32
 JOGADOR_ALTURA = 32
 JOGADOR_COOLDOWN_DANO_FLASH = 0.15  # segundos de flash vermelho
 JOGADOR_INVULNERABILIDADE_TEMPO = 0.2  # segundos mínimos entre frames de dano
+
+# Dash Direcional (Desbloqueável Permanente)
+DASH_DURACAO = 0.22
+DASH_MULT_VEL = 2.6
+DASH_IFRAMES_BASE = 0.35
+DASH_COOLDOWN = 1.8
+DASH_PARRY_META = 100
 
 # =============================================================================
 # 5. INIMIGOS — BASELINES
@@ -67,28 +109,28 @@ JOGADOR_INVULNERABILIDADE_TEMPO = 0.2  # segundos mínimos entre frames de dano
 
 # Inimigo Padrão (Estagiário - 40 HP, 4 tiros de pistola ou 4 golpes melee)
 INIMIGO_PADRAO_HP = 40
-INIMIGO_PADRAO_VELOCIDADE = 100.0
+INIMIGO_PADRAO_VELOCIDADE = 130.0
 INIMIGO_PADRAO_DANO = 10
 INIMIGO_PADRAO_COOLDOWN_ATAQUE = 0.4
 INIMIGO_PADRAO_XP = 5
 
 # Inimigo Tanque (Geladeira Industrial - 120 HP)
 INIMIGO_TANK_HP = 120
-INIMIGO_TANK_VELOCIDADE = 50.0
+INIMIGO_TANK_VELOCIDADE = 65.0
 INIMIGO_TANK_DANO = 20
 INIMIGO_TANK_COOLDOWN_ATAQUE = 0.7
 INIMIGO_TANK_XP = 25
 
 # Inimigo Rápido (Viciado em Cafeína - 20 HP, 2 tiros de pistola ou 2 golpes melee)
 INIMIGO_RAPIDO_HP = 20
-INIMIGO_RAPIDO_VELOCIDADE = 180.0
+INIMIGO_RAPIDO_VELOCIDADE = 234.0
 INIMIGO_RAPIDO_DANO = 8
 INIMIGO_RAPIDO_COOLDOWN_ATAQUE = 0.25
 INIMIGO_RAPIDO_XP = 8
 
 # Inimigo Phasing (Warranty Void - 35 HP)
 INIMIGO_PHASING_HP = 35
-INIMIGO_PHASING_VELOCIDADE = 90.0
+INIMIGO_PHASING_VELOCIDADE = 117.0
 INIMIGO_PHASING_DANO = 12
 INIMIGO_PHASING_COOLDOWN_ATAQUE = 0.4
 INIMIGO_PHASING_XP = 12
@@ -96,14 +138,14 @@ INIMIGO_PHASING_CICLO = 3.0  # a cada 3s entra em fase por 1.2s
 
 # Inimigo Blindado (Ballistic Enthusiast - 50 HP)
 INIMIGO_BLINDADO_HP = 50
-INIMIGO_BLINDADO_VELOCIDADE = 75.0
+INIMIGO_BLINDADO_VELOCIDADE = 97.5
 INIMIGO_BLINDADO_DANO = 15
 INIMIGO_BLINDADO_COOLDOWN_ATAQUE = 0.5
 INIMIGO_BLINDADO_XP = 15
 
 # Inimigo Ranged (Atirador Blaster - 30 HP)
 INIMIGO_RANGED_HP = 30
-INIMIGO_RANGED_VELOCIDADE = 80.0
+INIMIGO_RANGED_VELOCIDADE = 104.0
 INIMIGO_RANGED_DANO = 10
 INIMIGO_RANGED_COOLDOWN_ATAQUE = 1.2
 INIMIGO_RANGED_XP = 15
@@ -115,7 +157,7 @@ BOSS_GELADEIRA_LARGURA = 112
 BOSS_GELADEIRA_ALTURA = 156
 BOSS_GELADEIRA_HP_BASE = 50000
 BOSS_GELADEIRA_DANO_CONTATO = 30
-BOSS_GELADEIRA_VELOCIDADE = 115.0
+BOSS_GELADEIRA_VELOCIDADE = 149.5
 BOSS_GELADEIRA_NOME = "GELADEIRA TSUNAMI"
 BOSS_GELADEIRA_FLAVOR = "The Perfect Sound™"
 
@@ -123,7 +165,7 @@ GELADEIRA_TSUNAMI_LARGURA = 112
 GELADEIRA_TSUNAMI_ALTURA = 156
 GELADEIRA_TSUNAMI_HP = 50000
 GELADEIRA_TSUNAMI_DANO = 30
-GELADEIRA_TSUNAMI_VELOCIDADE = 115.0
+GELADEIRA_TSUNAMI_VELOCIDADE = 149.5
 GELADEIRA_TSUNAMI_NOME = "GELADEIRA TSUNAMI"
 GELADEIRA_TSUNAMI_FLAVOR = "The Perfect Sound™"
 
@@ -131,8 +173,8 @@ GELADEIRA_TSUNAMI_FLAVOR = "The Perfect Sound™"
 # 6. SPAWN DE INIMIGOS — CONFIGURAÇÃO (+50% INTERVALO ENTRE WAVES)
 # =============================================================================
 
-SPAWN_INTERVALO_INICIAL = 3.00
-SPAWN_INTERVALO_MINIMO = 0.75
+SPAWN_INTERVALO_INICIAL = 1.75
+SPAWN_INTERVALO_MINIMO = 0.45
 SPAWN_DISTANCIA_OFFSET = 80.0
 SPAWN_MAX_ATIVOS = 400
 TEMPO_VITORIA = 600.0  # Constante legada mantida para compatibilidade de testes (vitória agora requer derrotar Geladeira Tsunami)
@@ -148,7 +190,7 @@ MELEE_COOLDOWN = 0.6
 MELEE_ALCANCE = 109.0  # +25px de alcance base
 MELEE_KNOCKBACK = 360.0
 MELEE_ALVOS_MAX = 2
-MELEE_ARCO_GRAUS = 60.0  # +15º de abertura de cone
+MELEE_ARCO_GRAUS = 120.0  # Abertura de cone ampliada para 120º (alinhado com parry)
 
 # Slot 2: Pistola (Padrão de Fábrica - 10 Dano)
 PISTOLA_DANO = 10
@@ -186,11 +228,11 @@ GRANADAS_VELOCIDADE_PROJETIL = 280.0
 GRANADAS_RAIO_EXPLOSAO = 65.0
 GRANADAS_MUNICIAO_MAX = 32
 
-RAILGUN_DANO = 50
-RAILGUN_COOLDOWN = 1.20
-RAILGUN_CHARGE_TIME = 1.0
+RAILGUN_DANO = 165
+RAILGUN_COOLDOWN = 0.95
+RAILGUN_CHARGE_TIME = 0.0
 RAILGUN_VELOCIDADE_PROJETIL = 1400.0
-RAILGUN_MUNICIAO_MAX = 30
+RAILGUN_MUNICIAO_MAX = 10
 
 # =============================================================================
 # 8. EQUIPAMENTOS (DRONES) — BASELINES
@@ -252,6 +294,7 @@ ASSET_PATHS = {
     "arma_rifle": "sprites/armas/arma_rifle.png",
     "arma_foguetes": "sprites/armas/arma_foguetes.png",
     "arma_granadas": "sprites/armas/arma_granadas.png",
+    "arma_railgun": "sprites/armas/arma_railgun.png",
 
     # Projéteis
     "projetil_pistola": "sprites/projeteis/projetil_pistola.png",
@@ -321,6 +364,7 @@ ASSET_PATHS = {
     "sfx_tiro_rifle": "audio/sfx/tiro_rifle.wav",
     "sfx_tiro_foguete": "audio/sfx/tiro_foguete.wav",
     "sfx_tiro_granada": "audio/sfx/tiro_granada.wav",
+    "sfx_tiro_railgun": "audio/sfx/tiro_railgun.wav",
     "sfx_ataque_melee": "audio/sfx/ataque_melee.wav",
     "sfx_explosao": "audio/sfx/explosao.wav",
     "sfx_dano_jogador": "audio/sfx/dano_jogador.wav",
@@ -336,8 +380,25 @@ ASSET_PATHS = {
 
     # Música
     "musica_fase": "audio/musica/heavy is the bit.wav",
-    "musica_boss": "audio/musica/geladeira tsunami.wav"
+    "musica_boss": "audio/musica/geladeira tsunami.wav",
+    "musica_menu": "audio/musica/8bits-control.wav",
+    "musica_anticipation": "audio/musica/8bits-anticipation.wav",
+    "musica_anticipation_muffled": "audio/musica/8bits-anticipation-muffled.wav",
+    "musica_hold": "audio/musica/8bits-hold.wav",
+    "musica_hold_muffled": "audio/musica/8bits-hold-muffled.wav",
+    "musica_assault_intro": "audio/musica/8bits-assault-intro.wav",
+    "musica_assault_intro_muffled": "audio/musica/8bits-assault-intro-muffled.wav",
+    "musica_assault": "audio/musica/8bits-assault.wav",
+    "musica_assault_muffled": "audio/musica/8bits-assault-muffled.wav",
 }
+
+# =============================================================================
+# SISTEMA DE MÚSICA DINÂMICA
+# =============================================================================
+MUSICA_VOLUME_BASE = 0.4
+MUSICA_TEMPO_ASSAULT = 50.0
+MUSICA_LOOKAHEAD_SEGUNDOS = 0.35
+MUSICA_TRANSICAO_ABAFADO_SEGUNDOS = 0.06
 
 
 def obter_caminho_asset(chave: str) -> str:

@@ -19,8 +19,60 @@ from pygame.locals import (
     DOUBLEBUF, RESIZABLE, FULLSCREEN,
     VIDEORESIZE
 )
-from src.utils.constantes import LARGURA_TELA, ALTURA_TELA, TITULO_JOGO, FPS_PADRAO
+from collections import OrderedDict
+from src.utils.constantes import (
+    LARGURA_TELA, ALTURA_TELA, TITULO_JOGO, FPS_PADRAO, DT_CLAMP_MAX
+)
 from src.utils.math_utils import clamp
+
+
+class SpriteScaleCache:
+    """
+    Cache LRU de escalonamento nearest-neighbor para sprites em renderização nativa.
+    Evita re-escalonamento de software por frame quando render_scale != 1.0.
+    """
+
+    def __init__(self, max_entries: int = 512):
+        self.max_entries = max(16, int(max_entries))
+        self._cache: OrderedDict[tuple, pygame.Surface] = OrderedDict()
+
+    def obter(
+        self,
+        surface: pygame.Surface,
+        largura: int,
+        altura: int,
+        chave_extra=None
+    ) -> pygame.Surface:
+        w = max(1, int(largura))
+        h = max(1, int(altura))
+        if surface.get_width() == w and surface.get_height() == h:
+            return surface
+
+        chave = (id(surface), surface.get_size(), w, h, chave_extra)
+        if chave in self._cache:
+            self._cache.move_to_end(chave)
+            return self._cache[chave]
+
+        scaled = pygame.transform.scale(surface, (w, h))
+        self._cache[chave] = scaled
+        if len(self._cache) > self.max_entries:
+            self._cache.popitem(last=False)
+        return scaled
+
+    def obter_escala(
+        self,
+        surface: pygame.Surface,
+        escala: float,
+        chave_extra=None
+    ) -> pygame.Surface:
+        if abs(float(escala) - 1.0) < 1e-4:
+            return surface
+        w = max(1, int(round(surface.get_width() * float(escala))))
+        h = max(1, int(round(surface.get_height() * float(escala))))
+        return self.obter(surface, w, h, chave_extra=chave_extra)
+
+    def limpar(self):
+        self._cache.clear()
 
 
 class TecladoNativo:
@@ -171,15 +223,16 @@ class Janela(metaclass=JanelaMeta):
         altura_virtual: int = ALTURA_TELA,
         titulo: str = TITULO_JOGO,
         resizavel: bool = True,
-        pixel_art: bool = True
+        pixel_art: bool = True,
+        vsync: bool = True
     ):
         if hasattr(self, "_already_init") and self._already_init:
             return
 
-        if not pygame.get_init():
-            pygame.init()
+        # Garante filtragem nearest-neighbor no backend SDL antes de inicializar o vídeo
+        os.environ.setdefault("SDL_HINT_RENDER_SCALE_QUALITY", "0")
 
-        # Configura High-DPI no Windows para nitidez máxima
+        # Configura High-DPI no Windows antes de criar a janela
         try:
             try:
                 ctypes.windll.shcore.SetProcessDpiAwareness(2)
@@ -188,12 +241,18 @@ class Janela(metaclass=JanelaMeta):
         except Exception:
             pass
 
+        if not pygame.get_init():
+            pygame.init()
+
         self.largura = int(largura_virtual)
         self.altura = int(altura_virtual)
         self.titulo = str(titulo)
         self.resizavel = bool(resizavel)
         self.pixel_art = bool(pixel_art)
         self.is_fullscreen = False
+        self.vsync_ativo = bool(vsync)
+        self._vsync_efetivo = False
+        self.escala_resolucao_mundo = 1.0
 
         self._clock = pygame.time.Clock()
         self._delta_time = 0.0
@@ -204,30 +263,46 @@ class Janela(metaclass=JanelaMeta):
         # Flag indicando se processar_eventos() foi invocado no frame atual
         self._eventos_processados_frame = False
 
-        # Resolução padrão da Janela (1280x720 HD) e detecção de display
+        # Detecção real do display
         desktop_info = pygame.display.Info()
-        self.tela_nativa_largura = max(1280, getattr(desktop_info, "current_w", 1280))
-        self.tela_nativa_altura = max(720, getattr(desktop_info, "current_h", 720))
+        raw_w = getattr(desktop_info, "current_w", 0) or 0
+        raw_h = getattr(desktop_info, "current_h", 0) or 0
+        self.tela_nativa_largura = raw_w if raw_w > 0 else self.largura
+        self.tela_nativa_altura = raw_h if raw_h > 0 else self.altura
 
-        self.largura_janela_atual = 1280
-        self.altura_janela_atual = 720
+        if self._is_dummy_driver():
+            # Em driver headless dummy, mantém 1280x720 determinístico para a suíte de testes
+            self.largura_janela_atual = self.largura
+            self.altura_janela_atual = self.altura
+        elif raw_w > 0 and raw_h > 0:
+            # Em displays reais, abre diretamente na resolução nativa da tela/janela
+            self.largura_janela_atual = int(raw_w)
+            self.altura_janela_atual = int(raw_h)
+        else:
+            self.largura_janela_atual = self.largura
+            self.altura_janela_atual = self.altura
 
         # Configura flags de vídeo sem HWSURFACE legado
         self._flags_janela = DOUBLEBUF
         if self.resizavel:
             self._flags_janela |= RESIZABLE
 
-        # Janela do Sistema Operacional criada em 1280x720
         os.environ["SDL_VIDEO_CENTERED"] = "1"
-        self.real_screen = pygame.display.set_mode(
+        self.real_screen = self._set_mode_seguro(
             (self.largura_janela_atual, self.altura_janela_atual),
-            self._flags_janela
+            self._flags_janela,
+            vsync=self.vsync_ativo
         )
         pygame.display.set_caption(self.titulo)
 
-        # Buffer Virtual do Jogo (Canvas interno)
-        self.screen = pygame.Surface((self.largura, self.altura))
+        # Renderização nativa direta (elimina upscaling prematuro em 720p)
+        self.screen = self.real_screen
         Janela.screen = self.screen
+        self.sprite_scale_cache = SpriteScaleCache()
+        self.render_scale = 1.0
+        self.viewport_offset = (0, 0)
+        self.viewport_rect = (0, 0, self.largura, self.altura)
+        self._atualizar_metricas_viewport()
 
         # Cache interno de fontes para draw_text
         self._fontes_cache: dict[tuple[str, int, bool, bool], pygame.font.Font] = {}
@@ -238,6 +313,120 @@ class Janela(metaclass=JanelaMeta):
         self.mouse = Mouse()
 
         self._already_init = True
+
+    @staticmethod
+    def _is_dummy_driver() -> bool:
+        return os.environ.get("SDL_VIDEODRIVER", "").strip().lower() == "dummy"
+
+    def _set_mode_seguro(
+        self,
+        tamanho: tuple[int, int],
+        flags: int,
+        vsync: bool | None = None
+    ) -> pygame.Surface:
+        """Cria/reconfigura a superfície de display com suporte seguro a vsync=1 e fallback para vsync=0."""
+        usar_vsync = self.vsync_ativo if vsync is None else bool(vsync)
+        if usar_vsync and not self._is_dummy_driver():
+            try:
+                surf = pygame.display.set_mode(tamanho, flags, vsync=1)
+                self._vsync_efetivo = True
+                return surf
+            except (pygame.error, TypeError):
+                pass
+        self._vsync_efetivo = False
+        try:
+            return pygame.display.set_mode(tamanho, flags, vsync=0)
+        except TypeError:
+            return pygame.display.set_mode(tamanho, flags)
+
+    def _atualizar_metricas_viewport(self):
+        """Atualiza render_scale, viewport_offset e viewport_rect a partir do tamanho real da tela."""
+        if self.real_screen is None:
+            self.render_scale = 1.0
+            self.viewport_offset = (0, 0)
+            self.viewport_rect = (0, 0, self.largura, self.altura)
+            return
+        rw, rh = self.real_screen.get_size()
+        pos_x, pos_y, nova_w, nova_h, ratio = self._calcular_viewport(rw, rh)
+        self.render_scale = float(ratio)
+        self.viewport_offset = (int(pos_x), int(pos_y))
+        self.viewport_rect = (int(pos_x), int(pos_y), int(nova_w), int(nova_h))
+
+    def _aplicar_novo_real_screen(self, nova_superficie: pygame.Surface):
+        """Atualiza self.real_screen preservando binding nativo de self.screen e métricas de viewport."""
+        estava_nativo = (self.screen is self.real_screen)
+        self.real_screen = nova_superficie
+        if estava_nativo:
+            self.screen = self.real_screen
+            Janela.screen = self.screen
+        self._atualizar_metricas_viewport()
+
+    def logical_to_screen(self, lx: float, ly: float) -> tuple[float, float]:
+        """Converte coordenadas lógicas (1280x720) para coordenadas da superfície nativa."""
+        ox, oy = self.viewport_offset
+        escala = self.render_scale
+        return (ox + float(lx) * escala, oy + float(ly) * escala)
+
+    def sx(self, lx: float) -> int:
+        """Projeta coordenada X lógica (0..1280) para pixel nativo da viewport."""
+        return int(round(self.viewport_offset[0] + float(lx) * self.render_scale))
+
+    def sy(self, ly: float) -> int:
+        """Projeta coordenada Y lógica (0..720) para pixel nativo da viewport."""
+        return int(round(self.viewport_offset[1] + float(ly) * self.render_scale))
+
+    def sw(self, lw: float) -> int:
+        """Escala largura lógica para pixels nativos."""
+        if lw <= 0:
+            return 0
+        return max(1, int(round(float(lw) * self.render_scale)))
+
+    def sh(self, lh: float) -> int:
+        """Escala altura lógica para pixels nativos."""
+        if lh <= 0:
+            return 0
+        return max(1, int(round(float(lh) * self.render_scale)))
+
+    def srect(self, x: float, y: float, w: float, h: float) -> pygame.Rect:
+        """Projeta um retângulo lógico (1280x720) para pygame.Rect nativo."""
+        return pygame.Rect(self.sx(x), self.sy(y), self.sw(w), self.sh(h))
+
+    def obter_fonte_nativa(
+        self,
+        nome: str,
+        tamanho_logico: float,
+        bold: bool = False,
+        italic: bool = False
+    ) -> pygame.font.Font:
+        """Retorna fonte Pygame em DPI nativo escalada por render_scale, cacheada por (nome, px_size, bold, italic)."""
+        px_size = max(8, int(round(float(tamanho_logico) * self.render_scale)))
+        chave = (str(nome), px_size, bool(bold), bool(italic))
+        if chave not in self._fontes_cache:
+            try:
+                self._fontes_cache[chave] = pygame.font.SysFont(str(nome), px_size, bool(bold), bool(italic))
+            except Exception:
+                self._fontes_cache[chave] = pygame.font.Font(None, px_size)
+        return self._fontes_cache[chave]
+
+    def definir_vsync(self, ativo: bool):
+        """Alterna vsync em tempo de execução recriando o modo de vídeo com fallback seguro."""
+        novo_estado = bool(ativo)
+        if novo_estado == self.vsync_ativo:
+            return
+        self.vsync_ativo = novo_estado
+        if self.real_screen is None:
+            return
+        if self.is_fullscreen:
+            flags = (self._flags_janela & ~RESIZABLE) | FULLSCREEN
+            tamanho = self.real_screen.get_size()
+        else:
+            flags = self._flags_janela & ~FULLSCREEN
+            tamanho = (self.largura_janela_atual, self.altura_janela_atual)
+        try:
+            nova = self._set_mode_seguro(tamanho, flags, vsync=self.vsync_ativo)
+            self._aplicar_novo_real_screen(nova)
+        except Exception:
+            pass
 
     @classmethod
     def get_instance(cls):
@@ -297,31 +486,40 @@ class Janela(metaclass=JanelaMeta):
 
     def definir_resolucao(self, opcao_res: str):
         """
-        Ajusta a resolução real da janela para resoluções menores ou iguais a 1280x720.
-        Opções suportadas: '100%' (1280x720), '75%' (960x540), '50%' (640x360), '25%' (320x180).
+        Ajusta a escala de resolução do mundo (world pixelation pass) sem encolher a janela do SO.
+        Opções suportadas: '100%' (1.0), '75%' (0.75), '50%' (0.50), '25%' (0.25).
         """
-        mapa = {
-            "100%": (1280, 720),
-            "75%": (960, 540),
-            "50%": (640, 360),
-            "25%": (320, 180),
-            "1280x720": (1280, 720),
-            "960x540": (960, 540),
-            "640x360": (640, 360),
-            "320x180": (320, 180),
+        mapa_escala = {
+            "100%": 1.0,
+            "75%": 0.75,
+            "50%": 0.50,
+            "25%": 0.25,
+            "1280x720": 1.0,
+            "960x540": 0.75,
+            "640x360": 0.50,
+            "320x180": 0.25,
         }
-        res = mapa.get(str(opcao_res), (1280, 720))
-        self.largura_janela_atual, self.altura_janela_atual = res
+        self.escala_resolucao_mundo = float(mapa_escala.get(str(opcao_res), 1.0))
 
-        if not self.is_fullscreen:
-            try:
-                flags = self._flags_janela & ~FULLSCREEN
-                self.real_screen = pygame.display.set_mode(
-                    (self.largura_janela_atual, self.altura_janela_atual),
-                    flags
-                )
-            except Exception:
-                pass
+    def entrar_fullscreen(self):
+        """Entra em tela cheia usando a resolução nativa real do monitor."""
+        if self.is_fullscreen:
+            return
+        self.is_fullscreen = True
+        flags = (self._flags_janela & ~RESIZABLE) | FULLSCREEN
+        desktop_info = pygame.display.Info()
+        raw_w = getattr(desktop_info, "current_w", 0) or 0
+        raw_h = getattr(desktop_info, "current_h", 0) or 0
+        if self._is_dummy_driver():
+            w, h = self.largura, self.altura
+        else:
+            w = raw_w if raw_w > 0 else self.tela_nativa_largura
+            h = raw_h if raw_h > 0 else self.tela_nativa_altura
+        try:
+            nova = self._set_mode_seguro((w, h), flags, vsync=self.vsync_ativo)
+            self._aplicar_novo_real_screen(nova)
+        except Exception:
+            pass
 
     def alternar_fullscreen(self):
         """Alterna de forma limpa entre modo Janela e Tela Cheia sem crash ou perda de Aspect Ratio."""
@@ -332,27 +530,36 @@ class Janela(metaclass=JanelaMeta):
         except Exception:
             sucesso = False
 
-        if not sucesso:
-            # Fallback seguro com re-set de modo
-            if self.is_fullscreen:
-                # Remove RESIZABLE para evitar conflito com FULLSCREEN e descarta HWSURFACE
-                flags = (self._flags_janela & ~RESIZABLE) | FULLSCREEN
-                desktop_info = pygame.display.Info()
+        if sucesso:
+            self._atualizar_metricas_viewport()
+            return
+
+        # Fallback seguro com re-set de modo
+        if self.is_fullscreen:
+            # Remove RESIZABLE para evitar conflito com FULLSCREEN e descarta HWSURFACE
+            flags = (self._flags_janela & ~RESIZABLE) | FULLSCREEN
+            desktop_info = pygame.display.Info()
+            if self._is_dummy_driver():
+                w, h = self.largura, self.altura
+            else:
                 w = getattr(desktop_info, "current_w", self.tela_nativa_largura) or self.tela_nativa_largura
                 h = getattr(desktop_info, "current_h", self.tela_nativa_altura) or self.tela_nativa_altura
-                try:
-                    self.real_screen = pygame.display.set_mode((w, h), flags)
-                except Exception:
-                    pass
-            else:
-                flags = self._flags_janela & ~FULLSCREEN
-                try:
-                    self.real_screen = pygame.display.set_mode(
-                        (self.largura_janela_atual, self.altura_janela_atual),
-                        flags
-                    )
-                except Exception:
-                    pass
+            try:
+                nova = self._set_mode_seguro((w, h), flags, vsync=self.vsync_ativo)
+                self._aplicar_novo_real_screen(nova)
+            except Exception:
+                pass
+        else:
+            flags = self._flags_janela & ~FULLSCREEN
+            try:
+                nova = self._set_mode_seguro(
+                    (self.largura_janela_atual, self.altura_janela_atual),
+                    flags,
+                    vsync=self.vsync_ativo
+                )
+                self._aplicar_novo_real_screen(nova)
+            except Exception:
+                pass
 
     def _calcular_viewport(self, lw: int, lh: int) -> tuple[int, int, int, int, float]:
         """
@@ -422,10 +629,12 @@ class Janela(metaclass=JanelaMeta):
                     if not self.is_fullscreen:
                         try:
                             flags = self._flags_janela & ~FULLSCREEN
-                            self.real_screen = pygame.display.set_mode(
+                            nova = self._set_mode_seguro(
                                 (self.largura_janela_atual, self.altura_janela_atual),
-                                flags
+                                flags,
+                                vsync=self.vsync_ativo
                             )
+                            self._aplicar_novo_real_screen(nova)
                         except Exception:
                             pass
                 eventos_filtrados.append(ev)
@@ -465,39 +674,56 @@ class Janela(metaclass=JanelaMeta):
             pygame.display.flip()
             limite_fps = int(self.fps_alvo if fps_alvo is None else fps_alvo)
             ms_passados = self._clock.tick(limite_fps)
-            self._delta_time = min(0.1, max(0.0, ms_passados / 1000.0))
+            self._delta_time = min(DT_CLAMP_MAX, max(0.0, ms_passados / 1000.0))
             self._eventos_processados_frame = False
             return
 
-        # 1. Cálculo de Aspect Ratio e Dimensões de Letterboxing
-        pos_x, pos_y, nova_w, nova_h, ratio = self._calcular_viewport(largura_real, altura_real)
+        self._atualizar_metricas_viewport()
 
-        # 2. Preenchimento de barras pretas (Letterbox / Pillarbox)
-        self.real_screen.fill((0, 0, 0))
+        # Quando self.screen é a própria real_screen (renderização nativa direta),
+        # preenche apenas barras de letterbox/pillarbox (se houver) e apresenta diretamente.
+        if self.screen is self.real_screen:
+            ox, oy, vw, vh = self.viewport_rect
+            if ox > 0:
+                self.real_screen.fill((0, 0, 0), rect=(0, 0, ox, altura_real))
+                dir_x = ox + vw
+                if dir_x < largura_real:
+                    self.real_screen.fill((0, 0, 0), rect=(dir_x, 0, largura_real - dir_x, altura_real))
+            if oy > 0:
+                self.real_screen.fill((0, 0, 0), rect=(0, 0, largura_real, oy))
+                inf_y = oy + vh
+                if inf_y < altura_real:
+                    self.real_screen.fill((0, 0, 0), rect=(0, inf_y, largura_real, altura_real - inf_y))
+        else:
+            # 1. Cálculo de Aspect Ratio e Dimensões de Letterboxing
+            pos_x, pos_y, nova_w, nova_h, ratio = self._calcular_viewport(largura_real, altura_real)
 
-        # 3. Escalonamento e Projeção na Tela Real
-        try:
-            if nova_w == self.largura and nova_h == self.altura:
-                self.real_screen.blit(self.screen, (pos_x, pos_y))
-            elif self.pixel_art:
-                scaled = pygame.transform.scale(self.screen, (nova_w, nova_h))
-                self.real_screen.blit(scaled, (pos_x, pos_y))
-            else:
-                scaled = pygame.transform.smoothscale(self.screen, (nova_w, nova_h))
-                self.real_screen.blit(scaled, (pos_x, pos_y))
-        except Exception:
-            self.real_screen.blit(self.screen, (0, 0))
+            # 2. Preenchimento de barras pretas (Letterbox / Pillarbox)
+            self.real_screen.fill((0, 0, 0))
+
+            # 3. Escalonamento e Projeção na Tela Real
+            try:
+                if nova_w == self.largura and nova_h == self.altura:
+                    self.real_screen.blit(self.screen, (pos_x, pos_y))
+                elif self.pixel_art:
+                    scaled = pygame.transform.scale(self.screen, (nova_w, nova_h))
+                    self.real_screen.blit(scaled, (pos_x, pos_y))
+                else:
+                    scaled = pygame.transform.smoothscale(self.screen, (nova_w, nova_h))
+                    self.real_screen.blit(scaled, (pos_x, pos_y))
+            except Exception:
+                self.real_screen.blit(self.screen, (0, 0))
 
         # 4. Apresentação de Vídeo
         pygame.display.flip()
 
-        # 5. Limpeza do buffer virtual para o próximo frame
+        # 5. Limpeza do buffer para o próximo frame
         self.screen.fill(self.cor_fundo)
 
-        # 6. Sincronização do Relógio (FPS Cap e Delta Time clampado <= 0.1)
+        # 6. Sincronização do Relógio (FPS Cap e Delta Time clampado <= DT_CLAMP_MAX)
         limite_fps = int(self.fps_alvo if fps_alvo is None else fps_alvo)
         ms_passados = self._clock.tick(limite_fps)
-        self._delta_time = min(0.1, max(0.0, ms_passados / 1000.0))
+        self._delta_time = min(DT_CLAMP_MAX, max(0.0, ms_passados / 1000.0))
 
         # Reseta flag de eventos para o próximo frame
         self._eventos_processados_frame = False
