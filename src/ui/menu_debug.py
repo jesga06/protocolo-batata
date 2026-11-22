@@ -15,6 +15,23 @@ from src.utils.constantes import (
 )
 from src.entidades.drop import ItemDrop
 
+_FONT_CACHE: dict[tuple[int, bool], pygame.font.Font] = {}
+
+
+def _obter_fonte_debug(tamanho: int, bold: bool = False) -> pygame.font.Font:
+    px_sz = max(8, int(tamanho))
+    chave = (px_sz, bold)
+    if chave in _FONT_CACHE:
+        return _FONT_CACHE[chave]
+    for nome in ("jetbrainsmono", "firacode", "consolas", "dejavusansmono"):
+        f = pygame.font.SysFont(nome, px_sz, bold=bold)
+        if f is not None:
+            _FONT_CACHE[chave] = f
+            return f
+    f = pygame.font.SysFont("consolas", px_sz, bold=bold)
+    _FONT_CACHE[chave] = f
+    return f
+
 
 class MenuDebug:
     """
@@ -502,29 +519,72 @@ class MenuDebug:
             if hasattr(jog, "aplicar_overclock"):
                 jog.aplicar_overclock(mod_id)
 
+            # Desbloqueia Dash / meta de parries para testes completos
+            from src.utils.constantes import DASH_PARRY_META
+            jog.dash_desbloqueado = True
+            cfg = getattr(self.cena, "config_sistema", None) or getattr(self.cena, "gerenciador_config", None)
+            if cfg is not None and hasattr(cfg, "estatisticas"):
+                cfg.estatisticas["dash_desbloqueado"] = True
+                cfg.estatisticas["parries_total"] = max(int(cfg.estatisticas.get("parries_total", 0)), int(DASH_PARRY_META))
+                if hasattr(cfg, "salvar_arquivo"):
+                    cfg.salvar_arquivo()
+
         if hasattr(self.cena, "aplicar_modificadores"):
             self.cena.aplicar_modificadores()
-        self._definir_status(f"+{int(segs)}s + ARMA + CONSUMIVEIS + BIOS!")
+        self._definir_status(f"+{int(segs)}s + ARMA + CONSUMIVEIS + BIOS + DASH!")
 
     def _definir_status(self, texto: str):
         self._mensagem_status = str(texto)
         self._timer_status = 2.5
 
     def draw(self, screen: pygame.Surface):
-        """Renderiza o HUD do console de debug e mira de spawn do mouse."""
+        """Renderiza o HUD do console de debug e mira de spawn do mouse em DPI nativo."""
         if not self.ativo or screen is None:
             return
 
-        self._inicializar_fontes()
+        sw, sh = screen.get_size()
+        scale = min(sw / float(LARGURA_TELA), sh / float(ALTURA_TELA))
+        vx = (sw - int(round(LARGURA_TELA * scale))) // 2
+        vy = (sh - int(round(ALTURA_TELA * scale))) // 2
+
+        def px(val: float) -> int:
+            return vx + int(round(val * scale))
+
+        def py(val: float) -> int:
+            return vy + int(round(val * scale))
+
+        def ps(val: float) -> int:
+            return max(1, int(round(val * scale)))
+
+        fonte_tit = _obter_fonte_debug(max(8, int(round(14 * scale))), bold=True)
+        fonte_item = _obter_fonte_debug(max(8, int(round(12 * scale))), bold=True)
+        fonte_val = _obter_fonte_debug(max(8, int(round(12 * scale))), bold=False)
+        fonte_hint = _obter_fonte_debug(max(8, int(round(11 * scale))), bold=False)
+
+        painel_px = pygame.Rect(
+            px(self.rect_painel.x),
+            py(self.rect_painel.y),
+            ps(self.rect_painel.width),
+            ps(self.rect_painel.height),
+        )
+        if self._painel_surf.get_size() != (painel_px.width, painel_px.height):
+            self._painel_surf = pygame.Surface((painel_px.width, painel_px.height), pygame.SRCALPHA)
+            self._painel_surf.fill((11, 14, 23, 236))
 
         # 1. Fundo Escuro do Painel Translúcido
-        screen.blit(self._painel_surf, (self.rect_painel.x, self.rect_painel.y))
-        pygame.draw.rect(screen, ROXO_ACENTO, self.rect_painel, width=2, border_radius=6)
+        screen.blit(self._painel_surf, painel_px.topleft)
+        pygame.draw.rect(screen, (168, 85, 247), painel_px, width=max(1, ps(2)), border_radius=ps(8))
 
         # 2. Cabeçalho do Console
-        tit_surf = self._fonte_tit.render("CONSOLE DEBUG (F1 / ~)", True, DOURADO)
-        screen.blit(tit_surf, (self.rect_painel.x + 12, self.rect_painel.y + 12))
-        pygame.draw.line(screen, (80, 60, 120), (self.rect_painel.x + 10, self.rect_painel.y + 32), (self.rect_painel.right - 10, self.rect_painel.y + 32), 1)
+        tit_surf = fonte_tit.render("CONSOLE DEBUG (F1 / ~)", True, DOURADO)
+        screen.blit(tit_surf, (painel_px.x + ps(12), painel_px.y + ps(12)))
+        pygame.draw.line(
+            screen,
+            (51, 65, 85),
+            (painel_px.x + ps(10), painel_px.y + ps(32)),
+            (painel_px.right - ps(10), painel_px.y + ps(32)),
+            max(1, ps(1)),
+        )
 
         # 3. Lista de Itens e Toggles
         y_cursor = self.rect_painel.y + 40
@@ -544,42 +604,53 @@ class MenuDebug:
             ("13. Boss Cutscene (Lvl 20)", "[ENTER CUTSCENE]", DOURADO),
             ("14. Conceder Overclock", f"< {self.opcoes_overclock[self.idx_overclock][0]} >", ROXO_CLARO),
             ("15. Matar Chefe", "[ENTER PARA MATAR]", VERMELHO_DANO),
-            ("16. Kit Debug (+Tempo)", f"< +{self.opcoes_pular_tempo[self.idx_pular_tempo]}s +Kit >", (0, 220, 255))
+            ("16. Kit Debug (+Tempo)", f"< +{self.opcoes_pular_tempo[self.idx_pular_tempo]}s +Kit >", (34, 211, 238))
         ]
 
         for i, (label, val_txt, val_cor) in enumerate(itens_config):
             is_focado = (i == self.indice_foco)
-            item_rect = pygame.Rect(self.rect_painel.x + 8, y_cursor - 2, self.rect_painel.width - 16, 22)
+            item_rect = pygame.Rect(
+                px(self.rect_painel.x + 8),
+                py(y_cursor - 2),
+                ps(self.rect_painel.width - 16),
+                ps(22),
+            )
 
             if is_focado:
-                pygame.draw.rect(screen, (55, 35, 80), item_rect, border_radius=4)
-                pygame.draw.rect(screen, DOURADO, item_rect, width=1, border_radius=4)
-                marcador = self._fonte_item.render(">", True, DOURADO)
-                screen.blit(marcador, (item_rect.x + 4, y_cursor + 2))
+                pygame.draw.rect(screen, (30, 41, 59), item_rect, border_radius=ps(4))
+                pygame.draw.rect(screen, DOURADO, item_rect, width=max(1, ps(1)), border_radius=ps(4))
+                marcador = fonte_item.render(">", True, DOURADO)
+                screen.blit(marcador, (item_rect.x + ps(4), py(y_cursor + 2)))
 
             cor_lbl = DOURADO if is_focado else BRANCO
-            lbl_surf = self._fonte_item.render(label, True, cor_lbl)
-            screen.blit(lbl_surf, (item_rect.x + 16, y_cursor + 2))
+            lbl_surf = fonte_item.render(label, True, cor_lbl)
+            screen.blit(lbl_surf, (item_rect.x + ps(16), py(y_cursor + 2)))
 
-            val_surf = self._fonte_val.render(val_txt, True, val_cor if not is_focado else DOURADO)
-            val_rect = val_surf.get_rect(right=item_rect.right - 6, centery=item_rect.centery)
+            val_surf = fonte_val.render(val_txt, True, val_cor if not is_focado else DOURADO)
+            val_rect = val_surf.get_rect(right=item_rect.right - ps(6), centery=item_rect.centery)
             screen.blit(val_surf, val_rect)
 
             y_cursor += 24
 
         # 4. Mensagem de Feedback / Status
-        pygame.draw.line(screen, (80, 60, 120), (self.rect_painel.x + 10, y_cursor + 4), (self.rect_painel.right - 10, y_cursor + 4), 1)
+        pygame.draw.line(
+            screen,
+            (51, 65, 85),
+            (painel_px.x + ps(10), py(y_cursor + 4)),
+            (painel_px.right - ps(10), py(y_cursor + 4)),
+            max(1, ps(1)),
+        )
         y_cursor += 12
 
         if self._mensagem_status:
-            status_surf = self._fonte_hint.render(self._mensagem_status, True, DOURADO)
-            screen.blit(status_surf, (self.rect_painel.x + 12, y_cursor))
+            status_surf = fonte_hint.render(self._mensagem_status, True, DOURADO)
+            screen.blit(status_surf, (painel_px.x + ps(12), py(y_cursor)))
         else:
             hint_txt = "SETAS: Navegar | ENTER: Acao | CLIQUE: Spawn"
-            hint_surf = self._fonte_hint.render(hint_txt, True, CINZA_TEXTO)
-            screen.blit(hint_surf, (self.rect_painel.x + 12, y_cursor))
+            hint_surf = fonte_hint.render(hint_txt, True, CINZA_TEXTO)
+            screen.blit(hint_surf, (painel_px.x + ps(12), py(y_cursor)))
 
-        # 5. Mira Visual no Cursor do Mouse para Spawn no Mundo
+        # 5. Mira Visual no Cursor do Mouse para Spawn no Mundo (projetada em DPI nativo)
         if self.cena and getattr(self.cena, "mouse", None):
             try:
                 mx, my = self.cena.mouse.get_position()
@@ -588,11 +659,13 @@ class MenuDebug:
         else:
             mx, my = pygame.mouse.get_pos() if pygame.mouse.get_focused() else (400, 300)
         if not self.rect_painel.collidepoint(mx, my):
-            # Desenha retículo de mira
-            pygame.draw.circle(screen, DOURADO, (mx, my), 10, width=1)
-            pygame.draw.line(screen, DOURADO, (mx - 14, my), (mx + 14, my), 1)
-            pygame.draw.line(screen, DOURADO, (mx, my - 14), (mx, my + 14), 1)
-            # Texto da entidade que será gerada
+            smx, smy = px(mx), py(my)
+            r_mira = ps(10)
+            l_mira = ps(14)
+            w_mira = max(1, ps(1))
+            pygame.draw.circle(screen, DOURADO, (smx, smy), r_mira, width=w_mira)
+            pygame.draw.line(screen, DOURADO, (smx - l_mira, smy), (smx + l_mira, smy), w_mira)
+            pygame.draw.line(screen, DOURADO, (smx, smy - l_mira), (smx, smy + l_mira), w_mira)
             entidade_spawn_label = ""
             if self.indice_foco == 4:
                 entidade_spawn_label = f"Spawn: {self.opcoes_tipo_drop[self.idx_tipo_drop][0]}"
@@ -604,5 +677,5 @@ class MenuDebug:
                 entidade_spawn_label = f"Spawn: {self.opcoes_inimigos[self.idx_inimigo][0]}"
 
             if entidade_spawn_label:
-                mira_txt = self._fonte_hint.render(entidade_spawn_label, True, DOURADO)
-                screen.blit(mira_txt, (mx + 14, my - 8))
+                mira_txt = fonte_hint.render(entidade_spawn_label, True, DOURADO)
+                screen.blit(mira_txt, (smx + ps(14), smy - ps(8)))

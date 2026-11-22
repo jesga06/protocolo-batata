@@ -22,6 +22,59 @@ from src.utils.constantes import (
     obter_caminho_asset, SAVE_FILE_PATH
 )
 
+# Paleta Cyber-Office (Spec §8 aprovada)
+_C_BACKDROP = (7, 9, 14)
+_C_HUD_PANEL = (11, 14, 23)
+_C_CARD = (17, 24, 39)
+_C_CARD_HOVER = (22, 30, 48)
+_C_ELEVATED = (30, 41, 59)
+_C_BORDER = (51, 65, 85)
+_C_TEXT_PRIMARY = (241, 245, 249)
+_C_TEXT_SECONDARY = (148, 163, 184)
+_C_TEXT_MUTED = (100, 116, 139)
+_C_CYAN = (34, 211, 238)
+_C_PURPLE = (168, 85, 247)
+_C_GREEN = (16, 185, 129)
+_C_GREEN_SOFT = (110, 231, 183)
+_C_GOLD = (251, 191, 36)
+_C_AMBER = (245, 158, 11)
+_C_CRIMSON = (239, 68, 68)
+_C_CRIMSON_SOFT = (252, 165, 165)
+
+
+_FONT_CACHE: dict[tuple[str, int, bool, bool], pygame.font.Font] = {}
+_ICON_SCALE_CACHE: dict[tuple[str, bool, int, int], pygame.Surface] = {}
+
+
+def _carregar_fonte_sans(tamanho: int, bold: bool = False, italic: bool = False) -> pygame.font.Font:
+    px_sz = max(8, int(tamanho))
+    chave = ("sans", px_sz, bold, italic)
+    if chave in _FONT_CACHE:
+        return _FONT_CACHE[chave]
+    for nome in ("notosans", "dejavusans", "liberationsans", "arial"):
+        f = pygame.font.SysFont(nome, px_sz, bold=bold, italic=italic)
+        if f is not None:
+            _FONT_CACHE[chave] = f
+            return f
+    f = pygame.font.SysFont("Arial", px_sz, bold=bold, italic=italic)
+    _FONT_CACHE[chave] = f
+    return f
+
+
+def _carregar_fonte_mono(tamanho: int, bold: bool = False) -> pygame.font.Font:
+    px_sz = max(8, int(tamanho))
+    chave = ("mono", px_sz, bold, False)
+    if chave in _FONT_CACHE:
+        return _FONT_CACHE[chave]
+    for nome in ("jetbrainsmono", "firacode", "consolas", "dejavusansmono"):
+        f = pygame.font.SysFont(nome, px_sz, bold=bold)
+        if f is not None:
+            _FONT_CACHE[chave] = f
+            return f
+    f = pygame.font.SysFont("Consolas", px_sz, bold=bold)
+    _FONT_CACHE[chave] = f
+    return f
+
 
 def _formatar_texto_wrap(texto: str, max_chars_por_linha: int = 26) -> list[str]:
     """Divide texto em linhas respeitando palavras completas."""
@@ -89,16 +142,16 @@ class MenuConfigs:
         self.lista_rect = pygame.Rect(self.offset_x + 45, self.offset_y + 110, 435, 410)
         self.detalhes_rect = pygame.Rect(self.offset_x + 495, self.offset_y + 110, 260, 410)
 
-        # Superfície de overlay escuro pré-alocada
+        # Superfície de overlay escuro pré-alocada (#07090e)
         self._dark_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
-        self._dark_surf.fill((10, 14, 22, 225))
+        self._dark_surf.fill((*_C_BACKDROP, 232))
 
         # Estado de interação do mouse e teclado
         self._mouse_pressionado_anterior: bool = False
         self._slider_arrastando: Optional[str] = None
         self.cooldown_input: float = 0.0
 
-        # Fontes de texto
+        # Fontes de texto (cacheadas — zero alocação por frame)
         self._fonte_titulo = None
         self._fonte_sub = None
         self._fonte_aba = None
@@ -108,6 +161,7 @@ class MenuConfigs:
         self._fonte_btn = None
         self._fonte_det_tit = None
         self._fonte_det_corpo = None
+        self._fonte_det_flavor = None
         self._fonte_rodape = None
 
         self.aplicar_volumes_atuais()
@@ -149,18 +203,19 @@ class MenuConfigs:
         return None
 
     def _inicializar_fontes(self):
-        """Inicializa as fontes do Pygame sob demanda."""
+        """Inicializa as fontes do Pygame sob demanda (Sans-Serif + Monospace)."""
         if self._fonte_titulo is None:
-            self._fonte_titulo = pygame.font.SysFont("Arial", 24, bold=True)
-            self._fonte_sub = pygame.font.SysFont("Arial", 12)
-            self._fonte_aba = pygame.font.SysFont("Arial", 14, bold=True)
-            self._fonte_cat = pygame.font.SysFont("Arial", 10, bold=True)
-            self._fonte_item_tit = pygame.font.SysFont("Arial", 12, bold=True)
-            self._fonte_item_desc = pygame.font.SysFont("Arial", 9)
-            self._fonte_btn = pygame.font.SysFont("Arial", 11, bold=True)
-            self._fonte_det_tit = pygame.font.SysFont("Arial", 14, bold=True)
-            self._fonte_det_corpo = pygame.font.SysFont("Arial", 10)
-            self._fonte_rodape = pygame.font.SysFont("Arial", 12)
+            self._fonte_titulo = _carregar_fonte_sans(22, bold=True)
+            self._fonte_sub = _carregar_fonte_sans(11, bold=False)
+            self._fonte_aba = _carregar_fonte_sans(12, bold=True)
+            self._fonte_cat = _carregar_fonte_sans(9, bold=True)
+            self._fonte_item_tit = _carregar_fonte_sans(12, bold=True)
+            self._fonte_item_desc = _carregar_fonte_sans(10, bold=False)
+            self._fonte_btn = _carregar_fonte_mono(11, bold=True)
+            self._fonte_det_tit = _carregar_fonte_sans(15, bold=True)
+            self._fonte_det_corpo = _carregar_fonte_sans(11, bold=False)
+            self._fonte_det_flavor = _carregar_fonte_sans(10, italic=True)
+            self._fonte_rodape = _carregar_fonte_mono(11, bold=False)
 
     def abrir(self):
         """Abre o menu de configurações com cooldown de proteção contra duplo disparo."""
@@ -253,6 +308,12 @@ class MenuConfigs:
             try:
                 from PPlay.sound import SoundManager
                 SoundManager.set_sfx_volume(int(round(vol_sfx * (vol_master / 100.0))))
+            except Exception:
+                pass
+
+            try:
+                from src.sistemas.sistema_musica import obter_sistema_musica
+                obter_sistema_musica().atualizar_volume(vol_master, vol_musica)
             except Exception:
                 pass
 
@@ -470,63 +531,105 @@ class MenuConfigs:
             if not pressionado_agora:
                 self._slider_arrastando = None
 
+    def _atualizar_viewport(self, screen: pygame.Surface):
+        """Calcula projeção Native-DPI (vx, vy, scale) e atualiza fontes cacheadas por escala."""
+        sw, sh = screen.get_size()
+        scale = min(sw / float(LARGURA_TELA), sh / float(ALTURA_TELA))
+        self._vp_vx = (sw - int(round(LARGURA_TELA * scale))) // 2
+        self._vp_vy = (sh - int(round(ALTURA_TELA * scale))) // 2
+        self._vp_scale = scale
+
+        self._fonte_titulo = _carregar_fonte_sans(max(8, int(round(22 * scale))), bold=True)
+        self._fonte_sub = _carregar_fonte_sans(max(8, int(round(11 * scale))), bold=False)
+        self._fonte_aba = _carregar_fonte_sans(max(8, int(round(12 * scale))), bold=True)
+        self._fonte_cat = _carregar_fonte_sans(max(8, int(round(9 * scale))), bold=True)
+        self._fonte_item_tit = _carregar_fonte_sans(max(8, int(round(12 * scale))), bold=True)
+        self._fonte_item_desc = _carregar_fonte_sans(max(8, int(round(10 * scale))), bold=False)
+        self._fonte_btn = _carregar_fonte_mono(max(8, int(round(11 * scale))), bold=True)
+        self._fonte_det_tit = _carregar_fonte_sans(max(8, int(round(15 * scale))), bold=True)
+        self._fonte_det_corpo = _carregar_fonte_sans(max(8, int(round(11 * scale))), bold=False)
+        self._fonte_det_flavor = _carregar_fonte_sans(max(8, int(round(10 * scale))), italic=True)
+        self._fonte_rodape = _carregar_fonte_mono(max(8, int(round(11 * scale))), bold=False)
+
+    def _px(self, val: float) -> int:
+        return self._vp_vx + int(round(val * self._vp_scale))
+
+    def _py(self, val: float) -> int:
+        return self._vp_vy + int(round(val * self._vp_scale))
+
+    def _ps(self, val: float) -> int:
+        return max(1, int(round(val * self._vp_scale)))
+
+    def _pr(self, r: pygame.Rect) -> pygame.Rect:
+        return pygame.Rect(self._px(r.x), self._py(r.y), self._ps(r.width), self._ps(r.height))
+
     def draw(self, screen: pygame.Surface):
-        """Renderiza a janela do menu de configurações."""
+        """Renderiza a janela do menu de configurações em DPI nativo."""
         if not self.ativo or screen is None:
             return
 
-        self._inicializar_fontes()
+        self._atualizar_viewport(screen)
+        sw, sh = screen.get_size()
 
-        # 1. Overlay Escuro de Fundo (reutiliza superfície pré-alocada)
-        if self._dark_surf is None or self._dark_surf.get_size() != (LARGURA_TELA, ALTURA_TELA):
-            self._dark_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
-            self._dark_surf.fill((10, 14, 22, 225))
+        # 1. Overlay Escuro de Fundo cobrindo todo o ecrã nativo (reutiliza superfície pré-alocada)
+        if self._dark_surf is None or self._dark_surf.get_size() != (sw, sh):
+            self._dark_surf = pygame.Surface((sw, sh), pygame.SRCALPHA)
+            self._dark_surf.fill((*_C_BACKDROP, 232))
         screen.blit(self._dark_surf, (0, 0))
 
-        # 2. Painel Principal Centralizado
+        # 2. Painel Principal Centralizado (#0b0e17 + borda #334155 + filete Roxo/Dourado)
         ox = getattr(self, "offset_x", (LARGURA_TELA - 800) // 2)
         oy = getattr(self, "offset_y", (ALTURA_TELA - 600) // 2)
-        pygame.draw.rect(screen, (22, 26, 36), self.painel_rect, border_radius=8)
-        pygame.draw.rect(screen, (55, 68, 92), self.painel_rect, width=2, border_radius=8)
+        painel_px = self._pr(self.painel_rect)
+        pygame.draw.rect(screen, _C_HUD_PANEL, painel_px, border_radius=self._ps(10))
+        pygame.draw.rect(screen, _C_BORDER, painel_px, width=max(1, self._ps(1)), border_radius=self._ps(10))
+        meio_w = (painel_px.width - self._ps(28)) // 2
+        stripe_h = max(2, self._ps(2))
+        pygame.draw.rect(screen, _C_PURPLE, (painel_px.x + self._ps(14), painel_px.y + 1, meio_w, stripe_h))
+        pygame.draw.rect(screen, _C_GOLD, (painel_px.x + self._ps(14) + meio_w, painel_px.y + 1, meio_w, stripe_h))
 
         # 3. Cabeçalho com Título e Subtítulo
-        tit_surf = self._fonte_titulo.render("PAINEL DE CONFIGURAÇÕES", True, DOURADO)
-        screen.blit(tit_surf, (ox + 50, oy + 30))
+        tit_surf = self._fonte_titulo.render("CONFIGURAÇÕES DO SISTEMA", True, _C_GOLD)
+        screen.blit(tit_surf, (self._px(ox + 50), self._py(oy + 26)))
 
-        sub_txt = "Personalize o jogo e ative sacrifícios mecânicos para ganhar bônus" if self.aba_atual == 0 else "Ajustes de áudio"
-        sub_surf = self._fonte_sub.render(sub_txt, True, (150, 165, 185))
-        screen.blit(sub_surf, (ox + 50, oy + 52))
+        sub_txt = "Ative sacrifícios técnicos para desbloquear vantagens mecânicas em tempo real" if self.aba_atual == 0 else "Ajustes de áudio e volumes do sistema"
+        sub_surf = self._fonte_sub.render(sub_txt, True, _C_TEXT_SECONDARY)
+        screen.blit(sub_surf, (self._px(ox + 50), self._py(oy + 51)))
 
         # 4. Barra de Abas [ GAMEPLAY ] e [ SISTEMA ]
-        aba0_rect, aba1_rect, btn_fechar_rect, btn_menu_rect = self._obter_rects_barra_topo()
+        aba0_l, aba1_l, btn_fechar_l, btn_menu_l = self._obter_rects_barra_topo()
+        aba0_rect = self._pr(aba0_l)
+        aba1_rect = self._pr(aba1_l)
+        btn_fechar_rect = self._pr(btn_fechar_l)
+        btn_menu_rect = self._pr(btn_menu_l) if btn_menu_l is not None else None
 
         # Aba 0: Gameplay
-        cor_aba0 = (38, 48, 68) if self.aba_atual == 0 else (26, 30, 42)
-        cor_borda0 = DOURADO if self.aba_atual == 0 else (50, 60, 80)
-        pygame.draw.rect(screen, cor_aba0, aba0_rect, border_radius=4)
-        pygame.draw.rect(screen, cor_borda0, aba0_rect, width=2 if self.aba_atual == 0 else 1, border_radius=4)
-        t_aba0 = self._fonte_aba.render("GAMEPLAY (20)", True, DOURADO if self.aba_atual == 0 else BRANCO)
+        cor_aba0 = _C_CARD if self.aba_atual == 0 else _C_HUD_PANEL
+        cor_borda0 = _C_GOLD if self.aba_atual == 0 else _C_ELEVATED
+        pygame.draw.rect(screen, cor_aba0, aba0_rect, border_radius=self._ps(7))
+        pygame.draw.rect(screen, cor_borda0, aba0_rect, width=self._ps(2) if self.aba_atual == 0 else max(1, self._ps(1)), border_radius=self._ps(7))
+        t_aba0 = self._fonte_aba.render("GAMEPLAY  •  20", True, _C_GOLD if self.aba_atual == 0 else _C_TEXT_SECONDARY)
         screen.blit(t_aba0, t_aba0.get_rect(center=aba0_rect.center))
 
         # Aba 1: Sistema
-        cor_aba1 = (38, 48, 68) if self.aba_atual == 1 else (26, 30, 42)
-        cor_borda1 = DOURADO if self.aba_atual == 1 else (50, 60, 80)
-        pygame.draw.rect(screen, cor_aba1, aba1_rect, border_radius=4)
-        pygame.draw.rect(screen, cor_borda1, aba1_rect, width=2 if self.aba_atual == 1 else 1, border_radius=4)
-        t_aba1 = self._fonte_aba.render("SISTEMA (ÁUDIO)", True, DOURADO if self.aba_atual == 1 else BRANCO)
+        cor_aba1 = _C_CARD if self.aba_atual == 1 else _C_HUD_PANEL
+        cor_borda1 = _C_GOLD if self.aba_atual == 1 else _C_ELEVATED
+        pygame.draw.rect(screen, cor_aba1, aba1_rect, border_radius=self._ps(7))
+        pygame.draw.rect(screen, cor_borda1, aba1_rect, width=self._ps(2) if self.aba_atual == 1 else max(1, self._ps(1)), border_radius=self._ps(7))
+        t_aba1 = self._fonte_aba.render("ÁUDIO & SISTEMA", True, _C_GOLD if self.aba_atual == 1 else _C_TEXT_SECONDARY)
         screen.blit(t_aba1, t_aba1.get_rect(center=aba1_rect.center))
 
         # Botão Sair para o Menu Principal (apenas durante gameplay)
         if btn_menu_rect is not None:
-            pygame.draw.rect(screen, (52, 34, 24), btn_menu_rect, border_radius=4)
-            pygame.draw.rect(screen, LARANJA_ALERTA, btn_menu_rect, width=1, border_radius=4)
-            t_menu = self._fonte_aba.render("MENU PRINCIPAL", True, DOURADO)
+            pygame.draw.rect(screen, (42, 28, 16), btn_menu_rect, border_radius=self._ps(7))
+            pygame.draw.rect(screen, _C_AMBER, btn_menu_rect, width=max(1, self._ps(1)), border_radius=self._ps(7))
+            t_menu = self._fonte_aba.render("MENU PRINCIPAL", True, _C_GOLD)
             screen.blit(t_menu, t_menu.get_rect(center=btn_menu_rect.center))
 
         # Botão Fechar [ESC]
-        pygame.draw.rect(screen, (45, 30, 35), btn_fechar_rect, border_radius=4)
-        pygame.draw.rect(screen, VERMELHO_HP, btn_fechar_rect, width=1, border_radius=4)
-        t_fec = self._fonte_aba.render("FECHAR [ESC]", True, BRANCO)
+        pygame.draw.rect(screen, (42, 18, 21), btn_fechar_rect, border_radius=self._ps(7))
+        pygame.draw.rect(screen, _C_CRIMSON, btn_fechar_rect, width=max(1, self._ps(1)), border_radius=self._ps(7))
+        t_fec = self._fonte_btn.render("FECHAR [ESC]", True, _C_CRIMSON_SOFT)
         screen.blit(t_fec, t_fec.get_rect(center=btn_fechar_rect.center))
 
         # 5. Renderização do Conteúdo Específico da Aba
@@ -535,14 +638,14 @@ class MenuConfigs:
         else:
             self._desenhar_aba_sistema(screen)
 
-        # 6. Rodapé com Instruções
-        rodape_txt = "[TAB] Alternar Abas  |  [ESC / C] Fechar e Salvar  |  [Mouse] Ajustar Opções"
-        rodape_surf = self._fonte_rodape.render(rodape_txt, True, (130, 145, 165))
-        rodape_rect = rodape_surf.get_rect(centerx=LARGURA_TELA // 2, bottom=self.painel_rect.bottom - 10)
+        # 6. Rodapé com Instruções (monospace)
+        rodape_txt = "[TAB] Abas   •   [ESC / C] Salvar e Fechar   •   [Mouse] Ajustar Opções"
+        rodape_surf = self._fonte_rodape.render(rodape_txt, True, _C_TEXT_MUTED)
+        rodape_rect = rodape_surf.get_rect(centerx=painel_px.centerx, bottom=painel_px.bottom - self._ps(10))
         screen.blit(rodape_surf, rodape_rect)
 
     def _desenhar_aba_gameplay(self, screen: pygame.Surface):
-        """Renderiza a lista de 20 configs e o painel de inspeção detalhado à direita."""
+        """Renderiza a lista de 20 configs e o painel de inspeção detalhado à direita em DPI nativo."""
         ox = getattr(self, "offset_x", (LARGURA_TELA - 800) // 2)
         oy = getattr(self, "offset_y", (ALTURA_TELA - 600) // 2)
 
@@ -558,13 +661,13 @@ class MenuConfigs:
         for cat_nome in self.categorias_lista:
             is_ativa = (self.categoria_filtro is None and cat_nome == "TODAS") or (self.categoria_filtro == cat_nome)
             largura_pill = larguras_cats.get(cat_nome, 76)
-            cat_rect = pygame.Rect(cat_x, oy + 108, largura_pill, 20)
-            cor_bg = (40, 52, 75) if is_ativa else (25, 30, 42)
-            cor_borda = AZUL_CIANO if is_ativa else (45, 55, 75)
-            pygame.draw.rect(screen, cor_bg, cat_rect, border_radius=3)
-            pygame.draw.rect(screen, cor_borda, cat_rect, width=1, border_radius=3)
+            cat_rect = pygame.Rect(self._px(cat_x), self._py(oy + 108), self._ps(largura_pill), self._ps(22))
+            cor_bg = (14, 42, 54) if is_ativa else _C_CARD
+            cor_borda = _C_CYAN if is_ativa else _C_ELEVATED
+            pygame.draw.rect(screen, cor_bg, cat_rect, border_radius=self._ps(5))
+            pygame.draw.rect(screen, cor_borda, cat_rect, width=max(1, self._ps(1)), border_radius=self._ps(5))
 
-            cat_surf = self._fonte_cat.render(cat_nome.upper(), True, AZUL_CIANO if is_ativa else (140, 150, 170))
+            cat_surf = self._fonte_cat.render(cat_nome.upper(), True, _C_CYAN if is_ativa else _C_TEXT_SECONDARY)
             screen.blit(cat_surf, cat_surf.get_rect(center=cat_rect.center))
             cat_x += largura_pill + 5
 
@@ -578,119 +681,133 @@ class MenuConfigs:
         item_h = 52
         start_y = oy + 136
 
-        # Fundo da lista
-        pygame.draw.rect(screen, (16, 20, 28), pygame.Rect(ox + 48, oy + 134, 404, 380), border_radius=4)
-        pygame.draw.rect(screen, (40, 50, 70), pygame.Rect(ox + 48, oy + 134, 404, 380), width=1, border_radius=4)
+        # Fundo da lista (#07090e)
+        lista_bg = pygame.Rect(self._px(ox + 48), self._py(oy + 134), self._ps(404), self._ps(380))
+        pygame.draw.rect(screen, _C_BACKDROP, lista_bg, border_radius=self._ps(8))
+        pygame.draw.rect(screen, _C_ELEVATED, lista_bg, width=max(1, self._ps(1)), border_radius=self._ps(8))
 
         for i, cdef in enumerate(configs_filtradas):
             item_y = start_y + i * item_h - self.scroll_y
             if item_y + item_h < oy + 135 or item_y > oy + 510:
                 continue
 
-            item_rect = pygame.Rect(ox + 50, item_y, 400, 48)
+            item_rect = pygame.Rect(self._px(ox + 50), self._py(item_y), self._ps(400), self._ps(48))
             is_desbloqueada = self.gerenciador_config.is_desbloqueada(cdef.id)
             is_selecionada = (self.config_selecionada_id == cdef.id)
+            val_atual = str(self.gerenciador_config.obter_valor(cdef.id))
+            is_modificada = is_desbloqueada and (val_atual != str(cdef.valor_padrao))
 
-            # Cor de fundo da linha
             if is_selecionada:
-                cor_bg = (35, 45, 65) if is_desbloqueada else (30, 32, 40)
-                cor_borda = DOURADO if is_desbloqueada else (80, 85, 95)
+                cor_bg = _C_CARD_HOVER if is_desbloqueada else (22, 26, 36)
+                cor_borda = _C_GOLD if is_desbloqueada else _C_BORDER
             else:
-                cor_bg = (24, 30, 42) if is_desbloqueada else (20, 22, 28)
-                cor_borda = (45, 55, 75) if is_desbloqueada else (35, 38, 48)
+                cor_bg = _C_CARD if is_desbloqueada else (13, 17, 26)
+                cor_borda = _C_BORDER if is_desbloqueada else _C_ELEVATED
 
-            pygame.draw.rect(screen, cor_bg, item_rect, border_radius=4)
-            pygame.draw.rect(screen, cor_borda, item_rect, width=2 if is_selecionada else 1, border_radius=4)
+            pygame.draw.rect(screen, cor_bg, item_rect, border_radius=self._ps(7))
+            pygame.draw.rect(screen, cor_borda, item_rect, width=self._ps(2) if is_selecionada else max(1, self._ps(1)), border_radius=self._ps(7))
 
-            # Ícone 32x32
+            if is_modificada:
+                pygame.draw.rect(screen, _C_GREEN, (item_rect.x + 1, item_rect.y + self._ps(8), max(2, self._ps(3)), item_rect.height - self._ps(16)), border_radius=max(1, self._ps(2)))
+
+            # Moldura + Ícone original v1 escalado em cache
+            mold_ic = pygame.Rect(self._px(ox + 58), self._py(item_y + 7), self._ps(34), self._ps(34))
+            pygame.draw.rect(screen, _C_HUD_PANEL, mold_ic, border_radius=self._ps(6))
+            pygame.draw.rect(screen, _C_GOLD if is_selecionada else _C_ELEVATED, mold_ic, width=max(1, self._ps(1)), border_radius=self._ps(6))
+
             icone_img = self._obter_icone(cdef.id)
             if icone_img is not None:
                 if not is_desbloqueada:
-                    # Ícone escurecido cacheado se bloqueado
                     icone_dark = self._obter_icone_bloqueado(cdef.id)
-                    if icone_dark is not None:
-                        screen.blit(icone_dark, (ox + 58, item_y + 8))
-                    else:
-                        screen.blit(icone_img, (ox + 58, item_y + 8))
+                    img_base = icone_dark if icone_dark is not None else icone_img
                 else:
-                    screen.blit(icone_img, (ox + 58, item_y + 8))
+                    img_base = icone_img
+                iw, ih = self._ps(28), self._ps(28)
+                ck = (cdef.id, not is_desbloqueada, iw, ih)
+                img_s = _ICON_SCALE_CACHE.get(ck)
+                if img_s is None:
+                    img_s = pygame.transform.scale(img_base, (iw, ih))
+                    _ICON_SCALE_CACHE[ck] = img_s
+                screen.blit(img_s, img_s.get_rect(center=mold_ic.center))
             else:
-                cor_ic = DOURADO if is_desbloqueada else (70, 75, 85)
-                pygame.draw.rect(screen, cor_ic, (ox + 58, item_y + 8, 32, 32), border_radius=4)
+                cor_ic = _C_GOLD if is_desbloqueada else _C_TEXT_MUTED
+                pygame.draw.circle(screen, cor_ic, mold_ic.center, self._ps(10), width=max(1, self._ps(2)))
 
-            # Nome e Categoria
-            cor_nome = BRANCO if is_desbloqueada else (110, 115, 125)
+            cor_nome = _C_TEXT_PRIMARY if is_desbloqueada else _C_TEXT_MUTED
             nome_surf = self._fonte_item_tit.render(cdef.nome, True, cor_nome)
-            screen.blit(nome_surf, (ox + 98, item_y + 6))
+            screen.blit(nome_surf, (self._px(ox + 100), self._py(item_y + 6)))
 
-            cat_str = f"[{cdef.categoria.value if hasattr(cdef.categoria, 'value') else cdef.categoria}]"
-            cat_surf = self._fonte_cat.render(cat_str, True, AZUL_CIANO if is_desbloqueada else (85, 90, 100))
-            screen.blit(cat_surf, (ox + 98, item_y + 26))
+            if not is_desbloqueada:
+                sub_str = "Desbloqueie em marcos"
+                sub_cor = _C_TEXT_MUTED
+            elif is_modificada:
+                sub_str = "Sacrifício ativo"
+                sub_cor = _C_GREEN_SOFT
+            else:
+                sub_str = "Padrão neutro"
+                sub_cor = _C_TEXT_MUTED
+            cat_surf = self._fonte_item_desc.render(sub_str, True, sub_cor)
+            screen.blit(cat_surf, (self._px(ox + 100), self._py(item_y + 25)))
 
-            # Controles à direita do item
             if is_desbloqueada:
-                val_atual = str(self.gerenciador_config.obter_valor(cdef.id))
                 if cdef.tipo == TipoControleConfig.TOGGLE:
                     is_on = (val_atual in ("ligado", "baixa"))
-                    cor_btn = (35, 75, 45) if is_on else (65, 35, 40)
-                    cor_btn_borda = VERDE_CURA if is_on else VERMELHO_HP
+                    cor_btn = (6, 40, 30) if is_on else (42, 18, 21)
+                    cor_btn_borda = _C_GREEN if is_on else _C_CRIMSON
                     txt_btn = f"[{val_atual.upper()}]"
 
-                    btn_rect = pygame.Rect(ox + 320, item_y + 10, 120, 28)
-                    pygame.draw.rect(screen, cor_btn, btn_rect, border_radius=4)
-                    pygame.draw.rect(screen, cor_btn_borda, btn_rect, width=1, border_radius=4)
-                    lbl_btn = self._fonte_btn.render(txt_btn, True, BRANCO)
+                    btn_rect = pygame.Rect(self._px(ox + 320), self._py(item_y + 10), self._ps(120), self._ps(28))
+                    pygame.draw.rect(screen, cor_btn, btn_rect, border_radius=self._ps(6))
+                    pygame.draw.rect(screen, cor_btn_borda, btn_rect, width=max(1, self._ps(1)), border_radius=self._ps(6))
+                    lbl_btn = self._fonte_btn.render(txt_btn, True, _C_GREEN_SOFT if is_on else _C_CRIMSON_SOFT)
                     screen.blit(lbl_btn, lbl_btn.get_rect(center=btn_rect.center))
                 else:
-                    # Grupo: botões < [Opção] >
-                    btn_prev = pygame.Rect(ox + 320, item_y + 10, 24, 28)
-                    btn_mid = pygame.Rect(ox + 346, item_y + 10, 72, 28)
-                    btn_next = pygame.Rect(ox + 420, item_y + 10, 24, 28)
+                    btn_prev = pygame.Rect(self._px(ox + 320), self._py(item_y + 10), self._ps(24), self._ps(28))
+                    btn_mid = pygame.Rect(self._px(ox + 346), self._py(item_y + 10), self._ps(72), self._ps(28))
+                    btn_next = pygame.Rect(self._px(ox + 420), self._py(item_y + 10), self._ps(24), self._ps(28))
 
-                    pygame.draw.rect(screen, (35, 45, 65), btn_prev, border_radius=3)
-                    pygame.draw.rect(screen, AZUL_CIANO, btn_prev, width=1, border_radius=3)
-                    pygame.draw.rect(screen, (28, 36, 52), btn_mid)
-                    pygame.draw.rect(screen, (35, 45, 65), btn_next, border_radius=3)
-                    pygame.draw.rect(screen, AZUL_CIANO, btn_next, width=1, border_radius=3)
+                    pygame.draw.rect(screen, _C_ELEVATED, btn_prev, border_radius=self._ps(5))
+                    pygame.draw.rect(screen, _C_CYAN if is_selecionada else _C_BORDER, btn_prev, width=max(1, self._ps(1)), border_radius=self._ps(5))
+                    pygame.draw.rect(screen, _C_HUD_PANEL, btn_mid, border_radius=self._ps(4))
+                    pygame.draw.rect(screen, _C_ELEVATED, btn_next, border_radius=self._ps(5))
+                    pygame.draw.rect(screen, _C_CYAN if is_selecionada else _C_BORDER, btn_next, width=max(1, self._ps(1)), border_radius=self._ps(5))
 
-                    surf_prev = self._fonte_btn.render("<", True, AZUL_CIANO)
+                    surf_prev = self._fonte_btn.render("<", True, _C_CYAN)
                     screen.blit(surf_prev, surf_prev.get_rect(center=btn_prev.center))
-                    surf_mid = self._fonte_btn.render(val_atual, True, DOURADO)
+                    surf_mid = self._fonte_btn.render(val_atual, True, _C_GOLD if is_modificada else _C_TEXT_PRIMARY)
                     screen.blit(surf_mid, surf_mid.get_rect(center=btn_mid.center))
-                    surf_next = self._fonte_btn.render(">", True, AZUL_CIANO)
+                    surf_next = self._fonte_btn.render(">", True, _C_CYAN)
                     screen.blit(surf_next, surf_next.get_rect(center=btn_next.center))
             else:
-                # Bloqueado
-                lbl_bloq = self._fonte_btn.render("[BLOQUEADO]", True, (110, 115, 130))
-                lbl_rect = lbl_bloq.get_rect(right=ox + 440, centery=item_y + 24)
-                screen.blit(lbl_bloq, lbl_rect)
+                lock_r = pygame.Rect(self._px(ox + 356), self._py(item_y + 12), self._ps(84), self._ps(24))
+                pygame.draw.rect(screen, _C_ELEVATED, lock_r, border_radius=self._ps(5))
+                lbl_bloq = self._fonte_btn.render("BLOQUEADA", True, _C_TEXT_MUTED)
+                screen.blit(lbl_bloq, lbl_bloq.get_rect(center=lock_r.center))
 
-        # Botões e setas de scroll (acima e abaixo na barra lateral direita da lista)
-        btn_up_rect = pygame.Rect(ox + 455, oy + 140, 20, 24)
-        btn_down_rect = pygame.Rect(ox + 455, oy + 480, 20, 24)
+        # Botões de scroll
+        btn_up_rect = pygame.Rect(self._px(ox + 455), self._py(oy + 140), self._ps(20), self._ps(24))
+        btn_down_rect = pygame.Rect(self._px(ox + 455), self._py(oy + 480), self._ps(20), self._ps(24))
         pode_subir = self.scroll_y > 0.0
         pode_descer = self.scroll_y < self.max_scroll_y
 
-        # Seta Cima
-        pygame.draw.rect(screen, (32, 40, 56), btn_up_rect, border_radius=3)
-        pygame.draw.rect(screen, AZUL_CIANO if pode_subir else (50, 60, 75), btn_up_rect, width=1, border_radius=3)
-        surf_up = self._fonte_btn.render("▲", True, AZUL_CIANO if pode_subir else (80, 90, 105))
+        pygame.draw.rect(screen, _C_CARD, btn_up_rect, border_radius=self._ps(4))
+        pygame.draw.rect(screen, _C_CYAN if pode_subir else _C_ELEVATED, btn_up_rect, width=max(1, self._ps(1)), border_radius=self._ps(4))
+        surf_up = self._fonte_btn.render("▲", True, _C_CYAN if pode_subir else _C_TEXT_MUTED)
         screen.blit(surf_up, surf_up.get_rect(center=btn_up_rect.center))
 
-        # Seta Baixo
-        pygame.draw.rect(screen, (32, 40, 56), btn_down_rect, border_radius=3)
-        pygame.draw.rect(screen, AZUL_CIANO if pode_descer else (50, 60, 75), btn_down_rect, width=1, border_radius=3)
-        surf_down = self._fonte_btn.render("▼", True, AZUL_CIANO if pode_descer else (80, 90, 105))
+        pygame.draw.rect(screen, _C_CARD, btn_down_rect, border_radius=self._ps(4))
+        pygame.draw.rect(screen, _C_CYAN if pode_descer else _C_ELEVATED, btn_down_rect, width=max(1, self._ps(1)), border_radius=self._ps(4))
+        surf_down = self._fonte_btn.render("▼", True, _C_CYAN if pode_descer else _C_TEXT_MUTED)
         screen.blit(surf_down, surf_down.get_rect(center=btn_down_rect.center))
 
         # 3. Painel de Inspeção Detalhado à Direita
         self._desenhar_painel_inspetor(screen)
 
     def _desenhar_painel_inspetor(self, screen: pygame.Surface):
-        """Renderiza os detalhes completos da configuração selecionada."""
-        rect = self.detalhes_rect
-        pygame.draw.rect(screen, (18, 22, 32), rect, border_radius=6)
-        pygame.draw.rect(screen, (50, 62, 85), rect, width=1, border_radius=6)
+        """Renderiza os detalhes completos da configuração selecionada com cards Benefício vs. Sacrifício."""
+        rect = self._pr(self.detalhes_rect)
+        pygame.draw.rect(screen, _C_CARD, rect, border_radius=self._ps(8))
+        pygame.draw.rect(screen, _C_BORDER, rect, width=max(1, self._ps(1)), border_radius=self._ps(8))
 
         cdef = CONFIGURACOES_GAMEPLAY.get(self.config_selecionada_id)
         if not cdef:
@@ -699,90 +816,101 @@ class MenuConfigs:
         is_desbloqueada = self.gerenciador_config.is_desbloqueada(cdef.id)
         val_ativo = str(self.gerenciador_config.obter_valor(cdef.id))
 
-        # Topo do Inspetor: Nome e Categoria
-        tit_surf = self._fonte_det_tit.render(cdef.nome, True, DOURADO if is_desbloqueada else (140, 145, 155))
-        screen.blit(tit_surf, (rect.x + 12, rect.y + 12))
+        tit_surf = self._fonte_det_tit.render(cdef.nome, True, _C_GOLD if is_desbloqueada else _C_TEXT_MUTED)
+        screen.blit(tit_surf, (rect.x + self._ps(12), rect.y + self._ps(12)))
 
-        cat_str = f"Categoria: {cdef.categoria.value if hasattr(cdef.categoria, 'value') else cdef.categoria}"
-        cat_surf = self._fonte_cat.render(cat_str, True, AZUL_CIANO)
-        screen.blit(cat_surf, (rect.x + 12, rect.y + 32))
+        cat_val = (cdef.categoria.value if hasattr(cdef.categoria, "value") else str(cdef.categoria)).upper()
+        cat_surf = self._fonte_cat.render(cat_val, True, _C_CYAN)
+        cat_pill = pygame.Rect(rect.x + self._ps(12), rect.y + self._ps(36), cat_surf.get_width() + self._ps(12), cat_surf.get_height() + self._ps(6))
+        pygame.draw.rect(screen, (14, 42, 54), cat_pill, border_radius=self._ps(4))
+        pygame.draw.rect(screen, _C_CYAN, cat_pill, width=max(1, self._ps(1)), border_radius=self._ps(4))
+        screen.blit(cat_surf, cat_surf.get_rect(center=cat_pill.center))
 
-        # Status Badge
-        status_txt = "STATUS: DESBLOQUEADA" if is_desbloqueada else "STATUS: BLOQUEADA"
-        status_cor = VERDE_CURA if is_desbloqueada else LARANJA_ALERTA
-        status_surf = self._fonte_cat.render(status_txt, True, status_cor)
-        screen.blit(status_surf, (rect.x + 12, rect.y + 48))
+        st_txt = "DESBLOQUEADA" if is_desbloqueada else "BLOQUEADA"
+        st_fg = _C_GREEN_SOFT if is_desbloqueada else _C_AMBER
+        st_bg = (6, 40, 30) if is_desbloqueada else (45, 28, 12)
+        st_bd = _C_GREEN if is_desbloqueada else _C_AMBER
+        st_surf = self._fonte_cat.render(st_txt, True, st_fg)
+        st_pill = pygame.Rect(cat_pill.right + self._ps(6), rect.y + self._ps(36), st_surf.get_width() + self._ps(12), st_surf.get_height() + self._ps(6))
+        pygame.draw.rect(screen, st_bg, st_pill, border_radius=self._ps(4))
+        pygame.draw.rect(screen, st_bd, st_pill, width=max(1, self._ps(1)), border_radius=self._ps(4))
+        screen.blit(st_surf, st_surf.get_rect(center=st_pill.center))
 
-        # Divisória
-        pygame.draw.line(screen, (45, 55, 75), (rect.x + 10, rect.y + 66), (rect.right - 10, rect.y + 66), 1)
+        val_box = pygame.Rect(rect.x + self._ps(12), rect.y + self._ps(64), rect.width - self._ps(24), self._ps(28))
+        pygame.draw.rect(screen, _C_HUD_PANEL, val_box, border_radius=self._ps(6))
+        pygame.draw.rect(screen, _C_ELEVATED, val_box, width=max(1, self._ps(1)), border_radius=self._ps(6))
+        lbl_m = self._fonte_cat.render("MODO ATIVO", True, _C_TEXT_MUTED)
+        screen.blit(lbl_m, (val_box.x + self._ps(8), val_box.y + self._ps(8)))
+        val_surf = self._fonte_btn.render(val_ativo.upper(), True, _C_GOLD)
+        screen.blit(val_surf, val_surf.get_rect(right=val_box.right - self._ps(8), centery=val_box.centery))
 
-        y_pos = rect.y + 74
-
-        # Valor Ativo
-        val_txt = f"Valor Atual: {val_ativo}"
-        val_surf = self._fonte_item_tit.render(val_txt, True, BRANCO)
-        screen.blit(val_surf, (rect.x + 12, y_pos))
-        y_pos += 22
-
-        # Opção Ativa Def
         opt_def = cdef.opcoes.get(val_ativo)
 
-        # Flavor Text
+        # Sub-card de BENEFÍCIO (Verde Esmeralda #10b981)
+        ben_rect = pygame.Rect(rect.x + self._ps(12), val_box.bottom + self._ps(10), rect.width - self._ps(24), self._ps(118))
+        pygame.draw.rect(screen, (6, 40, 30), ben_rect, border_radius=self._ps(7))
+        pygame.draw.rect(screen, _C_GREEN, ben_rect, width=max(1, self._ps(1)), border_radius=self._ps(7))
+        pygame.draw.rect(screen, _C_GREEN, (ben_rect.x, ben_rect.y + self._ps(6), max(2, self._ps(3)), ben_rect.height - self._ps(12)), border_radius=max(1, self._ps(2)))
+
+        bh_surf = self._fonte_cat.render("+ BENEFÍCIO", True, _C_GREEN_SOFT)
+        bh_pill = pygame.Rect(ben_rect.x + self._ps(10), ben_rect.y + self._ps(7), bh_surf.get_width() + self._ps(10), bh_surf.get_height() + self._ps(4))
+        pygame.draw.rect(screen, (14, 62, 46), bh_pill, border_radius=self._ps(4))
+        screen.blit(bh_surf, bh_surf.get_rect(center=bh_pill.center))
+
+        y_pos = bh_pill.bottom + self._ps(6)
+        if opt_def and opt_def.buff_text and opt_def.buff_text != "Nenhum":
+            b_linhas = _formatar_texto_wrap(opt_def.buff_text, max_chars_por_linha=27)
+            for bl in b_linhas[:5]:
+                bl_surf = self._fonte_det_corpo.render(bl, True, _C_TEXT_PRIMARY)
+                screen.blit(bl_surf, (ben_rect.x + self._ps(10), y_pos))
+                y_pos += self._ps(15)
+        else:
+            nenhum_surf = self._fonte_det_corpo.render("Nenhum bônus ativo no padrão", True, _C_TEXT_MUTED)
+            screen.blit(nenhum_surf, (ben_rect.x + self._ps(10), y_pos))
+
+        # Sub-card de SACRIFÍCIO (Carmesim #ef4444)
+        sac_rect = pygame.Rect(rect.x + self._ps(12), ben_rect.bottom + self._ps(10), rect.width - self._ps(24), self._ps(102))
+        pygame.draw.rect(screen, (42, 18, 21), sac_rect, border_radius=self._ps(7))
+        pygame.draw.rect(screen, _C_CRIMSON, sac_rect, width=max(1, self._ps(1)), border_radius=self._ps(7))
+        pygame.draw.rect(screen, _C_CRIMSON, (sac_rect.x, sac_rect.y + self._ps(6), max(2, self._ps(3)), sac_rect.height - self._ps(12)), border_radius=max(1, self._ps(2)))
+
+        nh_surf = self._fonte_cat.render("- SACRIFÍCIO", True, _C_CRIMSON_SOFT)
+        nh_pill = pygame.Rect(sac_rect.x + self._ps(10), sac_rect.y + self._ps(7), nh_surf.get_width() + self._ps(10), nh_surf.get_height() + self._ps(4))
+        pygame.draw.rect(screen, (68, 24, 28), nh_pill, border_radius=self._ps(4))
+        screen.blit(nh_surf, nh_surf.get_rect(center=nh_pill.center))
+
+        ny_pos = nh_pill.bottom + self._ps(6)
+        if opt_def and opt_def.nerf_text and opt_def.nerf_text != "Nenhum":
+            n_linhas = _formatar_texto_wrap(opt_def.nerf_text, max_chars_por_linha=27)
+            for nl in n_linhas[:4]:
+                nl_surf = self._fonte_det_corpo.render(nl, True, _C_TEXT_PRIMARY)
+                screen.blit(nl_surf, (sac_rect.x + self._ps(10), ny_pos))
+                ny_pos += self._ps(15)
+        else:
+            nenhum_n_surf = self._fonte_det_corpo.render("Nenhum sacrifício no padrão", True, _C_TEXT_MUTED)
+            screen.blit(nenhum_n_surf, (sac_rect.x + self._ps(10), ny_pos))
+
+        # Flavor Text no rodapé do inspetor
         if opt_def and opt_def.flavor_text:
-            flavor_linhas = _formatar_texto_wrap(f'"{opt_def.flavor_text}"', max_chars_por_linha=28)
-            for fl in flavor_linhas:
-                fl_surf = self._fonte_det_corpo.render(fl, True, (160, 175, 195))
-                screen.blit(fl_surf, (rect.x + 12, y_pos))
-                y_pos += 13
-            y_pos += 6
-
-        # Seção de Benefícios Ativos (BUFFS)
-        buff_header = self._fonte_cat.render("BENEFICIOS:", True, VERDE_CURA)
-        screen.blit(buff_header, (rect.x + 12, y_pos))
-        y_pos += 14
-
-        if opt_def and opt_def.buff_text:
-            b_linhas = _formatar_texto_wrap(opt_def.buff_text, max_chars_por_linha=28)
-            for bl in b_linhas:
-                bl_surf = self._fonte_det_corpo.render(f"+ {bl}", True, (170, 245, 180))
-                screen.blit(bl_surf, (rect.x + 14, y_pos))
-                y_pos += 13
-        else:
-            nenhum_surf = self._fonte_det_corpo.render("Nenhum bônus ativo no padrão", True, (120, 130, 145))
-            screen.blit(nenhum_surf, (rect.x + 14, y_pos))
-            y_pos += 13
-
-        y_pos += 6
-
-        # Seção de Sacrifícios (NERF)
-        nerf_header = self._fonte_cat.render("SACRIFICIO / NERF:", True, LARANJA_ALERTA)
-        screen.blit(nerf_header, (rect.x + 12, y_pos))
-        y_pos += 14
-
-        if opt_def and opt_def.nerf_text:
-            n_linhas = _formatar_texto_wrap(opt_def.nerf_text, max_chars_por_linha=28)
-            for nl in n_linhas:
-                nl_surf = self._fonte_det_corpo.render(f"- {nl}", True, (255, 185, 150))
-                screen.blit(nl_surf, (rect.x + 14, y_pos))
-                y_pos += 13
-        else:
-            nenhum_n_surf = self._fonte_det_corpo.render("Nenhum sacrifício no padrão", True, (120, 130, 145))
-            screen.blit(nenhum_n_surf, (rect.x + 14, y_pos))
-            y_pos += 13
+            fy = sac_rect.bottom + self._ps(10)
+            flavor_linhas = _formatar_texto_wrap(f'"{opt_def.flavor_text}"', max_chars_por_linha=30)
+            for fl in flavor_linhas[:3]:
+                if fy + self._ps(13) < rect.bottom - self._ps(6):
+                    fl_surf = self._fonte_det_flavor.render(fl, True, _C_TEXT_MUTED)
+                    screen.blit(fl_surf, (rect.x + self._ps(12), fy))
+                    fy += self._ps(14)
 
     def _desenhar_aba_sistema(self, screen: pygame.Surface):
-        """Renderiza a aba de configurações sistêmicas (volumes, filtro daltônico e escala global)."""
+        """Renderiza a aba de configurações sistêmicas (volumes de áudio) em DPI nativo."""
         ox = getattr(self, "offset_x", (LARGURA_TELA - 800) // 2)
         oy = getattr(self, "offset_y", (ALTURA_TELA - 600) // 2)
 
-        # Painel central da aba de sistema
-        area_rect = pygame.Rect(ox + 48, oy + 110, 704, 400)
-        pygame.draw.rect(screen, (18, 22, 32), area_rect, border_radius=6)
-        pygame.draw.rect(screen, (45, 55, 75), area_rect, width=1, border_radius=6)
+        area_rect = pygame.Rect(self._px(ox + 48), self._py(oy + 110), self._ps(704), self._ps(400))
+        pygame.draw.rect(screen, _C_CARD, area_rect, border_radius=self._ps(8))
+        pygame.draw.rect(screen, _C_BORDER, area_rect, width=max(1, self._ps(1)), border_radius=self._ps(8))
 
-        # 1. Sliders de Áudio
-        tit_audio = self._fonte_det_tit.render("AUDIO & MUSICA", True, DOURADO)
-        screen.blit(tit_audio, (ox + 70, oy + 125))
+        tit_audio = self._fonte_det_tit.render("ÁUDIO & MÚSICA", True, _C_GOLD)
+        screen.blit(tit_audio, (self._px(ox + 70), self._py(oy + 125)))
 
         sliders_info = [
             ("volume_master", "Volume Geral (Master)", oy + 160),
@@ -794,40 +922,33 @@ class MenuConfigs:
             val_atual = self.gerenciador_config.obter_valor(cid)
             val_atual = 100 if val_atual is None else int(val_atual)
 
-            # Rótulo
-            lbl_surf = self._fonte_item_tit.render(label, True, BRANCO)
-            screen.blit(lbl_surf, (ox + 70, y_pos + 4))
+            lbl_surf = self._fonte_item_tit.render(label, True, _C_TEXT_PRIMARY)
+            screen.blit(lbl_surf, (self._px(ox + 70), self._py(y_pos + 4)))
 
-            # Botão Menos [-]
-            btn_menos = pygame.Rect(ox + 240, y_pos, 30, 26)
-            pygame.draw.rect(screen, (32, 40, 56), btn_menos, border_radius=3)
-            pygame.draw.rect(screen, AZUL_CIANO, btn_menos, width=1, border_radius=3)
-            m_surf = self._fonte_btn.render("-", True, AZUL_CIANO)
+            btn_menos = pygame.Rect(self._px(ox + 240), self._py(y_pos), self._ps(30), self._ps(26))
+            pygame.draw.rect(screen, _C_ELEVATED, btn_menos, border_radius=self._ps(5))
+            pygame.draw.rect(screen, _C_CYAN, btn_menos, width=max(1, self._ps(1)), border_radius=self._ps(5))
+            m_surf = self._fonte_btn.render("-", True, _C_CYAN)
             screen.blit(m_surf, m_surf.get_rect(center=btn_menos.center))
 
-            # Barra do Slider
-            track_rect = pygame.Rect(ox + 280, y_pos + 6, 260, 14)
-            pygame.draw.rect(screen, (28, 34, 48), track_rect, border_radius=3)
+            track_rect = pygame.Rect(self._px(ox + 280), self._py(y_pos + 6), self._ps(260), self._ps(14))
+            pygame.draw.rect(screen, _C_HUD_PANEL, track_rect, border_radius=self._ps(5))
 
-            # Preenchimento
-            fill_w = int(260 * (val_atual / 100.0))
+            fill_w = int(track_rect.width * (val_atual / 100.0))
             if fill_w > 0:
-                pygame.draw.rect(screen, AZUL_CIANO, (ox + 280, y_pos + 6, fill_w, 14), border_radius=3)
+                pygame.draw.rect(screen, _C_CYAN, (track_rect.x, track_rect.y, fill_w, track_rect.height), border_radius=self._ps(5))
 
-            # Borda do Slider
-            pygame.draw.rect(screen, (60, 75, 100), track_rect, width=1, border_radius=3)
+            pygame.draw.rect(screen, _C_BORDER, track_rect, width=max(1, self._ps(1)), border_radius=self._ps(5))
 
-            # Botão Mais [+]
-            btn_mais = pygame.Rect(ox + 550, y_pos, 30, 26)
-            pygame.draw.rect(screen, (32, 40, 56), btn_mais, border_radius=3)
-            pygame.draw.rect(screen, AZUL_CIANO, btn_mais, width=1, border_radius=3)
-            p_surf = self._fonte_btn.render("+", True, AZUL_CIANO)
+            btn_mais = pygame.Rect(self._px(ox + 550), self._py(y_pos), self._ps(30), self._ps(26))
+            pygame.draw.rect(screen, _C_ELEVATED, btn_mais, border_radius=self._ps(5))
+            pygame.draw.rect(screen, _C_CYAN, btn_mais, width=max(1, self._ps(1)), border_radius=self._ps(5))
+            p_surf = self._fonte_btn.render("+", True, _C_CYAN)
             screen.blit(p_surf, p_surf.get_rect(center=btn_mais.center))
 
-            # Texto numérico
-            val_txt = f"{val_atual}%"
-            txt_surf = self._fonte_item_tit.render(val_txt, True, DOURADO)
-            screen.blit(txt_surf, (ox + 595, y_pos + 4))
+            val_txt = f"{val_atual:3d}%"
+            txt_surf = self._fonte_btn.render(val_txt, True, _C_GOLD)
+            screen.blit(txt_surf, (self._px(ox + 595), self._py(y_pos + 5)))
 
 
 

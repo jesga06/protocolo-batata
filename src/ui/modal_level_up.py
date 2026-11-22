@@ -21,6 +21,60 @@ from src.utils.constantes import (
     obter_caminho_asset, SAVE_FILE_PATH
 )
 
+# Paleta Cyber-Office (Spec §8 aprovada)
+_C_BACKDROP = (7, 9, 14)
+_C_HUD_PANEL = (11, 14, 23)
+_C_CARD = (17, 24, 39)
+_C_CARD_HOVER = (22, 30, 48)
+_C_ELEVATED = (30, 41, 59)
+_C_BORDER = (51, 65, 85)
+_C_TEXT_PRIMARY = (241, 245, 249)
+_C_TEXT_SECONDARY = (148, 163, 184)
+_C_TEXT_MUTED = (100, 116, 139)
+_C_CYAN = (34, 211, 238)
+_C_PURPLE = (168, 85, 247)
+_C_PURPLE_SOFT = (216, 180, 254)
+_C_GREEN = (16, 185, 129)
+_C_GREEN_SOFT = (110, 231, 183)
+_C_GOLD = (251, 191, 36)
+_C_AMBER = (245, 158, 11)
+_C_CRIMSON = (239, 68, 68)
+_C_CRIMSON_SOFT = (252, 165, 165)
+
+
+_FONT_CACHE: dict[tuple[str, int, bool, bool], pygame.font.Font] = {}
+_ICON_SCALE_CACHE: dict[tuple[str, int, int], pygame.Surface] = {}
+
+
+def _carregar_fonte_sans(tamanho: int, bold: bool = False, italic: bool = False) -> pygame.font.Font:
+    px_sz = max(8, int(tamanho))
+    chave = ("sans", px_sz, bold, italic)
+    if chave in _FONT_CACHE:
+        return _FONT_CACHE[chave]
+    for nome in ("notosans", "dejavusans", "liberationsans", "arial"):
+        f = pygame.font.SysFont(nome, px_sz, bold=bold, italic=italic)
+        if f is not None:
+            _FONT_CACHE[chave] = f
+            return f
+    f = pygame.font.SysFont("Arial", px_sz, bold=bold, italic=italic)
+    _FONT_CACHE[chave] = f
+    return f
+
+
+def _carregar_fonte_mono(tamanho: int, bold: bool = False) -> pygame.font.Font:
+    px_sz = max(8, int(tamanho))
+    chave = ("mono", px_sz, bold, False)
+    if chave in _FONT_CACHE:
+        return _FONT_CACHE[chave]
+    for nome in ("jetbrainsmono", "firacode", "consolas", "dejavusansmono"):
+        f = pygame.font.SysFont(nome, px_sz, bold=bold)
+        if f is not None:
+            _FONT_CACHE[chave] = f
+            return f
+    f = pygame.font.SysFont("Consolas", px_sz, bold=bold)
+    _FONT_CACHE[chave] = f
+    return f
+
 
 def _formatar_texto_wrap(texto: str, max_chars_por_linha: int = 22) -> list[str]:
     """Divide um texto longo em múltiplas linhas respeitando palavras inteiras."""
@@ -347,6 +401,7 @@ class ModalLevelUp:
 
         self.card_hovered: Optional[int] = None
         self._ultimo_hover: Optional[int] = None
+        self._hover_lift: list[float] = [0.0, 0.0, 0.0]
         self._mouse_pressionado_anterior: bool = True  # Inicia True para ignorar clique que causou level up
         self.tempo_transicao_entrada: float = 0.35  # 350ms de transição com input bloqueado
         self.tempo_transicao_saida: float = 0.0
@@ -354,9 +409,9 @@ class ModalLevelUp:
         # Superfícies pré-alocadas / reutilizadas em draw()
         self._dark_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
         self._layer_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
-        self._glow_surf = pygame.Surface((self.card_largura, self.card_altura), pygame.SRCALPHA)
+        self._glow_surf = pygame.Surface((self.card_largura + 24, self.card_altura + 24), pygame.SRCALPHA)
 
-        # Fontes de texto
+        # Fontes de texto (cacheadas em _inicializar_fontes — zero alocação por frame)
         self._fonte_titulo = None
         self._fonte_sub = None
         self._fonte_card_tit = None
@@ -364,6 +419,7 @@ class ModalLevelUp:
         self._fonte_card_badge = None
         self._fonte_card_sec = None
         self._fonte_card_corpo = None
+        self._fonte_card_cta = None
         self._fonte_rodape = None
 
     @classmethod
@@ -421,16 +477,17 @@ class ModalLevelUp:
         return img
 
     def _inicializar_fontes(self):
-        """Inicializa as fontes do Pygame sob demanda em escala nativa 1280x720."""
+        """Inicializa as fontes do Pygame sob demanda em escala nativa 1280x720 (Sans + Mono)."""
         if self._fonte_titulo is None:
-            self._fonte_titulo = pygame.font.SysFont("Arial", 38, bold=True)
-            self._fonte_sub = pygame.font.SysFont("Arial", 18, bold=True)
-            self._fonte_card_tit = pygame.font.SysFont("Arial", 16, bold=True)
-            self._fonte_card_cat = pygame.font.SysFont("Arial", 12, bold=True)
-            self._fonte_card_badge = pygame.font.SysFont("Arial", 13, bold=True)
-            self._fonte_card_sec = pygame.font.SysFont("Arial", 12, bold=True)
-            self._fonte_card_corpo = pygame.font.SysFont("Arial", 12)
-            self._fonte_rodape = pygame.font.SysFont("Arial", 15)
+            self._fonte_titulo = _carregar_fonte_sans(34, bold=True)
+            self._fonte_sub = _carregar_fonte_sans(15, bold=False)
+            self._fonte_card_tit = _carregar_fonte_sans(16, bold=True)
+            self._fonte_card_cat = _carregar_fonte_sans(10, bold=True)
+            self._fonte_card_badge = _carregar_fonte_mono(12, bold=True)
+            self._fonte_card_sec = _carregar_fonte_sans(10, bold=True)
+            self._fonte_card_corpo = _carregar_fonte_sans(12, bold=False)
+            self._fonte_card_cta = _carregar_fonte_mono(12, bold=True)
+            self._fonte_rodape = _carregar_fonte_mono(12, bold=False)
 
     @property
     def fila_level_ups(self) -> int:
@@ -729,10 +786,16 @@ class ModalLevelUp:
                 if self.card_hovered != self._ultimo_hover:
                     self._tocar_som("sfx_btn_hover")
                     self._ultimo_hover = self.card_hovered
-                
+
                 if mouse_clicado:
                     self.selecionar_card(i)
                     return
+
+        # Suavização da elevação de hover (-4 px)
+        taxa = min(1.0, dt * 16.0)
+        for i in range(len(self._hover_lift)):
+            alvo = -4.0 if self.card_hovered == i else 0.0
+            self._hover_lift[i] += (alvo - self._hover_lift[i]) * taxa
 
     def draw(self, screen: pygame.Surface):
         """Renderiza o modal de level-up com animação completa de fade-in e fade-out."""
@@ -754,163 +817,240 @@ class ModalLevelUp:
         alpha_fundo = int(fator_anim * 225)
         alpha_conteudo = int(fator_anim * 255)
 
-        # 1. Overlay Escuro Translúcido sobre o Gameplay
-        self._dark_surf.fill((10, 8, 20, alpha_fundo))
+        # Projeção Native-DPI
+        sw, sh = screen.get_size()
+        scale = min(sw / float(LARGURA_TELA), sh / float(ALTURA_TELA))
+        vx = (sw - int(round(LARGURA_TELA * scale))) // 2
+        vy = (sh - int(round(ALTURA_TELA * scale))) // 2
+
+        def px(val: float) -> int:
+            return vx + int(round(val * scale))
+
+        def py(val: float) -> int:
+            return vy + int(round(val * scale))
+
+        def ps(val: float) -> int:
+            return max(1, int(round(val * scale)))
+
+        # Fontes cacheadas em resolução nativa
+        fonte_titulo = _carregar_fonte_sans(max(8, int(round(34 * scale))), bold=True)
+        fonte_sub = _carregar_fonte_sans(max(8, int(round(15 * scale))), bold=False)
+        fonte_card_tit = _carregar_fonte_sans(max(8, int(round(16 * scale))), bold=True)
+        fonte_card_cat = _carregar_fonte_sans(max(8, int(round(10 * scale))), bold=True)
+        fonte_card_badge = _carregar_fonte_mono(max(8, int(round(12 * scale))), bold=True)
+        fonte_card_sec = _carregar_fonte_sans(max(8, int(round(10 * scale))), bold=True)
+        fonte_card_corpo = _carregar_fonte_sans(max(8, int(round(12 * scale))), bold=False)
+        fonte_card_cta = _carregar_fonte_mono(max(8, int(round(12 * scale))), bold=True)
+        fonte_rodape = _carregar_fonte_mono(max(8, int(round(12 * scale))), bold=False)
+
+        # Redimensiona superfícies cacheadas apenas se resolução mudou
+        if self._dark_surf.get_size() != (sw, sh):
+            self._dark_surf = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        if self._layer_surf.get_size() != (sw, sh):
+            self._layer_surf = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        glow_pad = ps(12)
+        glow_sz = (ps(self.card_largura) + glow_pad * 2, ps(self.card_altura) + glow_pad * 2)
+        if self._glow_surf.get_size() != glow_sz:
+            self._glow_surf = pygame.Surface(glow_sz, pygame.SRCALPHA)
+
+        # 1. Overlay Escuro Translúcido sobre todo o ecrã nativo (#07090e)
+        self._dark_surf.fill((*_C_BACKDROP, alpha_fundo))
         screen.blit(self._dark_surf, (0, 0))
 
         # 2. Superfície de Conteúdo com Transparência Global
         self._layer_surf.fill((0, 0, 0, 0))
         layer_surf = self._layer_surf
+        centro_x = px(LARGURA_TELA // 2)
+
+        # Filete superior Cyber-Office Roxo / Dourado
+        stripe_y = py(26 + slide_offset_y)
+        stripe_h = max(2, ps(2))
+        pygame.draw.rect(layer_surf, _C_PURPLE, (px(160), stripe_y, ps(LARGURA_TELA // 2 - 160), stripe_h))
+        pygame.draw.rect(layer_surf, _C_GOLD, (centro_x, stripe_y, ps(LARGURA_TELA // 2 - 160), stripe_h))
 
         # 2. Título Centralizado: LEVEL UP!
-        tit_surf = self._fonte_titulo.render("LEVEL UP!", True, DOURADO)
-        tit_rect = tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=45 + slide_offset_y)
-        tit_sombra = self._fonte_titulo.render("LEVEL UP!", True, (0, 0, 0))
-        layer_surf.blit(tit_sombra, (tit_rect.x + 2, tit_rect.y + 2))
+        tem_config = any(c.get("tipo") == "config" for c in self.cards_sorteados)
+        titulo_txt = "LEVEL UP!  •  MARCO DE SISTEMA" if tem_config else "LEVEL UP!"
+        tit_surf = fonte_titulo.render(titulo_txt, True, _C_GOLD)
+        tit_rect = tit_surf.get_rect(centerx=centro_x, top=py(42 + slide_offset_y))
+        tit_sombra = fonte_titulo.render(titulo_txt, True, (0, 0, 0))
+        sh_off = max(1, ps(2))
+        layer_surf.blit(tit_sombra, (tit_rect.x + sh_off, tit_rect.y + sh_off))
         layer_surf.blit(tit_surf, tit_rect)
 
         # 3. Subtítulo
-        sub_texto = "ESCOLHA UM UPGRADE DO SISTEMA"
-        sub_surf = self._fonte_sub.render(sub_texto, True, ROXO_CLARO)
-        sub_rect = sub_surf.get_rect(centerx=LARGURA_TELA // 2, top=85 + slide_offset_y)
+        sub_texto = "Escolha um protocolo com [1] [2] [3] ou clique no card"
+        sub_surf = fonte_sub.render(sub_texto, True, _C_TEXT_SECONDARY)
+        sub_rect = sub_surf.get_rect(centerx=centro_x, top=py(86 + slide_offset_y))
         layer_surf.blit(sub_surf, sub_rect)
 
         # Indicador de Níveis na Fila (se > 1)
         if self.fila_level_ups > 1:
             fila_texto = f"+{self.fila_level_ups - 1} UPGRADE(S) RESTANTE(S) NA FILA"
-            fila_surf = self._fonte_sub.render(fila_texto, True, LARANJA_ALERTA)
-            fila_rect = fila_surf.get_rect(centerx=LARGURA_TELA // 2, top=115 + slide_offset_y)
-            pill_rect = pygame.Rect(fila_rect.x - 12, fila_rect.y - 3, fila_rect.width + 24, fila_rect.height + 6)
-            pygame.draw.rect(layer_surf, (40, 20, 15), pill_rect, border_radius=4)
-            pygame.draw.rect(layer_surf, LARANJA_ALERTA, pill_rect, width=1, border_radius=4)
+            fila_surf = fonte_card_cat.render(fila_texto, True, _C_AMBER)
+            fila_rect = fila_surf.get_rect(centerx=centro_x, top=py(114 + slide_offset_y))
+            pill_rect = pygame.Rect(fila_rect.x - ps(12), fila_rect.y - ps(4), fila_rect.width + ps(24), fila_rect.height + ps(8))
+            pygame.draw.rect(layer_surf, (42, 26, 12, 230), pill_rect, border_radius=ps(5))
+            pygame.draw.rect(layer_surf, _C_AMBER, pill_rect, width=max(1, ps(1)), border_radius=ps(5))
             layer_surf.blit(fila_surf, fila_rect)
 
-        # 4. Renderização das 3 Cartas
+        # 4. Renderização das 3 Cartas (Cyber-Office + Hover -4 px + Glow em DPI nativo)
         for i, card in enumerate(self.cards_sorteados):
             if i >= len(self.card_rects):
                 break
 
             base_rect = self.card_rects[i]
-            rect = pygame.Rect(base_rect.x, base_rect.y + slide_offset_y, base_rect.width, base_rect.height)
             is_hovered = (self.card_hovered == i)
             is_config = (card.get("tipo") == "config")
 
-            # 4.1 Fundo do Card (Dourado para Configurações, Roxo Escuro para Consumíveis)
-            if is_config:
-                cor_bg = (45, 36, 16) if not is_hovered else (65, 52, 22)
-                cor_borda = DOURADO
-                largura_borda = 3 if is_hovered else 2
-            else:
-                cor_bg = (28, 22, 40) if not is_hovered else (42, 32, 60)
-                cor_borda = ROXO_ACENTO if is_hovered else (95, 65, 135)
-                largura_borda = 2 if is_hovered else 1
+            lift_px = int(round(self._hover_lift[i])) if i < len(self._hover_lift) else 0
+            if is_hovered and lift_px == 0:
+                lift_px = -4
 
-            pygame.draw.rect(layer_surf, cor_bg, rect, border_radius=6)
+            rect = pygame.Rect(
+                px(base_rect.x),
+                py(base_rect.y + slide_offset_y + lift_px),
+                ps(base_rect.width),
+                ps(base_rect.height),
+            )
+            accent = _C_GOLD if is_config else _C_CYAN
 
-            # 4.2 Destaque de Hover / Borda e Glow
+            # 4.1 Glow externo colorido no hover
             if is_hovered:
-                glow_cor = (255, 215, 0, 25) if is_config else (175, 75, 255, 25)
-                self._glow_surf.fill(glow_cor)
-                layer_surf.blit(self._glow_surf, (rect.x, rect.y))
+                self._glow_surf.fill((0, 0, 0, 0))
+                for camada in range(4, 0, -1):
+                    exp = ps(camada * 3)
+                    alpha_g = int(48 * (1.0 - (camada - 1) / 4.0))
+                    gr = pygame.Rect(glow_pad - exp, glow_pad - exp, rect.width + exp * 2, rect.height + exp * 2)
+                    pygame.draw.rect(self._glow_surf, (*accent, alpha_g), gr, width=max(2, ps(3)), border_radius=ps(12) + exp // 2)
+                layer_surf.blit(self._glow_surf, (rect.x - glow_pad, rect.y - glow_pad))
 
-            pygame.draw.rect(layer_surf, cor_borda, rect, width=largura_borda, border_radius=6)
+            # 4.2 Fundo e borda do card
+            cor_bg = _C_CARD_HOVER if is_hovered else _C_CARD
+            cor_borda = accent if is_hovered else (_C_GOLD if is_config else _C_BORDER)
+            largura_borda = ps(2) if (is_hovered or is_config) else max(1, ps(1))
+            pygame.draw.rect(layer_surf, cor_bg, rect, border_radius=ps(12))
+            pygame.draw.rect(layer_surf, cor_borda, rect, width=largura_borda, border_radius=ps(12))
 
-            # 4.3 Badge de Atalho do Teclado [ 1 ], [ 2 ], [ 3 ] no Top-Right
+            # Barra semântica superior
+            pygame.draw.rect(layer_surf, accent, (rect.x + ps(14), rect.y + 1, rect.width - ps(28), max(2, ps(3))), border_radius=max(1, ps(2)))
+
+            # 4.3 Tag de Categoria (Top-Left pill)
+            cat_texto = "CONFIGURAÇÃO • MARCO" if is_config else f"{card.get('categoria', 'Consumível').upper()}"
+            cat_surf = fonte_card_cat.render(cat_texto, True, accent)
+            cat_pill = pygame.Rect(rect.x + ps(12), rect.y + ps(12), cat_surf.get_width() + ps(14), cat_surf.get_height() + ps(6))
+            pygame.draw.rect(layer_surf, (*accent, 28), cat_pill, border_radius=ps(5))
+            pygame.draw.rect(layer_surf, accent, cat_pill, width=max(1, ps(1)), border_radius=ps(5))
+            layer_surf.blit(cat_surf, cat_surf.get_rect(center=cat_pill.center))
+
+            # 4.4 Badge Keycap [1], [2], [3] (Top-Right monospace)
             badge_texto = f"[{i + 1}]"
-            badge_cor = DOURADO if is_config else (ROXO_CLARO if is_hovered else ROXO_ACENTO)
-            badge_surf = self._fonte_card_badge.render(badge_texto, True, badge_cor)
-            badge_rect = badge_surf.get_rect(right=rect.right - 12, top=rect.top + 10)
-            badge_bg = pygame.Rect(badge_rect.x - 4, badge_rect.y - 2, badge_rect.width + 8, badge_rect.height + 4)
-            pygame.draw.rect(layer_surf, (15, 12, 24), badge_bg, border_radius=3)
-            pygame.draw.rect(layer_surf, badge_cor, badge_bg, width=1, border_radius=3)
-            layer_surf.blit(badge_surf, badge_rect)
+            badge_fg = _C_BACKDROP if is_hovered else _C_TEXT_PRIMARY
+            badge_bg_col = accent if is_hovered else _C_ELEVATED
+            badge_surf = fonte_card_badge.render(badge_texto, True, badge_fg)
+            badge_bg = pygame.Rect(0, 0, badge_surf.get_width() + ps(14), badge_surf.get_height() + ps(8))
+            badge_bg.topright = (rect.right - ps(12), rect.top + ps(10))
+            pygame.draw.rect(layer_surf, badge_bg_col, badge_bg, border_radius=ps(5))
+            pygame.draw.rect(layer_surf, accent, badge_bg, width=max(1, ps(1)), border_radius=ps(5))
+            layer_surf.blit(badge_surf, badge_surf.get_rect(center=badge_bg.center))
 
-            # 4.4 Tag de Categoria (ex: [CONFIGURACAO], [CONSUMIVEL])
-            if is_config:
-                cat_texto = "[CONFIGURACAO]"
-                cor_cat = DOURADO
-            else:
-                cat_texto = f"[{card.get('categoria', 'Consumivel').upper()}]"
-                cor_cat = ROXO_CLARO
-
-            cat_surf = self._fonte_card_cat.render(cat_texto, True, cor_cat)
-            layer_surf.blit(cat_surf, (rect.x + 12, rect.top + 12))
-
-            # 4.5 Nome da Configuração / Consumível (Wrap de 1-2 linhas perfeitamente centralizado)
-            nome_linhas = _formatar_texto_wrap(card["nome"], max_chars_por_linha=24)
-            offset_y_nome = rect.top + 36
-            for linha in nome_linhas[:2]:
-                cor_tit = DOURADO if (is_hovered or is_config) else BRANCO
-                nome_surf = self._fonte_card_tit.render(linha, True, cor_tit)
-                nome_rect = nome_surf.get_rect(centerx=rect.centerx, top=offset_y_nome)
-                layer_surf.blit(nome_surf, nome_rect)
-                offset_y_nome += 18
-
-            # 4.6 Ícone Central (Moldura 48x48 perfeitamente centralizada)
-            icone_img = self._obter_icone(card.get("icone_asset", card.get("config_id", "")))
-            icone_cx = rect.centerx
-            icone_cy = rect.top + 100
-            moldura_rect = pygame.Rect(icone_cx - 24, icone_cy - 24, 48, 48)
-            pygame.draw.rect(layer_surf, (18, 14, 28), moldura_rect, border_radius=6)
-            cor_moldura = DOURADO if is_config else (90, 60, 130)
-            pygame.draw.rect(layer_surf, cor_moldura, moldura_rect, width=1, border_radius=6)
+            # 4.5 Ícone original v1 + Nome
+            ic_key = card.get("icone_asset", card.get("config_id", ""))
+            icone_img = self._obter_icone(ic_key)
+            moldura_rect = pygame.Rect(rect.x + ps(14), rect.y + ps(48), ps(48), ps(48))
+            pygame.draw.rect(layer_surf, _C_HUD_PANEL, moldura_rect, border_radius=ps(8))
+            pygame.draw.rect(layer_surf, accent, moldura_rect, width=max(1, ps(1)), border_radius=ps(8))
 
             if icone_img is not None:
-                icon_rect = icone_img.get_rect(center=moldura_rect.center)
-                layer_surf.blit(icone_img, icon_rect)
+                iw, ih = ps(icone_img.get_width()), ps(icone_img.get_height())
+                max_ic = ps(38)
+                if iw > max_ic or ih > max_ic:
+                    fator_ic = min(max_ic / float(iw), max_ic / float(ih))
+                    iw, ih = max(1, int(round(iw * fator_ic))), max(1, int(round(ih * fator_ic)))
+                ck = (str(ic_key), iw, ih)
+                img_s = _ICON_SCALE_CACHE.get(ck)
+                if img_s is None:
+                    img_s = pygame.transform.scale(icone_img, (iw, ih))
+                    _ICON_SCALE_CACHE[ck] = img_s
+                layer_surf.blit(img_s, img_s.get_rect(center=moldura_rect.center))
             else:
-                cor_ph = DOURADO if is_config else ROXO_ACENTO
-                pygame.draw.circle(layer_surf, cor_ph, (icone_cx, icone_cy), 14, width=2)
+                pygame.draw.circle(layer_surf, accent, moldura_rect.center, ps(14), width=max(1, ps(2)))
 
-            # Linha divisória horizontal
-            div_y = rect.top + 136
-            div_cor = (80, 65, 30) if is_config else (60, 45, 85)
-            pygame.draw.line(layer_surf, div_cor, (rect.x + 14, div_y), (rect.right - 14, div_y), 1)
+            nome_linhas = _formatar_texto_wrap(card["nome"], max_chars_por_linha=18)
+            offset_y_nome = rect.y + (ps(52) if len(nome_linhas) > 1 else ps(62))
+            for linha in nome_linhas[:2]:
+                cor_tit = _C_GOLD if (is_hovered or is_config) else _C_TEXT_PRIMARY
+                nome_surf = fonte_card_tit.render(linha, True, cor_tit)
+                layer_surf.blit(nome_surf, (moldura_rect.right + ps(10), offset_y_nome))
+                offset_y_nome += ps(20)
 
-            # 4.7 Seção de Benefícios (EFEITO para Power-Ups/Consumíveis; BENEFICIOS + SACRIFICIO apenas para Configurações)
-            y_cursor = div_y + 10
-            header_label = "BENEFICIOS:" if is_config else "EFEITO:"
-            buff_header_surf = self._fonte_card_sec.render(header_label, True, VERDE_CURA)
-            layer_surf.blit(buff_header_surf, (rect.x + 14, y_cursor))
-            y_cursor += 18
+            # 4.6 Sub-card de Benefícios / Efeito (Verde Esmeralda #10b981)
+            ben_top = rect.y + ps(112)
+            ben_h = ps(114 if is_config else 188)
+            ben_rect = pygame.Rect(rect.x + ps(12), ben_top, rect.width - ps(24), ben_h)
+            pygame.draw.rect(layer_surf, (6, 40, 30, 230), ben_rect, border_radius=ps(8))
+            pygame.draw.rect(layer_surf, _C_GREEN, ben_rect, width=max(1, ps(1)), border_radius=ps(8))
+            pygame.draw.rect(layer_surf, _C_GREEN, (ben_rect.x, ben_rect.y + ps(6), max(2, ps(3)), ben_rect.height - ps(12)), border_radius=max(1, ps(2)))
 
+            header_label = "+ BENEFÍCIO" if is_config else "+ EFEITO"
+            hdr_surf = fonte_card_sec.render(header_label, True, _C_GREEN_SOFT)
+            hdr_pill = pygame.Rect(ben_rect.x + ps(10), ben_rect.y + ps(8), hdr_surf.get_width() + ps(12), hdr_surf.get_height() + ps(4))
+            pygame.draw.rect(layer_surf, (16, 185, 129, 40), hdr_pill, border_radius=ps(4))
+            layer_surf.blit(hdr_surf, hdr_surf.get_rect(center=hdr_pill.center))
+
+            y_cursor = hdr_pill.bottom + ps(8)
             buffs = card.get("buffs", ["Nenhum"])
-            max_linhas_buff = 3 if is_config else 5
+            max_linhas_buff = 4 if is_config else 7
+            linhas_desenhadas = 0
             for b_txt in buffs[:2]:
-                linhas_buff = _formatar_texto_wrap(b_txt, max_chars_por_linha=30)
-                for idx_bl, bl in enumerate(linhas_buff[:max_linhas_buff]):
-                    prefixo = "+ " if idx_bl == 0 else "   "
-                    b_surf = self._fonte_card_corpo.render(f"{prefixo}{bl}", True, (160, 240, 170))
-                    layer_surf.blit(b_surf, (rect.x + 16, y_cursor))
-                    y_cursor += 16
+                linhas_buff = _formatar_texto_wrap(b_txt, max_chars_por_linha=28)
+                for bl in linhas_buff:
+                    if linhas_desenhadas >= max_linhas_buff:
+                        break
+                    b_surf = fonte_card_corpo.render(bl, True, _C_TEXT_PRIMARY)
+                    layer_surf.blit(b_surf, (ben_rect.x + ps(12), y_cursor))
+                    y_cursor += ps(17)
+                    linhas_desenhadas += 1
 
-            # 4.8 Seção de Sacrifícios / Nerfs (EXCLUSIVA para Configurações)
+            # 4.7 Sub-card de Sacrifício (Carmesim #ef4444 — exclusivo para Configurações)
             if is_config:
-                y_cursor = max(y_cursor + 8, div_y + 118)
-                nerf_header_surf = self._fonte_card_sec.render("SACRIFICIO:", True, LARANJA_ALERTA)
-                layer_surf.blit(nerf_header_surf, (rect.x + 14, y_cursor))
-                y_cursor += 18
+                sac_top = ben_rect.bottom + ps(10)
+                sac_rect = pygame.Rect(rect.x + ps(12), sac_top, rect.width - ps(24), ps(114))
+                pygame.draw.rect(layer_surf, (42, 18, 21, 230), sac_rect, border_radius=ps(8))
+                pygame.draw.rect(layer_surf, _C_CRIMSON, sac_rect, width=max(1, ps(1)), border_radius=ps(8))
+                pygame.draw.rect(layer_surf, _C_CRIMSON, (sac_rect.x, sac_rect.y + ps(6), max(2, ps(3)), sac_rect.height - ps(12)), border_radius=max(1, ps(2)))
 
-                nerfs = card.get("nerfs", ["Nenhum"])
+                nh_surf = fonte_card_sec.render("- SACRIFÍCIO", True, _C_CRIMSON_SOFT)
+                nh_pill = pygame.Rect(sac_rect.x + ps(10), sac_rect.y + ps(8), nh_surf.get_width() + ps(12), nh_surf.get_height() + ps(4))
+                pygame.draw.rect(layer_surf, (239, 68, 68, 40), nh_pill, border_radius=ps(4))
+                layer_surf.blit(nh_surf, nh_surf.get_rect(center=nh_pill.center))
+
+                ny_cursor = nh_pill.bottom + ps(8)
+                nerfs = card.get("nerfs", ["Nenhum sacrifício"])
+                linhas_n = 0
                 for n_txt in nerfs[:2]:
-                    linhas_nerf = _formatar_texto_wrap(n_txt, max_chars_por_linha=30)
-                    for idx_nl, nl in enumerate(linhas_nerf[:3]):
-                        cor_n = (255, 180, 140) if nl != "Nenhum" and nl != "Nenhum sacrifício" else (130, 140, 155)
-                        prefixo_n = "- " if idx_nl == 0 else "   "
-                        n_surf = self._fonte_card_corpo.render(f"{prefixo_n}{nl}", True, cor_n)
-                        layer_surf.blit(n_surf, (rect.x + 16, y_cursor))
-                        y_cursor += 16
+                    linhas_nerf = _formatar_texto_wrap(n_txt, max_chars_por_linha=28)
+                    for nl in linhas_nerf:
+                        if linhas_n >= 4:
+                            break
+                        cor_n = _C_TEXT_PRIMARY if nl not in ("Nenhum", "Nenhum sacrifício") else _C_TEXT_MUTED
+                        n_surf = fonte_card_corpo.render(nl, True, cor_n)
+                        layer_surf.blit(n_surf, (sac_rect.x + ps(12), ny_cursor))
+                        ny_cursor += ps(17)
+                        linhas_n += 1
 
-            # 4.9 Prompt de Escolha no Rodapé do Card
-            prompt_cor = DOURADO if (is_hovered or is_config) else ROXO_CLARO
-            prompt_surf = self._fonte_card_cat.render(f"Pressione [{i + 1}]", True, prompt_cor)
-            prompt_rect = prompt_surf.get_rect(centerx=rect.centerx, bottom=rect.bottom - 12)
-            layer_surf.blit(prompt_surf, prompt_rect)
+            # 4.8 Barra CTA inferior (Monospace SELECIONAR [1..3])
+            cta_rect = pygame.Rect(rect.x + ps(12), rect.bottom - ps(42), rect.width - ps(24), ps(30))
+            pygame.draw.rect(layer_surf, (*accent, 42) if is_hovered else _C_ELEVATED, cta_rect, border_radius=ps(7))
+            pygame.draw.rect(layer_surf, accent if is_hovered else _C_BORDER, cta_rect, width=max(1, ps(1)), border_radius=ps(7))
+            prompt_cor = accent if is_hovered else _C_TEXT_SECONDARY
+            prompt_surf = fonte_card_cta.render(f"SELECIONAR [{i + 1}]", True, prompt_cor)
+            layer_surf.blit(prompt_surf, prompt_surf.get_rect(center=cta_rect.center))
 
         # 5. Rodapé Geral com Instruções de Controle
-        rodape_txt = "Pressione [1], [2], [3] no teclado ou clique com o mouse para escolher"
-        rodape_surf = self._fonte_rodape.render(rodape_txt, True, (170, 155, 195))
-        rodape_rect = rodape_surf.get_rect(centerx=LARGURA_TELA // 2, bottom=ALTURA_TELA - 45)
+        rodape_txt = "[1] [2] [3] Selecionar pelo teclado   •   [Mouse] Clique no card"
+        rodape_surf = fonte_rodape.render(rodape_txt, True, _C_TEXT_MUTED)
+        rodape_rect = rodape_surf.get_rect(centerx=centro_x, bottom=py(ALTURA_TELA - 32))
         layer_surf.blit(rodape_surf, rodape_rect)
 
         # Blit da camada com transparência de transição aplicada
