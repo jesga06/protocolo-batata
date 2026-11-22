@@ -40,11 +40,11 @@ class SistemaXP:
     def calcular_xp_para_nivel(nivel: int) -> int:
         """
         Calcula a quantidade de XP necessária para avançar a partir do nível informado.
-        Fórmula progressiva quadrática: base = 35 + 20 * level + 10 * (level ^ 2)
+        Fórmula progressiva quadrática: base = 50 + 35 * level + 18 * (level ^ 2)
         Para níveis > 10, reduz em 25%: int(round(base * 0.75)) para suavizar a subida até o nível 20.
         """
         lvl = int(nivel)
-        base = 35 + 20 * lvl + 10 * (lvl ** 2)
+        base = 50 + 35 * lvl + 18 * (lvl ** 2)
         if lvl > 10:
             return max(1, int(round(base * 0.75)))
         return int(round(base))

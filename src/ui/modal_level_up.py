@@ -704,10 +704,10 @@ class ModalLevelUp:
             if self.cena and hasattr(self.cena, "pausado"):
                 self.cena.pausado = False
 
-            # Se o jogador atingiu o nível máximo (12) e completou os upgrades, inicia o grace period antes do Chefe Final
+            # Se o jogador atingiu o nível máximo (12) após 4:30 (270s), inicia o grace period antes do Chefe Final
             nivel_max = getattr(getattr(self.jogador, "sistema_xp", None), "nivel_max", 12) if self.jogador else 12
             if self.jogador and self.jogador.nivel >= nivel_max:
-                if self.cena:
+                if self.cena and getattr(self.cena, "tempo_sobrevivencia", 0.0) >= 270.0:
                     if hasattr(self.cena, "iniciar_boss_grace_period"):
                         self.cena.iniciar_boss_grace_period()
                     elif hasattr(self.cena, "iniciar_boss_cutscene"):
