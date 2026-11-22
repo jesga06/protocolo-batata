@@ -247,12 +247,17 @@ class GeladeiraTsunami(InimigoBase):
         # Filas de saída e mecânicas espaciais (Bass Push, Poças de Gelo, Caixas de Som, Drift Duplo, Sucção)
         self.projeteis_pendentes: list[Projetil] = []
         self.caixas_som_pendentes: list[CaixaDeSomBoss] = []
+        self.goons_pendentes: list = []
         self.pocas_gelo_pendentes: list[dict] = []
         self.pulso_empurrao_pendente: bool = False
         self.timer_cubo_gelo: float = 0.0
         self.dashes_restantes_ciclo: int = 2
         self.vortice_succao_ativo: bool = False
         self.timer_vortice_fase3: float = 0.0
+        self.stagger_timer: float = 0.0
+        self._bass_energy_atual: float = 0.0
+        self._fase2_totem_inicial_gerado: bool = False
+        self._contador_pulsos_fase1: int = 0
 
     @property
     def intro_concluida(self) -> bool:
@@ -388,11 +393,16 @@ class GeladeiraTsunami(InimigoBase):
         if not self.vivo and self.estado != ESTADO_MORTE:
             return
 
+        self._bass_energy_atual = float(kwargs.get("bass_energy", 0.0))
+
         # Atualiza flash visual de dano e cooldown de contato
         if self.flash_timer > 0.0:
             self.flash_timer = max(0.0, self.flash_timer - dt)
         if self.cooldown_contato_atual > 0.0:
             self.cooldown_contato_atual = max(0.0, self.cooldown_contato_atual - dt)
+        if getattr(self, "stagger_timer", 0.0) > 0.0:
+            self.stagger_timer = max(0.0, self.stagger_timer - dt)
+            return
 
         # Atualiza partículas de explosão ativas
         if self.particulas_explosao:
@@ -454,9 +464,10 @@ class GeladeiraTsunami(InimigoBase):
         self.x += ux * self.velocidade * dt
         self.y += uy * self.velocidade * dt
 
-        # Ataque: Subwoofer Pulse (anéis sônicos com brecha para esquiva + Bass Push)
+        # Ataque: Subwoofer Pulse sincronizado ao grave do FFT (com fallback por timer)
         self.timer_pulso_fase1 += dt
-        if self.timer_pulso_fase1 >= self.intervalo_pulso_fase1:
+        batida_grave = (self._bass_energy_atual >= 0.58 and self.timer_pulso_fase1 >= 1.1)
+        if batida_grave or self.timer_pulso_fase1 >= self.intervalo_pulso_fase1:
             self._disparar_pulso_subwoofer(pos_alvo)
             self.pulso_empurrao_pendente = True
             self.timer_pulso_fase1 = 0.0
@@ -482,6 +493,10 @@ class GeladeiraTsunami(InimigoBase):
         limite = kwargs.get("limite_arena", (float(LARGURA_ARENA), float(ALTURA_ARENA)))
         lim_w = float(limite[0]) if isinstance(limite, (tuple, list)) and len(limite) >= 2 else float(LARGURA_ARENA)
         lim_h = float(limite[1]) if isinstance(limite, (tuple, list)) and len(limite) >= 2 else float(ALTURA_ARENA)
+
+        if not self._fase2_totem_inicial_gerado:
+            self._fase2_totem_inicial_gerado = True
+            self._disparar_totem_acustico()
 
         if self.subestado_fase2 == "stalk":
             # Perseguição com velocidade ligeiramente elevada (95 px/s)
@@ -622,36 +637,98 @@ class GeladeiraTsunami(InimigoBase):
     # -------------------------------------------------------------------------
 
     def _disparar_pulso_subwoofer(self, pos_alvo: tuple[float, float]):
-        """Dispara um anel concêntrico de 14 projéteis com 2 brechas de esquiva."""
+        """Dispara anel sônico completo (18 tiros) + leque mirado de 5 projéteis rápidos e Núcleo Parriável."""
         cx = self.x + self.largura / 2.0
         cy = self.y + self.altura / 2.0
         tx, ty = pos_alvo
         ang_jogador = math.atan2(ty - cy, tx - cx)
+        self._contador_pulsos_fase1 += 1
 
+        # 1. Anel completo de 18 projéteis (sem brecha gratuita)
         num_tiros = 18
         for i in range(num_tiros):
             ang = i * (2.0 * math.pi / num_tiros)
-            # Cria brechas nos ângulos diretamente alinhados com o jogador (+-16 graus)
-            diff_ang = abs((ang - ang_jogador + math.pi) % (2.0 * math.pi) - math.pi)
-            if diff_ang < 0.25:
-                continue  # Brecha para esquiva habilidosa
-
-            dir_x = math.cos(ang)
-            dir_y = math.sin(ang)
             proj = Projetil(
-                x=cx - 6.0,
-                y=cy - 6.0,
-                dir_x=dir_x,
-                dir_y=dir_y,
-                velocidade=287.5,
-                dano=15,
+                x=cx - 8.0,
+                y=cy - 8.0,
+                dir_x=math.cos(ang),
+                dir_y=math.sin(ang),
+                velocidade=360.0,
+                dano=20,
                 tempo_vida=3.8,
                 dono="inimigo",
-                largura=12,
-                altura=12,
+                largura=16,
+                altura=16,
                 sprite_key="projetil_inimigo"
             )
             self.projeteis_pendentes.append(proj)
+
+        # 2. Leque mirado de 5 projéteis diretamente no jogador
+        for off in (-0.28, -0.14, 0.0, 0.14, 0.28):
+            ang_f = ang_jogador + off
+            proj_f = Projetil(
+                x=cx - 9.0,
+                y=cy - 9.0,
+                dir_x=math.cos(ang_f),
+                dir_y=math.sin(ang_f),
+                velocidade=410.0,
+                dano=24,
+                tempo_vida=3.6,
+                dono="inimigo",
+                largura=18,
+                altura=18,
+                sprite_key="projetil_inimigo"
+            )
+            self.projeteis_pendentes.append(proj_f)
+
+        # 3. A cada 2 pulsos, lança Núcleo Criogênico Parriável (inicia Duelo / Thermal Shatter)
+        if self._contador_pulsos_fase1 % 2 == 0:
+            core = Projetil(
+                x=cx - 12.0,
+                y=cy - 12.0,
+                dir_x=math.cos(ang_jogador),
+                dir_y=math.sin(ang_jogador),
+                velocidade=265.0,
+                dano=30,
+                tempo_vida=4.2,
+                dono="inimigo",
+                largura=24,
+                altura=24,
+                sprite_key="projetil_inimigo",
+                sobrecarga_termica=True,
+                criogenico=True,
+                duel_stage=1,
+                duel_owner=self,
+            )
+            self.projeteis_pendentes.append(core)
+
+    def disparar_contra_ataque_duelo(self, proximo_stage: int, pos_alvo: tuple[float, float]) -> Projetil:
+        """Contra-ataca em Duelo de Parry com Núcleo acelerado."""
+        cx = self.x + self.largura / 2.0
+        cy = self.y + self.altura / 2.0
+        dx, dy = vetor_direcao(cx, cy, pos_alvo[0], pos_alvo[1])
+        if dx == 0.0 and dy == 0.0:
+            dx = 1.0
+        mult_vel = 1.35 if int(proximo_stage) == 2 else 1.75
+        proj = Projetil(
+            x=cx - 12.0,
+            y=cy - 12.0,
+            dir_x=dx,
+            dir_y=dy,
+            velocidade=280.0 * mult_vel,
+            dano=28,
+            tempo_vida=3.8,
+            dono="inimigo",
+            largura=24,
+            altura=24,
+            sprite_key="projetil_inimigo",
+            sobrecarga_termica=True,
+            criogenico=True,
+            duel_stage=int(proximo_stage),
+            duel_owner=self,
+        )
+        self.projeteis_pendentes.append(proj)
+        return proj
 
     def _disparar_estilhacos_acusticos(self):
         """Gera 4 estilhaços acústicos em leque perpendicular após bater na parede."""
@@ -661,38 +738,38 @@ class GeladeiraTsunami(InimigoBase):
         for ang_deg in (45, 135, 225, 315):
             rad = math.radians(ang_deg)
             proj = Projetil(
-                x=cx - 5.0,
-                y=cy - 5.0,
+                x=cx - 7.0,
+                y=cy - 7.0,
                 dir_x=math.cos(rad),
                 dir_y=math.sin(rad),
-                velocidade=299.0,
-                dano=12,
+                velocidade=380.0,
+                dano=20,
                 tempo_vida=3.0,
                 dono="inimigo",
-                largura=10,
-                altura=10,
+                largura=14,
+                altura=14,
                 sprite_key="projetil_inimigo"
             )
             self.projeteis_pendentes.append(proj)
 
     def _disparar_totem_acustico(self):
-        """Gera pulso radial concêntrico de 8 projéteis e instala uma Caixa de Som destrutível na arena."""
+        """Gera pulso radial concêntrico de 8 projéteis, instala Caixa de Som e invoca Cubo Criogênico."""
         cx = self.x + self.largura / 2.0
         cy = self.y + self.altura / 2.0
 
         for i in range(8):
             ang = i * (2.0 * math.pi / 8.0)
             proj = Projetil(
-                x=cx - 5.0,
-                y=cy - 5.0,
+                x=cx - 7.0,
+                y=cy - 7.0,
                 dir_x=math.cos(ang),
                 dir_y=math.sin(ang),
-                velocidade=207.0,
-                dano=10,
+                velocidade=340.0,
+                dano=18,
                 tempo_vida=3.5,
                 dono="inimigo",
-                largura=10,
-                altura=10,
+                largura=14,
+                altura=14,
                 sprite_key="projetil_inimigo"
             )
             self.projeteis_pendentes.append(proj)
@@ -701,6 +778,12 @@ class GeladeiraTsunami(InimigoBase):
         tx = clamp(cx + math.cos(ang_t) * 210.0 - 20.0, 60.0, float(LARGURA_ARENA - 100.0))
         ty = clamp(cy + math.sin(ang_t) * 210.0 - 20.0, 60.0, float(ALTURA_ARENA - 100.0))
         self.caixas_som_pendentes.append(CaixaDeSomBoss(x=tx, y=ty))
+
+        from src.entidades.cubo_criogenico import CuboCriogenico
+        ang_g = ang_t + math.pi * 0.5
+        gx = clamp(cx + math.cos(ang_g) * 180.0 - 17.0, 60.0, float(LARGURA_ARENA - 100.0))
+        gy = clamp(cy + math.sin(ang_g) * 180.0 - 17.0, 60.0, float(ALTURA_ARENA - 100.0))
+        self.goons_pendentes.append(CuboCriogenico(x=gx, y=gy))
 
     def _disparar_helix_tsunami(self):
         """Dispara feixe triplo helicoidal rotativo a partir do centro do palco."""

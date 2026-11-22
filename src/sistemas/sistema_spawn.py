@@ -11,9 +11,12 @@ from src.entidades.inimigo_rapido import InimigoRapido
 from src.entidades.inimigo_phasing import InimigoPhasing
 from src.entidades.inimigo_blindado import InimigoBlindado
 from src.entidades.inimigo_ranged import InimigoRanged
+from src.entidades.inimigo_impressora import InimigoImpressoraTermica
+from src.entidades.inimigo_ninja import InimigoNinja
 from src.utils.constantes import (
     SPAWN_INTERVALO_INICIAL, SPAWN_INTERVALO_MINIMO,
     SPAWN_DISTANCIA_OFFSET, SPAWN_MAX_ATIVOS,
+    NINJA_MAX_ATIVOS, NINJA_COOLDOWN_SPAWN,
     LARGURA_TELA, ALTURA_TELA,
     LARGURA_ARENA, ALTURA_ARENA
 )
@@ -32,6 +35,7 @@ class SistemaSpawn:
         self.tempo_elite = 0.0
         self.timer_spawn = 0.0
         self.timer_rush = 0.0
+        self.timer_ninja_cd = 0.0
         self.ultimo_minuto_elite = 0
         self.bosses_spawnados_indices = set()
         self.max_ativos = int(max_ativos)
@@ -103,16 +107,18 @@ class SistemaSpawn:
                 return InimigoBlindado
             return InimigoPadrao
         else:
-            # Mistura avançada
-            if r < 0.28:
+            # Mistura avançada (inclui Impressora Térmica aos 60s+)
+            if r < 0.25:
                 return InimigoRapido
-            elif r < 0.46:
+            elif r < 0.42:
                 return InimigoRanged if permitir_ranged else InimigoPadrao
-            elif r < 0.60:
+            elif r < 0.52:
+                return InimigoImpressoraTermica if permitir_ranged else InimigoPadrao
+            elif r < 0.64:
                 return InimigoPhasing
-            elif r < 0.74:
+            elif r < 0.78:
                 return InimigoBlindado
-            elif r < 0.80:
+            elif r < 0.84:
                 return InimigoTank
             return InimigoPadrao
 
@@ -162,7 +168,8 @@ class SistemaSpawn:
         hp_mult: float = 1.0,
         vel_mult: float = 1.0,
         permitir_ranged: bool = True,
-        possui_elite_vivo: bool = False
+        possui_elite_vivo: bool = False,
+        ninjas_vivos: int = 0,
     ) -> list:
         """
         Atualiza os cronômetros e gera novos inimigos com arquétipos variados,
@@ -209,16 +216,18 @@ class SistemaSpawn:
                     novos_inimigos.append(boss_elite)
                     break
 
-        # 2. Escalonamento temporal a cada 30 segundos (+12% HP, +6% Vel, +8% Dano)
+        # 2. Escalonamento temporal a cada 30s (acelerado após 120s)
         etapas_30s = int(self.tempo_decorrido // 30.0)
-        escala_hp_tempo = 1.0 + 0.12 * etapas_30s
-        escala_vel_tempo = 1.0 + 0.06 * etapas_30s
-        escala_dano_tempo = 1.0 + 0.08 * etapas_30s
+        etapas_late = max(0, int((self.tempo_decorrido - 120.0) // 30.0))
+        escala_hp_tempo = 1.0 + 0.12 * etapas_30s + 0.08 * etapas_late
+        escala_vel_tempo = 1.0 + 0.06 * etapas_30s + 0.02 * etapas_late
+        escala_dano_tempo = 1.0 + 0.08 * etapas_30s + 0.04 * etapas_late
         hp_mult_eff = float(hp_mult) * escala_hp_tempo
         vel_mult_eff = float(vel_mult) * escala_vel_tempo
 
         def _spawn_regular(cls_arquetipo):
-            margem_spawn = 0.0 if cls_arquetipo == InimigoRanged else float(SPAWN_DISTANCIA_OFFSET)
+            eh_ranged = cls_arquetipo in (InimigoRanged, InimigoImpressoraTermica)
+            margem_spawn = 0.0 if eh_ranged else float(SPAWN_DISTANCIA_OFFSET)
             sx, sy = self.gerar_posicao_spawn(
                 camera_x=camera_x,
                 camera_y=camera_y,
@@ -228,9 +237,9 @@ class SistemaSpawn:
                 arena_w=arena_w,
                 arena_h=arena_h
             )
-            if cls_arquetipo == InimigoRanged:
-                sx = clamp(sx, 0.0, max(0.0, arena_w - 42.0))
-                sy = clamp(sy, 0.0, max(0.0, arena_h - 42.0))
+            if eh_ranged:
+                sx = clamp(sx, 0.0, max(0.0, arena_w - 48.0))
+                sy = clamp(sy, 0.0, max(0.0, arena_h - 48.0))
             novo = cls_arquetipo(x=sx, y=sy)
             if cls_arquetipo == InimigoRanged and permitir_ranged:
                 novo.rajada_tripla = True
@@ -259,10 +268,11 @@ class SistemaSpawn:
                     cls_arquetipo = self.escolher_arquetipo(self.tempo_decorrido, permitir_ranged=permitir_ranged)
                     novos_inimigos.append(_spawn_regular(cls_arquetipo))
 
-        # 4. Rush Waves independentes a cada 45s (sem afetar timer_spawn)
+        # 4. Rush Waves independentes (45s até 150s, depois 35s) sem afetar timer_spawn
         self.timer_rush += dt
-        if self.timer_rush >= self.RUSH_INTERVALO:
-            self.timer_rush -= self.RUSH_INTERVALO
+        intervalo_rush = 35.0 if self.tempo_decorrido >= 150.0 else self.RUSH_INTERVALO
+        if self.timer_rush >= intervalo_rush:
+            self.timer_rush -= intervalo_rush
             vagas_rush = self.max_ativos - (total_inimigos_vivos + len(novos_inimigos))
             if vagas_rush > 0:
                 qtd_rush = min(min(8 + etapas_30s // 2, 12), vagas_rush)
@@ -270,6 +280,18 @@ class SistemaSpawn:
                 for _ in range(qtd_rush):
                     cls_rush = random.choice(arquetipos_rush)
                     novos_inimigos.append(_spawn_regular(cls_rush))
+
+        # 5. InimigoNinja (máximo 2 ativos, mínimo 20s entre spawns)
+        if self.timer_ninja_cd > 0.0:
+            self.timer_ninja_cd = max(0.0, self.timer_ninja_cd - dt)
+        if (
+            self.tempo_decorrido >= 75.0
+            and int(ninjas_vivos) < NINJA_MAX_ATIVOS
+            and self.timer_ninja_cd <= 0.0
+            and (self.max_ativos - (total_inimigos_vivos + len(novos_inimigos))) > 0
+        ):
+            self.timer_ninja_cd = float(NINJA_COOLDOWN_SPAWN)
+            novos_inimigos.append(_spawn_regular(InimigoNinja))
 
         return novos_inimigos
 

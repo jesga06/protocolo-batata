@@ -93,30 +93,30 @@ class TestTier1FeatureCoverage(unittest.TestCase):
     # --- R2: XP Curve Smoothing ---
     def test_t1_xp_curve_smoothing_values(self):
         """Valida que para nível > 10, o XP necessário é reduzido em 25%: int(round(base * 0.75))."""
-        # Níveis 1 a 10: curva padrão base = 35 + 20*lvl + 10*(lvl^2)
+        # Níveis 1 a 10: curva padrão base = 50 + 35*lvl + 18*(lvl^2)
         esperados_padrao = {
-            1: 65,
-            2: 115,
-            3: 185,
-            4: 275,
-            5: 385,
-            10: 1235
+            1: 103,
+            2: 192,
+            3: 317,
+            4: 478,
+            5: 675,
+            10: 2200
         }
         for lvl, val in esperados_padrao.items():
-            base = 35 + 20 * lvl + 10 * (lvl ** 2)
+            base = 50 + 35 * lvl + 18 * (lvl ** 2)
             self.assertEqual(SistemaXP.calcular_xp_para_nivel(lvl), base)
             self.assertEqual(SistemaXP.calcular_xp_para_nivel(lvl), val)
             self.assertEqual(self.sistema_xp.calcular_xp_necessario(lvl), val)
 
         # Níveis 11 a 20: curva suavizada (25% de desconto)
         esperados_suavizados = {
-            11: 1099,   # round((35 + 220 + 1210) * 0.75) = round(1465 * 0.75) = 1099
-            12: 1286,   # round((35 + 240 + 1440) * 0.75) = round(1715 * 0.75) = 1286
-            15: 1939,   # round((35 + 300 + 2250) * 0.75) = round(2585 * 0.75) = 1939
-            20: 3326    # round((35 + 400 + 4000) * 0.75) = round(4435 * 0.75) = 3326
+            11: 1960,
+            12: 2296,
+            15: 3469,
+            20: 5962
         }
         for lvl, val in esperados_suavizados.items():
-            base = 35 + 20 * lvl + 10 * (lvl ** 2)
+            base = 50 + 35 * lvl + 18 * (lvl ** 2)
             calculado = int(round(base * 0.75))
             self.assertEqual(SistemaXP.calcular_xp_para_nivel(lvl), calculado)
             self.assertEqual(SistemaXP.calcular_xp_para_nivel(lvl), val)
@@ -498,11 +498,9 @@ class TestTier2BoundaryAndCornerCases(unittest.TestCase):
         self.sistema_xp.nivel = 9
         self.sistema_xp.xp_atual = 0
 
-        # Custo Nv 9 -> 10: 35 + 180 + 810 = 1025 XP
-        # Custo Nv 10 -> 11: 35 + 200 + 1000 = 1235 XP
-        # Custo Nv 11 -> 12: round(1465 * 0.75) = 1099 XP
-        # Total para atingir Nv 12 com 100 XP sobrando: 1025 + 1235 + 1099 + 100 = 3459 XP
-        niveis_ganhos = self.sistema_xp.adicionar_xp(3459)
+        # Custo Nv 9 -> 10: 1823 XP, Nv 10 -> 11: 2200 XP, Nv 11 -> 12: 1960 XP
+        # Total para atingir Nv 12 com 100 XP sobrando: 1823 + 2200 + 1960 + 100 = 6083 XP
+        niveis_ganhos = self.sistema_xp.adicionar_xp(6083)
 
         self.assertEqual(niveis_ganhos, [10, 11, 12])
         self.assertEqual(self.sistema_xp.nivel, 12)
@@ -912,8 +910,9 @@ class TestBossCutsceneWhiteoutSlowMo(unittest.TestCase):
         self.assertEqual(tuple(cor_no_centro_batata), (255, 255, 255, 128))
 
     def test_grace_period_nivel_12_e_texto_countdown(self):
-        """Atingir nível 12 inicia grace period de 10s com texto exato antes da cutscene."""
+        """Atingir nível 12 após 270s inicia grace period de 10s com texto exato antes da cutscene."""
         cena = GameplayScene()
+        cena.tempo_sobrevivencia = 270.0
         cena._ao_subir_nivel(12)
 
         self.assertTrue(cena.boss_grace_period_ativo)
