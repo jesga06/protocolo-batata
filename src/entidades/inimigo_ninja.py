@@ -48,18 +48,19 @@ class InimigoNinja(InimigoBase):
         )
         self.is_ninja = True
         self.dano_projetil = 18
-        self.vel_projetil = 340.0
+        self.vel_projetil = 255.0  # 25% mais lento em todos os estágios (340 * 0.75)
         self.cooldown_tiro = 2.0
         self.timer_tiro = 0.6
         self.projeteis_pendentes: list[Projetil] = []
 
-        # Dash com telegrafo de 0.55s
+        # Dash com telegrafo de 0.55s (mais frequente) e rastro visual
         self.estado_dash = "stalk"  # stalk | telegraph | dash
-        self.timer_dash_cd = 2.4
+        self.timer_dash_cd = 0.8
         self.timer_telegraph = 0.0
         self.timer_dash_ativo = 0.0
         self.dash_dir_x = 1.0
         self.dash_dir_y = 0.0
+        self.rastro_dash: list[tuple[float, float]] = []
 
         # Postura de Parry contra tiros do jogador
         self.parry_cooldown = 0.0
@@ -79,7 +80,7 @@ class InimigoNinja(InimigoBase):
         """Reflete um projétil do jogador de volta como Estágio 1 de Duelo de Parry."""
         if not self.pode_aparar_projetil():
             return None
-        self.parry_cooldown = 3.5
+        self.parry_cooldown = 1.2
         self.parry_telegraph_timer = 0.55
         cx = self.x + self.largura / 2.0
         cy = self.y + self.altura / 2.0
@@ -89,11 +90,15 @@ class InimigoNinja(InimigoBase):
         proj.dono = "inimigo"
         proj.dir_x = dx
         proj.dir_y = dy
-        proj.velocidade = max(340.0, float(getattr(proj, "velocidade", 340.0)) * 0.9)
+        proj.velocidade = max(270.0, float(getattr(proj, "velocidade", 340.0)) * 0.95 * 0.75)
         proj.dano = self.dano_projetil
+        proj.largura = max(24, int(round(max(16, int(getattr(proj, "largura", 12))) * 1.5)))
+        proj.altura = max(24, int(round(max(16, int(getattr(proj, "altura", 12))) * 1.5)))
+        proj.width = proj.largura
+        proj.height = proj.altura
         proj.duel_stage = 1
         proj.duel_owner = self
-        proj.cor = (244, 63, 94)
+        proj.cor = (168, 85, 247)
         proj.tempo_vida = max(float(getattr(proj, "tempo_vida", 2.5)), 3.0)
         proj.tempo_vida_restante = proj.tempo_vida
         if hasattr(proj, "alvos_atingidos"):
@@ -109,17 +114,18 @@ class InimigoNinja(InimigoBase):
             dx = 1.0
         mult_vel = 1.35 if int(proximo_stage) == 2 else 1.75
         proj = Projetil(
-            x=cx - 7.0,
-            y=cy - 7.0,
+            x=cx - 10.5,
+            y=cy - 10.5,
             dir_x=dx,
             dir_y=dy,
             velocidade=self.vel_projetil * mult_vel,
             dano=self.dano_projetil,
             tempo_vida=3.2,
             dono="inimigo",
-            largura=14,
-            altura=14,
+            largura=21,
+            altura=21,
             sprite_key="projetil_inimigo",
+            cor=(168, 85, 247),
             duel_stage=int(proximo_stage),
             duel_owner=self,
         )
@@ -157,12 +163,17 @@ class InimigoNinja(InimigoBase):
                 if self.dash_dir_x == 0.0 and self.dash_dir_y == 0.0:
                     self.dash_dir_x = 1.0
         elif self.estado_dash == "dash":
-            self.x += self.dash_dir_x * 540.0 * dt
-            self.y += self.dash_dir_y * 540.0 * dt
+            self.rastro_dash.append((self.x, self.y))
+            if len(self.rastro_dash) > 5:
+                self.rastro_dash.pop(0)
+            self.x += self.dash_dir_x * 620.0 * dt
+            self.y += self.dash_dir_y * 620.0 * dt
             self.timer_dash_ativo -= dt
             if self.timer_dash_ativo <= 0.0:
                 self.estado_dash = "stalk"
-                self.timer_dash_cd = 2.8
+                self.timer_dash_cd = 1.1
+        if self.estado_dash != "dash" and self.rastro_dash:
+            self.rastro_dash.pop(0)
 
         self.vx_knockback = lerp(self.vx_knockback, 0.0, min(1.0, 10.0 * dt))
         self.vy_knockback = lerp(self.vy_knockback, 0.0, min(1.0, 10.0 * dt))
@@ -175,17 +186,18 @@ class InimigoNinja(InimigoBase):
         if self.timer_tiro >= self.cooldown_tiro and dist <= 480.0:
             self.timer_tiro = 0.0
             proj = Projetil(
-                x=cx - 6.0,
-                y=cy - 6.0,
+                x=cx - 12.0,
+                y=cy - 12.0,
                 dir_x=ux,
                 dir_y=uy,
                 velocidade=self.vel_projetil,
                 dano=self.dano_projetil,
                 tempo_vida=3.0,
                 dono="inimigo",
-                largura=12,
-                altura=12,
+                largura=24,
+                altura=24,
                 sprite_key="projetil_inimigo",
+                cor=(168, 85, 247),
                 duel_stage=1,
                 duel_owner=self,
             )
@@ -197,12 +209,23 @@ class InimigoNinja(InimigoBase):
         return lista
 
     def desenhar(self, janela, camera=None):
+        screen = getattr(janela, "screen", janela)
+        if self.vivo and getattr(self, "rastro_dash", None):
+            for idx_r, (rx, ry) in enumerate(self.rastro_dash):
+                rdx = camera.transform_x(rx + self.largura / 2.0) if camera else (rx + self.largura / 2.0)
+                rdy = camera.transform_y(ry + self.altura / 2.0) if camera else (ry + self.altura / 2.0)
+                pygame.draw.circle(screen, (56, 189, 248), (int(rdx), int(rdy)), 14 + idx_r * 2, 2)
         super().desenhar(janela, camera)
         if not self.vivo:
             return
-        if self.estado_dash == "telegraph" or self.parry_telegraph_timer > 0.0:
-            screen = getattr(janela, "screen", janela)
-            dx = camera.transform_x(self.x + self.largura / 2.0) if camera else (self.x + self.largura / 2.0)
-            dy = camera.transform_y(self.y + self.altura / 2.0) if camera else (self.y + self.altura / 2.0)
-            cor = (56, 189, 248) if self.estado_dash == "telegraph" else (192, 132, 252)
-            pygame.draw.circle(screen, cor, (int(dx), int(dy)), 26, 2)
+        dx = camera.transform_x(self.x + self.largura / 2.0) if camera else (self.x + self.largura / 2.0)
+        dy = camera.transform_y(self.y + self.altura / 2.0) if camera else (self.y + self.altura / 2.0)
+        if self.pode_aparar_projetil():
+            pygame.draw.circle(screen, (192, 132, 252), (int(dx), int(dy)), 25, 2)
+        if self.estado_dash == "telegraph":
+            pygame.draw.circle(screen, (56, 189, 248), (int(dx), int(dy)), 30, 3)
+            fim_x = dx + self.dash_dir_x * 95.0
+            fim_y = dy + self.dash_dir_y * 95.0
+            pygame.draw.line(screen, (56, 189, 248), (int(dx), int(dy)), (int(fim_x), int(fim_y)), 3)
+        if self.parry_telegraph_timer > 0.0:
+            pygame.draw.circle(screen, (232, 121, 249), (int(dx), int(dy)), 34, 3)

@@ -69,7 +69,7 @@ class InimigoRanged(InimigoBase):
 
         # Tabela de loot enriquecida
         self.loot_enriquecido = True
-        self.chance_drop_arma = 0.15
+        self.chance_drop_arma = 0.3
         self.chance_drop_equipamento = 0.15
 
     def update(self, dt: float, pos_alvo: tuple[float, float], vel_alvo: tuple[float, float] = None):

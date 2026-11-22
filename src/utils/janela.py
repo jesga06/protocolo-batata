@@ -501,20 +501,27 @@ class Janela(metaclass=JanelaMeta):
         }
         self.escala_resolucao_mundo = float(mapa_escala.get(str(opcao_res), 1.0))
 
+    def _obter_tamanho_fullscreen(self) -> tuple[int, int]:
+        """Retorna a dimensão alvo para fullscreen ((0, 0) = desktop nativo em displays reais)."""
+        if self._is_dummy_driver():
+            return self.largura, self.altura
+        try:
+            desktop_sizes = pygame.display.get_desktop_sizes()
+            if desktop_sizes and desktop_sizes[0][0] > 0 and desktop_sizes[0][1] > 0:
+                self.tela_nativa_largura, self.tela_nativa_altura = int(desktop_sizes[0][0]), int(desktop_sizes[0][1])
+        except Exception:
+            pass
+        # Em SDL2/Pygame-CE, (0, 0) + FULLSCREEN ativa FULLSCREEN_DESKTOP na resolução exata do compositor,
+        # evitando dessincronização de escala/viewport entre pygame.mouse.get_pos() e real_screen.
+        return (0, 0)
+
     def entrar_fullscreen(self):
         """Entra em tela cheia usando a resolução nativa real do monitor."""
         if self.is_fullscreen:
             return
         self.is_fullscreen = True
         flags = (self._flags_janela & ~RESIZABLE) | FULLSCREEN
-        desktop_info = pygame.display.Info()
-        raw_w = getattr(desktop_info, "current_w", 0) or 0
-        raw_h = getattr(desktop_info, "current_h", 0) or 0
-        if self._is_dummy_driver():
-            w, h = self.largura, self.altura
-        else:
-            w = raw_w if raw_w > 0 else self.tela_nativa_largura
-            h = raw_h if raw_h > 0 else self.tela_nativa_altura
+        w, h = self._obter_tamanho_fullscreen()
         try:
             nova = self._set_mode_seguro((w, h), flags, vsync=self.vsync_ativo)
             self._aplicar_novo_real_screen(nova)
@@ -522,28 +529,11 @@ class Janela(metaclass=JanelaMeta):
             pass
 
     def alternar_fullscreen(self):
-        """Alterna de forma limpa entre modo Janela e Tela Cheia sem crash ou perda de Aspect Ratio."""
+        """Alterna de forma limpa entre modo Janela e Tela Cheia mantendo real_screen sincronizado."""
         self.is_fullscreen = not self.is_fullscreen
-        sucesso = False
-        try:
-            sucesso = bool(pygame.display.toggle_fullscreen())
-        except Exception:
-            sucesso = False
-
-        if sucesso:
-            self._atualizar_metricas_viewport()
-            return
-
-        # Fallback seguro com re-set de modo
         if self.is_fullscreen:
-            # Remove RESIZABLE para evitar conflito com FULLSCREEN e descarta HWSURFACE
             flags = (self._flags_janela & ~RESIZABLE) | FULLSCREEN
-            desktop_info = pygame.display.Info()
-            if self._is_dummy_driver():
-                w, h = self.largura, self.altura
-            else:
-                w = getattr(desktop_info, "current_w", self.tela_nativa_largura) or self.tela_nativa_largura
-                h = getattr(desktop_info, "current_h", self.tela_nativa_altura) or self.tela_nativa_altura
+            w, h = self._obter_tamanho_fullscreen()
             try:
                 nova = self._set_mode_seguro((w, h), flags, vsync=self.vsync_ativo)
                 self._aplicar_novo_real_screen(nova)
@@ -624,19 +614,17 @@ class Janela(metaclass=JanelaMeta):
                     except Exception:
                         pass
                 if nw is not None and nh is not None and nw > 0 and nh > 0:
-                    self.largura_janela_atual = int(nw)
-                    self.altura_janela_atual = int(nh)
+                    nw_int, nh_int = int(nw), int(nh)
                     if not self.is_fullscreen:
-                        try:
-                            flags = self._flags_janela & ~FULLSCREEN
-                            nova = self._set_mode_seguro(
-                                (self.largura_janela_atual, self.altura_janela_atual),
-                                flags,
-                                vsync=self.vsync_ativo
-                            )
-                            self._aplicar_novo_real_screen(nova)
-                        except Exception:
-                            pass
+                        self.largura_janela_atual = nw_int
+                        self.altura_janela_atual = nh_int
+                    # Em SDL2/Pygame-CE, a superfície do display já é atualizada pelo backend;
+                    # chamar set_mode() dentro do evento de resize cria loop infinito de janelas no Wayland/X11.
+                    nova = pygame.display.get_surface()
+                    if nova is not None and nova is not self.real_screen:
+                        self._aplicar_novo_real_screen(nova)
+                    else:
+                        self._atualizar_metricas_viewport()
                 eventos_filtrados.append(ev)
                 continue
 

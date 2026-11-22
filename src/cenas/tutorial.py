@@ -5,6 +5,7 @@ Explica os controles, HUD, tipos de drops, arquétipos de inimigos e mecânicas 
 
 import pygame
 from src.cenas.base_scene import BaseScene
+from src.ui.banner_dicas import BannerDica
 from src.utils.constantes import (
     LARGURA_TELA, ALTURA_TELA, BRANCO, PRETO, DOURADO,
     AZUL_CIANO, AMARELO_XP, VERDE_CURA, VERMELHO_HP, LARANJA_ALERTA,
@@ -52,6 +53,7 @@ class TutorialScene(BaseScene):
         self.tempo_acumulado = 0.0
         self.pagina_atual = 0  # 0: Controles e HUD, 1: Drops e Armas, 2: Inimigos e Regras
         self.total_paginas = 3
+        self.banner_dicas = BannerDica()
 
         # Debounce de entrada e proteção contra sangramento de teclas de cenas anteriores
         self.tempo_entrada = 0.0
@@ -72,6 +74,8 @@ class TutorialScene(BaseScene):
         dt = min(self.janela.delta_time(), 0.1)
         self.tempo_acumulado += dt
         self.tempo_entrada += dt
+        if hasattr(self, "banner_dicas") and self.banner_dicas is not None:
+            self.banner_dicas.atualizar(dt)
 
         # Checa estado físico das teclas brutas no Pygame
         tab_pressionado = False
@@ -359,3 +363,7 @@ class TutorialScene(BaseScene):
         rodape_txt = "[1, 2, 3] / [A / D] / [SETAS] ou CLIQUE para trocar de página   •   [ESC / ENTER] Voltar"
         rod_surf = fonte_rod.render(rodape_txt, True, _C_TEXT_MUTED)
         screen.blit(rod_surf, rod_surf.get_rect(centerx=px(LARGURA_TELA // 2), bottom=painel_rect.bottom - ps(12)))
+
+        if hasattr(self, "banner_dicas") and self.banner_dicas is not None:
+            dica_rect = pygame.Rect(painel_rect.x, painel_rect.bottom + ps(10), painel_rect.width, ps(54))
+            self.banner_dicas.desenhar(screen, dica_rect, scale=scale)

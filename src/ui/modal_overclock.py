@@ -192,11 +192,12 @@ class ModalOverclock:
             adquiridos = set(self.jogador.overclocks_adquiridos)
 
         pool = [mod for mod in CATALOGO_OVERCLOCKS if mod.get("id") not in adquiridos]
-        # Fallback caso já tenha adquirido todos ou quase todos
-        if len(pool) < 3:
-            faltantes = [mod for mod in CATALOGO_OVERCLOCKS if mod not in pool]
-            random.shuffle(faltantes)
-            pool.extend(faltantes[:3 - len(pool)])
+        if not pool:
+            self.cards_sorteados = []
+            self.ativo = False
+            if self.cena and hasattr(self.cena, "pausado"):
+                self.cena.pausado = False
+            return
 
         random.shuffle(pool)
         self.cards_sorteados = pool[:3]

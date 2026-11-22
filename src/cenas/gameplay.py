@@ -18,6 +18,7 @@ from src.sistemas.sistema_particulas import SistemaParticulas
 from src.sistemas.sistema_audio import GerenciadorAudio, AnalisadorFFTBoss
 from src.sistemas.config_sistema import GerenciadorConfiguracoes
 from src.ui.hud import HUD
+from src.ui.banner_dicas import BannerDica
 from src.ui.modal_level_up import ModalLevelUp
 from src.ui.modal_overclock import ModalOverclock
 from src.ui.menu_configs import MenuConfigs
@@ -26,7 +27,7 @@ from PPlay.camera import Camera
 from PPlay.scenemanager import SceneManager
 from src.utils.constantes import (
     LARGURA_TELA, ALTURA_TELA, LARGURA_ARENA, ALTURA_ARENA,
-    CAMERA_DAMPING_K, DT_CLAMP_MAX, DASH_PARRY_META, MELEE_ARCO_GRAUS,
+    CAMERA_DAMPING_K, DT_CLAMP_MAX, DASH_COOLDOWN, DASH_PARRY_META, MELEE_ARCO_GRAUS,
     BRANCO, PRETO, CINZA_FUNDO, CINZA_PAINEL, CINZA_BORDA,
     VERMELHO_HP, VERMELHO_DANO, VERDE_CURA, AMARELO_XP, AZUL_CIANO, DOURADO, LARANJA_ALERTA,
     ROXO_ACENTO, ROXO_CLARO, ROXO_ESCURO,
@@ -105,6 +106,7 @@ class GameplayScene(BaseScene):
         self.pontos = 0
         self.dano_total_causado = 0
         self.pausado = False
+        self.banner_dicas = BannerDica()
         self.game_over = False
         self.vitoria = False
         self.partida_registrada = False
@@ -353,7 +355,8 @@ class GameplayScene(BaseScene):
                     inim.y += dy_p * 32.0
                     self._clamp_entidade_arena(inim)
 
-        eh_marco = (
+        tem_bloqueadas = bool(self.gerenciador_config.obter_bloqueadas()) if hasattr(self, "gerenciador_config") and self.gerenciador_config else False
+        eh_marco = tem_bloqueadas and (
             (hasattr(self.jogador.sistema_xp, "eh_nivel_marco_config") and self.jogador.sistema_xp.eh_nivel_marco_config(novo_nivel))
             or (hasattr(self, "modal_level_up") and self.modal_level_up is not None and self.modal_level_up.config_pity_buffer is not None)
         )
@@ -723,12 +726,6 @@ class GameplayScene(BaseScene):
                         "texto": f"PARRY {total_parries}/{DASH_PARRY_META}",
                         "cor": DOURADO,
                         "x": cx, "y": self.jogador.y - 18, "tempo": 1.8, "tempo_max": 1.8
-                    })
-                elif stage == 0:
-                    self.toasts_coleta.append({
-                        "texto": "PARRY!",
-                        "cor": DOURADO,
-                        "x": cx, "y": self.jogador.y - 16, "tempo": 1.0, "tempo_max": 1.0
                     })
 
         if extras_gerados:
@@ -1232,6 +1229,8 @@ class GameplayScene(BaseScene):
         # Comportamento no estado Pausado
         if self.pausado:
             self.buffer_tiro = 0.0
+            if hasattr(self, "banner_dicas") and self.banner_dicas is not None:
+                self.banner_dicas.atualizar(dt)
             if self.teclado.key_down("m") or self.teclado.key_down("M"):
                 self._voltar_menu()
                 return
@@ -1727,10 +1726,9 @@ class GameplayScene(BaseScene):
                                 self.buffer_tiro = 0.0
                                 self._aplicar_efeitos_disparo_extras(novos_tiros, mods)
 
-            # Dual-Wield (BIOS Modding): Botão Direito dispara a outra Arma Especial se equipada e diferente da ativa
-            bios_modding_usa_rmb = False
-            if getattr(self.jogador, "bios_modding", False):
-                # Se slot 3 ativo, dispara a outra arma especial (secundária ou primária não ativa)
+            # Dual-Wield (BIOS Modding - B1): LMB (disparar_agora) dispara também a outra Arma Especial equipada,
+            # preservando o Botão Direito (RMB) exclusivamente para o Parry Rápido.
+            if getattr(self.jogador, "bios_modding", False) and disparar_agora and self.jogador.vivo:
                 arma_esp = None
                 if getattr(self.jogador, "slot_ativo", None) == 3:
                     if getattr(self.jogador, "arma_especial_secundaria", None) is not None and self.jogador.arma_especial_secundaria is not arma_ativa:
@@ -1740,38 +1738,9 @@ class GameplayScene(BaseScene):
                 elif getattr(self.jogador, "arma_especial", None) is not None and self.jogador.arma_especial is not arma_ativa:
                     arma_esp = self.jogador.arma_especial
 
-                if arma_esp is not None and self.jogador.vivo:
-                    bios_modding_usa_rmb = True
-                    if is_uma_mao:
-                        btn3_down = bool(
-                            self.teclado is not None and hasattr(self.teclado, "key_down") and (
-                                self.teclado.key_down("SHIFT") or self.teclado.key_down("v") or
-                                self.teclado.key_down("V") or self.teclado.key_down("TAB")
-                            )
-                        )
-                        btn3_pressed = bool(
-                            self.teclado is not None and hasattr(self.teclado, "key_pressed") and (
-                                self.teclado.key_pressed("SHIFT") or self.teclado.key_pressed("v") or
-                                self.teclado.key_pressed("V") or self.teclado.key_pressed("TAB")
-                            )
-                        )
-                    else:
-                        btn3_down = bool(self.mouse.button_down(3)) if (self.mouse is not None and hasattr(self.mouse, "button_down")) else False
-                        if self.mouse is not None and hasattr(self.mouse, "button_pressed"):
-                            btn3_pressed = bool(self.mouse.button_pressed(3))
-                        elif self.mouse is not None and hasattr(self.mouse, "get_pressed_buttons"):
-                            pressed_btns = self.mouse.get_pressed_buttons()
-                            btn3_pressed = bool(pressed_btns[2]) if len(pressed_btns) > 2 else False
-                        elif len(pygame.mouse.get_pressed()) > 2 and (pygame.mouse.get_focused() or btn3_down):
-                            btn3_pressed = bool(pygame.mouse.get_pressed()[2])
-                        elif len(pygame.mouse.get_pressed()) > 2:
-                            btn3_pressed = bool(pygame.mouse.get_pressed()[2])
-                        else:
-                            btn3_pressed = False
-
-                    rmb_disparar = btn3_down if autofire_desligado else btn3_pressed
+                if arma_esp is not None:
                     if isinstance(arma_esp, Railgun) or "railgun" in getattr(arma_esp, "nome", "").lower():
-                        if rmb_disparar and hasattr(arma_esp, "pode_atirar") and arma_esp.pode_atirar():
+                        if hasattr(arma_esp, "pode_atirar") and arma_esp.pode_atirar():
                             self._executar_disparo_railgun(
                                 arma_esp,
                                 centro_jogador_x, centro_jogador_y,
@@ -1781,7 +1750,7 @@ class GameplayScene(BaseScene):
                                 mult_dano_buff=mult_dano_buff
                             )
                     else:
-                        if rmb_disparar and hasattr(arma_esp, "pode_atirar") and arma_esp.pode_atirar():
+                        if hasattr(arma_esp, "pode_atirar") and arma_esp.pode_atirar():
                             tiros_esp = arma_esp.disparar(spawn_origem_x, spawn_origem_y, mouse_mundo_x, mouse_mundo_y)
                             if tiros_esp:
                                 for p in tiros_esp:
@@ -1795,20 +1764,20 @@ class GameplayScene(BaseScene):
                                 self.projeteis.extend(tiros_esp)
                                 self._aplicar_efeitos_disparo_extras(tiros_esp, mods)
 
-            # Quick-Melee (sem trocar de arma): tecla 'E' em todos os modos + RMB quando não usado por BIOS Modding
+            # Quick-Melee / Parry Rápido (sem trocar de arma): tecla 'E' ou Botão Direito (RMB) sempre disponíveis
             if self.jogador.vivo and arma_melee_slot1 is not None and hasattr(arma_melee_slot1, "pode_atirar") and arma_melee_slot1.pode_atirar():
                 tecla_e_down = bool(
                     self.teclado is not None and hasattr(self.teclado, "key_down") and (
                         self.teclado.key_down("e") or self.teclado.key_down("E")
                     )
                 )
-                rmb_quick_melee = (
-                    not is_uma_mao
-                    and not bios_modding_usa_rmb
-                    and self.mouse is not None
-                    and hasattr(self.mouse, "button_down")
-                    and bool(self.mouse.button_down(3))
-                )
+                rmb_down = False
+                if not is_uma_mao and self.mouse is not None:
+                    if hasattr(self.mouse, "button_down"):
+                        rmb_down = bool(self.mouse.button_down(3))
+                    elif hasattr(self.mouse, "is_button_down"):
+                        rmb_down = bool(self.mouse.is_button_down(3))
+                rmb_quick_melee = rmb_down
                 if tecla_e_down or rmb_quick_melee:
                     self._executar_golpe_melee(
                         arma_melee_slot1,
@@ -1849,7 +1818,7 @@ class GameplayScene(BaseScene):
                         r_mob = random.random()
                         if r_mob < 0.25:
                             mob_boss = InimigoRapido(x=ex, y=ey)
-                        elif r_mob < 0.38:
+                        elif r_mob < 0.315:
                             mob_boss = InimigoRanged(x=ex, y=ey)
                             if fogo_cruzado_ranged:
                                 mob_boss.rajada_tripla = True
@@ -2422,12 +2391,15 @@ class GameplayScene(BaseScene):
                                 if rebatido_n is not None:
                                     if hasattr(self, "sistema_audio") and self.sistema_audio is not None:
                                         self.sistema_audio.tocar_parry_clang(pitch_mult=1.25)
-                                    self.sistema_particulas.emitir_faiscas(
-                                        inimigo.x + inimigo.largura / 2.0,
-                                        inimigo.y + inimigo.altura / 2.0,
-                                        cor=(192, 132, 252),
-                                        qtd=8
-                                    )
+                                    nx_c = inimigo.x + inimigo.largura / 2.0
+                                    ny_c = inimigo.y + inimigo.altura / 2.0
+                                    self.sistema_particulas.emitir_onda_choque(nx_c, ny_c, raio_max=48.0, cor=(232, 121, 249))
+                                    self.sistema_particulas.emitir_faiscas(nx_c, ny_c, cor=(192, 132, 252), qtd=12)
+                                    self.toasts_coleta.append({
+                                        "texto": "NINJA PARRY!",
+                                        "cor": (232, 121, 249),
+                                        "x": nx_c, "y": inimigo.y - 18, "tempo": 0.9, "tempo_max": 0.9
+                                    })
                                     break
 
                             if getattr(proj, "perfurante", False):
@@ -2673,7 +2645,11 @@ class GameplayScene(BaseScene):
                     "tempo_max": 2.5
                 })
                 self.modal_overclock.abrir()
-                self.pausado = True
+                if self.modal_overclock.ativo:
+                    self.pausado = True
+                else:
+                    self.jogador.curar(25)
+                    self.pontos += 500
             elif ev["tipo"] == "capsula_powerup":
                 drop_obj = ev.get("drop")
                 sub = getattr(drop_obj, "subtipo", "buff_dano_temp") if drop_obj else "buff_dano_temp"
@@ -3250,6 +3226,39 @@ class GameplayScene(BaseScene):
             esc_w = max(2, int((bar_w - 2) * clamp(escudo_val / 25.0, 0.0, 1.0)))
             pygame.draw.rect(self.janela.screen, (56, 189, 248), (bar_x + 1, bar_y - 2, esc_w, 2))
 
+        next_y = bar_y + bar_h + 1
+        sub_h = 4
+
+        # Barra de carregamento do Dash (apenas quando desbloqueado)
+        if bool(getattr(self.jogador, "dash_desbloqueado", False)):
+            cd_rest = max(0.0, float(getattr(self.jogador, "dash_cooldown_restante", 0.0)))
+            ativo_t = max(0.0, float(getattr(self.jogador, "dash_ativo_timer", 0.0)))
+            pronto_dash = (cd_rest <= 0.0 and ativo_t <= 0.0)
+            prog_dash = 1.0 if pronto_dash else clamp(1.0 - (cd_rest / max(0.01, float(DASH_COOLDOWN))), 0.0, 1.0)
+            cor_dash = (34, 211, 238) if pronto_dash else (30, 110, 140)
+            pygame.draw.rect(self.janela.screen, (15, 23, 42), (bar_x, next_y, bar_w, sub_h))
+            fill_dash = int((bar_w - 2) * prog_dash)
+            if fill_dash > 0:
+                pygame.draw.rect(self.janela.screen, cor_dash, (bar_x + 1, next_y + 1, fill_dash, sub_h - 2))
+            next_y += sub_h + 1
+
+        # Barra de munição da arma atual
+        arma_ativa = self.jogador.obter_arma_ativa() if hasattr(self.jogador, "obter_arma_ativa") else None
+        if arma_ativa is not None:
+            municao_inf = bool(getattr(arma_ativa, "municao_infinita", True))
+            municao_max = int(getattr(arma_ativa, "municao_max", 0))
+            municao_atual = int(getattr(arma_ativa, "municao_atual", 0))
+            if not municao_inf and municao_max > 0:
+                prog_mun = clamp(municao_atual / float(municao_max), 0.0, 1.0)
+                cor_mun = DOURADO if prog_mun > 0.25 else VERMELHO_HP
+            else:
+                prog_mun = 1.0
+                cor_mun = DOURADO
+            pygame.draw.rect(self.janela.screen, (15, 23, 42), (bar_x, next_y, bar_w, sub_h))
+            fill_mun = int((bar_w - 2) * prog_mun)
+            if fill_mun > 0:
+                pygame.draw.rect(self.janela.screen, cor_mun, (bar_x + 1, next_y + 1, fill_mun, sub_h - 2))
+
     def _desenhar_hud_tela(self, hud_visivel: bool = True):
         """Renderiza o HUD fixo na tela em DPI nativo: inventário, vitais, telemetria e botão de configurações."""
         screen = self.janela.screen
@@ -3272,6 +3281,11 @@ class GameplayScene(BaseScene):
             # 0. Painel compacto de Vitais no topo esquerdo (HP numérico + Overshield ciano + prontidão do Dash)
             if hasattr(self, "hud") and self.hud is not None and hasattr(self.hud, "desenhar_painel_vitais"):
                 self.hud.desenhar_painel_vitais(screen, self.jogador, visivel=hud_visivel)
+            if hasattr(self, "hud") and self.hud is not None and hasattr(self.hud, "desenhar_card_parry"):
+                parries_acumulados = 0
+                if hasattr(self, "gerenciador_config") and self.gerenciador_config is not None:
+                    parries_acumulados = int(self.gerenciador_config.estatisticas.get("parries_total", 0))
+                self.hud.desenhar_card_parry(screen, self.jogador, parries_total=parries_acumulados, visivel=hud_visivel)
 
             # 1. Slots de inventário ([1]-[4] + [3B]) no Top-Left (16, 14, 54x54 lógico)
             slot_tam_l = 54
@@ -3891,6 +3905,11 @@ class GameplayScene(BaseScene):
         pygame.draw.rect(screen, LARANJA_ALERTA, btn_menu_rect, width=bw, border_radius=raio)
         m_surf = fonte_sub.render("[M] Menu Principal", True, DOURADO)
         screen.blit(m_surf, m_surf.get_rect(center=btn_menu_rect.center))
+
+        if hasattr(self, "banner_dicas") and self.banner_dicas is not None:
+            dica_w = px_s(560)
+            dica_rect = pygame.Rect(cx_tela - dica_w // 2, btn_menu_rect.bottom + px_s(22), dica_w, px_s(58))
+            self.banner_dicas.desenhar(screen, dica_rect, scale=s)
 
     def _desenhar_overlay_game_over(self):
         """Overlay de fim de jogo projetado em DPI nativo com estatísticas centralizadas."""

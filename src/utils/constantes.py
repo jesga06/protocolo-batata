@@ -101,7 +101,7 @@ DASH_DURACAO = 0.22
 DASH_MULT_VEL = 2.6
 DASH_IFRAMES_BASE = 0.35
 DASH_COOLDOWN = 1.8
-DASH_PARRY_META = 100
+DASH_PARRY_META = 50
 
 # =============================================================================
 # 5. INIMIGOS — BASELINES
@@ -158,7 +158,7 @@ INIMIGO_IMPRESSORA_DANO = 12
 INIMIGO_IMPRESSORA_XP = 22
 
 # Inimigo Ninja (Assassino de TI - Dash + Parry, máx 2 ativos, 20s spawn CD)
-INIMIGO_NINJA_HP = 55
+INIMIGO_NINJA_HP = 165
 INIMIGO_NINJA_VELOCIDADE = 195.0
 INIMIGO_NINJA_DANO = 14
 INIMIGO_NINJA_XP = 28
@@ -193,8 +193,8 @@ GELADEIRA_TSUNAMI_FLAVOR = "The Perfect Sound™"
 # 6. SPAWN DE INIMIGOS — CONFIGURAÇÃO (+50% INTERVALO ENTRE WAVES)
 # =============================================================================
 
-SPAWN_INTERVALO_INICIAL = 1.75
-SPAWN_INTERVALO_MINIMO = 0.45
+SPAWN_INTERVALO_INICIAL = 2.50
+SPAWN_INTERVALO_MINIMO = 0.65
 SPAWN_DISTANCIA_OFFSET = 80.0
 SPAWN_MAX_ATIVOS = 400
 TEMPO_VITORIA = 600.0  # Constante legada mantida para compatibilidade de testes (vitória agora requer derrotar Geladeira Tsunami)
@@ -304,7 +304,9 @@ ASSET_PATHS = {
     "inimigo_phasing": "sprites/inimigos/inimigo_phasing.png",
     "inimigo_blindado": "sprites/inimigos/inimigo_blindado.png",
     "inimigo_ranged": "sprites/inimigos/inimigo_ranged.png",
+    "inimigo_impressora": "sprites/inimigos/inimigo_impressora.png",
     "inimigo_ninja": "sprites/inimigos/inimigo_ninja.png",
+    "cubo_criogenico": "sprites/inimigos/cubo_criogenico.png",
     "boss_geladeira_tsunami": "sprites/inimigos/geladeira_tsunami.png",
 
     # Armas

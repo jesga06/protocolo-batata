@@ -186,7 +186,7 @@ class GerenciadorConfiguracoes:
             "novo_recorde_tempo": novo_recorde_tempo
         }
 
-    def registrar_parry(self, meta: int = 100) -> tuple[int, bool]:
+    def registrar_parry(self, meta: int = 50) -> tuple[int, bool]:
         """
         Incrementa o total histórico de parries, desbloqueia o Dash permanente ao atingir a meta,
         salva o progresso de forma segura e retorna (novo_total, acabou_de_desbloquear).

@@ -383,6 +383,8 @@ class ModalLevelUp:
         self.fila_niveis: list[int] = []
         self.nivel_atual_draw: int = 1
         self.cards_sorteados: list[dict[str, Any]] = []
+        self.escolhas_restantes: int = 1
+        self.indices_selecionados: set[int] = set()
 
         # Buffer de Misericórdia (Pity Buffer) para configurações não selecionadas em marcos
         self.config_pity_buffer: Optional[ConfiguracaoDef] = None
@@ -600,6 +602,10 @@ class ModalLevelUp:
             num_cons = min(3, len(pool_consumiveis))
             self.cards_sorteados = random.sample(pool_consumiveis, num_cons)
 
+        self.indices_selecionados = set()
+        qtd_configs = sum(1 for c in self.cards_sorteados if c.get("tipo") == "config")
+        self.escolhas_restantes = 2 if qtd_configs >= 2 else 1
+
     def selecionar_card(self, index: int) -> bool:
         """
         Processa a escolha de uma carta pelo jogador:
@@ -607,6 +613,8 @@ class ModalLevelUp:
         - Se escolher um consumível, aplica o buff e preserva o pity buffer para os próximos níveis.
         """
         if not self.ativo or index < 0 or index >= len(self.cards_sorteados):
+            return False
+        if index in self.indices_selecionados:
             return False
 
         card = self.cards_sorteados[index]
@@ -682,6 +690,16 @@ class ModalLevelUp:
             self.cena.aplicar_modificadores()
         if self.cena and hasattr(self.cena, "buffer_tiro"):
             self.cena.buffer_tiro = 0.0
+
+        self.indices_selecionados.add(index)
+        self.escolhas_restantes = max(0, int(self.escolhas_restantes) - 1)
+        if self.escolhas_restantes > 0 and len(self.indices_selecionados) < len(self.cards_sorteados):
+            self.tempo_transicao_entrada = 0.15
+            self._mouse_pressionado_anterior = True
+            return True
+
+        self.indices_selecionados.clear()
+        self.escolhas_restantes = 1
 
         # 3. Trata a fila de level-ups FIFO
         if self.fila_niveis:
@@ -879,7 +897,12 @@ class ModalLevelUp:
         layer_surf.blit(tit_surf, tit_rect)
 
         # 3. Subtítulo
-        sub_texto = "Escolha um protocolo com [1] [2] [3] ou clique no card"
+        if self.escolhas_restantes > 1:
+            sub_texto = f"Escolha {self.escolhas_restantes} protocolos com [1] [2] [3] ou clique nos cards"
+        elif len(self.indices_selecionados) > 0:
+            sub_texto = "Escolha mais 1 protocolo com [1] [2] [3] ou clique no card"
+        else:
+            sub_texto = "Escolha um protocolo com [1] [2] [3] ou clique no card"
         sub_surf = fonte_sub.render(sub_texto, True, _C_TEXT_SECONDARY)
         sub_rect = sub_surf.get_rect(centerx=centro_x, top=py(86 + slide_offset_y))
         layer_surf.blit(sub_surf, sub_rect)
@@ -900,7 +923,8 @@ class ModalLevelUp:
                 break
 
             base_rect = self.card_rects[i]
-            is_hovered = (self.card_hovered == i)
+            ja_selecionado = (i in self.indices_selecionados)
+            is_hovered = (self.card_hovered == i) and not ja_selecionado
             is_config = (card.get("tipo") == "config")
 
             lift_px = int(round(self._hover_lift[i])) if i < len(self._hover_lift) else 0
@@ -926,21 +950,23 @@ class ModalLevelUp:
                 layer_surf.blit(self._glow_surf, (rect.x - glow_pad, rect.y - glow_pad))
 
             # 4.2 Fundo e borda do card
-            cor_bg = _C_CARD_HOVER if is_hovered else _C_CARD
-            cor_borda = accent if is_hovered else (_C_GOLD if is_config else _C_BORDER)
-            largura_borda = ps(2) if (is_hovered or is_config) else max(1, ps(1))
+            cor_bg = _C_HUD_PANEL if ja_selecionado else (_C_CARD_HOVER if is_hovered else _C_CARD)
+            cor_borda = _C_BORDER if ja_selecionado else (accent if is_hovered else (_C_GOLD if is_config else _C_BORDER))
+            largura_borda = max(1, ps(1)) if ja_selecionado else (ps(2) if (is_hovered or is_config) else max(1, ps(1)))
             pygame.draw.rect(layer_surf, cor_bg, rect, border_radius=ps(12))
             pygame.draw.rect(layer_surf, cor_borda, rect, width=largura_borda, border_radius=ps(12))
 
             # Barra semântica superior
-            pygame.draw.rect(layer_surf, accent, (rect.x + ps(14), rect.y + 1, rect.width - ps(28), max(2, ps(3))), border_radius=max(1, ps(2)))
+            cor_topo = _C_GREEN if ja_selecionado else accent
+            pygame.draw.rect(layer_surf, cor_topo, (rect.x + ps(14), rect.y + 1, rect.width - ps(28), max(2, ps(3))), border_radius=max(1, ps(2)))
 
             # 4.3 Tag de Categoria (Top-Left pill)
-            cat_texto = "CONFIGURAÇÃO • MARCO" if is_config else f"{card.get('categoria', 'Consumível').upper()}"
-            cat_surf = fonte_card_cat.render(cat_texto, True, accent)
+            cat_texto = "SELECIONADO" if ja_selecionado else ("CONFIGURAÇÃO • MARCO" if is_config else f"{card.get('categoria', 'Consumível').upper()}")
+            cor_cat = _C_GREEN if ja_selecionado else accent
+            cat_surf = fonte_card_cat.render(cat_texto, True, cor_cat)
             cat_pill = pygame.Rect(rect.x + ps(12), rect.y + ps(12), cat_surf.get_width() + ps(14), cat_surf.get_height() + ps(6))
-            pygame.draw.rect(layer_surf, (*accent, 28), cat_pill, border_radius=ps(5))
-            pygame.draw.rect(layer_surf, accent, cat_pill, width=max(1, ps(1)), border_radius=ps(5))
+            pygame.draw.rect(layer_surf, (*cor_cat, 28), cat_pill, border_radius=ps(5))
+            pygame.draw.rect(layer_surf, cor_cat, cat_pill, width=max(1, ps(1)), border_radius=ps(5))
             layer_surf.blit(cat_surf, cat_surf.get_rect(center=cat_pill.center))
 
             # 4.4 Badge Keycap [1], [2], [3] (Top-Right monospace)

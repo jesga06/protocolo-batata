@@ -178,6 +178,42 @@ class HUD:
             rect_d = surf_d.get_rect(centerx=bar_x + bar_w // 2, centery=dash_y + dash_h // 2)
             screen.blit(surf_d, rect_d)
 
+    def desenhar_card_parry(self, screen, jogador, parries_total: int = 0, visivel: bool = True):
+        """
+        Renderiza um card compacto no canto superior direito incentivando o desbloqueio do Dash
+        via parries acumulados quando jogador.dash_desbloqueado ainda for False.
+        """
+        if not visivel or jogador is None or bool(getattr(jogador, "dash_desbloqueado", False)):
+            return
+
+        ox, oy, vw, _vh, s = self._calcular_viewport(screen)
+        fonte_titulo = self._obter_fonte_nativa("sans", 11, bold=True, scale=s)
+        fonte_cont = self._obter_fonte_nativa("mono", 11, bold=True, scale=s)
+
+        linha_1 = "Dê parry 50 vezes e desbloqueie algo"
+        linha_2 = f"Quantidade de Parries: {max(0, int(parries_total))}"
+
+        surf_1 = fonte_titulo.render(linha_1, True, COR_TEXTO_SUAVE)
+        surf_2 = fonte_cont.render(linha_2, True, COR_OURO)
+
+        pad_x = max(6, int(round(10 * s)))
+        pad_y = max(4, int(round(6 * s)))
+        gap_y = max(2, int(round(3 * s)))
+        largura = max(surf_1.get_width(), surf_2.get_width()) + pad_x * 2
+        altura = surf_1.get_height() + surf_2.get_height() + gap_y + pad_y * 2
+
+        x = ox + vw - int(round(16 * s)) - largura
+        y = oy + int(round(72 * s))
+        raio_painel = max(2, int(round(5 * s)))
+        borda_w = max(1, int(round(1 * s)))
+
+        painel = self._obter_painel_translucido(largura, altura, raio=raio_painel)
+        screen.blit(painel, (x, y))
+        pygame.draw.rect(screen, COR_BORDA_SUTIL, (x, y, largura, altura), width=borda_w, border_radius=raio_painel)
+
+        screen.blit(surf_1, (x + largura - pad_x - surf_1.get_width(), y + pad_y))
+        screen.blit(surf_2, (x + largura - pad_x - surf_2.get_width(), y + pad_y + surf_1.get_height() + gap_y))
+
     def desenhar_barra_xp(self, screen, sistema_xp, visivel: bool = True):
         """
         Renderiza a barra de experiência compacta centralizada no topo da tela em DPI nativo.

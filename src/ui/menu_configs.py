@@ -15,6 +15,7 @@ from src.sistemas.config_dados import (
     ConfiguracaoDef, CategoriaConfig, TipoControleConfig
 )
 from src.sistemas.config_sistema import GerenciadorConfiguracoes
+from src.ui.banner_dicas import BannerDica
 from src.utils.constantes import (
     LARGURA_TELA, ALTURA_TELA, BRANCO, PRETO, DOURADO,
     AZUL_CIANO, AMARELO_XP, VERDE_CURA, VERMELHO_HP, LARANJA_ALERTA,
@@ -119,6 +120,7 @@ class MenuConfigs:
 
         self.ativo: bool = False
         self.aba_atual: int = 0  # 0 = Gameplay, 1 = Sistema
+        self.banner_dicas = BannerDica()
 
         # Filtro de categoria na Aba de Gameplay
         self.categoria_filtro: str = "Performance"
@@ -222,6 +224,8 @@ class MenuConfigs:
         self.ativo = True
         self.scroll_y = 0.0
         self.cooldown_input = 0.25
+        if hasattr(self, "banner_dicas") and self.banner_dicas is not None:
+            self.banner_dicas.proxima_dica()
         self._tocar_som("sfx_btn_click")
 
     def _obter_rects_barra_topo(self) -> tuple[pygame.Rect, pygame.Rect, pygame.Rect, Optional[pygame.Rect]]:
@@ -643,6 +647,10 @@ class MenuConfigs:
         rodape_surf = self._fonte_rodape.render(rodape_txt, True, _C_TEXT_MUTED)
         rodape_rect = rodape_surf.get_rect(centerx=painel_px.centerx, bottom=painel_px.bottom - self._ps(10))
         screen.blit(rodape_surf, rodape_rect)
+
+        if hasattr(self, "banner_dicas") and self.banner_dicas is not None:
+            dica_rect = pygame.Rect(painel_px.x, painel_px.bottom + self._ps(8), painel_px.width, self._ps(48))
+            self.banner_dicas.desenhar(screen, dica_rect, scale=self._vp_scale)
 
     def _desenhar_aba_gameplay(self, screen: pygame.Surface):
         """Renderiza a lista de 20 configs e o painel de inspeção detalhado à direita em DPI nativo."""

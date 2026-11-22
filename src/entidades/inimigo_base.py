@@ -119,11 +119,17 @@ class InimigoBase:
                 try:
                     caminho = obter_caminho_asset(chave)
                     if os.path.isfile(caminho):
-                        cls._sprite_cache[chave] = pygame.image.load(caminho).convert_alpha()
+                        img = pygame.image.load(caminho)
+                        if pygame.display.get_surface() is not None:
+                            img = img.convert_alpha()
+                        cls._sprite_cache[chave] = img
                     else:
-                        cls._sprite_cache[chave] = None
+                        cls._sprite_cache[chave] = obter_sprite_inimigo(chave)
                 except Exception:
-                    cls._sprite_cache[chave] = None
+                    try:
+                        cls._sprite_cache[chave] = obter_sprite_inimigo(chave)
+                    except Exception:
+                        cls._sprite_cache[chave] = None
         return cls._sprite_cache[chave]
 
     def update(self, dt: float, pos_alvo: tuple[float, float]):

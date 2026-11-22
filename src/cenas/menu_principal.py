@@ -8,6 +8,7 @@ import os
 import pygame
 from src.cenas.base_scene import BaseScene
 from src.sistemas.config_sistema import GerenciadorConfiguracoes
+from src.ui.banner_dicas import BannerDica
 from src.ui.menu_configs import MenuConfigs
 from src.utils.constantes import (
     LARGURA_TELA, ALTURA_TELA, TITULO_JOGO,
@@ -78,6 +79,7 @@ class MenuPrincipalScene(BaseScene):
         self.gerenciador_config = GerenciadorConfiguracoes()
         self.gerenciador_config.carregar_arquivo(SAVE_FILE_PATH)
         self.menu_configs = MenuConfigs(self.gerenciador_config, em_jogo=False, cena=self)
+        self.banner_dicas = BannerDica()
 
         # Cache de fontes para alta performance (Sans-Serif + Monospace — zero alocação por frame)
         self._fonte_titulo = _carregar_fonte_sans(40, bold=True)
@@ -130,6 +132,7 @@ class MenuPrincipalScene(BaseScene):
 
     def loop(self):
         dt = min(self.janela.delta_time(), 0.1)
+        self._ultimo_dt = dt
         self.tempo_acumulado += dt
 
         # Se o Menu de Configurações estiver aberto, delega o loop para ele
@@ -370,6 +373,12 @@ class MenuPrincipalScene(BaseScene):
                 screen.blit(hk_surf, hk_surf.get_rect(center=hk_pill.center))
 
         # Rodapé com instruções perfeitamente centralizado
+        dica_rect = pygame.Rect(0, py(516), ps(700), ps(56))
+        dica_rect.centerx = centro_x
+        if hasattr(self, "banner_dicas") and self.banner_dicas is not None:
+            self.banner_dicas.atualizar(getattr(self, "_ultimo_dt", 0.0))
+            self.banner_dicas.desenhar(screen, dica_rect, scale=scale)
+
         rodape_surf = fonte_rodape.render(
             "[W/S] ou [Setas] Navegar   •   [ENTER] Confirmar   •   [C] Configurações   •   [T] Tutorial",
             True,

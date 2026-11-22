@@ -129,7 +129,7 @@ class SistemaDrops:
                 tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
             )
             if abate_rapido:
-                drop_arma.bonus_municao_mult = 1.5
+                drop_arma.bonus_municao_mult = 3
             novos_drops.append(drop_arma)
             self._adicionar_drop(drop_arma)
 
@@ -205,13 +205,13 @@ class SistemaDrops:
         # 3. Chance de Drop de Arma / Caixa Especial (+40% de frequência com chance explícita ou base dinâmica com cooldown)
         gerar_arma = False
         if chance_arma is not None:
-            chance_arma_base = float(chance_arma) * 1.40
+            chance_arma_base = float(chance_arma) * 1.40 * 1.15
             chance_arma_efetiva = min(1.0, chance_arma_base * (1.0 + bonus_chance_drop) * mult_chance_drop)
             if random.random() < chance_arma_efetiva:
                 gerar_arma = True
         else:
             if self.cooldown_caixa_atual <= 0.0:
-                chance_arma_base = (0.06 if (loot_enriquecido or tipo_inimigo == "ranged") else 0.012)
+                chance_arma_base = (0.06 if (loot_enriquecido or tipo_inimigo == "ranged") else 0.012) * 1.15
                 chance_arma_efetiva = min(1.0, chance_arma_base * (1.0 + bonus_chance_drop) * mult_chance_drop)
                 if random.random() < chance_arma_efetiva:
                     gerar_arma = True
@@ -357,7 +357,7 @@ class SistemaDrops:
                         nova_arma.municao_max = int(round(nova_arma.municao_max * mult_valor_drop))
                         nova_arma.municao_atual = nova_arma.municao_max
 
-                    bonus_mun = float(getattr(drop, "bonus_municao_mult", 1.0))
+                    bonus_mun = float(getattr(drop, "bonus_municao_mult", 3.0))
                     if bonus_mun > 1.0:
                         nova_arma.municao_max = int(round(nova_arma.municao_max * bonus_mun))
                         nova_arma.municao_atual = nova_arma.municao_max

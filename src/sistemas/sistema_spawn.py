@@ -54,10 +54,10 @@ class SistemaSpawn:
 
     def tamanho_lote(self, tempo_s: float) -> int:
         """
-        Calcula a quantidade de inimigos gerados por pulso de spawn.
-        Fórmula: N_batch(t) = min(14, 2 + floor(t / 20))
+        Calcula a quantidade de inimigos gerados por pulso de spawn (-30% densidade).
         """
-        return min(14, 2 + int(float(tempo_s) // 20.0))
+        base = min(14, 2 + int(float(tempo_s) // 20.0))
+        return max(1, int(round(base * 0.70)))
 
     def obter_arquetipo_elite(self, boss_idx: int) -> tuple[type, str]:
         """
@@ -89,9 +89,9 @@ class SistemaSpawn:
 
         r = random.random()
 
-        # A partir de 25.0s, inclui InimigoRanged quando permitir_ranged=True
+        # A partir de 25.0s, inclui InimigoRanged quando permitir_ranged=True (-50% frequência)
         if tempo_s >= 25.0 and permitir_ranged:
-            if r < 0.16:
+            if r < 0.08:
                 return InimigoRanged
 
         if tempo_s < 45.0:
@@ -107,10 +107,10 @@ class SistemaSpawn:
                 return InimigoBlindado
             return InimigoPadrao
         else:
-            # Mistura avançada (inclui Impressora Térmica aos 60s+)
+            # Mistura avançada (inclui Impressora Térmica aos 60s+, Ranged reduzido em 50%)
             if r < 0.25:
                 return InimigoRapido
-            elif r < 0.42:
+            elif r < 0.335:
                 return InimigoRanged if permitir_ranged else InimigoPadrao
             elif r < 0.52:
                 return InimigoImpressoraTermica if permitir_ranged else InimigoPadrao
@@ -216,13 +216,12 @@ class SistemaSpawn:
                     novos_inimigos.append(boss_elite)
                     break
 
-        # 2. Escalonamento temporal a cada 30s (acelerado após 120s)
+        # 2. Escalonamento temporal a cada 30s (HP base preservado sem inflação temporal)
         etapas_30s = int(self.tempo_decorrido // 30.0)
         etapas_late = max(0, int((self.tempo_decorrido - 120.0) // 30.0))
-        escala_hp_tempo = 1.0 + 0.12 * etapas_30s + 0.08 * etapas_late
         escala_vel_tempo = 1.0 + 0.06 * etapas_30s + 0.02 * etapas_late
         escala_dano_tempo = 1.0 + 0.08 * etapas_30s + 0.04 * etapas_late
-        hp_mult_eff = float(hp_mult) * escala_hp_tempo
+        hp_mult_eff = float(hp_mult)
         vel_mult_eff = float(vel_mult) * escala_vel_tempo
 
         def _spawn_regular(cls_arquetipo):
@@ -275,7 +274,7 @@ class SistemaSpawn:
             self.timer_rush -= intervalo_rush
             vagas_rush = self.max_ativos - (total_inimigos_vivos + len(novos_inimigos))
             if vagas_rush > 0:
-                qtd_rush = min(min(8 + etapas_30s // 2, 12), vagas_rush)
+                qtd_rush = min(min(6 + etapas_30s // 3, 8), vagas_rush)
                 arquetipos_rush = [InimigoRapido, InimigoPadrao, InimigoPhasing]
                 for _ in range(qtd_rush):
                     cls_rush = random.choice(arquetipos_rush)
