@@ -36,6 +36,16 @@ class Pistola(ArmaBase):
         self.tempo_vida_projetil = float(tempo_vida_projetil)
         self.contador_tiros: int = 0
 
+    @property
+    def pips_carga(self) -> int:
+        """Retorna a carga atual do ciclo de 4 disparos (0..3)."""
+        return self.contador_tiros % 4
+
+    @property
+    def esta_carregada(self) -> bool:
+        """Retorna True quando o próximo disparo será o 4º tiro sobrecarregado."""
+        return self.pips_carga == 3
+
     def disparar(self, origem_x: float, origem_y: float, destino_x: float, destino_y: float) -> list[Projetil]:
         """
         Dispara um projétil em direção ao ponto de destino (mira do mouse).
@@ -57,7 +67,7 @@ class Pistola(ArmaBase):
                 dir_x=dir_x,
                 dir_y=dir_y,
                 velocidade=self.velocidade_projetil,
-                dano=int(round(self.dano * 1.5)),
+                dano=int(round(self.dano * 2.2)),
                 tempo_vida=self.tempo_vida_projetil,
                 dono="jogador",
                 largura=12,

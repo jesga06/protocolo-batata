@@ -32,11 +32,11 @@ class InimigoRanged(InimigoBase):
         dano_contato: int = INIMIGO_RANGED_DANO,
         cooldown_contato: float = INIMIGO_RANGED_COOLDOWN_ATAQUE,
         xp_valor: int = INIMIGO_RANGED_XP,
-        distancia_standoff: float = 280.0,
-        distancia_tiro_max: float = 350.0,
-        cooldown_tiro: float = 1.2,
+        distancia_standoff: float = 300.0,
+        distancia_tiro_max: float = 480.0,
+        cooldown_tiro: float = 0.95,
         dano_projetil: int = 10,
-        vel_projetil: float = 260.0,
+        vel_projetil: float = 390.0,
         is_elite: bool = False,
         nome_elite: str = ""
     ):
@@ -137,15 +137,15 @@ class InimigoRanged(InimigoBase):
         t_voo = dist / max(1.0, self.vel_projetil)
         vx_alvo, vy_alvo = vel_alvo if vel_alvo is not None else self._vel_alvo_estimada
 
-        # Se o alvo está em movimento, compensa o vetor de deslocamento com dispersão controlada
+        # Se o alvo está em movimento, compensa o vetor de deslocamento com previsão precisa
         if abs(vx_alvo) > 1.0 or abs(vy_alvo) > 1.0:
-            pred_x = tx + vx_alvo * t_voo * 0.85
-            pred_y = ty + vy_alvo * t_voo * 0.85
+            pred_x = tx + vx_alvo * t_voo * 0.95
+            pred_y = ty + vy_alvo * t_voo * 0.95
             base_dir_x, base_dir_y = vetor_direcao(cx, cy, pred_x, pred_y)
             if base_dir_x == 0.0 and base_dir_y == 0.0:
                 base_dir_x = 1.0
             ang_base = math.atan2(base_dir_y, base_dir_x)
-            ang_disp = ang_base + random.uniform(-0.08, 0.08)
+            ang_disp = ang_base + random.uniform(-0.03, 0.03)
             dir_x = math.cos(ang_disp)
             dir_y = math.sin(ang_disp)
         else:
@@ -168,7 +168,7 @@ class InimigoRanged(InimigoBase):
                     y=cy - 5.0,
                     dir_x=p_dir_x,
                     dir_y=p_dir_y,
-                    velocidade=250.0,
+                    velocidade=float(getattr(self, "vel_projetil", 390.0)),
                     dano=self.dano_projetil,
                     tempo_vida=3.5,
                     dono="inimigo",
@@ -181,7 +181,7 @@ class InimigoRanged(InimigoBase):
                     primeiro_proj = proj
             return primeiro_proj
         else:
-            vel_tiro = float(getattr(self, "vel_projetil", 250.0))
+            vel_tiro = float(getattr(self, "vel_projetil", 287.5))
             proj = Projetil(
                 x=cx - 5.0,
                 y=cy - 5.0,

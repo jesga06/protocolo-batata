@@ -99,7 +99,7 @@ class TestInimigoRanged(unittest.TestCase):
         proj = tiros[0]
         self.assertEqual(proj.dono, "inimigo")
         self.assertEqual(proj.dano, 10)
-        self.assertAlmostEqual(proj.velocidade, 260.0)
+        self.assertAlmostEqual(proj.velocidade, 390.0)
         self.assertEqual(proj.sprite_key, "projetil_inimigo")
         # Projétil aponta para a esquerda em direção ao alvo (dir_x = -1.0, dir_y = 0.0)
         self.assertAlmostEqual(proj.dir_x, -1.0)

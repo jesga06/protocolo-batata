@@ -57,8 +57,8 @@ class TestJogadorBasicos(unittest.TestCase):
         self.assertEqual(j.altura, JOGADOR_ALTURA)
         self.assertEqual(j.hp, 150)
         self.assertEqual(j.hp_max, 150)
-        self.assertEqual(j.velocidade_base, 200.0)
-        self.assertEqual(j.velocidade_atual, 200.0)
+        self.assertEqual(j.velocidade_base, 260.0)
+        self.assertEqual(j.velocidade_atual, 260.0)
         self.assertTrue(j.vivo)
         self.assertTrue(j.facing_right)
         self.assertEqual(len(j.armas), 2)
@@ -73,18 +73,18 @@ class TestJogadorMovimentacao(unittest.TestCase):
         j = Jogador(x=100.0, y=100.0)
         teclado = MockKeyboard(["d"])
         mouse = MockMouse((400, 300))
-        dt = 0.5  # 0.5s -> 100px a 200px/s
+        dt = 0.5  # 0.5s -> 130px a 260px/s
         j.processar_input(teclado, mouse, dt, limite_arena=(1600, 1200))
-        self.assertAlmostEqual(j.x, 200.0)
+        self.assertAlmostEqual(j.x, 230.0)
         self.assertAlmostEqual(j.y, 100.0)
 
     def test_movimento_cardinal_esquerda_e_setas(self):
         j = Jogador(x=100.0, y=100.0)
         teclado = MockKeyboard(["left"])
         mouse = MockMouse((50, 100))
-        dt = 0.25
+        dt = 0.25  # 0.25s -> 65px a 260px/s
         j.processar_input(teclado, mouse, dt, limite_arena=(1600, 1200))
-        self.assertAlmostEqual(j.x, 50.0)
+        self.assertAlmostEqual(j.x, 35.0)
         self.assertAlmostEqual(j.y, 100.0)
         self.assertFalse(j.facing_right)
 
@@ -100,10 +100,10 @@ class TestJogadorMovimentacao(unittest.TestCase):
         dy = j.y - 500.0
         distancia_percorrida = math.sqrt(dx * dx + dy * dy)
 
-        # Distância deve ser exatamente 200.0 px (velocidade * 1.0s)
-        self.assertAlmostEqual(distancia_percorrida, 200.0, places=3)
-        self.assertAlmostEqual(dx, 200.0 * 0.70710678118, places=3)
-        self.assertAlmostEqual(dy, -200.0 * 0.70710678118, places=3)
+        # Distância deve ser exatamente 260.0 px (velocidade * 1.0s)
+        self.assertAlmostEqual(distancia_percorrida, 260.0, places=3)
+        self.assertAlmostEqual(dx, 260.0 * 0.70710678118, places=3)
+        self.assertAlmostEqual(dy, -260.0 * 0.70710678118, places=3)
 
     def test_arena_boundary_clamping(self):
         """Verifica restrição contra limites da arena."""

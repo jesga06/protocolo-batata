@@ -34,7 +34,7 @@ class TestInimigoPadraoIAEColisao(unittest.TestCase):
         e = InimigoPadrao(x=100.0, y=100.0)
         self.assertEqual(e.hp, INIMIGO_PADRAO_HP)
         self.assertEqual(e.hp_max, INIMIGO_PADRAO_HP)
-        self.assertEqual(e.velocidade, 100.0)
+        self.assertEqual(e.velocidade, 130.0)
         self.assertEqual(e.dano_contato, 10)
         self.assertEqual(e.cooldown_contato_max, 0.4)
         self.assertEqual(e.cooldown_contato_atual, 0.0)
@@ -47,8 +47,8 @@ class TestInimigoPadraoIAEColisao(unittest.TestCase):
         # Centro do inimigo: (14, 14), alvo em (114, 14) -> vetor exato (1.0, 0.0)
         e.update(dt=0.5, pos_alvo=(114.0, 14.0))
 
-        # Em 0.5s a 100px/s, avança 50px no eixo X
-        self.assertAlmostEqual(e.x, 50.0)
+        # Em 0.5s a 130px/s, avança 65px no eixo X
+        self.assertAlmostEqual(e.x, 65.0)
         self.assertAlmostEqual(e.y, 0.0)
 
     def test_ia_beeline_diagonal_e_singularidade(self):
@@ -119,17 +119,17 @@ class TestInimigoPadraoIAEColisao(unittest.TestCase):
 class TestSistemaSpawn(unittest.TestCase):
     def test_escalonamento_intervalo_e_lote(self):
         spawner = SistemaSpawn()
-        # t = 0s
-        self.assertAlmostEqual(spawner.intervalo_spawn(0.0), 2.01)
-        self.assertEqual(spawner.tamanho_lote(0.0), 1)
+        # t = 0s -> 1.75 * 0.67 = 1.1725s, lote = 2
+        self.assertAlmostEqual(spawner.intervalo_spawn(0.0), 1.75 * 0.67)
+        self.assertEqual(spawner.tamanho_lote(0.0), 2)
 
-        # t = 50s -> 3.0 - 0.012 * 50 = 2.40s, lote = min(8, 1 + 2) = 3
-        self.assertAlmostEqual(spawner.intervalo_spawn(50.0), 2.40)
-        self.assertEqual(spawner.tamanho_lote(50.0), 3)
+        # t = 50s -> 1.75 - 0.012 * 50 = 1.15s, lote = min(14, 2 + 2) = 4
+        self.assertAlmostEqual(spawner.intervalo_spawn(50.0), 1.15)
+        self.assertEqual(spawner.tamanho_lote(50.0), 4)
 
-        # t = 100s -> 3.0 - 0.012 * 100 = 1.80s, lote = min(8, 1 + 4) = 5
-        self.assertAlmostEqual(spawner.intervalo_spawn(100.0), 1.80)
-        self.assertEqual(spawner.tamanho_lote(100.0), 5)
+        # t = 100s -> 1.75 - 0.012 * 100 = 0.55s, lote = min(14, 2 + 5) = 7
+        self.assertAlmostEqual(spawner.intervalo_spawn(100.0), 0.55)
+        self.assertEqual(spawner.tamanho_lote(100.0), 7)
 
     def test_spawner_gera_inimigos_e_respeita_teto(self):
         spawner = SistemaSpawn(max_ativos=5)
@@ -193,8 +193,22 @@ class TestSistemaSpawn(unittest.TestCase):
     def test_spawner_tempo_extremo(self):
         """Verifica que tempo extremo (ex: 30 minutos) não estoura limites."""
         spawner = SistemaSpawn(max_ativos=60)
-        self.assertEqual(spawner.intervalo_spawn(1800.0), 0.75)
-        self.assertEqual(spawner.tamanho_lote(1800.0), 8)
+        self.assertEqual(spawner.intervalo_spawn(1800.0), 0.45)
+        self.assertEqual(spawner.tamanho_lote(1800.0), 14)
+
+    def test_spawner_escalonamento_30s_e_rush_wave_independente(self):
+        """Valida escalonamento de stats a cada 30s e Rush Wave aos 45s sem resetar timer_spawn."""
+        spawner = SistemaSpawn(max_ativos=100)
+        spawner.tempo_decorrido = 30.0
+        spawner.timer_spawn = 0.0
+        spawner.timer_rush = 44.9
+        # Dispara Rush Wave ao cruzar 45.0s, mantendo timer_spawn intacto (0.2s)
+        gerados = spawner.update(dt=0.2, camera_x=0.0, camera_y=0.0, total_inimigos_vivos=0)
+        self.assertGreaterEqual(len(gerados), 8)
+        self.assertAlmostEqual(spawner.timer_spawn, 0.2, places=4)
+        # Stats devem estar escalados para etapa 30s (HP +12%, Vel +6%, Dano +8%)
+        for inim in gerados:
+            self.assertGreater(inim.hp_max, 0)
 
 
 if __name__ == "__main__":

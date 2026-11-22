@@ -25,11 +25,13 @@ class SistemaSpawn:
     Controlador do surgimento de inimigos na arena ao redor do jogador.
     """
     HORARIOS_BOSS = [60.0, 120.0, 180.0, 240.0]
+    RUSH_INTERVALO = 45.0
 
     def __init__(self, max_ativos: int = SPAWN_MAX_ATIVOS):
         self.tempo_decorrido = 0.0
         self.tempo_elite = 0.0
         self.timer_spawn = 0.0
+        self.timer_rush = 0.0
         self.ultimo_minuto_elite = 0
         self.bosses_spawnados_indices = set()
         self.max_ativos = int(max_ativos)
@@ -49,9 +51,9 @@ class SistemaSpawn:
     def tamanho_lote(self, tempo_s: float) -> int:
         """
         Calcula a quantidade de inimigos gerados por pulso de spawn.
-        Fórmula: N_batch(t) = min(8, 1 + floor(t / 25))
+        Fórmula: N_batch(t) = min(14, 2 + floor(t / 20))
         """
-        return min(8, 1 + int(float(tempo_s) // 25.0))
+        return min(14, 2 + int(float(tempo_s) // 20.0))
 
     def obter_arquetipo_elite(self, boss_idx: int) -> tuple[type, str]:
         """
@@ -76,43 +78,42 @@ class SistemaSpawn:
     def escolher_arquetipo(self, tempo_s: float, permitir_ranged: bool = True):
         """
         Seleciona a classe do inimigo a ser gerado com base no tempo de sobrevivência.
-        Distribuição suavizada com Tank reduzido para 5% dos spawns avançados.
-        A partir de 35s inclui InimigoRanged nativamente (12% sem permitir_ranged, 25% com permitir_ranged).
+        Rampa mais agressiva: Rápido aos 15s, Ranged aos 25s, Phasing/Blindado aos 45s.
         """
-        if tempo_s < 25.0:
+        if tempo_s < 15.0:
             return InimigoPadrao
 
         r = random.random()
 
-        # A partir de 35.0s, inclui InimigoRanged quando permitir_ranged=True
-        if tempo_s >= 35.0 and permitir_ranged:
-            if r < 0.15:
+        # A partir de 25.0s, inclui InimigoRanged quando permitir_ranged=True
+        if tempo_s >= 25.0 and permitir_ranged:
+            if r < 0.16:
                 return InimigoRanged
 
-        if tempo_s < 55.0:
+        if tempo_s < 45.0:
             # Padrão e Rápido
-            return InimigoRapido if r < 0.25 else InimigoPadrao
-        elif tempo_s < 90.0:
+            return InimigoRapido if r < 0.32 else InimigoPadrao
+        elif tempo_s < 75.0:
             # Padrão, Rápido, Phasing, Blindado
-            if r < 0.30:
+            if r < 0.32:
                 return InimigoRapido
-            elif r < 0.45:
+            elif r < 0.48:
                 return InimigoPhasing
-            elif r < 0.60:
+            elif r < 0.64:
                 return InimigoBlindado
             return InimigoPadrao
         else:
             # Mistura avançada
-            if r < 0.25:
+            if r < 0.28:
                 return InimigoRapido
-            elif r < 0.43:
+            elif r < 0.46:
                 return InimigoRanged if permitir_ranged else InimigoPadrao
-            elif r < 0.57:
+            elif r < 0.60:
                 return InimigoPhasing
-            elif r < 0.70:
+            elif r < 0.74:
                 return InimigoBlindado
-            elif r < 0.75:
-                return InimigoTank  # Apenas 5% relativo
+            elif r < 0.80:
+                return InimigoTank
             return InimigoPadrao
 
     def gerar_posicao_spawn(
@@ -208,7 +209,44 @@ class SistemaSpawn:
                     novos_inimigos.append(boss_elite)
                     break
 
-        # 2. Verificação de Lote de Inimigos Regulares
+        # 2. Escalonamento temporal a cada 30 segundos (+12% HP, +6% Vel, +8% Dano)
+        etapas_30s = int(self.tempo_decorrido // 30.0)
+        escala_hp_tempo = 1.0 + 0.12 * etapas_30s
+        escala_vel_tempo = 1.0 + 0.06 * etapas_30s
+        escala_dano_tempo = 1.0 + 0.08 * etapas_30s
+        hp_mult_eff = float(hp_mult) * escala_hp_tempo
+        vel_mult_eff = float(vel_mult) * escala_vel_tempo
+
+        def _spawn_regular(cls_arquetipo):
+            margem_spawn = 0.0 if cls_arquetipo == InimigoRanged else float(SPAWN_DISTANCIA_OFFSET)
+            sx, sy = self.gerar_posicao_spawn(
+                camera_x=camera_x,
+                camera_y=camera_y,
+                view_w=view_w,
+                view_h=view_h,
+                margem=margem_spawn,
+                arena_w=arena_w,
+                arena_h=arena_h
+            )
+            if cls_arquetipo == InimigoRanged:
+                sx = clamp(sx, 0.0, max(0.0, arena_w - 42.0))
+                sy = clamp(sy, 0.0, max(0.0, arena_h - 42.0))
+            novo = cls_arquetipo(x=sx, y=sy)
+            if cls_arquetipo == InimigoRanged and permitir_ranged:
+                novo.rajada_tripla = True
+            if hp_mult_eff != 1.0:
+                novo.hp_max = max(1, int(round(novo.hp_max * hp_mult_eff)))
+                novo.hp = novo.hp_max
+            if vel_mult_eff != 1.0:
+                novo.velocidade *= vel_mult_eff
+            if escala_dano_tempo != 1.0:
+                if hasattr(novo, "dano_contato"):
+                    novo.dano_contato = max(1, int(round(novo.dano_contato * escala_dano_tempo)))
+                if hasattr(novo, "dano_projetil"):
+                    novo.dano_projetil = max(1, int(round(novo.dano_projetil * escala_dano_tempo)))
+            return novo
+
+        # 3. Verificação de Lote de Inimigos Regulares
         self.timer_spawn += dt
         intervalo = self.intervalo_spawn(self.tempo_decorrido)
         if self.timer_spawn >= intervalo:
@@ -219,29 +257,19 @@ class SistemaSpawn:
                 qtd_a_gerar = min(self.tamanho_lote(self.tempo_decorrido), vagas_disponiveis)
                 for _ in range(qtd_a_gerar):
                     cls_arquetipo = self.escolher_arquetipo(self.tempo_decorrido, permitir_ranged=permitir_ranged)
-                    # Manter InimigoRanged dentro dos limites da arena para garantir stand-off e linha de tiro
-                    margem_spawn = 0.0 if cls_arquetipo == InimigoRanged else float(SPAWN_DISTANCIA_OFFSET)
-                    sx, sy = self.gerar_posicao_spawn(
-                        camera_x=camera_x,
-                        camera_y=camera_y,
-                        view_w=view_w,
-                        view_h=view_h,
-                        margem=margem_spawn,
-                        arena_w=arena_w,
-                        arena_h=arena_h
-                    )
-                    if cls_arquetipo == InimigoRanged:
-                        sx = clamp(sx, 0.0, max(0.0, arena_w - 42.0))
-                        sy = clamp(sy, 0.0, max(0.0, arena_h - 42.0))
-                    novo = cls_arquetipo(x=sx, y=sy)
-                    if cls_arquetipo == InimigoRanged and permitir_ranged:
-                        novo.rajada_tripla = True
-                    if hp_mult != 1.0:
-                        novo.hp_max = max(1, int(round(novo.hp_max * hp_mult)))
-                        novo.hp = novo.hp_max
-                    if vel_mult != 1.0:
-                        novo.velocidade *= float(vel_mult)
-                    novos_inimigos.append(novo)
+                    novos_inimigos.append(_spawn_regular(cls_arquetipo))
+
+        # 4. Rush Waves independentes a cada 45s (sem afetar timer_spawn)
+        self.timer_rush += dt
+        if self.timer_rush >= self.RUSH_INTERVALO:
+            self.timer_rush -= self.RUSH_INTERVALO
+            vagas_rush = self.max_ativos - (total_inimigos_vivos + len(novos_inimigos))
+            if vagas_rush > 0:
+                qtd_rush = min(min(8 + etapas_30s // 2, 12), vagas_rush)
+                arquetipos_rush = [InimigoRapido, InimigoPadrao, InimigoPhasing]
+                for _ in range(qtd_rush):
+                    cls_rush = random.choice(arquetipos_rush)
+                    novos_inimigos.append(_spawn_regular(cls_rush))
 
         return novos_inimigos
 

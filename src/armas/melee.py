@@ -25,7 +25,7 @@ class Melee(ArmaBase):
         alcance: float = MELEE_ALCANCE,
         knockback_forca: float = MELEE_KNOCKBACK,
         max_alvos_knockback: int = MELEE_ALVOS_MAX,
-        arco_graus: float = MELEE_ARCO_GRAUS
+        arco_graus: float = 120.0
     ):
         super().__init__(
             nome="Chave de Manutenção",
@@ -39,6 +39,30 @@ class Melee(ArmaBase):
         self.knockback_forca = float(knockback_forca)
         self.max_alvos_knockback = int(max_alvos_knockback)
         self.arco_graus = float(arco_graus)
+        self.parry_duracao: float = 0.18
+        self.parry_alcance_mult: float = 1.18
+        self.parry_janela_restante: float = 0.0
+        self.parry_angulo: float = 0.0
+
+    @property
+    def parry_alcance(self) -> float:
+        """Alcance efetivo da janela ativa de parry (~128.6px no alcance base de 109px)."""
+        return self.alcance * self.parry_alcance_mult
+
+    @property
+    def parry_ativo(self) -> bool:
+        """Retorna True enquanto a janela ativa de parry estiver aberta."""
+        return self.parry_janela_restante > 0.0
+
+    def atualizar(self, dt: float):
+        """Decrementa a janela ativa de parry com base no Delta Time."""
+        if self.parry_janela_restante > 0.0:
+            self.parry_janela_restante = max(0.0, self.parry_janela_restante - max(0.0, float(dt)))
+
+    def iniciar_golpe_parry(self, angulo: float = 0.0):
+        """Abre a janela ativa de parry na direção informada."""
+        self.parry_janela_restante = float(self.parry_duracao)
+        self.parry_angulo = float(angulo) if angulo is not None else 0.0
 
     def disparar(self, origem_x: float, origem_y: float, destino_x: float, destino_y: float) -> list:
         """Melee não dispara projéteis balísticos convencionais."""
@@ -82,6 +106,9 @@ class Melee(ArmaBase):
             ang_mira = float(angulo_mira)
         elif mira_x is not None and mira_y is not None:
             ang_mira = math.atan2(mira_y - origem_y, mira_x - origem_x)
+
+        # Abre janela ativa de parry sempre que o golpe melee é executado
+        self.iniciar_golpe_parry(ang_mira if ang_mira is not None else 0.0)
 
         arco_efetivo = self.arco_graus if arco_graus is None else float(arco_graus)
         meio_arco_rad = math.radians(arco_efetivo / 2.0)
@@ -157,6 +184,73 @@ class Melee(ArmaBase):
                     inimigo.aplicar_knockback(dir_x, dir_y, self.knockback_forca)
 
         return inimigos_afetados
+
+    def tentar_parry_projeteis(
+        self,
+        origem_x: float,
+        origem_y: float,
+        lista_projeteis: list,
+        angulo_mira: float = None
+    ) -> list:
+        """
+        Reflete (Parry) projéteis hostis ativos dentro do alcance de parry e arco de 120°
+        enquanto a janela ativa de parry estiver aberta.
+        Retorna a lista de projéteis refletidos.
+        """
+        if self.parry_janela_restante <= 0.0 or not lista_projeteis:
+            return []
+
+        ang_base = float(angulo_mira) if angulo_mira is not None else self.parry_angulo
+        alcance_efetivo = self.alcance * self.parry_alcance_mult
+        meio_arco_rad = math.radians(self.arco_graus / 2.0)
+
+        refletidos = []
+        for p in lista_projeteis:
+            if not getattr(p, "ativo", False) or getattr(p, "dono", "jogador") == "jogador":
+                continue
+
+            pcx = p.x + getattr(p, "largura", 8) / 2.0
+            pcy = p.y + getattr(p, "altura", 8) / 2.0
+            dist = distancia(origem_x, origem_y, pcx, pcy)
+            if dist > alcance_efetivo:
+                continue
+
+            no_cone = True
+            if ang_base is not None and dist > 1e-4:
+                ang_p = math.atan2(pcy - origem_y, pcx - origem_x)
+                delta = abs(math.atan2(math.sin(ang_p - ang_base), math.cos(ang_p - ang_base)))
+                no_cone = (delta <= meio_arco_rad + 1e-5)
+
+            if not no_cone:
+                continue
+
+            if angulo_mira is not None:
+                dir_reb_x = math.cos(ang_base)
+                dir_reb_y = math.sin(ang_base)
+            elif ang_base is not None:
+                dir_reb_x = math.cos(ang_base)
+                dir_reb_y = math.sin(ang_base)
+            else:
+                dir_reb_x = -float(getattr(p, "dir_x", 1.0))
+                dir_reb_y = -float(getattr(p, "dir_y", 0.0))
+
+            p.dono = "jogador"
+            p.velocidade = float(getattr(p, "velocidade", 300.0)) * 1.5
+            p.dano = max(1, int(round(getattr(p, "dano", 1) * 3.0)))
+            p.dir_x = dir_reb_x
+            p.dir_y = dir_reb_y
+            p.refletido_parry = True
+            p.parried = True
+            p.raio_explosao = 90.0
+            p.splash_mult = 0.75
+            p.cor = (255, 225, 90)
+            p.tempo_vida = max(float(getattr(p, "tempo_vida", 0.0)), 2.0)
+            p.tempo_vida_restante = max(float(getattr(p, "tempo_vida_restante", 0.0)), 2.0)
+            if hasattr(p, "alvos_atingidos"):
+                p.alvos_atingidos.clear()
+            refletidos.append(p)
+
+        return refletidos
 
     def rebater_projeteis(
         self,
