@@ -28,10 +28,10 @@ class TestConfigCatalogAndStructure(unittest.TestCase):
     """Testa a integridade do catálogo e definições de configurações."""
 
     def test_all_25_configs_cataloged(self):
-        """Verifica a presença exata de 20 configs de gameplay e 3 sistêmicas de áudio (23 total)."""
-        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 20)
+        """Verifica a presença exata de 23 configs de gameplay e 3 sistêmicas de áudio (26 total)."""
+        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 23)
         self.assertEqual(len(CONFIGURACOES_SISTEMA), 3)
-        self.assertEqual(len(TODAS_CONFIGURACOES), 23)
+        self.assertEqual(len(TODAS_CONFIGURACOES), 26)
 
         # Verifica configs de sistema de áudio e ausência de stubs S4/S5
         self.assertIn("volume_master", CONFIGURACOES_SISTEMA)
@@ -47,7 +47,8 @@ class TestConfigCatalogAndStructure(unittest.TestCase):
             "motion_blur", "hud", "damage_numbers", "zoom", "movimento_mouse",
             "keybinds", "suavizacao_camera", "auto_fire", "inimigos_ranged",
             "coleta_inimiga", "velocidade_inimigos", "vida_inimigos",
-            "iluminacao", "cores_invertidas", "fogo_amigo"
+            "iluminacao", "cores_invertidas", "fogo_amigo",
+            "precisao_parry", "efeito_parry", "controles_tanque"
         ]
         for chave in chaves_gameplay_esperadas:
             self.assertIn(chave, CONFIGURACOES_GAMEPLAY, f"Config {chave} ausente no catálogo!")
@@ -153,7 +154,7 @@ class TestConfigManager(unittest.TestCase):
         # Inicialmente tudo está bloqueado
         self.assertFalse(manager.is_desbloqueada("fps_cap"))
         self.assertEqual(len(manager.obter_desbloqueadas()), 0)
-        self.assertEqual(len(manager.obter_bloqueadas()), 20)
+        self.assertEqual(len(manager.obter_bloqueadas()), 23)
 
         # Tentativa de alterar config bloqueada falha
         self.assertFalse(manager.definir_valor("fps_cap", "15"))

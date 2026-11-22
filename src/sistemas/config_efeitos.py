@@ -45,6 +45,10 @@ class ModificadoresGameplay:
     keybinds_overdrive_dash: bool = False
     motion_blur_ghosting: bool = False
     coleta_inimiga: bool = False
+    parry_precisao: str = "padrao"
+    parry_efeito: str = "padrao"
+    controles_tanque: bool = False
+    dano_recebido_mult: float = 1.0
 
 
 def calcular_modificadores(
@@ -150,5 +154,13 @@ def calcular_modificadores(
             mods.motion_blur_ghosting = mods.motion_blur_ghosting or bool(mod_dict["motion_blur_ghosting"])
         if "coleta_inimiga" in mod_dict:
             mods.coleta_inimiga = mods.coleta_inimiga or bool(mod_dict["coleta_inimiga"])
+        if "parry_precisao" in mod_dict:
+            mods.parry_precisao = str(mod_dict["parry_precisao"])
+        if "parry_efeito" in mod_dict:
+            mods.parry_efeito = str(mod_dict["parry_efeito"])
+        if "controles_tanque" in mod_dict:
+            mods.controles_tanque = mods.controles_tanque or bool(mod_dict["controles_tanque"])
+        if "dano_recebido_mult" in mod_dict:
+            mods.dano_recebido_mult *= float(mod_dict["dano_recebido_mult"])
 
     return mods
