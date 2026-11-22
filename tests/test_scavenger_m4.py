@@ -186,7 +186,7 @@ class TestGameplayCollisionsM4(unittest.TestCase):
 
         # Executa frames suficientes para o projétil colidir e detonar
         for _ in range(5):
-            cena.loop()
+            cena.loop(dt=1.0 / 60.0)
 
         # Inimigos e1 e e2 sofreram a explosão (60 dano) e morreram (HP <= 0)
         self.assertFalse(e1.vivo)

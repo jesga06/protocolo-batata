@@ -73,6 +73,21 @@ class TestJanelaNativa(unittest.TestCase):
         janela.definir_resolucao("100%")
         self.assertEqual((janela.largura_janela_atual, janela.altura_janela_atual), (1280, 720))
 
+    def test_fps_ilimitado_zero_passado_ao_clock(self):
+        """fps_alvo=0 (ilimitado) deve chamar clock.tick(0) sem fallback para valor positivo."""
+        from unittest.mock import MagicMock
+        from src.main import _parse_fps_alvo
+
+        self.assertEqual(_parse_fps_alvo("ilimitado"), 0)
+        self.assertEqual(_parse_fps_alvo("45"), 45)
+
+        janela = Janela(largura_virtual=1280, altura_virtual=720, titulo="Teste FPS")
+        janela.fps_alvo = 30
+        janela._clock = MagicMock()
+        janela._clock.tick.return_value = 4
+        janela.update(fps_alvo=0)
+        janela._clock.tick.assert_called_once_with(0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2,7 +2,7 @@
 Testes Unitários — Milestone 2: 20 Gameplay Config Effects & Sacrifices Complete Implementation (R2)
 SSOT: CONFIGURACOES.md, config_dados.py, PROJECT.md, architecture_cache.md
 Valida os efeitos e sacrifícios de todas as 20 configurações de gameplay do jogo quando desbloqueadas e ativadas:
- 1. fps_cap (60 -> 45, 30, 15)
+ 1. fps_cap (ilimitado -> 45, 30, 15)
  2. graficos_qualidade (alta -> baixa)
  3. resolucao (100% -> 75%, 50%, 25%)
  4. vsync (ligado -> desligado)

@@ -463,7 +463,7 @@ class Janela(metaclass=JanelaMeta):
         # Proteção contra janela minimizada (processa QUIT e eventos mesmo minimizado)
         if largura_real < 1 or altura_real < 1:
             pygame.display.flip()
-            limite_fps = int(fps_alvo or self.fps_alvo)
+            limite_fps = int(self.fps_alvo if fps_alvo is None else fps_alvo)
             ms_passados = self._clock.tick(limite_fps)
             self._delta_time = min(0.1, max(0.0, ms_passados / 1000.0))
             self._eventos_processados_frame = False
@@ -495,7 +495,7 @@ class Janela(metaclass=JanelaMeta):
         self.screen.fill(self.cor_fundo)
 
         # 6. Sincronização do Relógio (FPS Cap e Delta Time clampado <= 0.1)
-        limite_fps = int(fps_alvo or self.fps_alvo)
+        limite_fps = int(self.fps_alvo if fps_alvo is None else fps_alvo)
         ms_passados = self._clock.tick(limite_fps)
         self._delta_time = min(0.1, max(0.0, ms_passados / 1000.0))
 

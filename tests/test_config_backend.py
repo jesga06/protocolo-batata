@@ -157,7 +157,7 @@ class TestConfigManager(unittest.TestCase):
 
         # Tentativa de alterar config bloqueada falha
         self.assertFalse(manager.definir_valor("fps_cap", "15"))
-        self.assertEqual(manager.obter_valor("fps_cap"), "60")
+        self.assertEqual(manager.obter_valor("fps_cap"), "ilimitado")
 
         # Desbloqueia fps_cap e altera valor
         self.assertTrue(manager.desbloquear_config("fps_cap"))

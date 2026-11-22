@@ -61,12 +61,12 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
         nome="Limite de Quadros",
         categoria=CategoriaConfig.PERFORMANCE,
         tipo=TipoControleConfig.GRUPO,
-        valor_padrao="60",
+        valor_padrao="ilimitado",
         ordem=1,
         opcoes={
-            "60": OpcaoConfig(
-                id="60",
-                label="60 FPS",
+            "ilimitado": OpcaoConfig(
+                id="ilimitado",
+                label="Ilimitado",
                 modificadores={},
                 flavor_text="O olho humano não consegue ver além de 30 FPS.",
                 nerf_text="Nenhum",
