@@ -71,6 +71,8 @@ class GameplayScene(BaseScene):
 
         # Chefe Final e Cutscene de Transição
         self.chefe_final = None
+        self.boss_grace_period_ativo = False
+        self.boss_grace_timer = 0.0
         self.boss_cutscene_ativa = False
         self.boss_cutscene_fase = "none"
         self.boss_cutscene_timer = 0.0
@@ -112,6 +114,7 @@ class GameplayScene(BaseScene):
             "buff": pygame.font.SysFont("Arial", 11, bold=True),
             "timer": pygame.font.SysFont("Arial", 11, bold=True),
             "toast": pygame.font.SysFont("Arial", 14, bold=True),
+            "grace_banner": pygame.font.SysFont("Arial", 18, bold=True),
             "fps": pygame.font.SysFont("Arial", 16),
             "tit_vit": pygame.font.SysFont("Arial", 30, bold=True),
             "sub_vit": pygame.font.SysFont("Arial", 16),
@@ -344,7 +347,7 @@ class GameplayScene(BaseScene):
                 "tempo_max": 1.8
             })
             if int(novo_nivel) >= getattr(self.jogador.sistema_xp, "nivel_max", 12):
-                self.iniciar_boss_cutscene()
+                self.iniciar_boss_grace_period()
 
     def aplicar_modificadores(self):
         """Aplica os modificadores matemáticos calculados às entidades ativas."""
@@ -554,6 +557,24 @@ class GameplayScene(BaseScene):
             abate_rapido=abate_rapido
         )
 
+    def iniciar_boss_grace_period(self):
+        """
+        Inicia o grace period de 10 segundos antes da cutscene do Chefe Final,
+        permitindo ao jogador limpar as hordas ao redor e coletar o loot no chão.
+        """
+        if self.boss_grace_period_ativo or self.boss_cutscene_ativa or (self.chefe_final is not None and self.chefe_final.vivo):
+            return
+        self.boss_grace_period_ativo = True
+        self.boss_grace_timer = 10.0
+
+    def obter_texto_boss_grace_period(self) -> str:
+        """Retorna o texto formatado da contagem regressiva do grace period."""
+        segundos = max(1, int(math.ceil(self.boss_grace_timer)))
+        return (
+            "Você ouve o Ritmo Cruel sacudindo o baile inteiro.\n"
+            f"Você tem {segundos} segundos até experienciar The Perfect Sound™"
+        )
+
     def iniciar_boss_cutscene(self):
         """
         Inicia a sequência cinematográfica de introdução do Chefe Final (Geladeira Tsunami).
@@ -562,13 +583,13 @@ class GameplayScene(BaseScene):
         """
         if self.boss_cutscene_ativa or (self.chefe_final is not None and self.chefe_final.vivo):
             return
+        self.boss_grace_period_ativo = False
+        self.boss_grace_timer = 0.0
         self.boss_cutscene_ativa = True
         self.boss_cutscene_fase = "whiteout"
         self.boss_cutscene_timer = 0.0
         self.overlay_cutscene_cor = (255, 255, 255)
         self.overlay_cutscene_alpha = 0.0
-        self.projeteis.clear()
-        self.tiros_echo_pendentes.clear()
         try:
             pygame.mixer.music.fadeout(1600)
             pygame.mixer.music._current_track = None
@@ -608,8 +629,8 @@ class GameplayScene(BaseScene):
     def loop(self, dt: float = None):
         if dt is None:
             dt = self.janela.delta_time()
-            # Em testes unitários headless ou loops ultra-rápidos (<10ms), avança 1 frame padrão a 60 FPS
-            if dt < 0.010:
+            # Em testes unitários headless (primeiro frame sem tick), avança 1 frame padrão (1/60s)
+            if dt <= 0.0:
                 dt = 1.0 / 60.0
             # Clampa dt para evitar saltos quânticos em frames atípicos (máximo 100ms)
             dt = min(dt, 0.1)
@@ -620,12 +641,13 @@ class GameplayScene(BaseScene):
 
         # 0. Se o Menu de Debug estiver ativo, processa seus inputs e congela o jogo
         if hasattr(self, "menu_debug"):
+            debug_estava_ativo = self.menu_debug.ativo
             self.menu_debug.update(dt, self.teclado, self.mouse)
             if self.menu_debug.ativo:
                 self.pausado = True
                 self.buffer_tiro = 0.0
                 return
-            elif not self.modal_level_up.ativo and not self.modal_overclock.ativo and not self.menu_configs.ativo and not self.game_over and not self.vitoria:
+            elif debug_estava_ativo and not self.modal_level_up.ativo and not self.modal_overclock.ativo and not self.menu_configs.ativo and not self.game_over and not self.vitoria:
                 self.pausado = False
 
         # Sincroniza estado de Modo Deus e Munição Infinita
@@ -727,43 +749,64 @@ class GameplayScene(BaseScene):
             self.buffer_tiro = 0.0
             if self.teclado.key_down("m") or self.teclado.key_down("M"):
                 self._voltar_menu()
+                return
+            if self.mouse is not None and hasattr(self.mouse, "button_down") and self.mouse.button_down(1):
+                try:
+                    mx_p, my_p = self.mouse.get_position()
+                    btn_cont_rect, btn_menu_rect = self._obter_rects_overlay_pausa()
+                    if btn_cont_rect.collidepoint(mx_p, my_p):
+                        self.pausado = False
+                        return
+                    if btn_menu_rect.collidepoint(mx_p, my_p):
+                        self._voltar_menu()
+                        return
+                except Exception:
+                    pass
             return
 
         # =========================================================================
         # 1. ATUALIZAÇÃO DO JOGADOR, CUTSCENE E INPUTS
         # =========================================================================
-        timer_congelado = getattr(self.menu_debug, "timer_congelado", False) if hasattr(self, "menu_debug") else False
-        if not timer_congelado and not self.boss_cutscene_ativa:
-            self.tempo_sobrevivencia += dt
+        # Grace period de 10s antes da Cutscene do Chefe Final
+        if self.boss_grace_period_ativo and not self.boss_cutscene_ativa:
+            self.boss_grace_timer = max(0.0, self.boss_grace_timer - dt)
+            if self.boss_grace_timer <= 0.0:
+                self.boss_grace_period_ativo = False
+                self.iniciar_boss_cutscene()
 
-        # Atualiza temporizador de Screen Shake
-        if self.shake_timer > 0.0:
-            self.shake_timer = max(0.0, self.shake_timer - dt)
-            if self.shake_timer == 0.0:
-                self.shake_intensidade = 0.0
-
-        # Atualiza sistema de partículas
-        self.sistema_particulas.update(dt)
-
-        # Processamento da Cutscene do Chefe Final (Whiteout -> Blackout -> Música Fade-In -> Subida do Boss)
+        # Processamento da Cutscene do Chefe Final (Whiteout c/ Slow-Mo -> Blackout -> Música Fade-In -> Subida do Boss)
         if self.boss_cutscene_ativa:
             self.boss_cutscene_timer += dt
             if self.boss_cutscene_fase == "whiteout":
+                prog_whiteout = clamp(self.boss_cutscene_timer / 2.0, 0.0, 1.0)
                 self.overlay_cutscene_cor = (255, 255, 255)
-                self.overlay_cutscene_alpha = min(255, int(255 * (self.boss_cutscene_timer / 2.0)))
+                self.overlay_cutscene_alpha = min(255, int(255 * prog_whiteout))
                 if self.boss_cutscene_timer >= 2.0:
                     self.boss_cutscene_fase = "blackout"
                     self.boss_cutscene_timer = 0.0
                     self.overlay_cutscene_cor = (0, 0, 0)
                     self.overlay_cutscene_alpha = 255
-                    # Purga inimigos comuns (desativando scavenger antes) e centraliza jogador
+                    # Purga completa do mapa (inimigos, drops, projéteis, partículas e efeitos não-buff) e centraliza jogador
                     self.sistema_scavenger.desativar(self.inimigos)
                     self.inimigos = [self.chefe_final] if (self.chefe_final is not None and self.chefe_final.vivo) else []
+                    self.sistema_drops.drops.clear()
                     self.projeteis.clear()
                     self.tiros_echo_pendentes.clear()
+                    self.sistema_particulas.limpar()
+                    self.efeitos_melee.clear()
+                    self.zonas_fogo.clear()
+                    self.trilhas_plasma.clear()
+                    self.zonas_estase.clear()
+                    self.pocas_gelo.clear()
+                    self.toasts_coleta.clear()
+                    self.shake_timer = 0.0
+                    self.shake_intensidade = 0.0
                     self.jogador.x = self.largura_arena / 2.0 - self.jogador.largura / 2.0
                     self.jogador.y = self.altura_arena / 2.0 - self.jogador.altura / 2.0
                     self.camera.follow(self.jogador, suavizacao=1.0)
+                else:
+                    # Durante o fade-out branco, o jogo continua rodando mas desacelera progressivamente até zerar
+                    dt = dt * max(0.0, 1.0 - prog_whiteout)
             elif self.boss_cutscene_fase == "blackout":
                 self.overlay_cutscene_cor = (0, 0, 0)
                 self.overlay_cutscene_alpha = 255
@@ -806,8 +849,23 @@ class GameplayScene(BaseScene):
                     self.boss_cutscene_fase = "combate"
                     self.overlay_cutscene_alpha = 0.0
 
+        cutscene_congelada = self.boss_cutscene_ativa and self.boss_cutscene_fase != "whiteout"
+
+        timer_congelado = getattr(self.menu_debug, "timer_congelado", False) if hasattr(self, "menu_debug") else False
+        if not timer_congelado and not cutscene_congelada:
+            self.tempo_sobrevivencia += dt
+
+        # Atualiza temporizador de Screen Shake
+        if self.shake_timer > 0.0:
+            self.shake_timer = max(0.0, self.shake_timer - dt)
+            if self.shake_timer == 0.0:
+                self.shake_intensidade = 0.0
+
+        # Atualiza sistema de partículas
+        self.sistema_particulas.update(dt)
+
         # Processamento de disparos de eco (Multithreading Overclock)
-        if not self.boss_cutscene_ativa:
+        if not cutscene_congelada:
             novos_ecos = []
             for echo in self.tiros_echo_pendentes:
                 echo["timer"] -= dt
@@ -863,7 +921,7 @@ class GameplayScene(BaseScene):
         centro_jogador_x = self.jogador.x + self.jogador.largura / 2.0
         centro_jogador_y = self.jogador.y + self.jogador.altura / 2.0
 
-        if not self.boss_cutscene_ativa:
+        if not cutscene_congelada:
             self.jogador.processar_input(
                 self.teclado,
                 self.mouse,
@@ -1332,7 +1390,7 @@ class GameplayScene(BaseScene):
         # 3. SPAWNER DE INIMIGOS
         # =========================================================================
         spawn_liberado = getattr(self.menu_debug, "spawn_natural_ativo", True) if hasattr(self, "menu_debug") else True
-        if spawn_liberado and not self.boss_cutscene_ativa and self.arena_freeze_timer <= 0.0:
+        if spawn_liberado and not cutscene_congelada and not self.boss_grace_period_ativo and self.arena_freeze_timer <= 0.0:
             fogo_cruzado_ranged = (str(self.config_sistema.obter_valor("inimigos_ranged")).lower() in ("ligado", "true", "1")) if hasattr(self, "config_sistema") and self.config_sistema else False
             permitir_ranged = True
             hp_inim_mult = getattr(mods, "hp_inimigos_mult", 1.0) if mods else 1.0
@@ -1387,13 +1445,13 @@ class GameplayScene(BaseScene):
                 self.inimigos.extend(novos_inimigos)
 
                 # Gatilho "Jogar aos Lobos": após o ciclo dos Mini-Bosses, a Geladeira Tsunami entra mesmo se o jogador estiver em nível baixo
-                if self.chefe_final is None and not self.boss_cutscene_ativa and not possui_elite and getattr(self.spawner, "tempo_elite", 0.0) >= 265.0:
-                    self.iniciar_boss_cutscene()
+                if self.chefe_final is None and not self.boss_cutscene_ativa and not self.boss_grace_period_ativo and not possui_elite and getattr(self.spawner, "tempo_elite", 0.0) >= 265.0:
+                    self.iniciar_boss_grace_period()
 
         # =========================================================================
         # 4. FÍSICA DOS PROJÉTEIS
         # =========================================================================
-        if not self.boss_cutscene_ativa:
+        if not cutscene_congelada:
             # Sincronização Vertical (Desligado): Linha de tearing que duplica projéteis
             if getattr(mods, "vsync_tear_refraction", False):
                 self.vsync_tear_y = (getattr(self, "vsync_tear_y", 0.0) + 160.0 * dt) % ALTURA_TELA
@@ -1487,7 +1545,7 @@ class GameplayScene(BaseScene):
         for inimigo in self.inimigos:
             if inimigo == self.chefe_final:
                 continue
-            if not pular_ia_inimigos and not self.boss_cutscene_ativa:
+            if not pular_ia_inimigos and not cutscene_congelada:
                 # Passo Fantasma (buff_vel_timer > 0): desacelera inimigos muito próximos em 40%
                 if getattr(self.jogador, "buff_vel_timer", 0.0) > 0.0:
                     icx_p = inimigo.x + getattr(inimigo, "largura", 28) / 2.0
@@ -1535,7 +1593,7 @@ class GameplayScene(BaseScene):
                     if novos_tiros:
                         self.projeteis.extend(novos_tiros)
 
-            if self.boss_cutscene_ativa:
+            if cutscene_congelada:
                 continue
 
             # Atropelamento (Movimento pelo Mouse)
@@ -1672,7 +1730,7 @@ class GameplayScene(BaseScene):
         auto_dano = getattr(mods, "auto_dano", False) if mods else False
 
         for proj in list(self.projeteis):
-            if self.boss_cutscene_ativa:
+            if cutscene_congelada:
                 break
             if not proj.ativo and not getattr(proj, "requer_detonacao_ao_expirar", False):
                 continue
@@ -2505,10 +2563,6 @@ class GameplayScene(BaseScene):
                     self._overlay_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
                 r, g, b = self.overlay_cutscene_cor
                 self._overlay_surf.fill((r, g, b, int(self.overlay_cutscene_alpha)))
-                if self.boss_cutscene_fase == "whiteout":
-                    pj_sx = int(self.camera.transform_x(self.jogador.x + self.jogador.largura / 2.0))
-                    pj_sy = int(self.camera.transform_y(self.jogador.y + self.jogador.altura / 2.0))
-                    pygame.draw.circle(self._overlay_surf, (0, 0, 0, 40), (pj_sx, pj_sy), 72)
                 screen.blit(self._overlay_surf, (0, 0))
 
             if self.boss_cutscene_fase == "musica_in":
@@ -2735,6 +2789,9 @@ class GameplayScene(BaseScene):
             fps_rect = fps_surf.get_rect(right=LARGURA_TELA - 60, centery=32)
             screen.blit(fps_surf, fps_rect)
 
+        # 4.5. Banner de Grace Period do Chefe Final
+        self._desenhar_banner_grace_period(screen)
+
         # 5. Toasts de Coleta Flutuantes
         self._desenhar_toasts(screen)
 
@@ -2751,7 +2808,8 @@ class GameplayScene(BaseScene):
 
         # 7. Mira (Crosshair) na coordenada virtual clampada (ou direção de teclado em uma_mao)
         em_combate_ativo = (
-            not self.pausado and not self.game_over and not self.vitoria and not self.boss_cutscene_ativa
+            not self.pausado and not self.game_over and not self.vitoria
+            and not (self.boss_cutscene_ativa and self.boss_cutscene_fase != "whiteout")
             and not self.menu_configs.ativo and not self.modal_level_up.ativo and not self.modal_overclock.ativo
             and not (hasattr(self, "menu_debug") and self.menu_debug.ativo)
         )
@@ -2782,6 +2840,41 @@ class GameplayScene(BaseScene):
             else:
                 pygame.draw.circle(screen, AZUL_CIANO, (mira_tx, mira_ty), 6, width=1)
                 pygame.draw.circle(screen, DOURADO, (mira_tx, mira_ty), 2)
+
+    def _desenhar_banner_grace_period(self, screen):
+        """Renderiza o banner centralizado com a contagem regressiva de 10s antes do Chefe Final."""
+        if not self.boss_grace_period_ativo or self.boss_cutscene_ativa:
+            return
+
+        fonte = self._fontes["grace_banner"]
+        linhas = self.obter_texto_boss_grace_period().split("\n")
+        superficies = [fonte.render(linha, True, DOURADO if idx == 0 else BRANCO) for idx, linha in enumerate(linhas)]
+        sombras = [fonte.render(linha, True, (10, 5, 20)) for linha in linhas]
+
+        largura_max = max(s.get_width() for s in superficies)
+        altura_linha = max(s.get_height() for s in superficies)
+        pad_x = 24
+        pad_y = 12
+        espaco_linhas = 6
+
+        box_w = largura_max + pad_x * 2
+        box_h = len(linhas) * altura_linha + max(0, len(linhas) - 1) * espaco_linhas + pad_y * 2
+        box_x = (LARGURA_TELA - box_w) // 2
+        box_y = 118
+
+        painel = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
+        painel.fill((18, 12, 30, 205))
+        pygame.draw.rect(painel, DOURADO, (0, 0, box_w, box_h), width=2, border_radius=8)
+        screen.blit(painel, (box_x, box_y))
+
+        cur_y = box_y + pad_y
+        centro_x = LARGURA_TELA // 2
+        for surf, sombra in zip(superficies, sombras):
+            rect_sombra = sombra.get_rect(centerx=centro_x + 1, top=cur_y + 1)
+            rect_surf = surf.get_rect(centerx=centro_x, top=cur_y)
+            screen.blit(sombra, rect_sombra)
+            screen.blit(surf, rect_surf)
+            cur_y += altura_linha + espaco_linhas
 
     def _desenhar_toasts(self, screen):
         """Renderiza toasts de coleta flutuantes com clamp horizontal em [12, LARGURA_TELA - 12]."""
@@ -3009,8 +3102,16 @@ class GameplayScene(BaseScene):
         btn3_surf = fonte_btn_sub.render("[C] Menu de Configurações", True, AZUL_CIANO)
         screen.blit(btn3_surf, btn3_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 498))
 
+    def _obter_rects_overlay_pausa(self) -> tuple[pygame.Rect, pygame.Rect]:
+        """Retorna os retângulos clicáveis de Continuar e Menu Principal no overlay de pausa."""
+        oy = (ALTURA_TELA - 600) // 2
+        cx = LARGURA_TELA // 2
+        btn_cont_rect = pygame.Rect(cx - 160, oy + 272, 320, 40)
+        btn_menu_rect = pygame.Rect(cx - 160, oy + 324, 320, 40)
+        return btn_cont_rect, btn_menu_rect
+
     def _desenhar_overlay_pausa(self):
-        """Overlay modal de pausa com textos perfeitamente centralizados."""
+        """Overlay modal de pausa com botões clicáveis perfeitamente centralizados."""
         screen = self.janela.screen
         if self._overlay_surf is None or self._overlay_surf.get_size() != (LARGURA_TELA, ALTURA_TELA):
             self._overlay_surf = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
@@ -3025,13 +3126,17 @@ class GameplayScene(BaseScene):
         t_rect = t_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 200)
         screen.blit(t_surf, t_rect)
 
-        c_surf = fonte_sub.render("[ESC] Continuar Partida", True, BRANCO)
-        c_rect = c_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 280)
-        screen.blit(c_surf, c_rect)
+        btn_cont_rect, btn_menu_rect = self._obter_rects_overlay_pausa()
 
-        m_surf = fonte_sub.render("[M] Menu Principal", True, CINZA_BORDA)
-        m_rect = m_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 325)
-        screen.blit(m_surf, m_rect)
+        pygame.draw.rect(screen, (30, 42, 62), btn_cont_rect, border_radius=6)
+        pygame.draw.rect(screen, AZUL_CIANO, btn_cont_rect, width=1, border_radius=6)
+        c_surf = fonte_sub.render("[ESC] Continuar Partida", True, BRANCO)
+        screen.blit(c_surf, c_surf.get_rect(center=btn_cont_rect.center))
+
+        pygame.draw.rect(screen, (52, 34, 24), btn_menu_rect, border_radius=6)
+        pygame.draw.rect(screen, LARANJA_ALERTA, btn_menu_rect, width=1, border_radius=6)
+        m_surf = fonte_sub.render("[M] Menu Principal", True, DOURADO)
+        screen.blit(m_surf, m_surf.get_rect(center=btn_menu_rect.center))
 
     def _desenhar_overlay_game_over(self):
         """Overlay de fim de jogo com estatísticas perfeitamente centralizadas em 1280x720."""

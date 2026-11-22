@@ -911,6 +911,57 @@ class TestBossCutsceneWhiteoutSlowMo(unittest.TestCase):
         )
         self.assertEqual(tuple(cor_no_centro_batata), (255, 255, 255, 128))
 
+    def test_grace_period_nivel_12_e_texto_countdown(self):
+        """Atingir nível 12 inicia grace period de 10s com texto exato antes da cutscene."""
+        cena = GameplayScene()
+        cena._ao_subir_nivel(12)
+
+        self.assertTrue(cena.boss_grace_period_ativo)
+        self.assertFalse(cena.boss_cutscene_ativa)
+        self.assertAlmostEqual(cena.boss_grace_timer, 10.0, places=5)
+        self.assertEqual(
+            cena.obter_texto_boss_grace_period(),
+            "Você ouve o Ritmo Cruel sacudindo o baile inteiro.\n"
+            "Você tem 10 segundos até experienciar The Perfect Sound™",
+        )
+
+        cena.boss_grace_timer = 4.2
+        self.assertEqual(
+            cena.obter_texto_boss_grace_period(),
+            "Você ouve o Ritmo Cruel sacudindo o baile inteiro.\n"
+            "Você tem 5 segundos até experienciar The Perfect Sound™",
+        )
+        cena.draw()
+
+    def test_grace_period_pausa_spawner_e_transiciona_para_cutscene(self):
+        """Durante o grace period novos spawns pausam; ao zerar, inicia a cutscene do Boss Final."""
+        cena = GameplayScene()
+        cena.iniciar_boss_grace_period()
+        cena.inimigos.clear()
+        cena.spawner.timer_spawn = 99.0
+
+        cena.loop(dt=0.5)
+        self.assertTrue(cena.boss_grace_period_ativo)
+        self.assertFalse(cena.boss_cutscene_ativa)
+        self.assertAlmostEqual(cena.boss_grace_timer, 9.5, places=5)
+        self.assertEqual(len(cena.inimigos), 0, "Spawner deve pausar durante o grace period")
+
+        cena.boss_grace_timer = 0.2
+        cena.loop(dt=0.25)
+        self.assertFalse(cena.boss_grace_period_ativo)
+        self.assertTrue(cena.boss_cutscene_ativa)
+        self.assertEqual(cena.boss_cutscene_fase, "whiteout")
+
+    def test_grace_period_gatilho_tempo_elite_265(self):
+        """Gatilho 'Jogar aos Lobos' (tempo_elite >= 265s) ativa o grace period de 10s antes da cutscene."""
+        cena = GameplayScene()
+        cena.spawner.tempo_elite = 265.0
+        cena.spawner.bosses_spawnados_indices = {0, 1, 2, 3}
+
+        cena.loop(dt=0.05)
+        self.assertTrue(cena.boss_grace_period_ativo)
+        self.assertFalse(cena.boss_cutscene_ativa)
+
 
 if __name__ == "__main__":
     unittest.main()

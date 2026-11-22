@@ -647,11 +647,14 @@ class ModalLevelUp:
             if self.cena and hasattr(self.cena, "pausado"):
                 self.cena.pausado = False
 
-            # Se o jogador atingiu o nível máximo (12) e completou os upgrades, inicia a cutscene do Chefe Final
+            # Se o jogador atingiu o nível máximo (12) e completou os upgrades, inicia o grace period antes do Chefe Final
             nivel_max = getattr(getattr(self.jogador, "sistema_xp", None), "nivel_max", 12) if self.jogador else 12
             if self.jogador and self.jogador.nivel >= nivel_max:
-                if self.cena and hasattr(self.cena, "iniciar_boss_cutscene"):
-                    self.cena.iniciar_boss_cutscene()
+                if self.cena:
+                    if hasattr(self.cena, "iniciar_boss_grace_period"):
+                        self.cena.iniciar_boss_grace_period()
+                    elif hasattr(self.cena, "iniciar_boss_cutscene"):
+                        self.cena.iniciar_boss_cutscene()
 
         return True
 

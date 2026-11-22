@@ -15,7 +15,7 @@ import os
 import sys
 import json
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["SDL_AUDIODRIVER"] = "dummy"
@@ -66,16 +66,16 @@ class TestMenuConfigsLogicAndNavigation(unittest.TestCase):
         """Configurações travadas não devem permitir alteração de valor ou ciclo de opções."""
         # fps_cap inicia bloqueada
         self.assertFalse(self.gerenciador.is_desbloqueada("fps_cap"))
-        self.assertEqual(self.gerenciador.obter_valor("fps_cap"), "60")
+        self.assertEqual(self.gerenciador.obter_valor("fps_cap"), "ilimitado")
 
-        # Tentativa de alterar pelo menu deve retornar False e manter o padrão neutro 60 FPS
+        # Tentativa de alterar pelo menu deve retornar False e manter o padrão neutro Ilimitado
         sucesso_alt = self.menu.alterar_valor_gameplay("fps_cap", "15")
         self.assertFalse(sucesso_alt)
-        self.assertEqual(self.gerenciador.obter_valor("fps_cap"), "60")
+        self.assertEqual(self.gerenciador.obter_valor("fps_cap"), "ilimitado")
 
         sucesso_ciclo = self.menu.ciclar_opcao_gameplay("fps_cap", 1)
         self.assertFalse(sucesso_ciclo)
-        self.assertEqual(self.gerenciador.obter_valor("fps_cap"), "60")
+        self.assertEqual(self.gerenciador.obter_valor("fps_cap"), "ilimitado")
 
     def test_unlocked_configs_modify_and_apply_in_real_time(self):
         """Configurações desbloqueadas devem ser alteradas livremente e impactar os modificadores."""
@@ -90,9 +90,9 @@ class TestMenuConfigsLogicAndNavigation(unittest.TestCase):
         self.assertAlmostEqual(mods.dano_inimigos_mult, 0.7225)
         self.assertAlmostEqual(mods.vel_inimigos_mult, 0.81)
 
-        # Cicla opção para a próxima (deve voltar para 60)
+        # Cicla opção para a próxima (deve voltar para ilimitado)
         self.menu.ciclar_opcao_gameplay("fps_cap", 1)
-        self.assertEqual(self.gerenciador.obter_valor("fps_cap"), "60")
+        self.assertEqual(self.gerenciador.obter_valor("fps_cap"), "ilimitado")
 
     def test_system_settings_sliders_and_selectors(self):
         """Valida ajustes na aba de sistema (3 sliders de áudio: master, música e SFX)."""
@@ -190,6 +190,62 @@ class TestMenuConfigsIntegrationAndPersistence(unittest.TestCase):
         # Desenha Aba 1
         menu.alternar_aba(1)
         menu.draw(screen)
+
+    def test_botao_menu_principal_apenas_em_jogo_e_clique_retorna_ao_menu(self):
+        """Verifica que o botão MENU PRINCIPAL só existe em_jogo=True e retorna ao Menu Principal ao clicar."""
+        gerenciador = GerenciadorConfiguracoes()
+
+        # No Menu Principal (em_jogo=False), não deve existir botão MENU PRINCIPAL
+        menu_principal = MenuConfigs(gerenciador, em_jogo=False)
+        _, _, _, btn_menu_off = menu_principal._obter_rects_barra_topo()
+        self.assertIsNone(btn_menu_off)
+
+        # Em jogo (em_jogo=True), o botão deve existir e acionar _voltar_menu() da cena
+        cena_mock = MagicMock()
+        menu_em_jogo = MenuConfigs(gerenciador, em_jogo=True, cena=cena_mock)
+        menu_em_jogo.abrir()
+        _, _, _, btn_menu_on = menu_em_jogo._obter_rects_barra_topo()
+        self.assertIsNotNone(btn_menu_on)
+
+        mouse_mock = MagicMock()
+        mouse_mock.get_position.return_value = btn_menu_on.center
+        mouse_mock.button_down.side_effect = lambda b: b == 1
+
+        with patch("src.ui.menu_configs.GerenciadorConfiguracoes.salvar_arquivo", return_value=True):
+            menu_em_jogo.update(0.016, teclado=None, mouse=mouse_mock)
+
+        self.assertFalse(menu_em_jogo.ativo)
+        cena_mock._voltar_menu.assert_called_once()
+
+    def test_overlay_pausa_botoes_clicaveis_continuar_e_menu(self):
+        """Verifica que os botões do overlay de pausa em GameplayScene respondem a cliques do mouse."""
+        from src.cenas.gameplay import GameplayScene
+
+        cena = GameplayScene()
+        cena.pausado = True
+        cena.menu_configs.ativo = False
+        cena.modal_level_up.ativo = False
+        cena.modal_overclock.ativo = False
+        if hasattr(cena, "menu_debug"):
+            cena.menu_debug.ativo = False
+
+        btn_cont_rect, btn_menu_rect = cena._obter_rects_overlay_pausa()
+
+        mouse_mock = MagicMock()
+        mouse_mock.button_down.side_effect = lambda b: b == 1
+        cena.mouse = mouse_mock
+
+        # Clique em Continuar Partida despausa o jogo
+        mouse_mock.get_position.return_value = btn_cont_rect.center
+        cena.update(0.016)
+        self.assertFalse(cena.pausado)
+
+        # Clique em Menu Principal chama _voltar_menu
+        cena.pausado = True
+        mouse_mock.get_position.return_value = btn_menu_rect.center
+        with patch.object(cena, "_voltar_menu") as mock_voltar:
+            cena.update(0.016)
+            mock_voltar.assert_called_once()
 
 
 if __name__ == "__main__":

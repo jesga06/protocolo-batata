@@ -169,6 +169,24 @@ class MenuConfigs:
         self.cooldown_input = 0.25
         self._tocar_som("sfx_btn_click")
 
+    def _obter_rects_barra_topo(self) -> tuple[pygame.Rect, pygame.Rect, pygame.Rect, Optional[pygame.Rect]]:
+        """Retorna os retângulos das abas, botão Fechar e botão Menu Principal (quando em jogo)."""
+        ox = getattr(self, "offset_x", (LARGURA_TELA - 800) // 2)
+        oy = getattr(self, "offset_y", (ALTURA_TELA - 600) // 2)
+        aba0_rect = pygame.Rect(ox + 50, oy + 68, 200, 32)
+        aba1_rect = pygame.Rect(ox + 260, oy + 68, 200, 32)
+        btn_fechar_rect = pygame.Rect(ox + 650, oy + 68, 105, 32)
+        btn_menu_rect = pygame.Rect(ox + 495, oy + 68, 145, 32) if self.em_jogo else None
+        return aba0_rect, aba1_rect, btn_fechar_rect, btn_menu_rect
+
+    def sair_para_menu(self):
+        """Salva configurações, fecha o menu e retorna ao Menu Principal durante uma partida."""
+        if not self.em_jogo:
+            return
+        self.fechar()
+        if self.cena and hasattr(self.cena, "_voltar_menu"):
+            self.cena._voltar_menu()
+
     def fechar(self):
         """Fecha o menu de configurações e persiste as alterações em disco."""
         self.ativo = False
@@ -306,12 +324,10 @@ class MenuConfigs:
             mouse_clicado = True
         self._mouse_pressionado_anterior = pressionado_agora
 
-        # 3. Processamento dos Cliques nas Abas e Botão Fechar
+        # 3. Processamento dos Cliques nas Abas, Menu Principal (em jogo) e Botão Fechar
         ox = getattr(self, "offset_x", (LARGURA_TELA - 800) // 2)
         oy = getattr(self, "offset_y", (ALTURA_TELA - 600) // 2)
-        aba0_rect = pygame.Rect(ox + 50, oy + 68, 200, 32)
-        aba1_rect = pygame.Rect(ox + 260, oy + 68, 200, 32)
-        btn_fechar_rect = pygame.Rect(ox + 650, oy + 68, 105, 32)
+        aba0_rect, aba1_rect, btn_fechar_rect, btn_menu_rect = self._obter_rects_barra_topo()
 
         if mouse_clicado:
             if aba0_rect.collidepoint(mx, my):
@@ -319,6 +335,9 @@ class MenuConfigs:
                 return
             elif aba1_rect.collidepoint(mx, my):
                 self.alternar_aba(1)
+                return
+            elif btn_menu_rect is not None and btn_menu_rect.collidepoint(mx, my):
+                self.sair_para_menu()
                 return
             elif btn_fechar_rect.collidepoint(mx, my):
                 self.fechar()
@@ -479,9 +498,7 @@ class MenuConfigs:
         screen.blit(sub_surf, (ox + 50, oy + 52))
 
         # 4. Barra de Abas [ GAMEPLAY ] e [ SISTEMA ]
-        aba0_rect = pygame.Rect(ox + 50, oy + 68, 200, 32)
-        aba1_rect = pygame.Rect(ox + 260, oy + 68, 200, 32)
-        btn_fechar_rect = pygame.Rect(ox + 650, oy + 68, 105, 32)
+        aba0_rect, aba1_rect, btn_fechar_rect, btn_menu_rect = self._obter_rects_barra_topo()
 
         # Aba 0: Gameplay
         cor_aba0 = (38, 48, 68) if self.aba_atual == 0 else (26, 30, 42)
@@ -498,6 +515,13 @@ class MenuConfigs:
         pygame.draw.rect(screen, cor_borda1, aba1_rect, width=2 if self.aba_atual == 1 else 1, border_radius=4)
         t_aba1 = self._fonte_aba.render("SISTEMA (ÁUDIO)", True, DOURADO if self.aba_atual == 1 else BRANCO)
         screen.blit(t_aba1, t_aba1.get_rect(center=aba1_rect.center))
+
+        # Botão Sair para o Menu Principal (apenas durante gameplay)
+        if btn_menu_rect is not None:
+            pygame.draw.rect(screen, (52, 34, 24), btn_menu_rect, border_radius=4)
+            pygame.draw.rect(screen, LARANJA_ALERTA, btn_menu_rect, width=1, border_radius=4)
+            t_menu = self._fonte_aba.render("MENU PRINCIPAL", True, DOURADO)
+            screen.blit(t_menu, t_menu.get_rect(center=btn_menu_rect.center))
 
         # Botão Fechar [ESC]
         pygame.draw.rect(screen, (45, 30, 35), btn_fechar_rect, border_radius=4)
