@@ -103,7 +103,7 @@ class TestStage1ConstantsAndWindow(unittest.TestCase):
         self.assertAlmostEqual(DASH_MULT_VEL, 2.6)
         self.assertAlmostEqual(DASH_IFRAMES_BASE, 0.35)
         self.assertAlmostEqual(DASH_COOLDOWN, 1.8)
-        self.assertEqual(DASH_PARRY_META, 100)
+        self.assertEqual(DASH_PARRY_META, 50)
 
     def test_janela_update_clamps_dt_to_dt_clamp_max(self):
         j = Janela(largura_virtual=1280, altura_virtual=720, titulo="Clamp Test")
@@ -138,20 +138,20 @@ class TestParryPersistenceAndDashUnlock(unittest.TestCase):
                 self.assertEqual(gc.estatisticas["parries_total"], 0)
                 self.assertFalse(gc.estatisticas["dash_desbloqueado"])
 
-                # 1..99 do not unlock dash; 100 unlocks dash; 101 does not re-trigger unlock
-                for i in range(1, 101):
+                # 1..49 do not unlock dash; 50 unlocks dash; 51 does not re-trigger unlock
+                for i in range(1, 51):
                     total, unlocked = gc.registrar_parry(meta=DASH_PARRY_META)
                     self.assertEqual(total, i)
-                    self.assertEqual(unlocked, i == 100)
+                    self.assertEqual(unlocked, i == 50)
 
-                total101, unlocked101 = gc.registrar_parry(meta=DASH_PARRY_META)
-                self.assertEqual(total101, 101)
-                self.assertFalse(unlocked101)
+                total51, unlocked51 = gc.registrar_parry(meta=DASH_PARRY_META)
+                self.assertEqual(total51, 51)
+                self.assertFalse(unlocked51)
 
                 # Reload from disk and verify persistence
                 gc_reloaded = GerenciadorConfiguracoes()
                 self.assertTrue(gc_reloaded.carregar_arquivo(save_path))
-                self.assertEqual(gc_reloaded.estatisticas["parries_total"], 101)
+                self.assertEqual(gc_reloaded.estatisticas["parries_total"], 51)
                 self.assertTrue(gc_reloaded.estatisticas["dash_desbloqueado"])
             finally:
                 constantes.SAVE_FILE_PATH = old_save_path
@@ -293,6 +293,11 @@ class TestMeleeParryAndPistolOverload(unittest.TestCase):
                 rebatidos = cena._processar_parry_ativo(melee, cx, cy, angulo_mira=0.0)
                 self.assertEqual(len(rebatidos), 1)
                 self.assertAlmostEqual(cena.hitstop_timer, 0.10, places=4)
+                # "PARRY!" deve aparecer apenas via TextoDano em sistema_particulas (sem toast duplicado)
+                parry_toasts = [t for t in cena.toasts_coleta if t.get("texto") == "PARRY!"]
+                self.assertEqual(parry_toasts, [])
+                parry_callouts = [t for t in cena.sistema_particulas.textos_dano if t.texto == "PARRY!"]
+                self.assertEqual(len(parry_callouts), 1)
 
                 # Now simulate reflected projectile hitting direct enemy + nearby enemy within 90px
                 e_direct = InimigoPadrao(x=cx + 200.0, y=cy - 14.0)
@@ -330,12 +335,16 @@ class TestMeleeParryAndPistolOverload(unittest.TestCase):
         melee.parry_janela_restante = 0.0
 
         cena.teclado = _DummyKeyboard()
+        # LMB dispara tanto a Pistola (Slot 2) quanto o Rifle (Slot 3) simultaneamente (Dual-Wield B1)
+        cena.mouse = _DummyMouse(pos=(700, 360), left=True, left_down=True)
+        cena.update(0.016)
+        self.assertGreaterEqual(len(cena.projeteis), 2)
+
+        # RMB permanece exclusivo para Parry Rápido mesmo com BIOS Modding ativo
+        melee.parry_janela_restante = 0.0
         cena.mouse = _DummyMouse(pos=(700, 360), right=True, right_down=True)
         cena.update(0.016)
-
-        # With BIOS Modding active + Slot 3 armed, RMB fires Slot 3 instead of triggering Melee quick-parry
-        self.assertEqual(melee.parry_janela_restante, 0.0)
-        self.assertGreaterEqual(len(cena.projeteis), 1)
+        self.assertGreater(melee.parry_janela_restante, 0.0)
 
     def test_pistol_4th_shot_2_2x_and_charge_pips(self):
         pistola = Pistola(dano=10, cooldown=0.0)
@@ -519,6 +528,14 @@ class TestPhase2ParryDuelNinjaTankAndBoss(unittest.TestCase):
         self.assertAlmostEqual(foguete.velocidade, 140.0)
         foguete.update(0.5)
         self.assertAlmostEqual(foguete.velocidade, 480.0)
+
+        # 7. ModalOverclock never shows duplicates or already-owned BIOS upgrades
+        cena.jogador.overclocks_adquiridos = {"multithreading", "refrigeracao", "overvolt", "bios_modding"}
+        cena.modal_overclock.abrir()
+        ids_ofertados = [c["id"] for c in cena.modal_overclock.cards_sorteados]
+        self.assertEqual(len(ids_ofertados), 2)
+        self.assertEqual(len(set(ids_ofertados)), 2)
+        self.assertTrue(all(cid not in cena.jogador.overclocks_adquiridos for cid in ids_ofertados))
 
 
 if __name__ == "__main__":

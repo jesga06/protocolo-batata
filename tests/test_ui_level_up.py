@@ -104,10 +104,12 @@ class TestModalLevelUpTierAndMilestone(unittest.TestCase):
         self.assertIsNotNone(self.modal.config_pity_buffer)
         self.assertEqual(self.modal.config_pity_buffer.id, config_ofertada["config_id"])
 
-        # Jogador escolhe um consumível manual se houver, mantendo pity buffer
+        # Jogador escolhe consumíveis manuais, mantendo pity buffer
         self.assertIsNotNone(self.modal.config_pity_buffer)
         self.modal.cards_sorteados[0] = {"tipo": "cura", "valor": 10, "nome": "Cura", "categoria": "Consumível"}
+        self.modal.cards_sorteados[1] = {"tipo": "cura", "valor": 10, "nome": "Cura 2", "categoria": "Consumível"}
         self.modal.selecionar_card(0)
+        self.modal.selecionar_card(1)
         self.assertFalse(self.modal.ativo)
         self.assertFalse(self.gerenciador.is_desbloqueada(self.modal.config_pity_buffer.id))
         # Pity buffer deve permanecer ativo

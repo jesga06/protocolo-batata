@@ -318,6 +318,42 @@ class TestNativeDPIProjection(unittest.TestCase):
         finally:
             janela.mouse = old_mouse
 
+    def test_fullscreen_resize_sync_e_tamanho_desktop(self):
+        """Em fullscreen, eventos de resize atualizam real_screen sem sobrescrever largura_janela_atual."""
+        from unittest.mock import patch
+
+        janela = Janela.get_instance()
+        old_fs = janela.is_fullscreen
+        old_real = janela.real_screen
+        old_screen = janela.screen
+        old_w = janela.largura_janela_atual
+        old_h = janela.altura_janela_atual
+        try:
+            janela.is_fullscreen = True
+            janela.largura_janela_atual = 1280
+            janela.altura_janela_atual = 720
+            fake_surf = pygame.Surface((1920, 1080))
+            ev = pygame.event.Event(pygame.VIDEORESIZE, {"w": 1920, "h": 1080})
+            with patch("pygame.event.get", return_value=[ev]), \
+                 patch("pygame.display.get_surface", return_value=fake_surf), \
+                 patch.object(janela, "_set_mode_seguro", return_value=fake_surf) as mock_mode:
+                janela.processar_eventos()
+                mock_mode.assert_not_called()
+            self.assertEqual(janela.real_screen.get_size(), (1920, 1080))
+            self.assertEqual((janela.largura_janela_atual, janela.altura_janela_atual), (1280, 720))
+
+            with patch.object(janela, "_is_dummy_driver", return_value=False), \
+                 patch("pygame.display.get_desktop_sizes", return_value=[(2560, 1440)]):
+                self.assertEqual(janela._obter_tamanho_fullscreen(), (0, 0))
+                self.assertEqual((janela.tela_nativa_largura, janela.tela_nativa_altura), (2560, 1440))
+        finally:
+            janela.is_fullscreen = old_fs
+            janela.real_screen = old_real
+            janela.screen = old_screen
+            janela.largura_janela_atual = old_w
+            janela.altura_janela_atual = old_h
+            janela._atualizar_metricas_viewport()
+
 
 if __name__ == "__main__":
     unittest.main()

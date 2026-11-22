@@ -252,14 +252,14 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         """Valida que adicionar_xp, ganhar_xp e xp_necessario funcionam de forma idêntica."""
         from src.sistemas.sistema_xp import SistemaXP
         xp_sys = SistemaXP()
-        self.assertEqual(xp_sys.xp_necessario, 103)
-        self.assertEqual(xp_sys.xp_para_proximo_nivel(), 103)
+        self.assertEqual(xp_sys.xp_necessario, 77)
+        self.assertEqual(xp_sys.xp_para_proximo_nivel(), 77)
 
         # Testa ganhar_xp
-        niveis = xp_sys.ganhar_xp(103)
+        niveis = xp_sys.ganhar_xp(77)
         self.assertEqual(xp_sys.nivel, 2)
         self.assertIn(2, niveis)
-        self.assertEqual(xp_sys.xp_necessario, 192)
+        self.assertEqual(xp_sys.xp_necessario, 144)
 
     def test_hud_xp_and_boss_bar_vertical_separation(self):
         """Valida que a barra de XP (y=58..68) e o texto/barra do Mini-Boss (y=74..102) não se sobrepõem."""

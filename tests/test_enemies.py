@@ -119,17 +119,17 @@ class TestInimigoPadraoIAEColisao(unittest.TestCase):
 class TestSistemaSpawn(unittest.TestCase):
     def test_escalonamento_intervalo_e_lote(self):
         spawner = SistemaSpawn()
-        # t = 0s -> 1.75 * 0.67 = 1.1725s, lote = 2
-        self.assertAlmostEqual(spawner.intervalo_spawn(0.0), 1.75 * 0.67)
-        self.assertEqual(spawner.tamanho_lote(0.0), 2)
+        # t = 0s -> 2.50 * 0.67 = 1.675s, lote = round(2 * 0.70) = 1
+        self.assertAlmostEqual(spawner.intervalo_spawn(0.0), 2.50 * 0.67)
+        self.assertEqual(spawner.tamanho_lote(0.0), 1)
 
-        # t = 50s -> 1.75 - 0.012 * 50 = 1.15s, lote = min(14, 2 + 2) = 4
-        self.assertAlmostEqual(spawner.intervalo_spawn(50.0), 1.15)
-        self.assertEqual(spawner.tamanho_lote(50.0), 4)
+        # t = 50s -> 2.50 - 0.012 * 50 = 1.90s, lote = round(4 * 0.70) = 3
+        self.assertAlmostEqual(spawner.intervalo_spawn(50.0), 1.90)
+        self.assertEqual(spawner.tamanho_lote(50.0), 3)
 
-        # t = 100s -> 1.75 - 0.012 * 100 = 0.55s, lote = min(14, 2 + 5) = 7
-        self.assertAlmostEqual(spawner.intervalo_spawn(100.0), 0.55)
-        self.assertEqual(spawner.tamanho_lote(100.0), 7)
+        # t = 100s -> 2.50 - 0.012 * 100 = 1.30s, lote = round(7 * 0.70) = 5
+        self.assertAlmostEqual(spawner.intervalo_spawn(100.0), 1.30)
+        self.assertEqual(spawner.tamanho_lote(100.0), 5)
 
     def test_spawner_gera_inimigos_e_respeita_teto(self):
         spawner = SistemaSpawn(max_ativos=5)
@@ -193,8 +193,8 @@ class TestSistemaSpawn(unittest.TestCase):
     def test_spawner_tempo_extremo(self):
         """Verifica que tempo extremo (ex: 30 minutos) não estoura limites."""
         spawner = SistemaSpawn(max_ativos=60)
-        self.assertEqual(spawner.intervalo_spawn(1800.0), 0.45)
-        self.assertEqual(spawner.tamanho_lote(1800.0), 14)
+        self.assertEqual(spawner.intervalo_spawn(1800.0), 0.65)
+        self.assertEqual(spawner.tamanho_lote(1800.0), 10)
 
     def test_spawner_escalonamento_30s_e_rush_wave_independente(self):
         """Valida escalonamento de stats a cada 30s e Rush Wave aos 45s sem resetar timer_spawn."""
@@ -204,7 +204,7 @@ class TestSistemaSpawn(unittest.TestCase):
         spawner.timer_rush = 44.9
         # Dispara Rush Wave ao cruzar 45.0s, mantendo timer_spawn intacto (0.2s)
         gerados = spawner.update(dt=0.2, camera_x=0.0, camera_y=0.0, total_inimigos_vivos=0)
-        self.assertGreaterEqual(len(gerados), 8)
+        self.assertGreaterEqual(len(gerados), 6)
         self.assertAlmostEqual(spawner.timer_spawn, 0.2, places=4)
         # Stats devem estar escalados para etapa 30s (HP +12%, Vel +6%, Dano +8%)
         for inim in gerados:

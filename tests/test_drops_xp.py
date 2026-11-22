@@ -106,10 +106,10 @@ class TestXPProgressionSystem(unittest.TestCase):
           - Nível 20 -> 1665 XP (base 2220 * 0.75)
         """
         xp_sys = SistemaXP(nivel_inicial=1, nivel_maximo=20)
-        self.assertEqual(xp_sys.xp_para_proximo_nivel(1), 103)
-        self.assertEqual(xp_sys.xp_para_proximo_nivel(2), 192)
-        self.assertEqual(xp_sys.xp_para_proximo_nivel(3), 317)
-        self.assertEqual(xp_sys.xp_para_proximo_nivel(4), 478)
+        self.assertEqual(xp_sys.xp_para_proximo_nivel(1), 77)
+        self.assertEqual(xp_sys.xp_para_proximo_nivel(2), 144)
+        self.assertEqual(xp_sys.xp_para_proximo_nivel(3), 238)
+        self.assertEqual(xp_sys.xp_para_proximo_nivel(4), 358)
         self.assertEqual(xp_sys.xp_para_proximo_nivel(10), 2200)
         self.assertEqual(xp_sys.xp_para_proximo_nivel(11), 1960)
         self.assertEqual(xp_sys.xp_para_proximo_nivel(19), 5410)
@@ -117,13 +117,13 @@ class TestXPProgressionSystem(unittest.TestCase):
 
     def test_multi_level_overflow_carryover(self):
         xp_sys = SistemaXP(nivel_inicial=1, nivel_maximo=20)
-        subidas = xp_sys.adicionar_xp(315)  # 103 + 192 = 295 -> sobra 20
+        subidas = xp_sys.adicionar_xp(241)  # 77 + 144 = 221 -> sobra 20
 
         self.assertEqual(subidas, [2, 3])
         self.assertEqual(xp_sys.nivel, 3)
         self.assertEqual(xp_sys.xp_atual, 20)
-        self.assertEqual(xp_sys.xp_total, 315)
-        self.assertEqual(xp_sys.xp_para_proximo_nivel(), 317)
+        self.assertEqual(xp_sys.xp_total, 241)
+        self.assertEqual(xp_sys.xp_para_proximo_nivel(), 238)
 
     def test_level_up_callback_notification(self):
         """Valida se o callback registrado é acionado a cada nível ganho."""
