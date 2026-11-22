@@ -200,6 +200,8 @@ class GerenciadorAudio:
 
         # Sons sintetizados proceduralmente
         self._som_parry_clang: Optional[pygame.mixer.Sound] = None
+        self._sons_parry_clang_pitch: dict[str, Optional[pygame.mixer.Sound]] = {}
+        self._som_parry_whiff: Optional[pygame.mixer.Sound] = None
         self._som_tiro_sobrecarregado: Optional[pygame.mixer.Sound] = None
 
         # Estado de rampa suave de volume (~20 ms)
@@ -261,7 +263,13 @@ class GerenciadorAudio:
             return False
 
         self._pre_gerar_pools_pitch()
-        self._som_parry_clang = self._sintetizar_parry_clang()
+        self._som_parry_clang = self._sintetizar_parry_clang(1.0)
+        self._sons_parry_clang_pitch = {
+            "1.0": self._som_parry_clang,
+            "1.25": self._sintetizar_parry_clang(1.25),
+            "1.5": self._sintetizar_parry_clang(1.5),
+        }
+        self._som_parry_whiff = self._sintetizar_parry_whiff()
         self._som_tiro_sobrecarregado = self._sintetizar_tiro_sobrecarregado()
         return True
 
@@ -311,8 +319,8 @@ class GerenciadorAudio:
             return []
         return variantes
 
-    def _sintetizar_parry_clang(self) -> Optional[pygame.mixer.Sound]:
-        """Sintetiza clang metálico dual-tone de parry via numpy + sndarray."""
+    def _sintetizar_parry_clang(self, pitch_mult: float = 1.0) -> Optional[pygame.mixer.Sound]:
+        """Sintetiza clang metálico dual-tone de parry via numpy + sndarray com variação de pitch."""
         if not self._mixer_disponivel:
             return None
         try:
@@ -320,10 +328,10 @@ class GerenciadorAudio:
             n = max(1, int(round(self._taxa_mixer * duracao)))
             t = np.linspace(0.0, duracao, n, endpoint=False, dtype=np.float32)
 
-            # Dois tons metálicos inarmônicos + transiente agudo curto
-            tom_principal = np.sin(2.0 * np.pi * 1180.0 * t)
-            tom_metalico = np.sin(2.0 * np.pi * 2890.0 * t)
-            transiente = np.sin(2.0 * np.pi * 4320.0 * t) * np.exp(-t * 50.0)
+            p = float(pitch_mult)
+            tom_principal = np.sin(2.0 * np.pi * 1180.0 * p * t)
+            tom_metalico = np.sin(2.0 * np.pi * 2890.0 * p * t)
+            transiente = np.sin(2.0 * np.pi * 4320.0 * p * t) * np.exp(-t * 50.0)
 
             env_corpo = np.exp(-t * 16.0)
             ataque = np.minimum(1.0, t / 0.002)
@@ -335,6 +343,28 @@ class GerenciadorAudio:
             pico = float(np.max(np.abs(onda)))
             if pico > 1e-6:
                 onda = (onda / pico) * 0.85
+
+            arr = _float32_para_array_mixer(onda.astype(np.float32), self._canais_mixer)
+            return pygame.sndarray.make_sound(arr)
+        except Exception:
+            return None
+
+    def _sintetizar_parry_whiff(self) -> Optional[pygame.mixer.Sound]:
+        """Sintetiza efeito sonoro descendente de falha/whiff no parry."""
+        if not self._mixer_disponivel:
+            return None
+        try:
+            duracao = 0.26
+            n = max(1, int(round(self._taxa_mixer * duracao)))
+            t = np.linspace(0.0, duracao, n, endpoint=False, dtype=np.float32)
+
+            freq = 290.0 - (175.0 * (t / duracao))
+            fase = 2.0 * np.pi * np.cumsum(freq) / float(self._taxa_mixer)
+            env = np.minimum(1.0, t / 0.01) * np.exp(-t * 8.5)
+            onda = (0.65 * np.sin(fase) + 0.35 * np.sin(fase * 1.5)) * env
+            pico = float(np.max(np.abs(onda)))
+            if pico > 1e-6:
+                onda = (onda / pico) * 0.75
 
             arr = _float32_para_array_mixer(onda.astype(np.float32), self._canais_mixer)
             return pygame.sndarray.make_sound(arr)
@@ -450,9 +480,18 @@ class GerenciadorAudio:
 
         return self._reproduzir_som(som, volume_mult=volume_mult)
 
-    def tocar_parry_clang(self, volume_mult: float = 1.0) -> Optional[pygame.mixer.Channel]:
-        """Reproduz o clang metálico sintetizado de parry (no-op seguro sem mixer)."""
-        return self._reproduzir_som(self._som_parry_clang, volume_mult=volume_mult)
+    def tocar_parry_clang(self, volume_mult: float = 1.0, pitch_mult: float = 1.0) -> Optional[pygame.mixer.Channel]:
+        """Reproduz o clang metálico sintetizado de parry (com variação de pitch para duelos)."""
+        som = self._som_parry_clang
+        if pitch_mult >= 1.4 and self._sons_parry_clang_pitch.get("1.5") is not None:
+            som = self._sons_parry_clang_pitch["1.5"]
+        elif pitch_mult >= 1.2 and self._sons_parry_clang_pitch.get("1.25") is not None:
+            som = self._sons_parry_clang_pitch["1.25"]
+        return self._reproduzir_som(som, volume_mult=volume_mult)
+
+    def tocar_parry_whiff(self, volume_mult: float = 1.0) -> Optional[pygame.mixer.Channel]:
+        """Reproduz o efeito sonoro de falha/whiff no parry (no-op seguro sem mixer)."""
+        return self._reproduzir_som(self._som_parry_whiff, volume_mult=volume_mult)
 
     def tocar_tiro_sobrecarregado(self, volume_mult: float = 1.0) -> Optional[pygame.mixer.Channel]:
         """Reproduz o estalo sintetizado do 4º tiro sobrecarregado (no-op seguro sem mixer)."""
@@ -682,3 +721,11 @@ class AnalisadorFFTBoss:
             saida.append(suavizado)
 
         return saida
+
+    def obter_energia_grave(self, pos_ms: float, dt: float = 0.016, num_bandas: int = 28) -> float:
+        """Retorna a energia normalizada [0.0, 1.0] das bandas graves (sub-bass/kick) da trilha do Boss."""
+        bandas = self.obter_bandas(pos_ms, dt=dt, num_bandas=num_bandas)
+        if not bandas:
+            return 0.0
+        graves = bandas[:min(5, len(bandas))]
+        return float(sum(graves) / float(len(graves)))
