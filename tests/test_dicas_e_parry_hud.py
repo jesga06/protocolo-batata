@@ -42,7 +42,7 @@ class TestDicasEParryHUD(unittest.TestCase):
         self.assertEqual(niveis, [2, 3, 4, 5])
         self.assertEqual(xp_sys.nivel, 5)
 
-    def test_miniboss_abate_coleta_xp_automaticamente_com_50_porcento_extra(self):
+    def test_miniboss_abate_coleta_xp_automaticamente(self):
         from src.cenas.gameplay import GameplayScene
         from src.entidades.inimigo_padrao import InimigoPadrao
 

@@ -190,7 +190,7 @@ class HUD:
         fonte_titulo = self._obter_fonte_nativa("sans", 11, bold=True, scale=s)
         fonte_cont = self._obter_fonte_nativa("mono", 11, bold=True, scale=s)
 
-        linha_1 = "Dê parry 50 vezes e desbloqueie algo"
+        linha_1 = "Dê parry 50 vezes para desbloquear o dash"
         linha_2 = f"Quantidade de Parries: {max(0, int(parries_total))}"
 
         surf_1 = fonte_titulo.render(linha_1, True, COR_TEXTO_SUAVE)
