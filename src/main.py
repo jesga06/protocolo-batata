@@ -70,7 +70,9 @@ def inicializar_jogo():
     )
     if getattr(janela, "vsync_ativo", True) != vsync_inicial and hasattr(janela, "definir_vsync"):
         janela.definir_vsync(vsync_inicial)
-    janela.entrar_fullscreen()
+    # Nunca força FULLSCREEN na inicialização. Alguns drivers Windows (especialmente
+    # na transição desktop -> modo exclusivo) aceitam set_mode(), mas não apresentam
+    # nenhum frame. F11/Alt+Enter continua disponível sem tornar o jogo injogável.
     janela.set_background_color((18, 22, 30))
 
     cena_inicial = MenuPrincipalScene()

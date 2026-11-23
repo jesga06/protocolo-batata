@@ -703,7 +703,20 @@ class Janela(metaclass=JanelaMeta):
                 self.real_screen.blit(self.screen, (0, 0))
 
         # 4. Apresentação de Vídeo
-        pygame.display.flip()
+        # Alguns drivers SDL/Windows podem falhar em flip() mesmo mantendo o loop ativo.
+        # update() é uma apresentação compatível para este caso.
+        try:
+            pygame.display.flip()
+        except pygame.error as exc:
+            if not getattr(self, "_aviso_apresentacao", False):
+                print(f"[Protocolo Batata] pygame.display.flip falhou: {exc}. Usando pygame.display.update().", file=sys.stderr)
+                self._aviso_apresentacao = True
+            try:
+                pygame.display.update()
+            except pygame.error as fallback_exc:
+                if not getattr(self, "_aviso_fallback_apresentacao", False):
+                    print(f"[Protocolo Batata] pygame.display.update também falhou: {fallback_exc}", file=sys.stderr)
+                    self._aviso_fallback_apresentacao = True
 
         # 5. Limpeza do buffer para o próximo frame
         self.screen.fill(self.cor_fundo)

@@ -4,6 +4,7 @@ Testes Unitários para o Gerenciador de Janela e Escalonamento Nativo (src/utils
 
 import unittest
 import pygame
+from unittest.mock import patch
 from src.utils.janela import Janela
 
 
@@ -91,6 +92,16 @@ class TestJanelaNativa(unittest.TestCase):
         janela._clock.tick.return_value = 4
         janela.update(fps_alvo=0)
         janela._clock.tick.assert_called_once_with(0)
+
+    def test_flip_falha_usa_update_sem_quebrar_loop(self):
+        janela = Janela.get_instance()
+        janela._aviso_apresentacao = False
+        janela._aviso_fallback_apresentacao = False
+        with patch("pygame.display.flip", side_effect=pygame.error("driver test")) as flip_mock, \
+             patch("pygame.display.update") as update_mock:
+            janela.update(fps_alvo=30)
+            flip_mock.assert_called_once()
+            update_mock.assert_called_once()
 
 
 class TestNativeDPIProjection(unittest.TestCase):
