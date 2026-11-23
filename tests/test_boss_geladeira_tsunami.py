@@ -93,18 +93,18 @@ class TestTier1FeatureCoverage(unittest.TestCase):
     # --- R2: XP Curve Smoothing ---
     def test_t1_xp_curve_smoothing_values(self):
         """Valida que para nível > 10, o XP necessário é reduzido em 25%: int(round(base * 0.75))."""
-        # Níveis 1 a 4: suavizados (-25%); 5 a 10: curva padrão base = 50 + 35*lvl + 18*(lvl^2)
+        # Níveis 1 a 4: suavizados (-50%); 5 a 10: curva padrão base = 50 + 35*lvl + 18*(lvl^2)
         esperados_padrao = {
-            1: 77,
-            2: 144,
-            3: 238,
-            4: 358,
+            1: 52,
+            2: 96,
+            3: 158,
+            4: 239,
             5: 675,
             10: 2200
         }
         for lvl, val in esperados_padrao.items():
             base = 50 + 35 * lvl + 18 * (lvl ** 2)
-            esperado_calc = int(round(base * 0.75)) if lvl <= 4 else base
+            esperado_calc = int(round(base * 0.50)) if lvl <= 4 else base
             self.assertEqual(SistemaXP.calcular_xp_para_nivel(lvl), esperado_calc)
             self.assertEqual(SistemaXP.calcular_xp_para_nivel(lvl), val)
             self.assertEqual(self.sistema_xp.calcular_xp_necessario(lvl), val)

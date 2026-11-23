@@ -46,7 +46,9 @@ class SistemaXP:
         """
         lvl = int(nivel)
         base = 50 + 35 * lvl + 18 * (lvl ** 2)
-        if lvl <= 4 or lvl > 10:
+        if lvl <= 4:
+            return max(1, int(round(base * 0.50)))
+        if lvl > 10:
             return max(1, int(round(base * 0.75)))
         return int(round(base))
 

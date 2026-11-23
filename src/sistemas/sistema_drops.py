@@ -103,7 +103,7 @@ class SistemaDrops:
             return novos_drops
 
         if is_elite:
-            # 1. Cluster de 50 XP (5 gemas de 10 XP distribuídas em anel)
+            # 1. Cluster de 75 XP (+50%: 5 gemas de 15 XP distribuídas em anel)
             for i in range(5):
                 ang = i * (2.0 * math.pi / 5.0)
                 offset_x = math.cos(ang) * 24.0
@@ -112,7 +112,7 @@ class SistemaDrops:
                     x=x + offset_x - 8.0,
                     y=y + offset_y - 8.0,
                     tipo="xp",
-                    valor=10,
+                    valor=15,
                     tempo_vida=DROP_TEMPO_DESAPARECER,
                     tempo_scavenger=DROP_TEMPO_SCAVENGER_ATIVAR
                 )

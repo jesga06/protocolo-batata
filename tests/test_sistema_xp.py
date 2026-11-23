@@ -30,10 +30,10 @@ class TestSistemaXPProgression(unittest.TestCase):
         base = 35 + 20 * lvl + 10 * (lvl ^ 2)
         """
         valores_esperados_1_a_10 = {
-            1: 77,
-            2: 144,
-            3: 238,
-            4: 358,
+            1: 52,
+            2: 96,
+            3: 158,
+            4: 239,
             5: 675,
             6: 908,
             7: 1177,
@@ -45,7 +45,7 @@ class TestSistemaXPProgression(unittest.TestCase):
         xp_sys = SistemaXP(nivel_inicial=1, nivel_maximo=20)
         for lvl, xp_esperado in valores_esperados_1_a_10.items():
             base_calculada = 50 + 35 * lvl + 18 * (lvl ** 2)
-            calculo_esperado = int(round(base_calculada * 0.75)) if lvl <= 4 else base_calculada
+            calculo_esperado = int(round(base_calculada * 0.50)) if lvl <= 4 else base_calculada
             self.assertEqual(xp_esperado, calculo_esperado)
             self.assertEqual(xp_sys.xp_para_proximo_nivel(lvl), xp_esperado, f"Nível {lvl} falhou")
             self.assertEqual(xp_sys.calcular_xp_necessario(lvl), xp_esperado, f"Nível {lvl} via alias falhou")
@@ -81,7 +81,7 @@ class TestSistemaXPProgression(unittest.TestCase):
     def test_property_xp_necessario_retorna_nivel_atual(self):
         """Verifica se a propriedade xp_necessario reflete o nível corrente."""
         xp_sys = SistemaXP(nivel_inicial=1, nivel_maximo=20)
-        self.assertEqual(xp_sys.xp_necessario, 77)
+        self.assertEqual(xp_sys.xp_necessario, 52)
 
         xp_sys.nivel = 10
         self.assertEqual(xp_sys.xp_necessario, 2200)
@@ -95,21 +95,21 @@ class TestSistemaXPProgression(unittest.TestCase):
     def test_ganho_xp_e_subida_de_nivel_simples(self):
         """Valida avanço para o próximo nível com valor exato."""
         xp_sys = SistemaXP(nivel_inicial=1, nivel_maximo=20)
-        subidas = xp_sys.adicionar_xp(77)
+        subidas = xp_sys.adicionar_xp(52)
 
         self.assertEqual(subidas, [2])
         self.assertEqual(xp_sys.nivel, 2)
         self.assertEqual(xp_sys.xp_atual, 0)
-        self.assertEqual(xp_sys.xp_total, 77)
+        self.assertEqual(xp_sys.xp_total, 52)
 
     def test_multi_level_carryover(self):
         xp_sys = SistemaXP(nivel_inicial=1, nivel_maximo=20)
-        subidas = xp_sys.ganhar_xp(474)  # 77 + 144 + 238 = 459 -> sobra 15
+        subidas = xp_sys.ganhar_xp(321)  # 52 + 96 + 158 = 306 -> sobra 15
 
         self.assertEqual(subidas, [2, 3, 4])
         self.assertEqual(xp_sys.nivel, 4)
         self.assertEqual(xp_sys.xp_atual, 15)
-        self.assertEqual(xp_sys.xp_total, 474)
+        self.assertEqual(xp_sys.xp_total, 321)
 
     def test_teto_nivel_maximo_20(self):
         """Valida que o nível nunca ultrapassa o teto máximo (20)."""

@@ -36,11 +36,24 @@ class TestDicasEParryHUD(unittest.TestCase):
 
     def test_xp_total_ate_nivel_5_reduzido_25_porcento(self):
         total_xp = sum(SistemaXP.calcular_xp_para_nivel(lvl) for lvl in range(1, 5))
-        self.assertEqual(total_xp, 817)
+        self.assertEqual(total_xp, 545)
         xp_sys = SistemaXP(nivel_inicial=1, nivel_maximo=12)
-        niveis = xp_sys.adicionar_xp(817)
+        niveis = xp_sys.adicionar_xp(545)
         self.assertEqual(niveis, [2, 3, 4, 5])
         self.assertEqual(xp_sys.nivel, 5)
+
+    def test_miniboss_abate_coleta_xp_automaticamente_com_50_porcento_extra(self):
+        from src.cenas.gameplay import GameplayScene
+        from src.entidades.inimigo_padrao import InimigoPadrao
+
+        cena = GameplayScene()
+        xp_antes = cena.jogador.sistema_xp.xp_total
+        elite = InimigoPadrao(200, 200, is_elite=True, nome_elite="MINI-BOSS TESTE")
+        cena._registrar_abate_inimigo(elite)
+
+        self.assertEqual(cena.jogador.sistema_xp.xp_total - xp_antes, 75)
+        xp_no_chao = [d for d in cena.sistema_drops.drops if d.tipo == "xp"]
+        self.assertEqual(len(xp_no_chao), 0)
 
     def test_banner_dica_rotacao_e_desenho(self):
         banner = BannerDica(intervalo_rotacao=8.0, indice_inicial=0)
