@@ -5,6 +5,7 @@ __pycache__/
 .venv/
 env/
 venv/
+build/
 
 # Game data / saves
 data/save.json
