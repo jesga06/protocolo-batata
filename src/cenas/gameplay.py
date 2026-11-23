@@ -704,8 +704,7 @@ class GameplayScene(BaseScene):
                 for off_est in (-0.22, 0.22):
                     extras_gerados.append(pr.clonar(
                         vx=math.cos(ang_base + off_est) * pr.velocidade,
-                        vy=math.sin(ang_base + off_est) * pr.velocidade,
-                        dano=pr.dano
+                        vy=math.sin(ang_base + off_est) * pr.velocidade
                     ))
 
             if hasattr(self, "config_sistema") and self.config_sistema is not None and hasattr(self.config_sistema, "registrar_parry"):
@@ -1003,7 +1002,7 @@ class GameplayScene(BaseScene):
                 ))
 
         is_boss_lutando = (self.chefe_final is not None and self.chefe_final.vivo)
-        self.sistema_drops.gerar_drop_morte_inimigo(
+        novos_drops = self.sistema_drops.gerar_drop_morte_inimigo(
             inim.x + getattr(inim, "largura", 28) / 2.0,
             inim.y + getattr(inim, "altura", 28) / 2.0,
             bonus_chance_drop=getattr(mods, "drop_chance_bonus", 0.0) if mods else 0.0,
@@ -1016,6 +1015,22 @@ class GameplayScene(BaseScene):
             modo_boss=is_boss_lutando,
             abate_rapido=abate_rapido
         )
+        if getattr(inim, "is_elite", False) and novos_drops and getattr(self.jogador, "vivo", False):
+            mult_drops = getattr(mods, "drops_valor_mult", 1.0) if mods else 1.0
+            mult_xp = getattr(mods, "xp_ganho_mult", 1.0) if mods else 1.0
+            xp_auto = 0
+            for d in novos_drops:
+                if getattr(d, "tipo", "") == "xp" and not getattr(d, "coletado", False):
+                    d.coletado = True
+                    d.ativo = False
+                    if d in self.sistema_drops.drops:
+                        self.sistema_drops.drops.remove(d)
+                    xp_auto += max(1, int(round(d.valor * mult_drops)))
+            if xp_auto > 0 and hasattr(self.jogador, "ganhar_xp"):
+                self.jogador.ganhar_xp(xp_auto, mult_xp=mult_xp)
+                self.sistema_particulas.emitir_burst_drop(inim_cx, inim_cy, tipo="xp")
+                if hasattr(self, "sistema_audio") and self.sistema_audio is not None:
+                    self.sistema_audio.tocar_sfx("sfx_pickup_xp")
 
     def iniciar_boss_grace_period(self):
         """
