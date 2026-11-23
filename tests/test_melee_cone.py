@@ -41,13 +41,13 @@ class TestMeleeDirectionalCone(unittest.TestCase):
         self.origem_y = 500.0
 
     def test_melee_defaults_match_constants(self):
-        """Verifica se os valores padrão do Melee batem com as constantes de R1."""
+        """Verifica se os valores padrão do Melee batem com as constantes atualizadas."""
         melee_padrao = Melee()
         self.assertEqual(melee_padrao.dano, 10)
         self.assertEqual(melee_padrao.alcance, 109.0)
         self.assertEqual(melee_padrao.knockback_forca, 360.0)
         self.assertEqual(melee_padrao.max_alvos_knockback, 2)
-        self.assertEqual(melee_padrao.arco_graus, 60.0)
+        self.assertEqual(melee_padrao.arco_graus, 90.0)
 
     def test_directional_filtering_in_cone(self):
         """

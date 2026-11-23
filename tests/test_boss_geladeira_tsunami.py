@@ -93,30 +93,31 @@ class TestTier1FeatureCoverage(unittest.TestCase):
     # --- R2: XP Curve Smoothing ---
     def test_t1_xp_curve_smoothing_values(self):
         """Valida que para nível > 10, o XP necessário é reduzido em 25%: int(round(base * 0.75))."""
-        # Níveis 1 a 10: curva padrão base = 20 + 10*lvl + 5*(lvl^2)
+        # Níveis 1 a 4: suavizados (-50%); 5 a 10: curva padrão base = 50 + 35*lvl + 18*(lvl^2)
         esperados_padrao = {
-            1: 35,
-            2: 60,
-            3: 95,
-            4: 140,
-            5: 195,
-            10: 620
+            1: 52,
+            2: 96,
+            3: 158,
+            4: 239,
+            5: 675,
+            10: 2200
         }
         for lvl, val in esperados_padrao.items():
-            base = 20 + 10 * lvl + 5 * (lvl ** 2)
-            self.assertEqual(SistemaXP.calcular_xp_para_nivel(lvl), base)
+            base = 50 + 35 * lvl + 18 * (lvl ** 2)
+            esperado_calc = int(round(base * 0.50)) if lvl <= 4 else base
+            self.assertEqual(SistemaXP.calcular_xp_para_nivel(lvl), esperado_calc)
             self.assertEqual(SistemaXP.calcular_xp_para_nivel(lvl), val)
             self.assertEqual(self.sistema_xp.calcular_xp_necessario(lvl), val)
 
         # Níveis 11 a 20: curva suavizada (25% de desconto)
         esperados_suavizados = {
-            11: 551,   # round((20 + 110 + 605) * 0.75) = round(735 * 0.75) = 551
-            12: 645,   # round((20 + 120 + 720) * 0.75) = round(860 * 0.75) = 645
-            15: 971,   # round((20 + 150 + 1125) * 0.75) = round(1295 * 0.75) = 971
-            20: 1665   # round((20 + 200 + 2000) * 0.75) = round(2220 * 0.75) = 1665
+            11: 1960,
+            12: 2296,
+            15: 3469,
+            20: 5962
         }
         for lvl, val in esperados_suavizados.items():
-            base = 20 + 10 * lvl + 5 * (lvl ** 2)
+            base = 50 + 35 * lvl + 18 * (lvl ** 2)
             calculado = int(round(base * 0.75))
             self.assertEqual(SistemaXP.calcular_xp_para_nivel(lvl), calculado)
             self.assertEqual(SistemaXP.calcular_xp_para_nivel(lvl), val)
@@ -498,11 +499,9 @@ class TestTier2BoundaryAndCornerCases(unittest.TestCase):
         self.sistema_xp.nivel = 9
         self.sistema_xp.xp_atual = 0
 
-        # Custo Nv 9 -> 10: 20 + 90 + 405 = 515 XP
-        # Custo Nv 10 -> 11: 20 + 100 + 500 = 620 XP
-        # Custo Nv 11 -> 12: round(735 * 0.75) = 551 XP
-        # Total para atingir Nv 12 com 100 XP sobrando: 515 + 620 + 551 + 100 = 1786 XP
-        niveis_ganhos = self.sistema_xp.adicionar_xp(1786)
+        # Custo Nv 9 -> 10: 1823 XP, Nv 10 -> 11: 2200 XP, Nv 11 -> 12: 1960 XP
+        # Total para atingir Nv 12 com 100 XP sobrando: 1823 + 2200 + 1960 + 100 = 6083 XP
+        niveis_ganhos = self.sistema_xp.adicionar_xp(6083)
 
         self.assertEqual(niveis_ganhos, [10, 11, 12])
         self.assertEqual(self.sistema_xp.nivel, 12)
@@ -912,8 +911,9 @@ class TestBossCutsceneWhiteoutSlowMo(unittest.TestCase):
         self.assertEqual(tuple(cor_no_centro_batata), (255, 255, 255, 128))
 
     def test_grace_period_nivel_12_e_texto_countdown(self):
-        """Atingir nível 12 inicia grace period de 10s com texto exato antes da cutscene."""
+        """Atingir nível 12 após 270s inicia grace period de 10s com texto exato antes da cutscene."""
         cena = GameplayScene()
+        cena.tempo_sobrevivencia = 270.0
         cena._ao_subir_nivel(12)
 
         self.assertTrue(cena.boss_grace_period_ativo)
@@ -952,15 +952,58 @@ class TestBossCutsceneWhiteoutSlowMo(unittest.TestCase):
         self.assertTrue(cena.boss_cutscene_ativa)
         self.assertEqual(cena.boss_cutscene_fase, "whiteout")
 
-    def test_grace_period_gatilho_tempo_elite_265(self):
-        """Gatilho 'Jogar aos Lobos' (tempo_elite >= 265s) ativa o grace period de 10s antes da cutscene."""
+    def test_grace_period_gatilho_tempo_elite_300(self):
+        """Gatilho 'Jogar aos Lobos' (tempo_elite >= 300s) ativa o grace period de 10s antes da cutscene."""
         cena = GameplayScene()
-        cena.spawner.tempo_elite = 265.0
+        cena.spawner.tempo_elite = 300.0
         cena.spawner.bosses_spawnados_indices = {0, 1, 2, 3}
 
         cena.loop(dt=0.05)
         self.assertTrue(cena.boss_grace_period_ativo)
         self.assertFalse(cena.boss_cutscene_ativa)
+
+    def test_blackout_limpa_motion_blur_vsync_e_timers_e_cutscene_nao_desenha_pos_processamento(self):
+        """Blackout deve limpar motion blur, rastro, vsync_tear_y e timers, e cutscene não deve aplicar blur/vsync."""
+        cena = GameplayScene()
+        cena.gerenciador_config.desbloquear_config("motion_blur")
+        cena.gerenciador_config.definir_valor("motion_blur", "ligado")
+        cena.gerenciador_config.desbloquear_config("vsync")
+        cena.gerenciador_config.definir_valor("vsync", "desligado")
+        cena.aplicar_modificadores()
+
+        cena._motion_blur_surf = pygame.Surface((1280, 720))
+        cena.vsync_tear_y = 240.0
+        cena.jogador.rastro_posicoes = [(100.0, 200.0, True), (120.0, 200.0, True)]
+        cena.jogador._rastro_timer = 0.02
+        cena.arena_freeze_timer = 1.5
+        cena.hitstop_timer = 0.1
+        cena.aura_cura_timer = 0.8
+        cena.buffer_tiro = 0.2
+        cena.spawner.timer_spawn = 2.5
+
+        cena.iniciar_boss_cutscene()
+        cena.boss_cutscene_timer = 1.9
+        cena.loop(dt=0.2)
+
+        self.assertEqual(cena.boss_cutscene_fase, "blackout")
+        self.assertIsNone(cena._motion_blur_surf)
+        self.assertEqual(cena.vsync_tear_y, 0.0)
+        self.assertEqual(cena.jogador.rastro_posicoes, [])
+        self.assertEqual(cena.jogador._rastro_timer, 0.0)
+        self.assertEqual(cena.arena_freeze_timer, 0.0)
+        self.assertEqual(cena.hitstop_timer, 0.0)
+        self.assertEqual(cena.aura_cura_timer, 0.0)
+        self.assertEqual(cena.buffer_tiro, 0.0)
+        self.assertEqual(cena.spawner.timer_spawn, 0.0)
+
+        # Avança para musica_in (fade-in) e garante que draw() não recria _motion_blur_surf nem desenha linha ciano de vsync
+        cena.boss_cutscene_timer = 1.0
+        cena.loop(dt=0.1)
+        self.assertEqual(cena.boss_cutscene_fase, "musica_in")
+        cena.draw()
+        self.assertIsNone(cena._motion_blur_surf)
+        cor_linha_vsync = tuple(cena.janela.screen.get_at((10, 1))[:3])
+        self.assertNotEqual(cor_linha_vsync, (56, 189, 248))
 
 
 if __name__ == "__main__":

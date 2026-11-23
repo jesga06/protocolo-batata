@@ -21,6 +21,7 @@ def inicializar_jogo():
     """Cria a janela do jogo perfeitamente centralizada na tela com alta definição e suporte a High-DPI."""
     import pygame
     os.environ["SDL_VIDEO_CENTERED"] = "1"
+    os.environ.setdefault("SDL_HINT_RENDER_SCALE_QUALITY", "0")
 
     # Habilita suporte a High-DPI antes de pygame.init() para evitar borrão de DPI scaling
     try:
@@ -48,17 +49,28 @@ def inicializar_jogo():
     except Exception:
         pass
 
+    vsync_inicial = True
+    try:
+        from src.sistemas.config_sistema import GerenciadorConfiguracoes
+        from src.utils.constantes import SAVE_FILE_PATH
+        cfg_inicial = GerenciadorConfiguracoes()
+        cfg_inicial.carregar_arquivo(SAVE_FILE_PATH)
+        val_vsync = str(cfg_inicial.obter_valor("vsync")).strip().lower()
+        vsync_inicial = val_vsync not in ("desligado", "false", "0", "off")
+    except Exception:
+        vsync_inicial = True
+
     janela = Window(
         largura_virtual=LARGURA_TELA,
         altura_virtual=ALTURA_TELA,
         titulo=TITULO_JOGO,
         resizavel=True,
-        pixel_art=True
+        pixel_art=True,
+        vsync=vsync_inicial
     )
-    janela.is_fullscreen = True
-    janela.largura_janela_atual = 1920
-    janela.altura_janela_atual = 1080
-    janela.real_screen = pygame.display.set_mode((1920, 1080), pygame.FULLSCREEN | pygame.DOUBLEBUF)
+    if getattr(janela, "vsync_ativo", True) != vsync_inicial and hasattr(janela, "definir_vsync"):
+        janela.definir_vsync(vsync_inicial)
+    janela.entrar_fullscreen()
     janela.set_background_color((18, 22, 30))
 
     cena_inicial = MenuPrincipalScene()

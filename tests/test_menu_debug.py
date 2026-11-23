@@ -78,13 +78,13 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
     def test_rebalance_constants_values(self):
         """Verifica se as constantes de combate e munição foram atualizadas corretamente."""
         self.assertEqual(MELEE_ALCANCE, 109.0)
-        self.assertEqual(MELEE_ARCO_GRAUS, 60.0)
+        self.assertEqual(MELEE_ARCO_GRAUS, 90.0)
         self.assertEqual(MINIGUN_MUNICIAO_MAX, 300)
         self.assertEqual(SHOTGUN_MUNICIAO_MAX, 60)
         self.assertEqual(RIFLE_MUNICIAO_MAX, 120)
         self.assertEqual(FOGUETES_MUNICIAO_MAX, 24)
         self.assertEqual(GRANADAS_MUNICIAO_MAX, 32)
-        self.assertEqual(RAILGUN_MUNICIAO_MAX, 30)
+        self.assertEqual(RAILGUN_MUNICIAO_MAX, 10)
 
     def test_weapon_instances_initial_ammo(self):
         """Verifica se instâncias das armas nascem com munição balanceada para a Sprint 2."""
@@ -100,7 +100,7 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         self.assertEqual(rifle.municao_atual, 120)
         self.assertEqual(foguetes.municao_atual, 24)
         self.assertEqual(granadas.municao_atual, 32)
-        self.assertEqual(railgun.municao_atual, 30)
+        self.assertEqual(railgun.municao_atual, 10)
 
     def test_debug_menu_toggle_open_close(self):
         """Valida abertura, fechamento e controle de pausa da partida."""
@@ -163,7 +163,7 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         # 8. Ação Desbloquear Todas Configurações
         self.debug_menu.indice_foco = 11
         self.debug_menu._executar_acao_selecionada()
-        self.assertEqual(len(self.cena.config_sistema.desbloqueadas), 20)
+        self.assertEqual(len(self.cena.config_sistema.desbloqueadas), 23)
 
     def test_debug_menu_spawn_drops_and_enemies(self):
         """Testa geração de drops e inimigos nas coordenadas do mundo com centro alinhado."""
@@ -230,10 +230,10 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         self.assertNotIn(inimigo_distante, afetados)
 
     def test_melee_increased_reach_and_cone_arc(self):
-        """Testa que o ataque Melee atinge alvos no novo alcance de 109px e arco de 60º."""
+        """Testa que o ataque Melee atinge alvos no novo alcance de 109px e arco de 120º."""
         melee = Melee()
         self.assertEqual(melee.alcance, 109.0)
-        self.assertEqual(melee.arco_graus, 60.0)
+        self.assertEqual(melee.arco_graus, 90.0)
 
         # Inimigo com centro em (494, 300) a 94px do jogador (dentro de 109px, mas além do alcance antigo de 84px)
         inimigo_alcance_novo = InimigoPadrao(x=480.0, y=286.0)
@@ -252,14 +252,14 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         """Valida que adicionar_xp, ganhar_xp e xp_necessario funcionam de forma idêntica."""
         from src.sistemas.sistema_xp import SistemaXP
         xp_sys = SistemaXP()
-        self.assertEqual(xp_sys.xp_necessario, 35)
-        self.assertEqual(xp_sys.xp_para_proximo_nivel(), 35)
+        self.assertEqual(xp_sys.xp_necessario, 52)
+        self.assertEqual(xp_sys.xp_para_proximo_nivel(), 52)
 
         # Testa ganhar_xp
-        niveis = xp_sys.ganhar_xp(35)
+        niveis = xp_sys.ganhar_xp(52)
         self.assertEqual(xp_sys.nivel, 2)
         self.assertIn(2, niveis)
-        self.assertEqual(xp_sys.xp_necessario, 60)
+        self.assertEqual(xp_sys.xp_necessario, 96)
 
     def test_hud_xp_and_boss_bar_vertical_separation(self):
         """Valida que a barra de XP (y=58..68) e o texto/barra do Mini-Boss (y=74..102) não se sobrepõem."""
@@ -288,8 +288,8 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         screen.fill((0, 0, 0))
         cena._desenhar_hp_in_world()
 
-        sprite_w = 42.0 if (hasattr(cena.jogador, "_sprite_idle") and cena.jogador._sprite_idle) else float(cena.jogador.largura)
-        sprite_h = 42.0 if (hasattr(cena.jogador, "_sprite_idle") and cena.jogador._sprite_idle) else float(cena.jogador.altura)
+        sprite_w = float(cena.jogador.largura)
+        sprite_h = float(cena.jogador.altura)
         centro_x = int(cena.jogador.x + sprite_w / 2.0)
         meio_y = int(cena.jogador.y + sprite_h + 7.0)
 

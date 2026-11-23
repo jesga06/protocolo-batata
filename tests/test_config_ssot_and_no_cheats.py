@@ -68,10 +68,10 @@ class TestASTNoCheatsAndSSOT(unittest.TestCase):
                     )
 
     def test_strict_20_gameplay_and_3_system_configs_ssot(self):
-        """Catálogo deve expor estritamente 20 configs de gameplay e 3 de sistema (áudio), totalizando 23."""
-        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 20)
+        """Catálogo deve expor estritamente 23 configs de gameplay e 3 de sistema (áudio), totalizando 26."""
+        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 23)
         self.assertEqual(len(CONFIGURACOES_SISTEMA), 3)
-        self.assertEqual(len(TODAS_CONFIGURACOES), 23)
+        self.assertEqual(len(TODAS_CONFIGURACOES), 26)
         self.assertEqual(
             set(CONFIGURACOES_SISTEMA.keys()),
             {"volume_master", "volume_musica", "volume_sfx"}

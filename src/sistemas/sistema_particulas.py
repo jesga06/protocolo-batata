@@ -90,14 +90,16 @@ class OndaChoque:
 
 
 class TextoDano:
-    """Representa um número flutuante de dano no espaço do mundo."""
+    """Representa um número ou callout flutuante no espaço do mundo."""
     def __init__(
         self,
         x: float,
         y: float,
         dano: int,
         critico: bool = False,
-        vida_max: float = 0.65
+        vida_max: float = 0.65,
+        texto: str = None,
+        cor: tuple[int, int, int] = None
     ):
         self.x = float(x)
         self.y = float(y)
@@ -107,8 +109,8 @@ class TextoDano:
         self.critico = bool(critico)
         self.vida_max = max(0.01, float(vida_max))
         self.vida = self.vida_max
-        self.texto = f"{dano}!" if critico else f"{dano}"
-        self.cor = (255, 215, 0) if critico else (255, 255, 255)
+        self.texto = str(texto) if texto is not None else (f"{dano}!" if critico else f"{dano}")
+        self.cor = cor if cor is not None else ((255, 215, 0) if critico else (255, 255, 255))
         self._surf = None
 
     @property
@@ -126,6 +128,93 @@ class TextoDano:
         self.vy += 60.0 * dt
 
 
+class CapsulaChao:
+    """Representa uma cápsula de latão ejetada no chão que gira e some em 1.5s."""
+    def __init__(self, x: float, y: float, dir_x: float = 1.0, dir_y: float = 0.0, vida_max: float = 1.5):
+        self.x = float(x)
+        self.y = float(y)
+        base_ang = math.atan2(-dir_y, -dir_x) if (dir_x != 0.0 or dir_y != 0.0) else random.uniform(0.0, 2.0 * math.pi)
+        ang_ej = base_ang + random.uniform(-0.65, 0.65)
+        vel = random.uniform(55.0, 115.0)
+        self.vx = math.cos(ang_ej) * vel
+        self.vy = math.sin(ang_ej) * vel
+        self.angulo = random.uniform(0.0, 2.0 * math.pi)
+        self.vel_ang = random.uniform(-11.0, 11.0)
+        self.vida_max = max(0.01, float(vida_max))
+        self.vida = self.vida_max
+        self.cor = (232, 194, 74)
+
+    @property
+    def viva(self) -> bool:
+        return self.vida > 0.0
+
+    @property
+    def progresso(self) -> float:
+        return 1.0 - (self.vida / self.vida_max)
+
+    def update(self, dt: float):
+        self.vida -= dt
+        self.x += self.vx * dt
+        self.y += self.vy * dt
+        fator_atrito = 0.84 ** (dt * 60.0)
+        self.vx *= fator_atrito
+        self.vy *= fator_atrito
+        self.angulo += self.vel_ang * dt
+        self.vel_ang *= fator_atrito
+
+
+class MarcaQueimadura:
+    """Representa uma marca circular escura de queimadura de explosão no chão (5.0s)."""
+    def __init__(self, x: float, y: float, raio: float = 40.0, vida_max: float = 5.0):
+        self.x = float(x)
+        self.y = float(y)
+        self.raio = max(4.0, float(raio))
+        self.vida_max = max(0.01, float(vida_max))
+        self.vida = self.vida_max
+
+    @property
+    def viva(self) -> bool:
+        return self.vida > 0.0
+
+    @property
+    def progresso(self) -> float:
+        return 1.0 - (self.vida / self.vida_max)
+
+    def update(self, dt: float):
+        self.vida -= dt
+
+
+class ArcoParry:
+    """Representa um arco luminoso dourado de 120° emitido ao executar parry."""
+    def __init__(
+        self,
+        x: float,
+        y: float,
+        angulo: float,
+        raio: float = 128.0,
+        arco_graus: float = 120.0,
+        vida_max: float = 0.24
+    ):
+        self.x = float(x)
+        self.y = float(y)
+        self.angulo = float(angulo)
+        self.raio = max(8.0, float(raio))
+        self.arco_graus = float(arco_graus)
+        self.vida_max = max(0.01, float(vida_max))
+        self.vida = self.vida_max
+
+    @property
+    def viva(self) -> bool:
+        return self.vida > 0.0
+
+    @property
+    def progresso(self) -> float:
+        return 1.0 - (self.vida / self.vida_max)
+
+    def update(self, dt: float):
+        self.vida -= dt
+
+
 class SistemaParticulas:
     """
     Gerenciador global de partículas com teto rígido de instâncias e rendering otimizado.
@@ -133,20 +222,83 @@ class SistemaParticulas:
     MAX_PARTICULAS = 300
     MAX_TEXTOS = 100
     MAX_ONDAS = 30
+    MAX_CAPSULAS = 120
+    MAX_MARCAS = 60
+    MAX_ARCOS = 16
     _fonte_dano = None
 
     def __init__(self):
         self.particulas: list[Particula] = []
         self.ondas_choque: list[OndaChoque] = []
         self.textos_dano: list[TextoDano] = []
+        self.capsulas: list[CapsulaChao] = []
+        self.marcas_queimadura: list[MarcaQueimadura] = []
+        self.arcos_parry: list[ArcoParry] = []
         self.low_graphics: bool = False
         self._surfs_onda_cache: dict[int, pygame.Surface] = {}
+        self._surfs_marca_cache: dict[int, pygame.Surface] = {}
 
     def limpar(self):
-        """Descarta todas as partículas, ondas e textos ativos."""
+        """Descarta todas as partículas, ondas, textos, arcos e persistências de chão ativos."""
         self.particulas.clear()
         self.ondas_choque.clear()
         self.textos_dano.clear()
+        self.capsulas.clear()
+        self.marcas_queimadura.clear()
+        self.arcos_parry.clear()
+
+    def adicionar_capsula(self, x: float, y: float, dir_x: float = 1.0, dir_y: float = 0.0):
+        """Adiciona uma cápsula de latão rotacionando no chão (duração 1.5s)."""
+        self.capsulas.append(CapsulaChao(x=x, y=y, dir_x=dir_x, dir_y=dir_y, vida_max=1.5))
+        if len(self.capsulas) > self.MAX_CAPSULAS:
+            del self.capsulas[:len(self.capsulas) - self.MAX_CAPSULAS]
+
+    def adicionar_marca_queimadura(self, x: float, y: float, raio: float = 40.0):
+        """Adiciona uma marca escura circular de explosão no chão (duração 5.0s)."""
+        self.marcas_queimadura.append(MarcaQueimadura(x=x, y=y, raio=raio, vida_max=5.0))
+        if len(self.marcas_queimadura) > self.MAX_MARCAS:
+            del self.marcas_queimadura[:len(self.marcas_queimadura) - self.MAX_MARCAS]
+
+    def adicionar_arco_parry(
+        self,
+        x: float,
+        y: float,
+        angulo: float,
+        raio: float = 128.0,
+        arco_graus: float = 120.0
+    ):
+        """
+        Emite VFX completos de parry: arco dourado brilhante de 120°,
+        anel radial branco-dourado, faíscas direcionais e callout flutuante 'PARRY!'.
+        """
+        self.arcos_parry.append(ArcoParry(x=x, y=y, angulo=angulo, raio=raio, arco_graus=arco_graus, vida_max=0.24))
+        if len(self.arcos_parry) > self.MAX_ARCOS:
+            del self.arcos_parry[:len(self.arcos_parry) - self.MAX_ARCOS]
+
+        # Anel de flash branco-dourado radial
+        self.ondas_choque.append(OndaChoque(x=x, y=y, raio_max=max(48.0, float(raio) * 0.95), vida_max=0.22, cor=(255, 245, 165)))
+        if len(self.ondas_choque) > self.MAX_ONDAS:
+            del self.ondas_choque[:len(self.ondas_choque) - self.MAX_ONDAS]
+
+        # Faíscas direcionais douradas e branco-quente
+        dx = math.cos(angulo)
+        dy = math.sin(angulo)
+        self.emitir_faiscas(x, y, dir_x=dx, dir_y=dy, cor=(255, 225, 90), qtd=10)
+        self.emitir_faiscas(x, y, dir_x=dx, dir_y=dy, cor=(255, 250, 210), qtd=6)
+
+        # Callout flutuante "PARRY!"
+        self.textos_dano.append(
+            TextoDano(x=x, y=y - 16.0, dano=0, critico=True, vida_max=0.75, texto="PARRY!", cor=(255, 235, 90))
+        )
+        if len(self.textos_dano) > self.MAX_TEXTOS:
+            del self.textos_dano[:len(self.textos_dano) - self.MAX_TEXTOS]
+
+    def adicionar_onda_dash(self, x: float, y: float):
+        """Emite anel expansivo ciano de onda de choque ao iniciar um Dash."""
+        self.ondas_choque.append(OndaChoque(x=x, y=y, raio_max=72.0, vida_max=0.22, cor=(0, 230, 255)))
+        if len(self.ondas_choque) > self.MAX_ONDAS:
+            del self.ondas_choque[:len(self.ondas_choque) - self.MAX_ONDAS]
+        self.emitir_faiscas(x, y, dir_x=0.0, dir_y=0.0, cor=(90, 240, 255), qtd=5)
 
     def emitir_texto_dano(
         self,
@@ -294,9 +446,10 @@ class SistemaParticulas:
         if len(self.particulas) > self.MAX_PARTICULAS:
             del self.particulas[:len(self.particulas) - self.MAX_PARTICULAS]
 
-    def update(self, dt: float):
+    def atualizar(self, dt: float):
         """
-        Atualiza física e tempo de vida de todas as partículas, ondas e textos.
+        Atualiza física e tempo de vida de partículas, ondas, textos,
+        arcos de parry e elementos persistentes no chão (cápsulas e marcas).
         """
         for p in self.particulas:
             p.update(dt)
@@ -309,6 +462,91 @@ class SistemaParticulas:
         for td in self.textos_dano:
             td.update(dt)
         self.textos_dano = [td for td in self.textos_dano if td.viva]
+
+        for ap in self.arcos_parry:
+            ap.update(dt)
+        self.arcos_parry = [ap for ap in self.arcos_parry if ap.viva]
+
+        for cap in self.capsulas:
+            cap.update(dt)
+        self.capsulas = [cap for cap in self.capsulas if cap.viva]
+
+        for mq in self.marcas_queimadura:
+            mq.update(dt)
+        self.marcas_queimadura = [mq for mq in self.marcas_queimadura if mq.viva]
+
+    def update(self, dt: float):
+        """Alias compatível para atualizar(dt)."""
+        self.atualizar(dt)
+
+    def desenhar_chao(self, screen, cam_x: float = 0.0, cam_y: float = 0.0, scale: float = 1.0):
+        """
+        Renderiza persistência leve no chão (marcas de queimadura e cápsulas de latão)
+        abaixo das entidades.
+        """
+        surf = getattr(screen, "screen", screen)
+        largura_tela = getattr(screen, "largura", getattr(surf, "get_width", lambda: 1280)())
+        altura_tela = getattr(screen, "altura", getattr(surf, "get_height", lambda: 720)())
+        is_low_graphics = self.low_graphics or getattr(screen, "low_graphics", False)
+        esc = max(0.01, float(scale))
+
+        # 1. Marcas de queimadura de explosões (desaparecem em 5.0s)
+        for mq in self.marcas_queimadura:
+            sx = (mq.x - cam_x) * esc
+            sy = (mq.y - cam_y) * esc
+            r_px = max(2, int(round(mq.raio * esc)))
+            if sx < -r_px - 8 or sx > largura_tela + r_px + 8 or sy < -r_px - 8 or sy > altura_tela + r_px + 8:
+                continue
+
+            fator_vida = max(0.0, 1.0 - mq.progresso)
+            alpha = int(145 * fator_vida)
+            if alpha <= 4:
+                continue
+
+            if is_low_graphics:
+                tom = max(12, int(24 + 18 * mq.progresso))
+                pygame.draw.circle(surf, (tom, tom, tom + 2), (int(sx), int(sy)), r_px)
+            else:
+                dim = r_px * 2 + 4
+                try:
+                    surf_m = self._surfs_marca_cache.get(dim)
+                    if surf_m is None:
+                        surf_m = pygame.Surface((dim, dim), pygame.SRCALPHA)
+                        self._surfs_marca_cache[dim] = surf_m
+                    else:
+                        surf_m.fill((0, 0, 0, 0))
+                    c = dim // 2
+                    pygame.draw.circle(surf_m, (18, 16, 20, alpha), (c, c), r_px)
+                    pygame.draw.circle(surf_m, (8, 7, 10, min(255, int(alpha * 1.2))), (c, c), max(1, int(r_px * 0.6)))
+                    surf.blit(surf_m, (int(sx - c), int(sy - c)))
+                except Exception:
+                    pass
+
+        # 2. Cápsulas de latão rotacionando no chão (desaparecem em 1.5s)
+        for cap in self.capsulas:
+            sx = (cap.x - cam_x) * esc
+            sy = (cap.y - cam_y) * esc
+            if sx < -16 or sx > largura_tela + 16 or sy < -16 or sy > altura_tela + 16:
+                continue
+
+            fator_vida = max(0.0, 1.0 - cap.progresso)
+            if fator_vida <= 0.02:
+                continue
+
+            half_l = max(1.5, 2.8 * esc)
+            half_w = max(0.8, 1.3 * esc)
+            ca = math.cos(cap.angulo)
+            sa = math.sin(cap.angulo)
+            pts = (
+                (int(sx + ca * half_l - sa * half_w), int(sy + sa * half_l + ca * half_w)),
+                (int(sx - ca * half_l - sa * half_w), int(sy - sa * half_l + ca * half_w)),
+                (int(sx - ca * half_l + sa * half_w), int(sy - sa * half_l - ca * half_w)),
+                (int(sx + ca * half_l + sa * half_w), int(sy + sa * half_l - ca * half_w)),
+            )
+            r_col = int(cap.cor[0] * (0.45 + 0.55 * fator_vida))
+            g_col = int(cap.cor[1] * (0.45 + 0.55 * fator_vida))
+            b_col = int(cap.cor[2] * (0.45 + 0.55 * fator_vida))
+            pygame.draw.polygon(surf, (r_col, g_col, b_col), pts)
 
     def desenhar(self, janela, camera=None):
         """
@@ -353,6 +591,31 @@ class SistemaParticulas:
                         screen.blit(surf_oc, (int(tx - cx), int(ty - cy)))
                     except Exception:
                         pass
+
+        # 1b. Renderiza arcos dourados de parry (120°)
+        for ap in self.arcos_parry:
+            tx = camera.transform_x(ap.x) if camera else ap.x
+            ty = camera.transform_y(ap.y) if camera else ap.y
+            r_ap = ap.raio * (0.85 + 0.20 * ap.progresso)
+            if tx < -r_ap - 30 or tx > largura_janela + r_ap + 30 or ty < -r_ap - 30 or ty > altura_janela + r_ap + 30:
+                continue
+
+            fator = max(0.0, 1.0 - ap.progresso)
+            meio_rad = math.radians(ap.arco_graus / 2.0)
+            passos = 14 if not is_low_graphics else 8
+            pontos = []
+            for i in range(passos + 1):
+                t = i / passos
+                ang = (ap.angulo - meio_rad) + (2.0 * meio_rad) * t
+                pontos.append((int(tx + math.cos(ang) * r_ap), int(ty + math.sin(ang) * r_ap)))
+
+            if len(pontos) >= 2:
+                larg_ext = max(2, int(round(7 * fator)))
+                cor_ext = (255, int(205 + 40 * fator), int(60 + 50 * fator))
+                pygame.draw.lines(screen, cor_ext, False, pontos, larg_ext)
+                if not is_low_graphics:
+                    larg_int = max(1, int(round(3 * fator)))
+                    pygame.draw.lines(screen, (255, 252, 210), False, pontos, larg_int)
 
         # 2. Renderiza partículas
         for p in self.particulas:

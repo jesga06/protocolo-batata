@@ -1,0 +1,18 @@
+[project]
+name = "protocolo-batata"
+version = "1.1.0"
+description = "Jogo de ação top-down em pixel art construído com PowerPPlay 2.0 e Pygame-CE."
+requires-python = ">=3.10"
+dependencies = [
+    "pygame-ce>=2.5.0",
+    "numpy>=1.26.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pillow>=10.0.0",
+    "pyinstaller>=6.0.0",
+]
+
+[project.scripts]
+protocolo-batata = "src.main:main"

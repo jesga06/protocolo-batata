@@ -136,8 +136,9 @@ class TestMechanicsE2ERealLoop(unittest.TestCase):
         j.receber_dano(10)
         self.assertAlmostEqual(j.invulnerabilidade_timer, 0.95, places=4)
 
-    def test_railgun_charges_and_fires_with_autofire_disabled_and_cancels_on_slot_switch(self):
-        """Com auto_fire='desligado', Railgun inicia carga no button_down(1), mantém com button_pressed(1) e cancela se trocar slot."""
+    def test_railgun_fires_instant_hitscan_beam_piercing_multiple_enemies(self):
+        """Port v2: Railgun dispara feixe hitscan instantâneo com auto_fire='desligado' perfurando múltiplos alvos."""
+        from src.entidades.inimigo_padrao import InimigoPadrao
         self.cena.gerenciador_config.desbloquear_config("auto_fire")
         self.cena.gerenciador_config.definir_valor("auto_fire", "desligado")
         self.cena.aplicar_modificadores()
@@ -148,35 +149,29 @@ class TestMechanicsE2ERealLoop(unittest.TestCase):
         self.cena._ultimo_slot_ativo = 3
         self.cena._arma_ativa_anterior = rail
 
+        self.cena.camera.follow(self.cena.jogador, suavizacao=1.0)
+        cx = self.cena.jogador.x + self.cena.jogador.largura / 2.0
+        cy = self.cena.jogador.y + self.cena.jogador.altura / 2.0
+        alvo1 = InimigoPadrao(cx + 120.0, cy - 14.0)
+        alvo2 = InimigoPadrao(cx + 320.0, cy - 14.0)
+        alvo1.hp = 500
+        alvo2.hp = 500
+        self.cena.inimigos.extend([alvo1, alvo2])
+
         mock_mouse = MagicMock()
-        mock_mouse.get_position.return_value = (500, 300)
-        # Frame 1: clique inicial button_down(1)=True, button_pressed(1)=True
+        sx = int(self.cena.camera.transform_x(cx + 400.0))
+        sy = int(self.cena.camera.transform_y(cy))
+        mock_mouse.get_position.return_value = (sx, sy)
         mock_mouse.button_down.side_effect = lambda b: b == 1
         mock_mouse.button_pressed.side_effect = lambda b: b == 1
         self.cena.mouse = mock_mouse
 
-        self.cena.loop(dt=0.1)
-        self.assertTrue(rail.carregando)
-        self.assertGreater(rail.progresso_carga, 0.0)
-
-        # Frames seguintes: apenas segurando o botão (button_down=False, button_pressed=True)
-        mock_mouse.button_down.side_effect = lambda b: False
-        for _ in range(10):
-            self.cena.loop(dt=0.1)
-
-        # Deve ter concluído a carga de 1.0s e disparado o feixe perfurante
-        self.assertFalse(rail.carregando)
-        self.assertEqual(len(self.cena.projeteis), 1)
-        self.assertTrue(self.cena.projeteis[0].perfurante)
-
-        # Inicia nova carga e troca de slot -> cancela carga imediatamente
-        rail.tempo_recarga_restante = 0.0
-        mock_mouse.button_down.side_effect = lambda b: b == 1
-        self.cena.loop(dt=0.1)
-        self.assertTrue(rail.carregando)
-        self.cena.jogador.selecionar_slot(2)
         self.cena.loop(dt=0.05)
-        self.assertFalse(rail.carregando)
+
+        self.assertEqual(rail.municao_atual, 9)
+        self.assertGreaterEqual(len(self.cena.trilhas_plasma), 1)
+        self.assertLess(alvo1.hp, 500)
+        self.assertLess(alvo2.hp, 500)
 
     def test_overclocks_protecao_surtos_freeze_and_overvolt_skips_phasing(self):
         """Valida arena_freeze_timer=4.0s no Kernel Panic e que Overvolt pula inimigos em_fase."""

@@ -29,7 +29,9 @@ class GerenciadorConfiguracoes:
             "total_abates": 0,
             "partidas_jogadas": 0,
             "vitorias": 0,
-            "historico": []
+            "historico": [],
+            "parries_total": 0,
+            "dash_desbloqueado": False
         }
 
         self._inicializar_padroes()
@@ -184,6 +186,23 @@ class GerenciadorConfiguracoes:
             "novo_recorde_tempo": novo_recorde_tempo
         }
 
+    def registrar_parry(self, meta: int = 50) -> tuple[int, bool]:
+        """
+        Incrementa o total histórico de parries, desbloqueia o Dash permanente ao atingir a meta,
+        salva o progresso de forma segura e retorna (novo_total, acabou_de_desbloquear).
+        """
+        novo_total = int(self.estatisticas.get("parries_total", 0)) + 1
+        self.estatisticas["parries_total"] = novo_total
+
+        ja_desbloqueado = bool(self.estatisticas.get("dash_desbloqueado", False))
+        acabou_de_desbloquear = False
+        if not ja_desbloqueado and novo_total >= int(meta):
+            self.estatisticas["dash_desbloqueado"] = True
+            acabou_de_desbloquear = True
+
+        self.salvar_arquivo()
+        return (novo_total, acabou_de_desbloquear)
+
     def to_dict(self) -> dict:
         """Serializa o estado para dicionário JSON."""
         return {
@@ -196,7 +215,9 @@ class GerenciadorConfiguracoes:
                 "total_abates": int(self.estatisticas.get("total_abates", 0)),
                 "partidas_jogadas": int(self.estatisticas.get("partidas_jogadas", 0)),
                 "vitorias": int(self.estatisticas.get("vitorias", 0)),
-                "historico": list(self.estatisticas.get("historico", []))
+                "historico": list(self.estatisticas.get("historico", [])),
+                "parries_total": int(self.estatisticas.get("parries_total", 0)),
+                "dash_desbloqueado": bool(self.estatisticas.get("dash_desbloqueado", False))
             }
         }
 
@@ -224,7 +245,9 @@ class GerenciadorConfiguracoes:
                 "total_abates": 0,
                 "partidas_jogadas": 0,
                 "vitorias": 0,
-                "historico": []
+                "historico": [],
+                "parries_total": 0,
+                "dash_desbloqueado": False
             }
 
             # 1. Filtrar desbloqueadas estritamente contra CONFIGURACOES_GAMEPLAY
@@ -286,6 +309,17 @@ class GerenciadorConfiguracoes:
                     ]
                 else:
                     temp_estatisticas["historico"] = []
+
+                try:
+                    raw_parries = est.get("parries_total", 0)
+                    if isinstance(raw_parries, bool):
+                        temp_estatisticas["parries_total"] = 0
+                    else:
+                        temp_estatisticas["parries_total"] = max(0, int(raw_parries))
+                except (TypeError, ValueError):
+                    temp_estatisticas["parries_total"] = 0
+
+                temp_estatisticas["dash_desbloqueado"] = bool(est.get("dash_desbloqueado", False))
 
             # Atualização atômica do estado da instância
             self.desbloqueadas = temp_desbloqueadas

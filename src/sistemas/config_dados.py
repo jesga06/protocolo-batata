@@ -702,6 +702,106 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             ),
         }
     ),
+
+    # 21. Calibragem de Parry (Precisão vs Poder)
+    "precisao_parry": ConfiguracaoDef(
+        id="precisao_parry",
+        nome="Calibragem de Parry",
+        categoria=CategoriaConfig.CONTROLES,
+        tipo=TipoControleConfig.SELETOR,
+        valor_padrao="padrao",
+        ordem=21,
+        opcoes={
+            "padrao": OpcaoConfig(
+                id="padrao",
+                label="Padrão",
+                modificadores={},
+                flavor_text="Chave de manutenção calibrada de fábrica.",
+                nerf_text="Nenhum",
+                buff_text="Nenhum"
+            ),
+            "cirurgico": OpcaoConfig(
+                id="cirurgico",
+                label="Cirúrgico",
+                modificadores={"parry_precisao": "cirurgico"},
+                flavor_text="Janela minúscula, impacto absurdo.",
+                nerf_text="Arco 65°, janela 0.09s e alcance 0.85x",
+                buff_text="+75% dano refletido e explosão de 140px"
+            ),
+            "amplificado": OpcaoConfig(
+                id="amplificado",
+                label="Amplificado",
+                modificadores={"parry_precisao": "amplificado"},
+                flavor_text="Mais fácil de acertar, menos letal.",
+                nerf_text="-30% dano refletido e +0.25s cooldown melee",
+                buff_text="Arco 135°, janela 0.17s e alcance 1.25x"
+            ),
+        }
+    ),
+
+    # 22. Protocolo de Reflexão (Efeito do Parry)
+    "efeito_parry": ConfiguracaoDef(
+        id="efeito_parry",
+        nome="Protocolo de Reflexão",
+        categoria=CategoriaConfig.EXPERIMENTAL,
+        tipo=TipoControleConfig.SELETOR,
+        valor_padrao="padrao",
+        ordem=22,
+        opcoes={
+            "padrao": OpcaoConfig(
+                id="padrao",
+                label="Padrão",
+                modificadores={},
+                flavor_text="Reflexão explosiva padrão.",
+                nerf_text="Nenhum",
+                buff_text="Nenhum"
+            ),
+            "estilhaco": OpcaoConfig(
+                id="estilhaco",
+                label="Estilhaço",
+                modificadores={"parry_efeito": "estilhaco"},
+                flavor_text="Estilhaça projéteis rebatidos em 3 dardos perfurantes.",
+                nerf_text="-25% dano por fragmento e sem explosão AoE",
+                buff_text="Projéteis refletidos dividem-se em 3 tiros perfurantes"
+            ),
+            "pulso_emp": OpcaoConfig(
+                id="pulso_emp",
+                label="Pulso EMP",
+                modificadores={"parry_efeito": "pulso_emp"},
+                flavor_text="O parry libera um pulso eletromagnético atordoante.",
+                nerf_text="Errar o parry aumenta Exposto para +45% de dano recebido",
+                buff_text="Parry bem-sucedido atordoa inimigos próximos por 1.2s"
+            ),
+        }
+    ),
+
+    # 23. Controles de Tanque (Blindagem & Artilharia)
+    "controles_tanque": ConfiguracaoDef(
+        id="controles_tanque",
+        nome="Controles de Tanque",
+        categoria=CategoriaConfig.CONTROLES,
+        tipo=TipoControleConfig.TOGGLE,
+        valor_padrao="desligado",
+        ordem=23,
+        opcoes={
+            "desligado": OpcaoConfig(
+                id="desligado",
+                label="Desligado",
+                modificadores={},
+                flavor_text="Movimento omnidirecional padrão.",
+                nerf_text="Nenhum",
+                buff_text="Nenhum"
+            ),
+            "ligado": OpcaoConfig(
+                id="ligado",
+                label="Ligado",
+                modificadores={"controles_tanque": True, "dano_armas_mult": 1.35, "dano_recebido_mult": 0.80},
+                flavor_text="A/D rotacionam a seta; W/S aceleram ou dão ré.",
+                nerf_text="Sem strafe lateral (direção controlada por rotação)",
+                buff_text="250 HP máx, -20% dano recebido, +35% dano, +1 perfuração, +20% cadência parado e atropelamento frontal"
+            ),
+        }
+    ),
 }
 
 

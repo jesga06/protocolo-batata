@@ -139,7 +139,7 @@ class TestChallengerInimigoRangedStandoffAndFiringBoundaries(unittest.TestCase):
         proj = disparos[0]
         self.assertEqual(proj.dono, "inimigo")
         self.assertEqual(proj.dano, 10)
-        self.assertAlmostEqual(proj.velocidade, 260.0, places=2)
+        self.assertAlmostEqual(proj.velocidade, 390.0, places=2)
         self.assertAlmostEqual(proj.tempo_vida, 3.5, places=2)
         self.assertEqual(proj.sprite_key, "projetil_inimigo")
         self.assertAlmostEqual(proj.dir_x, -1.0, places=3)

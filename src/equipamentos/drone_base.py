@@ -130,15 +130,7 @@ class DroneBase:
             )
             return
 
-        sprite = None
-        try:
-            from src.utils.pixel_art_sprites import obter_sprite_drone
-            sprite = obter_sprite_drone(self.sprite_key, self.largura, self.altura, getattr(self, "nivel_mk", 1))
-        except Exception:
-            sprite = None
-
-        if sprite is None:
-            sprite = self._carregar_sprite(self.sprite_key)
+        sprite = self._carregar_sprite(self.sprite_key)
 
         if sprite is not None:
             screen.blit(sprite, (int(draw_x), int(draw_y)))

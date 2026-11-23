@@ -66,7 +66,7 @@ class LancaFoguetes(ArmaBase):
             sprite_key="projetil_foguete",
             explosivo=True,
             raio_explosao=self.raio_explosao,
-            aceleracao=420.0,
+            aceleracao=680.0,
             chao_em_chamas=True
         )
 

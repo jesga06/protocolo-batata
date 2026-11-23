@@ -5,11 +5,13 @@ mira virtual, recebimento de dano, inventário de armas e renderização.
 """
 
 import os
+import math
 import pygame
 from src.utils.constantes import (
     JOGADOR_HP_MAX_PADRAO, JOGADOR_VELOCIDADE_PADRAO,
     JOGADOR_LARGURA, JOGADOR_ALTURA, JOGADOR_COOLDOWN_DANO_FLASH,
     JOGADOR_INVULNERABILIDADE_TEMPO,
+    DASH_DURACAO, DASH_MULT_VEL, DASH_IFRAMES_BASE, DASH_COOLDOWN,
     obter_caminho_asset, VERDE_CURA, VERMELHO_HP
 )
 from src.utils.math_utils import normalizar_vetor, clamp
@@ -22,6 +24,7 @@ class Jogador:
     _sprite_idle = None
     _sprite_dano = None
     _sprite_flip_cache = {}
+    _arma_sprite_cache = {}
     _flash_cache = {}
     _ghost_surf_cache = {}
     _aura_cache = {}
@@ -56,6 +59,13 @@ class Jogador:
         self.evento_cura_drone = 0
         self.anim_timer = 0.0
         self.andando_frame = False
+        # Movimento secundário contínuo dirigido por dt (bobbing senoidal, inclinação de strafe ±5°, mira contínua)
+        self.walk_phase = 0.0
+        self.bob_amplitude = 0.0
+        self.bob_offset_y = 0.0
+        self.tilt_graus = 0.0
+        self.aim_angle = 0.0
+        self.aim_angle_alvo = 0.0
         self.abates_overvolt_contador = 0
         self.timer_sem_atirar_refrig = 0.0
         self.pulso_frio_pronto = False
@@ -113,6 +123,81 @@ class Jogador:
         self.ultima_dir_dy = -1.0
         self.dir_movimento = (0.0, -1.0)
 
+        # Dash Direcional Permanente (desbloqueado via parries)
+        self.dash_desbloqueado: bool = False
+        self.dash_ativo_timer: float = 0.0
+        self.dash_cooldown_restante: float = 0.0
+        self.dash_dir: tuple[float, float] = (1.0, 0.0)
+        self.dash_stutter_trigger: bool = False
+
+        # Estado Exposto (punição de whiff no parry / duelo) e Controles de Tanque
+        self.exposed_timer: float = 0.0
+        self.exposed_mult: float = 1.25
+        self.dano_recebido_mult: float = 1.0
+        self.controles_tanque: bool = False
+        self._tanque_ativo_anterior: bool = False
+        self.angulo_tanque: float = -math.pi / 2.0
+        self.tanque_avancando: bool = False
+        self.tanque_parado: bool = True
+
+    def atualizar_modo_tanque(self, ativo: bool):
+        """Alterna Controles de Tanque escalando hp_max (250 <-> 150) e hp atual proporcionalmente."""
+        ativo_bool = bool(ativo)
+        self.controles_tanque = ativo_bool
+        if ativo_bool == self._tanque_ativo_anterior:
+            return
+        old_max = max(1, int(self.hp_max))
+        extra_surtos = 50 if getattr(self, "protecao_surtos", False) else 0
+        new_max = (250 if ativo_bool else int(JOGADOR_HP_MAX_PADRAO)) + extra_surtos
+        self.hp_max = new_max
+        if self.vivo:
+            self.hp = max(1, min(new_max, int(round(self.hp * (new_max / float(old_max))))))
+        self._tanque_ativo_anterior = ativo_bool
+
+    def iniciar_dash(self, dx: float, dy: float, mods=None) -> bool:
+        """
+        Aciona o Dash direcional permanente se desbloqueado e fora de cooldown.
+        Concede i-frames base (0.35s) acumulando com motion_blur_ghosting (+0.20s)
+        e fps_stutter_dodge (+0.15s + dash_stutter_trigger para congelar inimigos por 0.15s).
+        """
+        if not self.vivo or not self.dash_desbloqueado:
+            return False
+        if self.dash_cooldown_restante > 0.0 or self.dash_ativo_timer > 0.0:
+            return False
+
+        ndx, ndy = normalizar_vetor(float(dx), float(dy))
+        if ndx == 0.0 and ndy == 0.0:
+            ux = float(getattr(self, "ultima_dir_dx", 0.0))
+            uy = float(getattr(self, "ultima_dir_dy", 0.0))
+            ndx, ndy = normalizar_vetor(ux, uy)
+        if ndx == 0.0 and ndy == 0.0:
+            ndx, ndy = (1.0 if self.facing_right else -1.0, 0.0)
+
+        self.dash_dir = (ndx, ndy)
+        self.dash_ativo_timer = float(DASH_DURACAO)
+        self.dash_cooldown_restante = float(DASH_COOLDOWN)
+
+        iframes = float(DASH_IFRAMES_BASE)
+
+        tem_motion_blur = bool(getattr(self, "motion_blur_ghosting", False))
+        tem_fps_stutter = bool(getattr(self, "fps_stutter_dodge", False))
+        if mods is not None:
+            if isinstance(mods, dict):
+                tem_motion_blur = tem_motion_blur or bool(mods.get("motion_blur_ghosting", False))
+                tem_fps_stutter = tem_fps_stutter or bool(mods.get("fps_stutter_dodge", False))
+            else:
+                tem_motion_blur = tem_motion_blur or bool(getattr(mods, "motion_blur_ghosting", False))
+                tem_fps_stutter = tem_fps_stutter or bool(getattr(mods, "fps_stutter_dodge", False))
+
+        if tem_motion_blur:
+            iframes += 0.20
+        if tem_fps_stutter:
+            iframes += 0.15
+            self.dash_stutter_trigger = True
+
+        self.invulnerabilidade_timer = max(self.invulnerabilidade_timer, iframes)
+        return True
+
     def aplicar_knockback(self, dir_x: float, dir_y: float, forca: float):
         """Aplica impulso suave de repulsão (ex: Rocket-Jump, Bass Push) decaindo ao longo dos frames."""
         self.vx_knockback += float(dir_x) * float(forca)
@@ -148,7 +233,6 @@ class Jogador:
         mantendo no máximo 3 unidades físicas orbitando a Batata (1 de cada classe).
         """
         if novo_drone is not None:
-            import math
             for d in self.drones:
                 if getattr(d, "ativo", False) and type(d) is type(novo_drone):
                     if hasattr(d, "evoluir_mk"):
@@ -354,7 +438,6 @@ class Jogador:
 
         if mov_mouse and preset_teclas != "uma_mao" and mouse is not None:
             try:
-                import math
                 mx, my = mouse.get_position()
                 if camera is not None and hasattr(camera, "obter_mouse_mundo"):
                     mx, my = camera.obter_mouse_mundo(mx, my)
@@ -369,6 +452,23 @@ class Jogador:
                     dy = (my - cy) / dist_mouse
             except Exception:
                 pass
+        elif getattr(self, "controles_tanque", False) and teclado is not None:
+            rot_vel = 3.2
+            dt_rot = max(0.0, float(dt))
+            if teclado.key_pressed("a") or teclado.key_pressed("left") or teclado.key_pressed("LEFT"):
+                self.angulo_tanque -= rot_vel * dt_rot
+            if teclado.key_pressed("d") or teclado.key_pressed("right") or teclado.key_pressed("RIGHT"):
+                self.angulo_tanque += rot_vel * dt_rot
+            avanco = 0.0
+            if teclado.key_pressed("w") or teclado.key_pressed("up") or teclado.key_pressed("UP"):
+                avanco += 1.0
+            if teclado.key_pressed("s") or teclado.key_pressed("down") or teclado.key_pressed("DOWN"):
+                avanco -= 1.0
+            self.tanque_avancando = (avanco > 0.0)
+            self.tanque_parado = (avanco == 0.0)
+            if avanco != 0.0:
+                dx = math.cos(self.angulo_tanque) * avanco
+                dy = math.sin(self.angulo_tanque) * avanco
         elif teclado is not None:
             if preset_teclas == "invertido":
                 if teclado.key_pressed("a") or teclado.key_pressed("left") or teclado.key_pressed("LEFT"):
@@ -445,12 +545,21 @@ class Jogador:
             # No modo uma_mao (100% teclado), dispara para cima (0.0, -1.0) quando parado
             self.dir_movimento = (0.0, -1.0)
 
-        # Atualiza posição com velocidade por segundo
-        self.andando_frame = (dx != 0.0 or dy != 0.0)
-        if self.andando_frame:
-            self.anim_timer += dt
-        self.x += dx * self.velocidade_atual * dt
-        self.y += dy * self.velocidade_atual * dt
+        # Atualiza posição com velocidade por segundo (ou impulso de Dash direcional ativo)
+        dt_pos = max(0.0, float(dt))
+        if self.dash_ativo_timer > 0.0:
+            move_x, move_y = self.dash_dir
+            self.andando_frame = True
+            self.anim_timer += dt_pos
+            self.x += move_x * self.velocidade_atual * float(DASH_MULT_VEL) * dt_pos
+            self.y += move_y * self.velocidade_atual * float(DASH_MULT_VEL) * dt_pos
+        else:
+            move_x, move_y = dx, dy
+            self.andando_frame = (dx != 0.0 or dy != 0.0)
+            if self.andando_frame:
+                self.anim_timer += dt_pos
+            self.x += dx * self.velocidade_atual * dt_pos
+            self.y += dy * self.velocidade_atual * dt_pos
 
         # Boundary clamping estrito dentro dos limites da arena
         max_x = max(0.0, float(limite_arena[0]) - self.largura)
@@ -458,34 +567,61 @@ class Jogador:
         self.x = clamp(self.x, 0.0, max_x)
         self.y = clamp(self.y, 0.0, max_y)
 
-        # Orientação visual (facing) baseado na posição virtual do mouse ou na direção
+        # Movimento secundário contínuo dirigido por dt (walk bob senoidal e tilt de strafe ±5°)
+        if self.andando_frame:
+            self.walk_phase = (self.walk_phase + dt_pos * 12.0) % (2.0 * math.pi)
+            fator_amp = 1.0 - math.exp(-16.0 * dt_pos)
+            self.bob_amplitude += (1.0 - self.bob_amplitude) * fator_amp
+        else:
+            fator_amp = 1.0 - math.exp(-14.0 * dt_pos)
+            self.bob_amplitude += (0.0 - self.bob_amplitude) * fator_amp
+        self.bob_offset_y = math.sin(self.walk_phase) * 2.5 * self.bob_amplitude
+
+        tilt_alvo = clamp(-move_x * 5.0, -5.0, 5.0)
+        fator_tilt = 1.0 - math.exp(-14.0 * dt_pos)
+        self.tilt_graus = clamp(self.tilt_graus + (tilt_alvo - self.tilt_graus) * fator_tilt, -5.0, 5.0)
+
+        # Orientação visual (facing) e ângulo contínuo de mira da arma em direção ao cursor
+        cx_j = self.x + self.largura / 2.0
+        cy_j = self.y + self.altura / 2.0
         if preset_teclas == "uma_mao":
             if dx < 0:
                 self.facing_right = False
             elif dx > 0:
                 self.facing_right = True
+            self.aim_angle_alvo = math.atan2(self.dir_movimento[1], self.dir_movimento[0])
         elif mouse is not None:
             try:
-                mx, _ = mouse.get_position()
+                mx, my = mouse.get_position()
                 if camera is not None and hasattr(camera, "obter_mouse_mundo"):
-                    mx, _ = camera.obter_mouse_mundo(mx, 0.0)
+                    mx, my = camera.obter_mouse_mundo(mx, my)
                 elif camera is not None:
                     mx += camera.x
+                    my += camera.y
                 # Se mouse estiver à esquerda do centro do jogador, vira para a esquerda
-                if mx < self.x + self.largura / 2.0:
+                if mx < cx_j:
                     self.facing_right = False
                 else:
                     self.facing_right = True
+                self.aim_angle_alvo = math.atan2(my - cy_j, mx - cx_j)
             except Exception:
                 if dx < 0:
                     self.facing_right = False
                 elif dx > 0:
                     self.facing_right = True
+                if move_x != 0.0 or move_y != 0.0:
+                    self.aim_angle_alvo = math.atan2(move_y, move_x)
         else:
             if dx < 0:
                 self.facing_right = False
             elif dx > 0:
                 self.facing_right = True
+            if move_x != 0.0 or move_y != 0.0:
+                self.aim_angle_alvo = math.atan2(move_y, move_x)
+
+        diff_ang = (self.aim_angle_alvo - self.aim_angle + math.pi) % (2.0 * math.pi) - math.pi
+        fator_aim = 1.0 - math.exp(-22.0 * dt_pos)
+        self.aim_angle += diff_ang * fator_aim
 
     def receber_dano(self, quantidade: int, causa_morte: str = ""):
         """Aplica dano ao jogador, aciona flash visual, registra causa da morte e testa condição de morte."""
@@ -511,6 +647,10 @@ class Jogador:
             return
 
         dano_a_aplicar = int(quantidade)
+        if getattr(self, "dano_recebido_mult", 1.0) != 1.0:
+            dano_a_aplicar = max(1, int(round(dano_a_aplicar * float(self.dano_recebido_mult))))
+        if getattr(self, "exposed_timer", 0.0) > 0.0:
+            dano_a_aplicar = max(1, int(round(dano_a_aplicar * float(getattr(self, "exposed_mult", 1.25)))))
         if self.buff_resistencia_timer > 0.0:
             dano_a_aplicar = max(1, int(round(dano_a_aplicar * 0.92)))
 
@@ -692,8 +832,17 @@ class Jogador:
         if getattr(self, "stutter_freeze_timer", 0.0) > 0.0:
             self.stutter_freeze_timer = max(0.0, self.stutter_freeze_timer - dt)
 
+        if getattr(self, "exposed_timer", 0.0) > 0.0:
+            self.exposed_timer = max(0.0, self.exposed_timer - dt)
+
         if getattr(self, "overdrive_dash_cooldown", 0.0) > 0.0:
             self.overdrive_dash_cooldown = max(0.0, self.overdrive_dash_cooldown - dt)
+
+        if getattr(self, "dash_ativo_timer", 0.0) > 0.0:
+            self.dash_ativo_timer = max(0.0, self.dash_ativo_timer - dt)
+
+        if getattr(self, "dash_cooldown_restante", 0.0) > 0.0:
+            self.dash_cooldown_restante = max(0.0, self.dash_cooldown_restante - dt)
 
         if getattr(self, "motion_blur_ghosting", False):
             self._rastro_timer = getattr(self, "_rastro_timer", 0.0) + dt
@@ -849,6 +998,37 @@ class Jogador:
         """Retorna caixa delimitadora (x, y, w, h)."""
         return (self.x, self.y, self.largura, self.altura)
 
+    @classmethod
+    def _obter_sprite_arma(cls, arma) -> pygame.Surface | None:
+        if arma is None:
+            return None
+        chave = getattr(arma, "sprite_key", None) or getattr(arma, "icone_asset", None)
+        if not chave:
+            nome_cls = type(arma).__name__.lower()
+            mapa_cls = {
+                "melee": "arma_melee",
+                "pistola": "arma_pistola",
+                "minigun": "arma_minigun",
+                "shotgun": "arma_shotgun",
+                "rifleassalto": "arma_rifle",
+                "lancafoguetes": "arma_foguetes",
+                "lancagranadas": "arma_granadas",
+                "railgun": "arma_railgun",
+            }
+            chave = mapa_cls.get(nome_cls)
+        if not chave:
+            return None
+        if chave not in cls._arma_sprite_cache:
+            try:
+                caminho = obter_caminho_asset(chave)
+                if os.path.isfile(caminho):
+                    cls._arma_sprite_cache[chave] = pygame.image.load(caminho).convert_alpha()
+                else:
+                    cls._arma_sprite_cache[chave] = None
+            except Exception:
+                cls._arma_sprite_cache[chave] = None
+        return cls._arma_sprite_cache[chave]
+
     def desenhar(self, janela, camera=None):
         """Renderiza o avatar da batata e seus drones ativos com suporte a câmera, efeito de dano e modo low_graphics."""
         draw_x = camera.transform_x(self.x) if camera else self.x
@@ -857,24 +1037,13 @@ class Jogador:
         is_low_graphics = getattr(janela, "low_graphics", False)
 
         if not is_low_graphics:
-            try:
-                from src.utils.pixel_art_sprites import obter_sprite_batata
-                frame_idx = int(getattr(self, "anim_timer", 0.0) * 8.0)
-                sprite_base = obter_sprite_batata(
-                    self.largura,
-                    self.altura,
-                    andando=getattr(self, "andando_frame", False),
-                    frame=frame_idx
-                )
-            except Exception:
-                self._carregar_sprites()
-                sprite_base = self._sprite_dano if (self.flash_dano_timer > 0.0 and self._sprite_dano) else self._sprite_idle
+            self._carregar_sprites()
+            sprite_base = self._sprite_dano if (self.flash_dano_timer > 0.0 and self._sprite_dano) else self._sprite_idle
         else:
             sprite_base = None
 
-        import math
-        offset_bob = int(round(abs(math.sin(getattr(self, "anim_timer", 0.0) * 10.0)) * 3.0)) if getattr(self, "andando_frame", False) else 0
-        draw_y_bob = draw_y - offset_bob
+        # Bobbing vertical senoidal contínuo dirigido por dt
+        draw_y_bob = draw_y - abs(float(getattr(self, "bob_offset_y", 0.0)))
 
         display_inited = pygame.display.get_init()
 
@@ -943,7 +1112,29 @@ class Jogador:
                 flash_s.fill((255, 90, 90, 0), special_flags=pygame.BLEND_RGBA_ADD)
                 surface_to_draw = flash_s
 
-            screen.blit(surface_to_draw, (blit_x, blit_y))
+            tilt = float(getattr(self, "tilt_graus", 0.0))
+            if abs(tilt) > 0.15:
+                rot_surf = pygame.transform.rotate(surface_to_draw, tilt)
+                rot_rect = rot_surf.get_rect(
+                    center=(int(round(draw_x + self.largura / 2.0)), int(round(draw_y_bob + self.altura / 2.0)))
+                )
+                screen.blit(rot_surf, rot_rect.topleft)
+            else:
+                screen.blit(surface_to_draw, (blit_x, blit_y))
+
+            # Arma equipada com rotação contínua suave em direção ao cursor
+            arma_ativa = self.obter_arma_ativa()
+            arma_surf = self._obter_sprite_arma(arma_ativa)
+            if arma_surf is not None:
+                ang = float(getattr(self, "aim_angle", 0.0))
+                cos_a = math.cos(ang)
+                sin_a = math.sin(ang)
+                arma_img = pygame.transform.flip(arma_surf, False, True) if cos_a < 0.0 else arma_surf
+                arma_rot = pygame.transform.rotate(arma_img, -math.degrees(ang))
+                ancora_x = draw_x + self.largura / 2.0 + cos_a * 14.0
+                ancora_y = draw_y_bob + self.altura / 2.0 + sin_a * 14.0
+                arma_rect = arma_rot.get_rect(center=(int(round(ancora_x)), int(round(ancora_y))))
+                screen.blit(arma_rot, arma_rect.topleft)
 
             # Anel hexagonal de Casco Eletrostático (buff_resistencia_timer > 0)
             if getattr(self, "buff_resistencia_timer", 0.0) > 0.0:
@@ -964,9 +1155,36 @@ class Jogador:
                 border_radius=8
             )
 
+        # Anel vermelho pulsante quando Exposto (punição de whiff / duelo)
+        if getattr(self, "exposed_timer", 0.0) > 0.0:
+            cx_exp = draw_x + self.largura / 2.0
+            cy_exp = draw_y + self.altura / 2.0
+            pygame.draw.circle(screen, (239, 68, 68), (int(cx_exp), int(cy_exp)), 24, 2)
+
+        # Seta direcional rotativa dos Controles de Tanque
+        if getattr(self, "controles_tanque", False):
+            cx_t = draw_x + self.largura / 2.0
+            cy_t = draw_y + self.altura / 2.0
+            ang_t = float(getattr(self, "angulo_tanque", -math.pi / 2.0))
+            ponta_x = cx_t + math.cos(ang_t) * 32.0
+            ponta_y = cy_t + math.sin(ang_t) * 32.0
+            base_x = cx_t + math.cos(ang_t) * 18.0
+            base_y = cy_t + math.sin(ang_t) * 18.0
+            perp_x = -math.sin(ang_t) * 6.0
+            perp_y = math.cos(ang_t) * 6.0
+            pygame.draw.line(screen, (250, 204, 21), (int(cx_t), int(cy_t)), (int(ponta_x), int(ponta_y)), 2)
+            pygame.draw.polygon(
+                screen,
+                (250, 204, 21),
+                [
+                    (int(ponta_x), int(ponta_y)),
+                    (int(base_x + perp_x), int(base_y + perp_y)),
+                    (int(base_x - perp_x), int(base_y - perp_y)),
+                ],
+            )
+
         # Multithreading: renderiza 2 mini-coprocessadores orbitais
         if getattr(self, "multithreading", False):
-            import math
             cx = draw_x + self.largura / 2.0
             cy = draw_y + self.altura / 2.0
             raio_orbita = 34.0

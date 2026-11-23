@@ -37,6 +37,9 @@ class Projetil:
         vx: float = None,
         vy: float = None,
         cor=None,
+        refletido_parry: bool = False,
+        splash_mult: float = 0.75,
+        ja_dividido_tear: bool = False,
         **kwargs
     ):
         self.x = float(x)
@@ -69,7 +72,10 @@ class Projetil:
         self._cached_rot_surf = None
         self._cached_rot_key = None
 
-        self.parried: bool = bool(kwargs.get("parried", False))
+        self.parried: bool = bool(kwargs.get("parried", refletido_parry))
+        self.refletido_parry: bool = bool(refletido_parry or self.parried)
+        self.splash_mult: float = float(splash_mult)
+        self.ja_dividido_tear: bool = bool(ja_dividido_tear)
         self.superaquecido: bool = bool(kwargs.get("superaquecido", False))
         self.sobrecarregado: bool = bool(kwargs.get("sobrecarregado", False))
         self.perfuracoes_restantes: int = int(kwargs.get("perfuracoes_restantes", 0))
@@ -83,6 +89,10 @@ class Projetil:
         self.trilha_plasma: bool = bool(kwargs.get("trilha_plasma", False))
         self.origem_trilha: tuple = kwargs.get("origem_trilha", (self.x_origem, self.y_origem))
         self.recuo_autor: float = float(kwargs.get("recuo_autor", 0.0))
+        self.sobrecarga_termica: bool = bool(kwargs.get("sobrecarga_termica", False))
+        self.criogenico: bool = bool(kwargs.get("criogenico", False))
+        self.duel_stage: int = int(kwargs.get("duel_stage", 0))
+        self.duel_owner = kwargs.get("duel_owner", None)
 
     @property
     def vx(self) -> float:
@@ -304,6 +314,9 @@ class Projetil:
         clone.y_origem = self.y_origem
         clone.alvos_atingidos = set(self.alvos_atingidos)
         clone.parried = getattr(self, "parried", False)
+        clone.refletido_parry = getattr(self, "refletido_parry", False)
+        clone.splash_mult = float(getattr(self, "splash_mult", 0.75))
+        clone.ja_dividido_tear = bool(getattr(self, "ja_dividido_tear", False))
         clone.superaquecido = getattr(self, "superaquecido", False)
         clone.sobrecarregado = getattr(self, "sobrecarregado", False)
         clone.perfuracoes_restantes = getattr(self, "perfuracoes_restantes", 0)
@@ -317,6 +330,10 @@ class Projetil:
         clone.trilha_plasma = getattr(self, "trilha_plasma", False)
         clone.origem_trilha = getattr(self, "origem_trilha", (self.x_origem, self.y_origem))
         clone.recuo_autor = getattr(self, "recuo_autor", 0.0)
+        clone.sobrecarga_termica = getattr(self, "sobrecarga_termica", False)
+        clone.criogenico = getattr(self, "criogenico", False)
+        clone.duel_stage = getattr(self, "duel_stage", 0)
+        clone.duel_owner = getattr(self, "duel_owner", None)
         return clone
 
     def desenhar(self, janela, camera=None):
@@ -345,12 +362,51 @@ class Projetil:
 
         # Fallback/cor configurada ou derivada do sprite
         cor = self.cor
-        if cor is None:
+        duel_stage = int(getattr(self, "duel_stage", 0))
+        if duel_stage >= 3:
+            cor = (255, 250, 205)
+        elif duel_stage == 2:
+            cor = (255, 110, 40)
+        elif getattr(self, "sobrecarga_termica", False):
+            cor = (244, 63, 94)
+        elif getattr(self, "criogenico", False):
+            cor = (103, 232, 249)
+        elif cor is None:
             cor = AMARELO_XP
             if "foguete" in self.sprite_key or "granada" in self.sprite_key:
                 cor = LARANJA_ALERTA
             elif "inimigo" in self.sprite_key:
                 cor = VERMELHO_DANO
+
+        # Trilhas de alto contraste para projéteis refletidos por parry, duelos e tiros sobrecarregados
+        cx_proj = draw_x + self.largura / 2.0
+        cy_proj = draw_y + self.altura / 2.0
+        is_refletido = getattr(self, "refletido_parry", False) or getattr(self, "parried", False) or duel_stage >= 2
+        is_sobrecarregado = getattr(self, "sobrecarregado", False)
+
+        if getattr(self, "sobrecarga_termica", False):
+            raio_core = max(8, int(max(self.largura, self.altura) * 0.65))
+            pygame.draw.circle(screen, (251, 146, 60), (int(cx_proj), int(cy_proj)), raio_core, 2)
+            pygame.draw.circle(screen, (253, 224, 71), (int(cx_proj), int(cy_proj)), max(3, raio_core // 2))
+
+        if is_refletido:
+            tail_len = 28.0 if not is_low_graphics else 18.0
+            tx = cx_proj - self.dir_x * tail_len
+            ty = cy_proj - self.dir_y * tail_len
+            pygame.draw.line(screen, (255, 195, 40), (int(cx_proj), int(cy_proj)), (int(tx), int(ty)), 5 if not is_low_graphics else 3)
+            if not is_low_graphics:
+                tx_core = cx_proj - self.dir_x * (tail_len * 0.7)
+                ty_core = cy_proj - self.dir_y * (tail_len * 0.7)
+                pygame.draw.line(screen, (255, 250, 185), (int(cx_proj), int(cy_proj)), (int(tx_core), int(ty_core)), 2)
+        elif is_sobrecarregado:
+            tail_len = 26.0 if not is_low_graphics else 16.0
+            tx = cx_proj - self.dir_x * tail_len
+            ty = cy_proj - self.dir_y * tail_len
+            pygame.draw.line(screen, (0, 230, 255), (int(cx_proj), int(cy_proj)), (int(tx), int(ty)), 5 if not is_low_graphics else 3)
+            if not is_low_graphics:
+                tx_core = cx_proj - self.dir_x * (tail_len * 0.72)
+                ty_core = cy_proj - self.dir_y * (tail_len * 0.72)
+                pygame.draw.line(screen, (255, 225, 90), (int(cx_proj), int(cy_proj)), (int(tx_core), int(ty_core)), 2)
 
         # Modo low_graphics: desenha diretamente primitivas geométricas sem texturas/rotação pesada
         if is_low_graphics:
@@ -359,10 +415,11 @@ class Projetil:
                 cor,
                 (int(draw_x), int(draw_y), self.largura, self.altura)
             )
-            if getattr(self, "parried", False) or getattr(self, "sobrecarregado", False) or getattr(self, "critico_nativo", False):
+            if is_refletido or is_sobrecarregado or getattr(self, "critico_nativo", False):
                 raio_dourado = max(self.largura, self.altura) // 2 + 3
-                centro_dourado = (int(draw_x + self.largura / 2.0), int(draw_y + self.altura / 2.0))
-                pygame.draw.circle(screen, (255, 215, 0), centro_dourado, raio_dourado, width=1)
+                centro_dourado = (int(cx_proj), int(cy_proj))
+                cor_anel = (255, 225, 90) if is_refletido else ((0, 230, 255) if is_sobrecarregado else (255, 215, 0))
+                pygame.draw.circle(screen, cor_anel, centro_dourado, raio_dourado, width=1)
             return
 
         sprite = self._carregar_sprite(self.sprite_key)
@@ -383,7 +440,7 @@ class Projetil:
                     self._cached_rot_key = rot_key
                     self._cached_rot_surf = pygame.transform.rotate(sprite, ang_deg)
                 rot_sprite = self._cached_rot_surf
-                rot_rect = rot_sprite.get_rect(center=(int(draw_x + self.largura / 2.0), int(draw_y + self.altura / 2.0)))
+                rot_rect = rot_sprite.get_rect(center=(int(cx_proj), int(cy_proj)))
                 screen.blit(rot_sprite, rot_rect)
             else:
                 screen.blit(sprite, (int(draw_x), int(draw_y)))
@@ -394,7 +451,13 @@ class Projetil:
                 (int(draw_x), int(draw_y), self.largura, self.altura)
             )
 
-        if getattr(self, "parried", False) or getattr(self, "sobrecarregado", False) or getattr(self, "critico_nativo", False):
+        if is_refletido:
+            raio_dourado = max(self.largura, self.altura) // 2 + 4
+            pygame.draw.circle(screen, (255, 225, 90), (int(cx_proj), int(cy_proj)), raio_dourado, width=2)
+        elif is_sobrecarregado:
             raio_dourado = max(self.largura, self.altura) // 2 + 3
-            centro_dourado = (int(draw_x + self.largura / 2.0), int(draw_y + self.altura / 2.0))
-            pygame.draw.circle(screen, (255, 215, 0), centro_dourado, raio_dourado, width=1)
+            pygame.draw.circle(screen, (0, 230, 255), (int(cx_proj), int(cy_proj)), raio_dourado, width=2)
+            pygame.draw.circle(screen, (255, 225, 90), (int(cx_proj), int(cy_proj)), max(2, raio_dourado - 2), width=1)
+        elif getattr(self, "critico_nativo", False):
+            raio_dourado = max(self.largura, self.altura) // 2 + 3
+            pygame.draw.circle(screen, (255, 215, 0), (int(cx_proj), int(cy_proj)), raio_dourado, width=1)

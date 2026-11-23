@@ -5,11 +5,41 @@ Explica os controles, HUD, tipos de drops, arquétipos de inimigos e mecânicas 
 
 import pygame
 from src.cenas.base_scene import BaseScene
+from src.ui.banner_dicas import BannerDica
 from src.utils.constantes import (
     LARGURA_TELA, ALTURA_TELA, BRANCO, PRETO, DOURADO,
     AZUL_CIANO, AMARELO_XP, VERDE_CURA, VERMELHO_HP, LARANJA_ALERTA,
     CINZA_BORDA, CINZA_PAINEL, CINZA_FUNDO, CINZA_TEXTO
 )
+
+_C_BACKDROP = (7, 9, 14)
+_C_HUD_PANEL = (11, 14, 23)
+_C_CARD = (17, 24, 39)
+_C_BORDER = (51, 65, 85)
+_C_CYAN = (34, 211, 238)
+_C_PURPLE = (168, 85, 247)
+_C_GOLD = (251, 191, 36)
+_C_TEXT_PRIMARY = (241, 245, 249)
+_C_TEXT_SECONDARY = (148, 163, 184)
+_C_TEXT_MUTED = (100, 116, 139)
+
+_FONT_CACHE: dict[tuple[str, int, bool], pygame.font.Font] = {}
+
+
+def _obter_fonte(familia: str, tamanho: int, bold: bool = False) -> pygame.font.Font:
+    px_sz = max(8, int(tamanho))
+    chave = (familia, px_sz, bold)
+    if chave in _FONT_CACHE:
+        return _FONT_CACHE[chave]
+    candidatos = ("jetbrainsmono", "firacode", "consolas", "dejavusansmono") if familia == "mono" else ("notosans", "dejavusans", "liberationsans", "arial")
+    for nome in candidatos:
+        f = pygame.font.SysFont(nome, px_sz, bold=bold)
+        if f is not None:
+            _FONT_CACHE[chave] = f
+            return f
+    f = pygame.font.SysFont("Arial", px_sz, bold=bold)
+    _FONT_CACHE[chave] = f
+    return f
 
 
 class TutorialScene(BaseScene):
@@ -23,6 +53,7 @@ class TutorialScene(BaseScene):
         self.tempo_acumulado = 0.0
         self.pagina_atual = 0  # 0: Controles e HUD, 1: Drops e Armas, 2: Inimigos e Regras
         self.total_paginas = 3
+        self.banner_dicas = BannerDica()
 
         # Debounce de entrada e proteção contra sangramento de teclas de cenas anteriores
         self.tempo_entrada = 0.0
@@ -43,6 +74,8 @@ class TutorialScene(BaseScene):
         dt = min(self.janela.delta_time(), 0.1)
         self.tempo_acumulado += dt
         self.tempo_entrada += dt
+        if hasattr(self, "banner_dicas") and self.banner_dicas is not None:
+            self.banner_dicas.atualizar(dt)
 
         # Checa estado físico das teclas brutas no Pygame
         tab_pressionado = False
@@ -160,43 +193,61 @@ class TutorialScene(BaseScene):
 
     def draw(self):
         screen = self.janela.screen
-        screen.fill(CINZA_FUNDO)
+        sw, sh = screen.get_size()
+        scale = min(sw / float(LARGURA_TELA), sh / float(ALTURA_TELA))
+        vx = (sw - int(round(LARGURA_TELA * scale))) // 2
+        vy = (sh - int(round(ALTURA_TELA * scale))) // 2
+
+        def px(val: float) -> int:
+            return vx + int(round(val * scale))
+
+        def py(val: float) -> int:
+            return vy + int(round(val * scale))
+
+        def ps(val: float) -> int:
+            return max(1, int(round(val * scale)))
+
+        screen.fill(_C_BACKDROP)
 
         ox = (LARGURA_TELA - 800) // 2
         oy = (ALTURA_TELA - 600) // 2
 
-        # Painel central estilizado
-        painel_rect = pygame.Rect(ox + 40, oy + 30, 720, 540)
-        pygame.draw.rect(screen, CINZA_PAINEL, painel_rect, border_radius=8)
-        pygame.draw.rect(screen, CINZA_BORDA, painel_rect, width=2, border_radius=8)
+        # Painel central estilizado (projetado em DPI nativo)
+        painel_rect = pygame.Rect(px(ox + 40), py(oy + 30), ps(720), ps(540))
+        pygame.draw.rect(screen, _C_HUD_PANEL, painel_rect, border_radius=ps(10))
+        pygame.draw.rect(screen, _C_BORDER, painel_rect, width=max(1, ps(2)), border_radius=ps(10))
+        meio_w = (painel_rect.width - ps(28)) // 2
+        pygame.draw.rect(screen, _C_PURPLE, (painel_rect.x + ps(14), painel_rect.y + 1, meio_w, max(2, ps(2))))
+        pygame.draw.rect(screen, _C_GOLD, (painel_rect.x + ps(14) + meio_w, painel_rect.y + 1, meio_w, max(2, ps(2))))
+
+        # Fontes nativas cacheadas por escala
+        fonte_tit = _obter_fonte("sans", max(8, int(round(22 * scale))), bold=True)
+        fonte_tab = _obter_fonte("mono", max(8, int(round(12 * scale))), bold=True)
+        fonte_sec = _obter_fonte("sans", max(8, int(round(14 * scale))), bold=True)
+        fonte_corpo = _obter_fonte("sans", max(8, int(round(12 * scale))), bold=False)
+        fonte_destaque = _obter_fonte("sans", max(8, int(round(12 * scale))), bold=True)
+        fonte_rod = _obter_fonte("mono", max(8, int(round(11 * scale))), bold=False)
 
         # Cabeçalho
-        fonte_tit = self._fonte_tit
-        tit_surf = fonte_tit.render("GUIA DE SOBREVIVÊNCIA - PROTOCOLO: BATATA", True, DOURADO)
-        tit_rect = tit_surf.get_rect(centerx=LARGURA_TELA // 2, top=oy + 45)
+        tit_surf = fonte_tit.render("GUIA DE SOBREVIVÊNCIA - PROTOCOLO: BATATA", True, _C_GOLD)
+        tit_rect = tit_surf.get_rect(centerx=px(LARGURA_TELA // 2), top=py(oy + 45))
         screen.blit(tit_surf, tit_rect)
 
         # Indicador de abas / páginas
-        fonte_tab = self._fonte_tab
         tabs = ["[1] CONTROLES & HUD", "[2] DROPS & ARMAS", "[3] INIMIGOS & MECÂNICAS"]
         for i, nome_tab in enumerate(tabs):
-            tx = ox + 80 + i * 220
-            cor_tab = DOURADO if i == self.pagina_atual else (120, 135, 155)
+            tx = px(ox + 80 + i * 220)
+            cor_tab = _C_GOLD if i == self.pagina_atual else _C_TEXT_MUTED
             tab_surf = fonte_tab.render(nome_tab, True, cor_tab)
-            screen.blit(tab_surf, (tx, oy + 80))
+            screen.blit(tab_surf, (tx, py(oy + 80)))
             if i == self.pagina_atual:
-                pygame.draw.line(screen, DOURADO, (tx, oy + 98), (tx + tab_surf.get_width(), oy + 98), 2)
+                pygame.draw.line(screen, _C_GOLD, (tx, py(oy + 98)), (tx + tab_surf.get_width(), py(oy + 98)), max(2, ps(2)))
 
-        pygame.draw.line(screen, (45, 55, 75), (ox + 60, oy + 105), (ox + 740, oy + 105), 1)
-
-        fonte_sec = self._fonte_sec
-        fonte_corpo = self._fonte_corpo
-        fonte_destaque = self._fonte_destaque
+        pygame.draw.line(screen, _C_BORDER, (px(ox + 60), py(oy + 105)), (px(ox + 740), py(oy + 105)), max(1, ps(1)))
 
         if self.pagina_atual == 0:
-            # Página 1: Controles e HUD
-            sec1_surf = fonte_sec.render("CONTROLES PRINCIPAIS", True, AZUL_CIANO)
-            screen.blit(sec1_surf, (ox + 70, oy + 120))
+            sec1_surf = fonte_sec.render("CONTROLES PRINCIPAIS", True, _C_CYAN)
+            screen.blit(sec1_surf, (px(ox + 70), py(oy + 120)))
 
             controles = [
                 ("W, A, S, D", "Move Cleiton pelo escritório."),
@@ -208,17 +259,18 @@ class TutorialScene(BaseScene):
 
             y_pos = oy + 145
             for tecla, desc in controles:
-                pygame.draw.rect(screen, (20, 26, 38), (ox + 70, y_pos, 150, 24), border_radius=4)
-                pygame.draw.rect(screen, (50, 65, 90), (ox + 70, y_pos, 150, 24), width=1, border_radius=4)
-                t_surf = fonte_destaque.render(tecla, True, AMARELO_XP)
-                screen.blit(t_surf, t_surf.get_rect(centerx=ox + 145, centery=y_pos + 12))
+                kc_r = pygame.Rect(px(ox + 70), py(y_pos), ps(150), ps(24))
+                pygame.draw.rect(screen, _C_CARD, kc_r, border_radius=ps(5))
+                pygame.draw.rect(screen, _C_BORDER, kc_r, width=max(1, ps(1)), border_radius=ps(5))
+                t_surf = fonte_tab.render(tecla, True, _C_GOLD)
+                screen.blit(t_surf, t_surf.get_rect(center=kc_r.center))
 
-                d_surf = fonte_corpo.render(desc, True, BRANCO)
-                screen.blit(d_surf, (ox + 235, y_pos + 4))
+                d_surf = fonte_corpo.render(desc, True, _C_TEXT_PRIMARY)
+                screen.blit(d_surf, (px(ox + 235), py(y_pos + 4)))
                 y_pos += 32
 
-            sec2_surf = fonte_sec.render("ELEMENTOS DA INTERFACE (HUD)", True, AZUL_CIANO)
-            screen.blit(sec2_surf, (ox + 70, y_pos + 10))
+            sec2_surf = fonte_sec.render("ELEMENTOS DA INTERFACE (HUD)", True, _C_CYAN)
+            screen.blit(sec2_surf, (px(ox + 70), py(y_pos + 10)))
             y_pos += 35
 
             hud_itens = [
@@ -227,16 +279,15 @@ class TutorialScene(BaseScene):
                 ("Abaixo de Cleiton", "Barra verde de vida e barreira azul de sobrevida, quando ativa.")
             ]
             for tit_h, desc_h in hud_itens:
-                h_surf = fonte_destaque.render(f"- {tit_h}:", True, (200, 220, 240))
-                screen.blit(h_surf, (ox + 70, y_pos))
-                d_surf = fonte_corpo.render(desc_h, True, CINZA_TEXTO)
-                screen.blit(d_surf, (ox + 70, y_pos + 16))
+                h_surf = fonte_destaque.render(f"- {tit_h}:", True, _C_TEXT_PRIMARY)
+                screen.blit(h_surf, (px(ox + 70), py(y_pos)))
+                d_surf = fonte_corpo.render(desc_h, True, _C_TEXT_SECONDARY)
+                screen.blit(d_surf, (px(ox + 70), py(y_pos + 16)))
                 y_pos += 34
 
         elif self.pagina_atual == 1:
-            # Página 2: Drops e Armas
-            sec1_surf = fonte_sec.render("ITENS E COLETÁVEIS (DURAM 60 SEGUNDOS NO CHÃO)", True, AZUL_CIANO)
-            screen.blit(sec1_surf, (ox + 70, oy + 120))
+            sec1_surf = fonte_sec.render("ITENS E COLETÁVEIS (DURAM 60 SEGUNDOS NO CHÃO)", True, _C_CYAN)
+            screen.blit(sec1_surf, (px(ox + 70), py(oy + 120)))
 
             drops_info = [
                 ("Gema Amarela de XP", "Dá experiência para subir até o nível 12."),
@@ -247,14 +298,14 @@ class TutorialScene(BaseScene):
             ]
             y_pos = oy + 145
             for nome_d, desc_d in drops_info:
-                d_surf = fonte_destaque.render(f"* {nome_d}:", True, AMARELO_XP)
-                screen.blit(d_surf, (ox + 70, y_pos))
-                desc_s = fonte_corpo.render(desc_d, True, BRANCO)
-                screen.blit(desc_s, (ox + 70, y_pos + 15))
+                d_surf = fonte_destaque.render(f"* {nome_d}:", True, _C_GOLD)
+                screen.blit(d_surf, (px(ox + 70), py(y_pos)))
+                desc_s = fonte_corpo.render(desc_d, True, _C_TEXT_PRIMARY)
+                screen.blit(desc_s, (px(ox + 70), py(y_pos + 15)))
                 y_pos += 30
 
-            sec2_surf = fonte_sec.render("ARSENAL DISPONÍVEL", True, AZUL_CIANO)
-            screen.blit(sec2_surf, (ox + 70, y_pos + 4))
+            sec2_surf = fonte_sec.render("ARSENAL DISPONÍVEL", True, _C_CYAN)
+            screen.blit(sec2_surf, (px(ox + 70), py(y_pos + 4)))
             y_pos += 26
 
             armas_info = [
@@ -265,16 +316,15 @@ class TutorialScene(BaseScene):
                 ("Railgun [3]", "Carrega por 1s com mira laser e atravessa a fila inteira deixando plasma.")
             ]
             for nome_a, desc_a in armas_info:
-                a_surf = fonte_destaque.render(f"- {nome_a}:", True, DOURADO)
-                screen.blit(a_surf, (ox + 70, y_pos))
-                desc_a_s = fonte_corpo.render(desc_a, True, CINZA_TEXTO)
-                screen.blit(desc_a_s, (ox + 70, y_pos + 14))
+                a_surf = fonte_destaque.render(f"- {nome_a}:", True, _C_GOLD)
+                screen.blit(a_surf, (px(ox + 70), py(y_pos)))
+                desc_a_s = fonte_corpo.render(desc_a, True, _C_TEXT_SECONDARY)
+                screen.blit(desc_a_s, (px(ox + 70), py(y_pos + 14)))
                 y_pos += 28
 
         elif self.pagina_atual == 2:
-            # Página 3: Inimigos e Mecânicas
-            sec1_surf = fonte_sec.render("MÁQUINAS DO ESCRITÓRIO", True, AZUL_CIANO)
-            screen.blit(sec1_surf, (ox + 70, oy + 120))
+            sec1_surf = fonte_sec.render("MÁQUINAS DO ESCRITÓRIO", True, _C_CYAN)
+            screen.blit(sec1_surf, (px(ox + 70), py(oy + 120)))
 
             inimigos_info = [
                 ("Gabinete de Firma", "Perseguidor padrão do escritório (40 HP)."),
@@ -286,14 +336,14 @@ class TutorialScene(BaseScene):
             ]
             y_pos = oy + 145
             for nome_i, desc_i in inimigos_info:
-                i_surf = fonte_destaque.render(f"* {nome_i}:", True, (255, 120, 120))
-                screen.blit(i_surf, (ox + 70, y_pos))
-                desc_i_s = fonte_corpo.render(desc_i, True, BRANCO)
-                screen.blit(desc_i_s, (ox + 70, y_pos + 14))
+                i_surf = fonte_destaque.render(f"* {nome_i}:", True, (252, 165, 165))
+                screen.blit(i_surf, (px(ox + 70), py(y_pos)))
+                desc_i_s = fonte_corpo.render(desc_i, True, _C_TEXT_PRIMARY)
+                screen.blit(desc_i_s, (px(ox + 70), py(y_pos + 14)))
                 y_pos += 29
 
-            sec2_surf = fonte_sec.render("PROGRESSÃO, MINI-BOSSES E CHEFE FINAL", True, AZUL_CIANO)
-            screen.blit(sec2_surf, (ox + 70, y_pos + 4))
+            sec2_surf = fonte_sec.render("PROGRESSÃO, MINI-BOSSES E CHEFE FINAL", True, _C_CYAN)
+            screen.blit(sec2_surf, (px(ox + 70), py(y_pos + 4)))
             y_pos += 25
 
             regras_info = [
@@ -303,14 +353,17 @@ class TutorialScene(BaseScene):
                 ("Geladeira Tsunami", "Entra no nível 12 (ou após os Mini-Bosses) depois de um aviso de 10s.")
             ]
             for nome_r, desc_r in regras_info:
-                r_surf = fonte_destaque.render(f"- {nome_r}:", True, DOURADO)
-                screen.blit(r_surf, (ox + 70, y_pos))
-                desc_r_s = fonte_corpo.render(desc_r, True, CINZA_TEXTO)
-                screen.blit(desc_r_s, (ox + 70, y_pos + 14))
+                r_surf = fonte_destaque.render(f"- {nome_r}:", True, _C_GOLD)
+                screen.blit(r_surf, (px(ox + 70), py(y_pos)))
+                desc_r_s = fonte_corpo.render(desc_r, True, _C_TEXT_SECONDARY)
+                screen.blit(desc_r_s, (px(ox + 70), py(y_pos + 14)))
                 y_pos += 27
 
         # Rodapé de Instruções
-        rodape_txt = "Pressione [1, 2, 3], [A / D], [SETAS] ou CLIQUE para trocar de página | [ESC / ENTER] para voltar"
-        fonte_rod = self._fonte_rod
-        rod_surf = fonte_rod.render(rodape_txt, True, (150, 165, 185))
-        screen.blit(rod_surf, rod_surf.get_rect(centerx=LARGURA_TELA // 2, bottom=painel_rect.bottom - 12))
+        rodape_txt = "[1, 2, 3] / [A / D] / [SETAS] ou CLIQUE para trocar de página   •   [ESC / ENTER] Voltar"
+        rod_surf = fonte_rod.render(rodape_txt, True, _C_TEXT_MUTED)
+        screen.blit(rod_surf, rod_surf.get_rect(centerx=px(LARGURA_TELA // 2), bottom=painel_rect.bottom - ps(12)))
+
+        if hasattr(self, "banner_dicas") and self.banner_dicas is not None:
+            dica_rect = pygame.Rect(painel_rect.x, painel_rect.bottom + ps(10), painel_rect.width, ps(54))
+            self.banner_dicas.desenhar(screen, dica_rect, scale=scale)
