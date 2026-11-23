@@ -458,6 +458,17 @@ class TestAutoFireFloorPersistenceAndVisualMeta(unittest.TestCase):
         cena.update(0.016)
         self.assertEqual(len(cena.projeteis), 2)
 
+    def test_vsync_tear_speed_reduced_by_50_percent_to_80px_per_second(self):
+        cena = GameplayScene()
+        cena.config_sistema.desbloquear_config("vsync")
+        cena.config_sistema.definir_valor("vsync", "desligado")
+        cena.teclado = _DummyKeyboard()
+        cena.mouse = _DummyMouse(pos=(640, 360))
+        cena.vsync_tear_y = 100.0
+        cena.update(0.5)
+        # 100.0 + 80.0 * 0.5 = 140.0
+        self.assertAlmostEqual(cena.vsync_tear_y, 140.0, places=1)
+
     def test_world_only_resolution_scaling_draws_without_shrinking_window(self):
         cena = GameplayScene()
         cena.config_sistema.desbloquear_config("resolucao")

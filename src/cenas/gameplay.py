@@ -1879,7 +1879,7 @@ class GameplayScene(BaseScene):
         if not cutscene_congelada:
             # Sincronização Vertical (Desligado): Linha de Rasgo que divide projéteis em ±6° uma única vez
             if getattr(mods, "vsync_tear_refraction", False):
-                self.vsync_tear_y = (getattr(self, "vsync_tear_y", 0.0) + 160.0 * dt) % ALTURA_TELA
+                self.vsync_tear_y = (getattr(self, "vsync_tear_y", 0.0) + 80.0 * dt) % ALTURA_TELA
                 proj_clones = []
                 ang_split = math.radians(6.0)
                 cos_pos, sin_pos = math.cos(ang_split), math.sin(ang_split)
