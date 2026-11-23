@@ -612,7 +612,7 @@ class MenuConfigs:
         cor_borda0 = _C_GOLD if self.aba_atual == 0 else _C_ELEVATED
         pygame.draw.rect(screen, cor_aba0, aba0_rect, border_radius=self._ps(7))
         pygame.draw.rect(screen, cor_borda0, aba0_rect, width=self._ps(2) if self.aba_atual == 0 else max(1, self._ps(1)), border_radius=self._ps(7))
-        t_aba0 = self._fonte_aba.render("GAMEPLAY  •  20", True, _C_GOLD if self.aba_atual == 0 else _C_TEXT_SECONDARY)
+        t_aba0 = self._fonte_aba.render("GAMEPLAY", True, _C_GOLD if self.aba_atual == 0 else _C_TEXT_SECONDARY)
         screen.blit(t_aba0, t_aba0.get_rect(center=aba0_rect.center))
 
         # Aba 1: Sistema
