@@ -382,7 +382,7 @@ class TestChallengerGuaranteedDropCluster(unittest.TestCase):
             # Validações estritas
             self.assertEqual(len(drops_xp), 5, f"Run {run_id}: esperava 5 gemas de XP, obteve {len(drops_xp)}")
             total_xp = sum(d.valor for d in drops_xp)
-            self.assertEqual(total_xp, 50, f"Run {run_id}: soma de XP = {total_xp} != 50")
+            self.assertEqual(total_xp, 75, f"Run {run_id}: soma de XP = {total_xp} != 75")
 
             self.assertEqual(len(drops_arma), 1, f"Run {run_id}: esperava 1 drop de arma garantido")
             self.assertEqual(len(drops_equip), 1, f"Run {run_id}: esperava 1 drop de equipamento garantido")
@@ -402,10 +402,10 @@ class TestChallengerGuaranteedDropCluster(unittest.TestCase):
         # Coleta os drops
         eventos = self.sistema_drops.coletar_jogador(self.jogador, mult_valor_drop=1.0)
 
-        # Verifica ganho total de XP
+        # Verifica ganho total de XP (+50% = 75 XP)
         eventos_xp = [e for e in eventos if e["tipo"] == "xp"]
         xp_ganho = sum(e["valor"] for e in eventos_xp)
-        self.assertEqual(xp_ganho, 50)
+        self.assertEqual(xp_ganho, 75)
 
         # Verifica se arma especial foi equipada
         self.assertIsNotNone(self.jogador.arma_especial)
