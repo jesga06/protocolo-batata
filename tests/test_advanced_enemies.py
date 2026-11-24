@@ -115,10 +115,10 @@ class TestInimigoRanged(unittest.TestCase):
         self.assertEqual(len(e.projeteis_pendentes), 0)
 
     def test_rich_loot_table_attributes(self):
-        """Valida que o Inimigo Ranged possui flags de loot enriquecido (15% arma, 15% equip)."""
+        """Valida que o Inimigo Ranged possui flags de loot enriquecido (30% arma, 15% equip)."""
         e = InimigoRanged(x=100.0, y=100.0)
         self.assertTrue(e.loot_enriquecido)
-        self.assertAlmostEqual(e.chance_drop_arma, 0.15)
+        self.assertAlmostEqual(e.chance_drop_arma, 0.3)
         self.assertAlmostEqual(e.chance_drop_equipamento, 0.15)
 
 
