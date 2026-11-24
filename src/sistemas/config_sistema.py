@@ -39,8 +39,13 @@ class GerenciadorConfiguracoes:
         self.ultimos_conflitos_resolvidos: list[tuple[str, str]] = []
         self.sistema_conquistas: SistemaConquistas = SistemaConquistas()
         self.estatisticas: dict[str, Any] = self._criar_estatisticas_padrao()
+        self.tutorial_visto: bool = False
 
         self._inicializar_padroes()
+
+    def marcar_tutorial_visto(self, visto: bool = True) -> None:
+        """Marca o tutorial como visto (ou reseta) no estado persistido."""
+        self.tutorial_visto = bool(visto)
 
     @staticmethod
     def _criar_estatisticas_padrao() -> dict[str, Any]:
@@ -72,6 +77,7 @@ class GerenciadorConfiguracoes:
         self.ultimos_conflitos_resolvidos = []
         self.sistema_conquistas = SistemaConquistas()
         self.estatisticas = self._criar_estatisticas_padrao()
+        self.tutorial_visto = False
         self._inicializar_padroes()
 
     def sincronizar_recompensas_conquistas(self) -> None:
@@ -361,6 +367,7 @@ class GerenciadorConfiguracoes:
                 "dash_desbloqueado": bool(self.estatisticas.get("dash_desbloqueado", False)),
             },
             "progresso_conquistas": self.sistema_conquistas.to_dict(),
+            "tutorial_visto": bool(getattr(self, "tutorial_visto", False)),
         }
 
     def from_dict(self, dados: dict) -> bool:
@@ -473,6 +480,7 @@ class GerenciadorConfiguracoes:
             self.loadout = temp_loadout
             self.estatisticas = temp_estatisticas
             self.sistema_conquistas = temp_conquistas
+            self.tutorial_visto = bool(dados.get("tutorial_visto", False))
             self.ultimos_conflitos_resolvidos = []
             return True
 

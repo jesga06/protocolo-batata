@@ -664,7 +664,9 @@ class EfeitoDashRastro(EfeitoCombate):
         self.sobreaquecimento_timer: float = 0.0
         self.zonas_fogo: list[dict] = []
         self.vortices: list[dict] = []
+        self.vortices_vacuo: list[dict] = self.vortices
         self.subprocessos_pendentes: list[dict] = []
+        self.feixes_subprocesso: list[dict] = []
 
     def ao_tick(self, ctx: ContextoCombate, dt: float) -> None:
         dt = float(dt)
@@ -713,7 +715,14 @@ class EfeitoDashRastro(EfeitoCombate):
                             inim.x = float(inim.x) + nx * 160.0 * dt
                             inim.y = float(inim.y) + ny * 160.0 * dt
                     v_ativos.append(v)
-            self.vortices = v_ativos
+            self.vortices[:] = v_ativos
+
+        if self.feixes_subprocesso:
+            self.feixes_subprocesso[:] = [
+                {**f, "tempo": f["tempo"] - dt}
+                for f in self.feixes_subprocesso
+                if f["tempo"] - dt > 0.0
+            ]
 
         # Subprocesso atrasado (dispara após 0.75s)
         if self.subprocessos_pendentes:
@@ -731,6 +740,12 @@ class EfeitoDashRastro(EfeitoCombate):
                         if _distancia_ponto_segmento(ix, iy, ox, oy, dx, dy) <= 40.0:
                             _aplicar_dano_entidade(inim, 30)
                             _aplicar_stun_entidade(inim, 1.1)
+                    self.feixes_subprocesso.append({
+                        "origem": (ox, oy),
+                        "destino": (dx, dy),
+                        "tempo": 0.35,
+                        "duracao": 0.35,
+                    })
                 else:
                     restantes.append(sp)
             self.subprocessos_pendentes = restantes

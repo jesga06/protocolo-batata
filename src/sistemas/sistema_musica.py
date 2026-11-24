@@ -454,23 +454,23 @@ class SistemaMusica:
                     self._proximo_enfileirado = None
                     self._aplicar_volumes_canais()
 
-        # 3. Recuperação caso o canal tenha parado após o fim da frase (ex.: suspensão do SO)
+        # 3. Recuperação caso o canal tenha parado (ex.: suspensão do SO em Pause + Alt-Tab ou fim da frase)
         decorrido = agora - self._inicio_faixa
-        if (
-            self._proximo_enfileirado is None
-            and self._canal_normal is not None
-            and self._duracao_atual > 0.0
-            and decorrido >= self._duracao_atual
-        ):
+        if self._canal_normal is not None and (self._duracao_atual > 0.0 or self._injetado):
             try:
                 ocupado = self._canal_normal.get_busy()
             except Exception:
                 ocupado = True
             if not ocupado:
-                proximo = self._decidir_proximo_estado(
-                    tempo_sobrevivencia,
-                    trava_assault=trava_assault,
-                    pausar_transicao=pausar_transicao,
+                self._proximo_enfileirado = None
+                proximo = (
+                    self.estado
+                    if pausar_transicao
+                    else self._decidir_proximo_estado(
+                        tempo_sobrevivencia,
+                        trava_assault=trava_assault,
+                        pausar_transicao=pausar_transicao,
+                    )
                 )
                 self._tocar_par_estado(proximo, loops=0)
                 return

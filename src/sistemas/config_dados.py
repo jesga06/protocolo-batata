@@ -529,8 +529,8 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 id="ligado",
                 label="Ligado",
                 modificadores={"loot_enriquecido": True, "inimigos_ranged_bullet_hell": True},
-                flavor_text="Mais projéteis vindo na sua cara significam mais combustível para contra-atacar.",
-                nerf_text="Dobro de Projetores Laser com rajadas triplas liberadas desde cedo",
+                flavor_text="Mais projéteis teleguiados vindo na sua cara significam mais combustível para contra-atacar.",
+                nerf_text="Dobro de Projetores Laser disparando projéteis teleguiados não-parriáveis",
                 buff_text="Combustível de Bullet-Hell: loot enriquecido e Parry/Just-Dodge reduz CD e sobrecarrega o próximo tiro"
             ),
         }
