@@ -20,7 +20,7 @@ from src.entidades.inimigo_ranged import InimigoRanged
 from src.entidades.projetil import Projetil
 from src.sistemas.config_dados import CONFIGURACOES_GAMEPLAY
 from src.sistemas.config_sistema import GerenciadorConfiguracoes
-from src.sistemas.efeitos_combate import ContextoCombate, EfeitoDashRastro
+from src.sistemas.efeitos_combate import ContextoCombate, EfeitoDashRastro, EfeitoInerciaCinetica
 from src.sistemas.sistema_musica import SistemaMusica
 
 
@@ -236,6 +236,44 @@ class TestPlaytestFixesCore(unittest.TestCase):
         self.assertEqual(inimigo.hp, 70)
         self.assertAlmostEqual(inimigo.atordoado_timer, 1.1, places=2)
         self.assertEqual(len(efeito.feixes_subprocesso), 1)
+
+    def test_dash_bowling_empurra_lateralmente_atordoa_e_escala_por_hp(self):
+        efeito = EfeitoInerciaCinetica(nivel=2)
+        jogador = SimpleNamespace(
+            x=100.0, y=100.0, largura=42, altura=42,
+            dash_ativo_timer=0.18, dash_dir=(1.0, 0.0),
+        )
+        # Tank logo abaixo do eixo do dash -> empurrado para +Y (lateralmente)
+        tank = SimpleNamespace(
+            x=115.0, y=110.0, largura=32, altura=32, vivo=True,
+            hp=300, hp_max=300, vx_knockback=0.0, vy_knockback=0.0,
+            slow_timer=0.0, slow_fator=1.0, atordoado_timer=0.0,
+            em_derrapagem_cinetica=False,
+        )
+        # Segundo inimigo colidindo com o Tank
+        alvo = SimpleNamespace(
+            x=115.0, y=115.0, largura=32, altura=32, vivo=True,
+            hp=500, hp_max=500, vx_knockback=0.0, vy_knockback=0.0,
+            _boliche_cd=0.0,
+        )
+        def _dano_alvo(qtd):
+            alvo.hp -= qtd
+        alvo.receber_dano = _dano_alvo
+
+        ctx = ContextoCombate(cena=None, jogador=jogador, inimigos=[tank, alvo], projeteis=[], drops=[])
+        efeito.ao_dash(ctx, (100.0, 100.0), (200.0, 100.0))
+        efeito.ao_tick(ctx, 0.016)
+
+        # Tank foi empurrado lateralmente (perpendicular ao dash em X -> Y positivo), atordoado e virou pino
+        self.assertAlmostEqual(tank.vx_knockback, 0.0, places=3)
+        self.assertGreater(tank.vy_knockback, 400.0)
+        self.assertGreaterEqual(tank.slow_timer, 0.70)
+        self.assertEqual(tank.slow_fator, 0.0)
+        self.assertTrue(tank.em_derrapagem_cinetica)
+
+        # Dano de colisão em alvo escala com o HP do Tank empurrado (300 * 0.80 = 240 + bônus)
+        dano_sofrido = 500 - alvo.hp
+        self.assertGreaterEqual(dano_sofrido, 240)
 
 
 if __name__ == "__main__":

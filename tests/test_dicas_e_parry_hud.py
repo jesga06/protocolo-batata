@@ -135,27 +135,27 @@ class TestDicasEParryHUD(unittest.TestCase):
         from src.entidades.projetil import Projetil
 
         ninja = InimigoNinja(100, 100)
-        self.assertAlmostEqual(ninja.vel_projetil, 255.0)
+        self.assertAlmostEqual(ninja.vel_projetil, 380.0)
 
         ninja.timer_tiro = ninja.cooldown_tiro
         ninja.update(0.016, (250, 100))
         projs = ninja.obter_projeteis_pendentes()
         self.assertEqual(len(projs), 1)
-        self.assertEqual((projs[0].largura, projs[0].altura), (24, 24))
+        self.assertEqual((projs[0].largura, projs[0].altura), (20, 20))
         self.assertEqual(projs[0].cor, (168, 85, 247))
-        self.assertAlmostEqual(projs[0].velocidade, 255.0)
+        self.assertAlmostEqual(projs[0].velocidade, 380.0)
 
-        p_duelo = ninja.disparar_contra_ataque_duelo(2, (250, 100))
-        self.assertEqual((p_duelo.largura, p_duelo.altura), (21, 21))
+        p_duelo = ninja._emitir_projetil_duelo(2, (250, 100))
+        self.assertEqual((p_duelo.largura, p_duelo.altura), (20, 20))
         self.assertEqual(p_duelo.cor, (168, 85, 247))
-        self.assertAlmostEqual(p_duelo.velocidade, 255.0 * 1.35)
+        self.assertAlmostEqual(p_duelo.velocidade, 470.0)
 
         p_jog = Projetil(100, 100, 1.0, 0.0, 400.0, 10, dono="jogador", largura=12, altura=12)
         ref = ninja.aparar_projetil_jogador(p_jog, (250, 100))
         self.assertIsNotNone(ref)
-        self.assertEqual((ref.largura, ref.altura), (24, 24))
+        self.assertEqual((ref.largura, ref.altura), (20, 20))
         self.assertEqual(ref.cor, (168, 85, 247))
-        self.assertAlmostEqual(ref.velocidade, 400.0 * 0.95 * 0.75)
+        self.assertAlmostEqual(ref.velocidade, 380.0)
 
 
 if __name__ == "__main__":

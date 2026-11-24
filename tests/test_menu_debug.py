@@ -323,9 +323,15 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         debug_menu.indice_foco = 5
         for idx in range(len(debug_menu.opcoes_armas)):
             debug_menu.idx_arma = idx
+            _, classe_str = debug_menu.opcoes_armas[idx]
             debug_menu._spawnar_item_ou_inimigo_no_mundo(500, 400)
-            self.assertIsNotNone(cena.jogador.arma_especial)
-            self.assertEqual(cena.jogador.slot_ativo, 3)
+            if classe_str == "BastaoChoque":
+                self.assertEqual(cena.jogador.slot_ativo, 1)
+            elif classe_str == "SMGCompacta":
+                self.assertEqual(cena.jogador.slot_ativo, 2)
+            else:
+                self.assertIsNotNone(cena.jogador.arma_especial)
+                self.assertEqual(cena.jogador.slot_ativo, 3)
 
         # 2. Drones
         debug_menu.indice_foco = 6

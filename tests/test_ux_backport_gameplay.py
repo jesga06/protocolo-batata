@@ -228,17 +228,17 @@ class TestMeleeParryAndPistolOverload(unittest.TestCase):
         melee = Melee()
         self.assertEqual(melee.arco_graus, 120.0)
         self.assertAlmostEqual(melee.parry_duracao, 0.12)
-        self.assertAlmostEqual(melee.parry_alcance, 109.0 * 1.0, places=2)
+        self.assertAlmostEqual(melee.parry_alcance, 64.0 * 1.0, places=2)
 
         # Executing attack opens parry window even with empty enemy list
         melee.executar_ataque(200.0, 200.0, [], angulo_mira=0.0, abrir_janela_parry=True)
         self.assertAlmostEqual(melee.parry_janela_restante, 0.12)
 
-        # Projectile at +35° (inside 90° arc = +-45°) and distance ~100px (inside 109px)
+        # Projectile at +35° (inside 90° arc = +-45°) and distance ~50px (inside 64px)
         ang_35 = math.radians(35.0)
         p_hit = Projetil(
-            x=200.0 + 100.0 * math.cos(ang_35) - 4.0,
-            y=200.0 + 100.0 * math.sin(ang_35) - 4.0,
+            x=200.0 + 50.0 * math.cos(ang_35) - 4.0,
+            y=200.0 + 50.0 * math.sin(ang_35) - 4.0,
             dir_x=-1.0,
             dir_y=0.0,
             velocidade=240.0,
@@ -249,8 +249,8 @@ class TestMeleeParryAndPistolOverload(unittest.TestCase):
         # Projectile at +80° (outside 90° arc)
         ang_80 = math.radians(80.0)
         p_miss = Projetil(
-            x=200.0 + 100.0 * math.cos(ang_80) - 4.0,
-            y=200.0 + 100.0 * math.sin(ang_80) - 4.0,
+            x=200.0 + 50.0 * math.cos(ang_80) - 4.0,
+            y=200.0 + 50.0 * math.sin(ang_80) - 4.0,
             dir_x=-1.0,
             dir_y=0.0,
             velocidade=240.0,
@@ -287,7 +287,7 @@ class TestMeleeParryAndPistolOverload(unittest.TestCase):
                 melee.iniciar_golpe_parry(0.0)
 
                 proj_inim = Projetil(
-                    x=cx + 80.0, y=cy - 4.0, dir_x=-1.0, dir_y=0.0,
+                    x=cx + 50.0, y=cy - 4.0, dir_x=-1.0, dir_y=0.0,
                     velocidade=200.0, dano=20, tempo_vida=1.5, dono="inimigo"
                 )
                 cena.projeteis = [proj_inim]
