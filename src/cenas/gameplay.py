@@ -128,6 +128,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         self.efeitos_combate = GerenciadorEfeitosCombate()
         self.hologramas: list = []
         self.pulso_assault_intro_timer: float = 0.0
+        self._dano_na_fase3_boss: bool = False
         self.hud = HUD()
 
         from src.ui.menu_debug import MenuDebug
@@ -446,7 +447,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         if self.jogador.dash_protocolo == "propulsor_instavel":
             self.jogador.dash_cargas_max = 2
             self.jogador.dash_sem_iframes = True
-            self.jogador.dash_recarga_mult = 0.70
+            self.jogador.dash_recarga_mult = 1.35
         else:
             self.jogador.dash_cargas_max = 1
             self.jogador.dash_sem_iframes = False
@@ -1138,8 +1139,23 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         if hasattr(self, "hologramas") and self.hologramas:
             for holo in self.hologramas:
                 if hasattr(holo, "update"):
-                    holo.update(dt, inimigos=self.inimigos, projeteis=self.projeteis)
-            self.hologramas = [h for h in self.hologramas if getattr(h, "ativo", True)]
+                    ev_holo = holo.update(dt, inimigos=self.inimigos)
+                    if isinstance(ev_holo, dict) and ev_holo.get("explodir"):
+                        hx = float(ev_holo.get("x", 0.0))
+                        hy = float(ev_holo.get("y", 0.0))
+                        h_raio = float(ev_holo.get("raio", 115.0))
+                        h_dano = int(ev_holo.get("dano", 45))
+                        if hasattr(self, "sistema_particulas") and self.sistema_particulas is not None:
+                            self.sistema_particulas.emitir_onda_choque(hx, hy, raio_max=h_raio, cor=(120, 230, 255))
+                        for inim in self.inimigos:
+                            if getattr(inim, "vivo", True):
+                                icx = inim.x + getattr(inim, "largura", 28) * 0.5
+                                icy = inim.y + getattr(inim, "altura", 28) * 0.5
+                                if distancia(hx, hy, icx, icy) <= h_raio:
+                                    inim.receber_dano(h_dano)
+                                    if not inim.vivo and hasattr(self, "_registrar_abate_inimigo"):
+                                        self._registrar_abate_inimigo(inim, mods)
+            self.hologramas = [h for h in self.hologramas if getattr(h, "vivo", True)]
 
         if hasattr(self, "efeitos_combate") and self.efeitos_combate is not None:
             ctx_tick = ContextoCombate(
@@ -1644,6 +1660,21 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                 })
 
         # Atualiza IA do Scavenger APENAS se a configuração "coleta_inimiga" estiver desbloqueada e ligada
+        if (
+            self.chefe_final is not None
+            and getattr(self.chefe_final, "vivo", False)
+            and not getattr(self, "_dano_na_fase3_boss", False)
+        ):
+            em_f3 = (
+                getattr(self.chefe_final, "fase_atual", 1) >= 3
+                or "fase3" in str(getattr(self.chefe_final, "estado", "")).lower()
+                or getattr(self.chefe_final, "hp", 1) <= getattr(self.chefe_final, "hp_max", 1) * 0.35
+            )
+            if em_f3:
+                hp_atual_j = getattr(self.jogador, "hp", 0)
+                if hasattr(self, "_hp_anterior_f3_boss") and hp_atual_j < self._hp_anterior_f3_boss:
+                    self._dano_na_fase3_boss = True
+                self._hp_anterior_f3_boss = hp_atual_j
         mods = self.config_sistema.obter_modificadores() if hasattr(self, "config_sistema") and self.config_sistema else None
         val_coleta = str(self.config_sistema.obter_valor("coleta_inimiga")).lower() if hasattr(self, "config_sistema") and self.config_sistema else "desligado"
         coleta_ativa = getattr(mods, "coleta_inimiga", False) or (val_coleta in ("ligado", "true", "1"))
@@ -1701,12 +1732,29 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         }
         if getattr(self, "sistema_conquistas", None) is not None:
             if vitoria:
+                from src.sistemas.config_dados import CONFIGURACOES_GAMEPLAY
+                configs_nao_neutras = sum(
+                    1
+                    for cid, cdef in CONFIGURACOES_GAMEPLAY.items()
+                    if self.gerenciador_config.is_desbloqueada(cid)
+                    and self.gerenciador_config.obter_valor(cid) != cdef.valor_padrao
+                )
+                cores_inv = str(self.gerenciador_config.obter_valor("cores_invertidas")).strip().lower() in (
+                    "ligado", "true", "1"
+                )
+                vsync_off = str(self.gerenciador_config.obter_valor("vsync")).strip().lower() in (
+                    "desligado", "false", "0", "off"
+                )
+                sem_dano_f3 = not getattr(self, "_dano_na_fase3_boss", False)
                 self.sistema_conquistas.registrar_evento(
                     "vitoria_boss",
                     1,
                     {
-                        "sem_configs": (mult_dif <= 1.0),
-                        "cabo_vga_solto": bool(getattr(self.gerenciador_config.obter_modificadores(), "fogo_amigo", False)),
+                        "sem_configs": (configs_nao_neutras == 0),
+                        "configs_nao_neutras": configs_nao_neutras,
+                        "cores_invertidas": cores_inv,
+                        "vsync_desligado": vsync_off,
+                        "sem_dano_f3": sem_dano_f3,
                     },
                 )
             self.gerenciador_config.sincronizar_recompensas_conquistas()

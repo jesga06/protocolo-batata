@@ -139,6 +139,61 @@ class TestIntegracaoCoreV2(unittest.TestCase):
         self.assertTrue(cena.boss_grace_period_ativo)
         self.assertGreater(cena.pulso_assault_intro_timer, 0.0)
 
+    def test_holograma_clone_agro_propulsor_e_vitoria_boss_ctx(self):
+        from src.entidades.holograma import EntidadeHolograma
+
+        cena = GameplayScene()
+        # 1. propulsor_instavel deve acelerar recarga (1.35), nao reduzir (0.70)
+        cena.gerenciador_config.desbloqueadas.add("dash_protocolo")
+        cena.gerenciador_config.definir_valor("dash_protocolo", "propulsor_instavel")
+        cena.aplicar_modificadores()
+        self.assertEqual(cena.jogador.dash_cargas_max, 2)
+        self.assertAlmostEqual(cena.jogador.dash_recarga_mult, 1.35)
+
+        # 2. EntidadeHolograma.update(dt, inimigos=...) + explosao clone_agro + pruning via vivo
+        holo = EntidadeHolograma(x=100.0, y=100.0, modo="clone_agro", duracao=0.01)
+        inim = SimpleNamespace(
+            x=110.0,
+            y=110.0,
+            largura=28,
+            altura=28,
+            vivo=True,
+            velocidade=0.0,
+            vx_knockback=0.0,
+            vy_knockback=0.0,
+            cooldown_contato_atual=0.0,
+            update=MagicMock(),
+            receber_dano=MagicMock(),
+        )
+        cena.inimigos = [inim]
+        cena.hologramas = [holo]
+        cena.teclado = MagicMock()
+        cena.teclado.key_down.return_value = False
+        cena.teclado.key_pressed.return_value = False
+        cena.mouse = MagicMock()
+        cena.mouse.button_down.return_value = False
+        cena.mouse.button_pressed.return_value = False
+        cena.mouse.get_position.return_value = (640, 360)
+        cena.loop(dt=0.02)
+        inim.receber_dano.assert_called_once_with(45)
+        self.assertEqual(cena.hologramas, [])
+
+        # 3. _registrar_fim_partida(vitoria=True) envia chaves canonicas de vitoria_boss
+        cena.gerenciador_config.desbloqueadas.update(["cores_invertidas", "vsync"])
+        cena.gerenciador_config.definir_valor("cores_invertidas", "ligado")
+        cena.gerenciador_config.definir_valor("vsync", "desligado")
+        cena.partida_registrada = False
+        with patch.object(cena.gerenciador_config, "salvar_arquivo"):
+            with patch.object(cena.sistema_conquistas, "registrar_evento", return_value=[]) as mock_reg:
+                cena._registrar_fim_partida(vitoria=True)
+                mock_reg.assert_called_once()
+                evento_nome, _, ctx = mock_reg.call_args.args
+                self.assertEqual(evento_nome, "vitoria_boss")
+                self.assertTrue(ctx["cores_invertidas"])
+                self.assertTrue(ctx["vsync_desligado"])
+                self.assertIn("configs_nao_neutras", ctx)
+                self.assertIn("sem_dano_f3", ctx)
+
 
 if __name__ == "__main__":
     unittest.main()
