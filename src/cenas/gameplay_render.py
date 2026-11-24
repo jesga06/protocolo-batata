@@ -388,30 +388,58 @@ class GameplayRenderMixin:
             if hasattr(holo, "desenhar"):
                 holo.desenhar(world_surf, self.camera)
 
-        # Armas contínuas: Rifle de Arco (feixe elétrico) e Lança-Chamas (cone de fogo)
+        # Arma contínua: Rifle de Arco (feixe elétrico travado em feixe_destino)
         arma_cont = self.jogador.obter_arma_ativa() if (self.jogador.vivo and hasattr(self.jogador, "obter_arma_ativa")) else None
-        if arma_cont is not None and getattr(arma_cont, "eh_continua", False) and getattr(arma_cont, "fluxo_ativo", False):
-            ox_c = self.camera.transform_x(self.jogador.x + self.jogador.largura / 2.0)
-            oy_c = self.camera.transform_y(self.jogador.y + self.jogador.altura / 2.0)
-            ang_c = float(getattr(self.jogador, "aim_angle", 0.0))
-            alc = float(getattr(arma_cont, "alcance", 220.0))
-            if "arco" in str(getattr(arma_cont, "id_arma", "")).lower() or "rifle_arco" in str(type(arma_cont).__name__).lower():
+        if arma_cont is not None and getattr(arma_cont, "eh_continua", False):
+            eh_arco = "arco" in str(getattr(arma_cont, "id_arma", "")).lower() or "rifle_arco" in str(type(arma_cont).__name__).lower()
+            if eh_arco and getattr(arma_cont, "feixe_ativo", False):
+                orig_w = getattr(
+                    arma_cont,
+                    "feixe_origem",
+                    (self.jogador.x + self.jogador.largura / 2.0, self.jogador.y + self.jogador.altura / 2.0),
+                )
+                ox_c = self.camera.transform_x(orig_w[0])
+                oy_c = self.camera.transform_y(orig_w[1])
+                dest_w = getattr(arma_cont, "feixe_destino", None)
+                if dest_w is not None:
+                    dx_c = self.camera.transform_x(dest_w[0])
+                    dy_c = self.camera.transform_y(dest_w[1])
+                else:
+                    ang_c = float(getattr(self.jogador, "aim_angle", 0.0))
+                    alc = float(getattr(arma_cont, "alcance", 380.0))
+                    dx_c = ox_c + math.cos(ang_c) * alc
+                    dy_c = oy_c + math.sin(ang_c) * alc
+                vx_f = dx_c - ox_c
+                vy_f = dy_c - oy_c
+                comp_f = math.hypot(vx_f, vy_f)
+                nx_f = -vy_f / comp_f if comp_f > 1e-6 else 0.0
+                ny_f = vx_f / comp_f if comp_f > 1e-6 else 0.0
                 pts = [(int(ox_c), int(oy_c))]
-                for seg in range(1, 6):
-                    frac = seg / 5.0
-                    jitter = ((seg * 7 + int(self.tempo_sobrevivencia * 60)) % 9) - 4
-                    px_b = ox_c + math.cos(ang_c) * alc * frac - math.sin(ang_c) * jitter
-                    py_b = oy_c + math.sin(ang_c) * alc * frac + math.cos(ang_c) * jitter
+                tick_arco = int(self.tempo_sobrevivencia * 90)
+                num_segs = 6
+                for seg in range(1, num_segs):
+                    frac = seg / float(num_segs)
+                    jitter = (((seg * 13 + tick_arco) % 13) - 6) * 1.3
+                    px_b = ox_c + vx_f * frac + nx_f * jitter
+                    py_b = oy_c + vy_f * frac + ny_f * jitter
                     pts.append((int(px_b), int(py_b)))
-                pygame.draw.lines(world_surf, (56, 189, 248), False, pts, width=4)
+                pts.append((int(dx_c), int(dy_c)))
+                pygame.draw.lines(world_surf, (56, 189, 248), False, pts, width=5)
                 pygame.draw.lines(world_surf, (224, 248, 255), False, pts, width=2)
-            else:
-                abertura = math.radians(float(getattr(arma_cont, "arco_graus", 55.0)) * 0.5)
-                p0 = (int(ox_c), int(oy_c))
-                p1 = (int(ox_c + math.cos(ang_c - abertura) * alc), int(oy_c + math.sin(ang_c - abertura) * alc))
-                p2 = (int(ox_c + math.cos(ang_c + abertura) * alc), int(oy_c + math.sin(ang_c + abertura) * alc))
-                pygame.draw.polygon(world_surf, (249, 115, 22), [p0, p1, p2], width=2)
-                pygame.draw.polygon(world_surf, (250, 204, 21), [p0, ((p0[0] + p1[0]) // 2, (p0[1] + p1[1]) // 2), ((p0[0] + p2[0]) // 2, (p0[1] + p2[1]) // 2)], width=1)
+                # Faíscas de impacto no destino travado
+                ix_d, iy_d = int(dx_c), int(dy_c)
+                pygame.draw.circle(world_surf, (56, 189, 248), (ix_d, iy_d), 6, width=2)
+                pygame.draw.circle(world_surf, (224, 248, 255), (ix_d, iy_d), 3)
+                for sp_i in range(4):
+                    sp_ang = (tick_arco * 0.25) + sp_i * (math.pi * 0.5)
+                    sp_r = 8 + ((tick_arco + sp_i * 3) % 5)
+                    pygame.draw.line(
+                        world_surf,
+                        (224, 248, 255),
+                        (ix_d, iy_d),
+                        (int(ix_d + math.cos(sp_ang) * sp_r), int(iy_d + math.sin(sp_ang) * sp_r)),
+                        width=1,
+                    )
 
         # Hooks visuais B+ (latencia_ping fantasma, sandbox_isolada, firewall_estatico, etc.)
         mods = self.config_sistema.obter_modificadores() if hasattr(self, "config_sistema") and self.config_sistema else None

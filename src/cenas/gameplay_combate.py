@@ -916,6 +916,20 @@ class GameplayCombateMixin:
             destino_y=alvo_y,
             inimigos=self.inimigos,
         )
+        if getattr(arma, "fluxo_ativo", False) and (
+            hasattr(arma, "arco_graus")
+            or "chamas" in str(getattr(arma, "id_arma", "")).lower()
+        ):
+            ang_chama = math.atan2(
+                alvo_y - centro_jogador_y, alvo_x - centro_jogador_x
+            )
+            self.sistema_particulas.emitir_jato_chamas(
+                centro_jogador_x,
+                centro_jogador_y,
+                ang_chama,
+                float(getattr(arma, "alcance", 195.0)),
+                float(getattr(arma, "arco_graus", 55.0)),
+            )
         if not eventos_fluxo:
             return bool(segurando_gatilho)
 
