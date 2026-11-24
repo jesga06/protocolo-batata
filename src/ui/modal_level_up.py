@@ -627,6 +627,12 @@ class ModalLevelUp:
             # Mantém a configuração em seu valor padrão neutro (R1)
             self.gerenciador_config.salvar_arquivo(SAVE_FILE_PATH)
             self.config_pity_buffer = None
+            if self.cena is not None and hasattr(self.cena, "enfileirar_banner_desbloqueio"):
+                nome_cfg = card.get("titulo", cid)
+                self.cena.enfileirar_banner_desbloqueio(
+                    f"Config: {nome_cfg}",
+                    "Disponível em Configurações (C)",
+                )
         elif card["tipo"] == "cura":
             if self.jogador:
                 if card.get("subtipo") == "cura_total":

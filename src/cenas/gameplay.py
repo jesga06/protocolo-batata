@@ -189,8 +189,9 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         self._world_canvas_surf = None
         self._world_scaled_surf = None
 
-        # Toasts de itens coletados, Screen Shake, Hitstop e Efeitos
+        # Toasts de itens coletados, Banners de Desbloqueio, Screen Shake, Hitstop e Efeitos
         self.toasts_coleta: list[dict] = []
+        self.banners_desbloqueio: list[dict] = []
         self.shake_intensidade: float = 0.0
         self.shake_timer: float = 0.0
         self.arena_freeze_timer: float = 0.0
@@ -904,6 +905,8 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                     self.zonas_estase.clear()
                     self.pocas_gelo.clear()
                     self.toasts_coleta.clear()
+                    if hasattr(self, "banners_desbloqueio"):
+                        self.banners_desbloqueio.clear()
                     self.shake_timer = 0.0
                     self.shake_intensidade = 0.0
                     self.arena_freeze_timer = 0.0
@@ -985,6 +988,12 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
             t["tempo"] -= dt
             t["y"] -= 22.0 * dt
         self.toasts_coleta = [t for t in self.toasts_coleta if t["tempo"] > 0]
+
+        # Atualiza fila de banners estilo Steam de conquistas/desbloqueios
+        if getattr(self, "banners_desbloqueio", None):
+            for b in self.banners_desbloqueio:
+                b["tempo"] -= dt
+            self.banners_desbloqueio = [b for b in self.banners_desbloqueio if b["tempo"] > 0.0]
 
         # Hitstop (0.08s no parry): pausa física da simulação mantendo partículas, shake e áudio ativos
         if getattr(self, "hitstop_timer", 0.0) > 0.0:
@@ -1157,9 +1166,11 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                         "rank": estado_combo.get("rank", getattr(self.sistema_combo, "rank", "")),
                     },
                 )
-                if notifs_combo and hasattr(self, "gerenciador_config") and self.gerenciador_config is not None:
-                    self.gerenciador_config.sincronizar_recompensas_conquistas()
-                    self.gerenciador_config.salvar_arquivo()
+                if notifs_combo:
+                    self._enfileirar_notificacoes_conquistas(notifs_combo)
+                    if hasattr(self, "gerenciador_config") and self.gerenciador_config is not None:
+                        self.gerenciador_config.sincronizar_recompensas_conquistas()
+                        self.gerenciador_config.salvar_arquivo()
 
         if hasattr(self, "hologramas") and self.hologramas:
             for holo in self.hologramas:
@@ -1773,7 +1784,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                     "desligado", "false", "0", "off"
                 )
                 sem_dano_f3 = not getattr(self, "_dano_na_fase3_boss", False)
-                self.sistema_conquistas.registrar_evento(
+                notifs_boss = self.sistema_conquistas.registrar_evento(
                     "vitoria_boss",
                     1,
                     {
@@ -1784,8 +1795,38 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                         "sem_dano_f3": sem_dano_f3,
                     },
                 )
+                self._enfileirar_notificacoes_conquistas(notifs_boss)
             self.gerenciador_config.sincronizar_recompensas_conquistas()
             self.gerenciador_config.salvar_arquivo()
+
+    def enfileirar_banner_desbloqueio(self, titulo: str, subtitulo: str = "", cor=None, duracao: float = 4.2) -> None:
+        """Enfileira um banner estilo Steam no canto inferior direito e toca chime de desbloqueio."""
+        if not hasattr(self, "banners_desbloqueio") or self.banners_desbloqueio is None:
+            self.banners_desbloqueio = []
+        cor_final = cor if (isinstance(cor, tuple) and len(cor) >= 3) else DOURADO
+        self.banners_desbloqueio.append({
+            "titulo": str(titulo),
+            "subtitulo": str(subtitulo),
+            "cor": cor_final,
+            "tempo": float(duracao),
+            "tempo_max": float(duracao),
+        })
+        if hasattr(self, "sistema_audio") and self.sistema_audio is not None:
+            if hasattr(self.sistema_audio, "tocar_sfx"):
+                self.sistema_audio.tocar_sfx("sfx_level_up")
+            elif hasattr(self.sistema_audio, "tocar_parry_clang"):
+                self.sistema_audio.tocar_parry_clang()
+
+    def _enfileirar_notificacoes_conquistas(self, notifs: list[dict] | None) -> None:
+        """Converte notificações de `SistemaConquistas.registrar_evento` em banners estilo Steam."""
+        if not notifs:
+            return
+        from src.ui.hud import formatar_recompensas_conquista
+        for notif in notifs:
+            titulo = str(notif.get("titulo", "Conquista Desbloqueada"))
+            recomps = notif.get("recompensas", [])
+            subtitulo = formatar_recompensas_conquista(recomps) if recomps else "Conquista desbloqueada!"
+            self.enfileirar_banner_desbloqueio(titulo, subtitulo, cor=DOURADO)
 
     def _acionar_vitoria(self):
         """Executa a sequência de vitória pela derrota da Geladeira Tsunami."""

@@ -663,6 +663,15 @@ class GameplayRenderMixin:
                     pygame.draw.rect(screen, cor_eq, (bx, oy, larg_b, alt_b), border_radius=raio_b)
                     pygame.draw.rect(screen, cor_eq, (bx, oy + vh - alt_b, larg_b, alt_b), border_radius=raio_b)
 
+        # Banners estilo Steam de conquistas/desbloqueios (sempre visíveis sobre gameplay e HUD)
+        if (
+            getattr(self, "banners_desbloqueio", None)
+            and hasattr(self, "hud")
+            and self.hud is not None
+            and hasattr(self.hud, "desenhar_banners_desbloqueio")
+        ):
+            self.hud.desenhar_banners_desbloqueio(screen, self.banners_desbloqueio)
+
         # Motion Blur (Config 6: motion_blur == "ligado") aplicado sobre TODA a tela (mundo, inimigos, projéteis, HUD e modais)
         val_blur = str(self.config_sistema.obter_valor("motion_blur")).lower() if hasattr(self, "config_sistema") and self.config_sistema else "desligado"
         if val_blur in ("ligado", "true", "1") and not self.boss_cutscene_ativa:

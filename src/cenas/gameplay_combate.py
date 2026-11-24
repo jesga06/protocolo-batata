@@ -114,6 +114,8 @@ class GameplayCombateMixin:
         if sis_cnq is not None and hasattr(sis_cnq, "registrar_evento"):
             notifs = sis_cnq.registrar_evento("just_dodge", 1)
             if notifs:
+                if hasattr(self, "_enfileirar_notificacoes_conquistas"):
+                    self._enfileirar_notificacoes_conquistas(notifs)
                 ger = self._obter_gerenciador_config()
                 if ger is not None and hasattr(ger, "sincronizar_recompensas_conquistas"):
                     ger.sincronizar_recompensas_conquistas()
@@ -410,17 +412,23 @@ class GameplayCombateMixin:
             ger = self._obter_gerenciador_config()
             if ger is not None and hasattr(ger, "registrar_parry"):
                 total_parries, recem_desbloqueou = ger.registrar_parry(DASH_PARRY_META)
+                notifs_parry_ger = getattr(ger, "_ultimas_notifs_parry", None)
+                if notifs_parry_ger and hasattr(self, "_enfileirar_notificacoes_conquistas"):
+                    self._enfileirar_notificacoes_conquistas(notifs_parry_ger)
                 if recem_desbloqueou:
                     self.jogador.dash_desbloqueado = True
-                    self.toasts_coleta.append({
-                        "texto": "DASH + SMG COMPACTA DESBLOQUEADOS!",
-                        "cor": AZUL_CIANO,
-                        "x": cx, "y": self.jogador.y - 22, "tempo": 2.6, "tempo_max": 2.6
-                    })
+                    if not notifs_parry_ger and hasattr(self, "enfileirar_banner_desbloqueio"):
+                        self.enfileirar_banner_desbloqueio(
+                            "DASH + SMG COMPACTA DESBLOQUEADOS!",
+                            "Recompensa de Mestre da Chave Inglesa",
+                            cor=AZUL_CIANO,
+                        )
             else:
                 sis_cnq = self._obter_sistema_conquistas()
                 if sis_cnq is not None and hasattr(sis_cnq, "registrar_evento"):
-                    sis_cnq.registrar_evento("parry", 1)
+                    notifs_parry = sis_cnq.registrar_evento("parry", 1)
+                    if notifs_parry and hasattr(self, "_enfileirar_notificacoes_conquistas"):
+                        self._enfileirar_notificacoes_conquistas(notifs_parry)
 
         efeitos = self._obter_efeitos_combate()
         if efeitos is not None:
@@ -707,7 +715,10 @@ class GameplayCombateMixin:
             notifs_abate = list(sis_cnq.registrar_evento("abate", 1) or [])
             if getattr(inim, "is_elite", False) and not getattr(inim, "superaqueceu", False):
                 notifs_abate.extend(sis_cnq.registrar_evento("miniboss_rapido", 1) or [])
-            if notifs_abate and ger is not None:
+            if notifs_abate:
+                if hasattr(self, "_enfileirar_notificacoes_conquistas"):
+                    self._enfileirar_notificacoes_conquistas(notifs_abate)
+                if ger is not None:
                 if hasattr(ger, "sincronizar_recompensas_conquistas"):
                     ger.sincronizar_recompensas_conquistas()
                 if hasattr(ger, "salvar_arquivo"):

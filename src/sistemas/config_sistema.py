@@ -326,6 +326,7 @@ class GerenciadorConfiguracoes:
         salva em disco SOMENTE quando houver desbloqueio novo (zero I/O em parries normais).
         """
         notifs = self.sistema_conquistas.registrar_evento("parry", 1)
+        self._ultimas_notifs_parry = list(notifs or [])
         self.sincronizar_recompensas_conquistas()
 
         novo_total = int(
