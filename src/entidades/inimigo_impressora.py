@@ -86,18 +86,19 @@ class InimigoImpressoraTermica(InimigoBase):
             if dir_x == 0.0 and dir_y == 0.0:
                 dir_x = 1.0
             proj = Projetil(
-                x=cx - 11.0,
-                y=cy - 11.0,
+                x=cx - 14.0,
+                y=cy - 14.0,
                 dir_x=dir_x,
                 dir_y=dir_y,
                 velocidade=self.vel_projetil,
                 dano=self.dano_projetil,
                 tempo_vida=4.0,
                 dono="inimigo",
-                largura=22,
-                altura=22,
+                largura=28,
+                altura=28,
                 sprite_key="projetil_inimigo",
                 sobrecarga_termica=True,
+                eh_impressora=True,
             )
             self.projeteis_pendentes.append(proj)
 

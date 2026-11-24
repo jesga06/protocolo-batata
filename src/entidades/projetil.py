@@ -93,6 +93,13 @@ class Projetil:
         self.criogenico: bool = bool(kwargs.get("criogenico", False))
         self.duel_stage: int = int(kwargs.get("duel_stage", 0))
         self.duel_owner = kwargs.get("duel_owner", None)
+        self.nao_desviavel: bool = bool(kwargs.get("nao_desviavel", False))
+        self.nao_parriavel: bool = bool(kwargs.get("nao_parriavel", False))
+        self.homing_ativo: bool = bool(kwargs.get("homing_ativo", False))
+        self.homing_taxa_rad: float = float(kwargs.get("homing_taxa_rad", 1.6))
+        self.homing_radar_dot: float = float(kwargs.get("homing_radar_dot", 0.25))
+        self.eh_impressora: bool = bool(kwargs.get("eh_impressora", False))
+        self.rastro_posicoes: list[tuple[float, float]] = list(kwargs.get("rastro_posicoes", []))
 
     @property
     def vx(self) -> float:
@@ -115,20 +122,47 @@ class Projetil:
                 cls._sprites[sprite_key] = None
         return cls._sprites.get(sprite_key)
 
-    def update(self, dt: float):
-        """Atualiza a posição do projétil, desacelera se aplicável e decrementa o tempo de vida."""
+    def update(self, dt: float, pos_alvo: tuple[float, float] | None = None):
+        """Atualiza a posição do projétil, aplica homing com radar anti-U-turn, rastro e tempo de vida."""
         if not self.ativo:
             return
 
+        dt_val = max(0.0, float(dt))
+
+        if self.homing_ativo and pos_alvo is not None:
+            cx = self.x + self.largura / 2.0
+            cy = self.y + self.altura / 2.0
+            tx, ty = float(pos_alvo[0]), float(pos_alvo[1])
+            dir_alvo_x, dir_alvo_y = normalizar_vetor(tx - cx, ty - cy)
+            if dir_alvo_x != 0.0 or dir_alvo_y != 0.0:
+                dot = self.dir_x * dir_alvo_x + self.dir_y * dir_alvo_y
+                if dot < self.homing_radar_dot:
+                    self.homing_ativo = False
+                else:
+                    ang_atual = math.atan2(self.dir_y, self.dir_x)
+                    ang_alvo = math.atan2(dir_alvo_y, dir_alvo_x)
+                    delta = math.atan2(math.sin(ang_alvo - ang_atual), math.cos(ang_alvo - ang_atual))
+                    max_turn = self.homing_taxa_rad * dt_val
+                    if abs(delta) > max_turn:
+                        delta = max_turn if delta > 0.0 else -max_turn
+                    novo_ang = ang_atual + delta
+                    self.dir_x = math.cos(novo_ang)
+                    self.dir_y = math.sin(novo_ang)
+
         if getattr(self, "aceleracao", 0.0) > 0.0:
-            self.velocidade = min(850.0, self.velocidade + self.aceleracao * dt)
+            self.velocidade = min(850.0, self.velocidade + self.aceleracao * dt_val)
 
         if self.desaceleracao > 0.0:
-            self.velocidade = max(0.0, self.velocidade - self.desaceleracao * dt)
+            self.velocidade = max(0.0, self.velocidade - self.desaceleracao * dt_val)
 
-        self.x += self.dir_x * self.velocidade * dt
-        self.y += self.dir_y * self.velocidade * dt
-        self.tempo_vida_restante -= dt
+        self.x += self.dir_x * self.velocidade * dt_val
+        self.y += self.dir_y * self.velocidade * dt_val
+
+        self.rastro_posicoes.append((self.x + self.largura / 2.0, self.y + self.altura / 2.0))
+        if len(self.rastro_posicoes) > 16:
+            self.rastro_posicoes.pop(0)
+
+        self.tempo_vida_restante -= dt_val
 
         if self.tempo_vida_restante <= 0.0:
             self.ativo = False
@@ -334,6 +368,13 @@ class Projetil:
         clone.criogenico = getattr(self, "criogenico", False)
         clone.duel_stage = getattr(self, "duel_stage", 0)
         clone.duel_owner = getattr(self, "duel_owner", None)
+        clone.nao_desviavel = getattr(self, "nao_desviavel", False)
+        clone.nao_parriavel = getattr(self, "nao_parriavel", False)
+        clone.homing_ativo = getattr(self, "homing_ativo", False)
+        clone.homing_taxa_rad = getattr(self, "homing_taxa_rad", 1.6)
+        clone.homing_radar_dot = getattr(self, "homing_radar_dot", 0.25)
+        clone.eh_impressora = getattr(self, "eh_impressora", False)
+        clone.rastro_posicoes = list(getattr(self, "rastro_posicoes", []))
         return clone
 
     def desenhar(self, janela, camera=None):
@@ -383,11 +424,106 @@ class Projetil:
         cy_proj = draw_y + self.altura / 2.0
         is_refletido = getattr(self, "refletido_parry", False) or getattr(self, "parried", False) or duel_stage >= 2
         is_sobrecarregado = getattr(self, "sobrecarregado", False)
+        is_nao_desviavel = getattr(self, "nao_desviavel", False)
+        is_nao_parriavel = getattr(self, "nao_parriavel", False)
+        is_impressora = getattr(self, "eh_impressora", False) or getattr(self, "sobrecarga_termica", False)
 
-        if getattr(self, "sobrecarga_termica", False):
-            raio_core = max(8, int(max(self.largura, self.altura) * 0.65))
-            pygame.draw.circle(screen, (251, 146, 60), (int(cx_proj), int(cy_proj)), raio_core, 2)
-            pygame.draw.circle(screen, (253, 224, 71), (int(cx_proj), int(cy_proj)), max(3, raio_core // 2))
+        try:
+            ticks = pygame.time.get_ticks()
+        except Exception:
+            ticks = 0
+
+        # 1. Projétil Ninja (nao_desviavel=True): Shuriken 4 pontas roxo-magenta girando + rastro violeta 2x
+        if is_nao_desviavel:
+            tail_len = 56.0 if not is_low_graphics else 36.0
+            if len(self.rastro_posicoes) >= 2:
+                pts_rastro = [
+                    (
+                        int(camera.transform_x(px) if camera else px),
+                        int(camera.transform_y(py) if camera else py),
+                    )
+                    for px, py in self.rastro_posicoes
+                ]
+                if len(pts_rastro) >= 2:
+                    pygame.draw.lines(screen, (168, 85, 247), False, pts_rastro, 4 if not is_low_graphics else 2)
+            else:
+                tx = cx_proj - self.dir_x * tail_len
+                ty = cy_proj - self.dir_y * tail_len
+                pygame.draw.line(screen, (168, 85, 247), (int(cx_proj), int(cy_proj)), (int(tx), int(ty)), 4 if not is_low_graphics else 2)
+
+            pulso = 12 + int(2.5 * math.sin(ticks * 0.015))
+            pygame.draw.circle(screen, (192, 132, 252), (int(cx_proj), int(cy_proj)), pulso, 1)
+
+            ang_spin = (ticks * 0.012) % (2.0 * math.pi)
+            raio_ext = max(10.0, max(self.largura, self.altura) * 0.55)
+            raio_int = raio_ext * 0.35
+            pts_shuriken = []
+            for i in range(8):
+                ang = ang_spin + i * (math.pi / 4.0)
+                r = raio_ext if (i % 2 == 0) else raio_int
+                pts_shuriken.append((int(cx_proj + math.cos(ang) * r), int(cy_proj + math.sin(ang) * r)))
+            pygame.draw.polygon(screen, (192, 38, 211), pts_shuriken)
+            pygame.draw.polygon(screen, (255, 255, 255), pts_shuriken, 2)
+            pygame.draw.circle(screen, (255, 255, 255), (int(cx_proj), int(cy_proj)), 3)
+            if is_refletido:
+                pygame.draw.circle(screen, (255, 225, 90), (int(cx_proj), int(cy_proj)), int(raio_ext) + 3, 2)
+            return
+
+        # 2. Projétil Ranged Teleguiado (nao_parriavel=True): Seta/Triângulo amarelo-preto industrial + rastro tracejado 2x
+        if is_nao_parriavel:
+            tail_len = 56.0 if not is_low_graphics else 36.0
+            for idx_seg in range(4):
+                f0 = idx_seg * 0.25
+                f1 = f0 + 0.14
+                x0 = cx_proj - self.dir_x * (tail_len * f0)
+                y0 = cy_proj - self.dir_y * (tail_len * f0)
+                x1 = cx_proj - self.dir_x * (tail_len * f1)
+                y1 = cy_proj - self.dir_y * (tail_len * f1)
+                pygame.draw.line(screen, (245, 158, 11), (int(x0), int(y0)), (int(x1), int(y1)), 3)
+
+            pulso_aura = 12 + int(2.0 * math.sin(ticks * 0.018))
+            pygame.draw.circle(screen, (251, 191, 36), (int(cx_proj), int(cy_proj)), pulso_aura, 1)
+
+            ang = math.atan2(self.dir_y, self.dir_x)
+            perp_x = -math.sin(ang)
+            perp_y = math.cos(ang)
+            comp = max(10.0, max(self.largura, self.altura) * 0.55)
+            larg = comp * 0.72
+            p_frente = (int(cx_proj + math.cos(ang) * comp), int(cy_proj + math.sin(ang) * comp))
+            p_esq = (int(cx_proj - math.cos(ang) * comp * 0.7 + perp_x * larg), int(cy_proj - math.sin(ang) * comp * 0.7 + perp_y * larg))
+            p_dir = (int(cx_proj - math.cos(ang) * comp * 0.7 - perp_x * larg), int(cy_proj - math.sin(ang) * comp * 0.7 - perp_y * larg))
+            pygame.draw.polygon(screen, (250, 204, 21), [p_frente, p_esq, p_dir])
+            pygame.draw.polygon(screen, (15, 15, 18), [p_frente, p_esq, p_dir], 2)
+            pygame.draw.circle(screen, (15, 15, 18), (int(cx_proj), int(cy_proj)), 3)
+            if not is_low_graphics:
+                sx = int(cx_proj - self.dir_x * 11.0 + perp_x * (4.0 * math.sin(ticks * 0.03)))
+                sy = int(cy_proj - self.dir_y * 11.0 + perp_y * (4.0 * math.sin(ticks * 0.03)))
+                pygame.draw.circle(screen, (254, 240, 138), (sx, sy), 2)
+            return
+
+        # 3. Projétil Impressora Térmica (sobrecarga_termica=True / eh_impressora=True): SEM aura dourada, núcleo laranja-vermelho ~28-30px com contorno escuro
+        if is_impressora:
+            raio_ext = max(14, int(max(self.largura, self.altura, 28) * 0.5))
+            pygame.draw.circle(screen, (24, 12, 12), (int(cx_proj), int(cy_proj)), raio_ext)
+            pygame.draw.circle(screen, (239, 68, 68), (int(cx_proj), int(cy_proj)), max(6, raio_ext - 2))
+            pygame.draw.circle(screen, (249, 115, 22), (int(cx_proj), int(cy_proj)), max(4, raio_ext - 5))
+            if is_refletido:
+                pygame.draw.circle(screen, (255, 225, 90), (int(cx_proj), int(cy_proj)), raio_ext + 3, 2)
+            return
+
+        # 4. Projétil inimigo comum (sem flags especiais e sem parry): esfera vermelha ~12px, SEM rastro
+        if (
+            getattr(self, "dono", "jogador") == "inimigo"
+            and not is_refletido
+            and not is_sobrecarregado
+            and not getattr(self, "criogenico", False)
+            and "foguete" not in self.sprite_key
+            and "granada" not in self.sprite_key
+        ):
+            raio_comum = max(5, min(7, max(self.largura, self.altura) // 2))
+            pygame.draw.circle(screen, (220, 38, 38), (int(cx_proj), int(cy_proj)), raio_comum)
+            pygame.draw.circle(screen, (254, 202, 202), (int(cx_proj), int(cy_proj)), max(2, raio_comum // 2))
+            return
 
         if is_refletido:
             tail_len = 28.0 if not is_low_graphics else 18.0
