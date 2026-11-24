@@ -42,12 +42,12 @@ class SMGCompacta(ArmaBase):
             if desaceleracao is None
             else float(desaceleracao)
         )
-        self.calor_por_tiro = 1.0
-        self.resfriamento_por_seg = 60.0
+        self.calor_por_tiro = 2.0
+        self.resfriamento_por_seg = 50.0
         self.zona_ideal_min = 60.0
         self.zona_ideal_max = 92.0
         self.trava_superaquecimento = float(getattr(_const, "SMG_TRAVA_SUPERAQUECIMENTO", 1.0))
-        self.atraso_resfriamento = 0.06
+        self.atraso_resfriamento = 0.24
 
         self.calor_atual: float = 0.0
         self.superaquecida: bool = False
