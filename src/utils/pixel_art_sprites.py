@@ -564,3 +564,248 @@ def obter_sprite_drop(tipo: str, largura: int = 20, altura: int = 20) -> pygame.
     }
     grid = mapa.get(tipo, GRID_DROP_XP)
     return _renderizar_grid(grid, largura, altura)
+
+
+# 6. ARMAS E ÍCONES V2.0 (Pixel Art Limpo)
+GRID_ARMA_MELEE_CHAVE = [
+    "................",
+    "....OOOO........",
+    "...OSSSSO.......",
+    "..OSS..SSO......",
+    "..OS....SO......",
+    "...OO.SSSO......",
+    "....OSSSSSO.....",
+    ".....OOMMMMO....",
+    "......OOMMMMO...",
+    ".......OOMMMMO..",
+    "........OORRRRO.",
+    ".........OORRO..",
+    "..........OOO...",
+    "................",
+]
+
+GRID_ARMA_BASTAO_CHOQUE = [
+    "................",
+    ".............OO.",
+    "............OCCO",
+    "...........OCAAO",
+    "..........OCCAO.",
+    ".........OZZZO..",
+    "........OZZZO...",
+    ".......OMMMO....",
+    "......OMMMO.....",
+    ".....OZZZO......",
+    "....OZZZO.......",
+    "...OORRO........",
+    "..OOO...........",
+    "................",
+]
+
+GRID_ARMA_SMG_COMPACTA = [
+    "................",
+    "....OOOOOOOOO...",
+    "...OZZZZZZZZZO..",
+    "..OZSSNNNNSSZZOO",
+    "..OZZZZZZZZZZZZO",
+    "...OOZZZOOZZZOO.",
+    "....OZZO..OZZO..",
+    "....OZZO..OZZO..",
+    "....OZZO...OO...",
+    "....OSSO........",
+    ".....OO.........",
+    "................",
+]
+
+GRID_ARMA_RIFLE_ARCO = [
+    "................",
+    ".....OOOOOOO....",
+    "...OOCCCCCCCOO..",
+    "..OZZCCAAACCZZOO",
+    ".OZZZZCCCCCZZZZO",
+    ".OZSSZZZZZZZSSZO",
+    "..OOZZZOOZZZOOO.",
+    "....OZZO..OZZO..",
+    "....OZZO...OO...",
+    "....OSSO........",
+    ".....OO.........",
+    "................",
+]
+
+GRID_ARMA_LANCA_CHAMAS = [
+    "................",
+    "...OOOOOO.......",
+    "..ONNNNNNOOOOO..",
+    ".ONNUUUUNNZZZZOO",
+    ".ONNNNNNNNSSSSZO",
+    "..OZZZZZZZZZZZOO",
+    "...OOZZZOOZZZOO.",
+    "....OZZO..OZZO..",
+    "....OZZO...OO...",
+    ".....OO.........",
+    "................",
+    "................",
+]
+
+GRID_ICON_DASH_PROTOCOLO = [
+    "....OOOOOOOO....",
+    "..OOKKKKKKKKOO..",
+    ".OKKCCCCCCCCKKO.",
+    ".OKCCAAAAAAACCKO",
+    "OKCAWWWWWWWWACKO",
+    "OKCCAAACCCCCCKKO",
+    "OKKKKKCCCCKKKKKO",
+    "OKKKKCCCCKKKKKKO",
+    "OKKKCCCCCAKKKKKO",
+    "OKKCCCCAAACKKKKO",
+    "OKCCCCCCCCCKKKKO",
+    ".OKKCCCCCCCKKKO.",
+    ".OKKKKKKKKKKKKO.",
+    "..OOKKKKKKKKOO..",
+    "....OOOOOOOO....",
+    "................",
+]
+
+GRID_ICON_DASH_RASTRO = [
+    "....OOOOOOOO....",
+    "..OOKKKKKKKKOO..",
+    ".OKKPPPPPPPPKKO.",
+    ".OKPPLLLLLLPPKO.",
+    "OKPLLLPPPPPPPLKO",
+    "OKPPCCCCCCCCPPKO",
+    "OKKCCAAAAAAACCKO",
+    "OKKKCCCCCCCCKKKO",
+    "OKKPPCCCCCCPPKKO",
+    "OKPPLLLLLLLPPKKO",
+    "OKPPPPPPPPPPKKKO",
+    ".OKKKKKKKKKKKKO.",
+    ".OKKKKKKKKKKKKO.",
+    "..OOKKKKKKKKOO..",
+    "....OOOOOOOO....",
+    "................",
+]
+
+GRID_ICON_GARBAGE_COLLECTOR = [
+    "....OOOOOOOO....",
+    "..OOKKKKKKKKOO..",
+    ".OKKGGGGGGGGKKO.",
+    ".OKGEEEEEEEEGKO.",
+    "OKGEGGGGGGGGEGKO",
+    "OKGGOOOOOOOOGGKO",
+    "OKGGOMMMMMMOGGKO",
+    "OKGGOMSSSSMOGGKO",
+    "OKGGOMZZZZMOGGKO",
+    "OKGGOMSSSSMOGGKO",
+    "OKGGOOOOOOOOGGKO",
+    ".OKKEEEEEEEEKKO.",
+    ".OKKKKKKKKKKKKO.",
+    "..OOKKKKKKKKOO..",
+    "....OOOOOOOO....",
+    "................",
+]
+
+GRID_ICON_LATENCIA_PING = [
+    "....OOOOOOOO....",
+    "..OOKKKKKKKKOO..",
+    ".OKKNNNNNNNNKKO.",
+    ".OKNUUUUUUUUNKO.",
+    "OKNUKKKKKKKKUNKO",
+    "OKNUKCCCCCCKUNKO",
+    "OKNUKCWWWWCKUNKO",
+    "OKNUKCWWWWCKUNKO",
+    "OKNUKCCCCCCKUNKO",
+    "OKNUKKKKKKKKUNKO",
+    "OKNUUUUUUUUUUNKO",
+    ".OKKNNNNNNNNKKO.",
+    ".OKKKKKKKKKKKKO.",
+    "..OOKKKKKKKKOO..",
+    "....OOOOOOOO....",
+    "................",
+]
+
+GRID_ICON_MODO_WIREFRAME = [
+    "....OOOOOOOO....",
+    "..OOKKKKKKKKOO..",
+    ".OKKCCCCCCCCKKO.",
+    ".OKCKKCKKCKKCKO.",
+    "OKCCCCCCCCCCCCKO",
+    "OKCKKCKKCKKCKKKO",
+    "OKCKKCCCCCCCKKKO",
+    "OKCKKCKKKKCKKKKO",
+    "OKCCCCCCCCCCCCKO",
+    "OKCKKCKKCKKCKKKO",
+    "OKKCCCCCCCCCCKKO",
+    ".OKCKKCKKCKKCKO.",
+    ".OKKKKKKKKKKKKO.",
+    "..OOKKKKKKKKOO..",
+    "....OOOOOOOO....",
+    "................",
+]
+
+
+def obter_sprite_arma(arma_key: str, largura: int = 24, altura: int = 16) -> pygame.Surface:
+    """Retorna o sprite em Pixel Art Limpo para armas (incluindo Chave Grifo e novas armas v2.0)."""
+    chave_norm = str(arma_key or "").lower()
+    mapa = {
+        "arma_melee": GRID_ARMA_MELEE_CHAVE,
+        "chave_manutencao": GRID_ARMA_MELEE_CHAVE,
+        "melee": GRID_ARMA_MELEE_CHAVE,
+        "arma_bastao_choque": GRID_ARMA_BASTAO_CHOQUE,
+        "bastao_choque": GRID_ARMA_BASTAO_CHOQUE,
+        "arma_smg_compacta": GRID_ARMA_SMG_COMPACTA,
+        "smg_compacta": GRID_ARMA_SMG_COMPACTA,
+        "arma_rifle_arco": GRID_ARMA_RIFLE_ARCO,
+        "rifle_arco": GRID_ARMA_RIFLE_ARCO,
+        "arma_lanca_chamas": GRID_ARMA_LANCA_CHAMAS,
+        "lanca_chamas": GRID_ARMA_LANCA_CHAMAS,
+    }
+    grid = mapa.get(chave_norm, GRID_ARMA_SMG_COMPACTA)
+    return _renderizar_grid(grid, largura, altura)
+
+
+def obter_icone_config(config_id: str, tamanho: int = 32) -> pygame.Surface:
+    """Retorna o ícone 32x32 em Pixel Art Limpo para as novas configurações v2.0."""
+    cid = str(config_id or "").lower().removeprefix("icon_")
+    mapa = {
+        "dash_protocolo": GRID_ICON_DASH_PROTOCOLO,
+        "dash_rastro": GRID_ICON_DASH_RASTRO,
+        "garbage_collector": GRID_ICON_GARBAGE_COLLECTOR,
+        "latencia_ping": GRID_ICON_LATENCIA_PING,
+        "modo_wireframe": GRID_ICON_MODO_WIREFRAME,
+    }
+    grid = mapa.get(cid, GRID_ICON_MODO_WIREFRAME)
+    return _renderizar_grid(grid, tamanho, tamanho)
+
+
+def gerar_assets_v2(diretorio_assets: str = "assets") -> list[str]:
+    """Gera em disco os 8 PNGs v2.0 (3 armas + 5 ícones 32x32) e retorna os caminhos gravados."""
+    import os
+
+    armas_dir = os.path.join(diretorio_assets, "sprites", "armas")
+    icones_dir = os.path.join(diretorio_assets, "ui", "icones_configs")
+    os.makedirs(armas_dir, exist_ok=True)
+    os.makedirs(icones_dir, exist_ok=True)
+
+    gerados: list[str] = []
+    armas = [
+        ("arma_smg_compacta.png", "smg_compacta"),
+        ("arma_rifle_arco.png", "rifle_arco"),
+        ("arma_lanca_chamas.png", "lanca_chamas"),
+    ]
+    for nome_arq, arma_id in armas:
+        caminho = os.path.join(armas_dir, nome_arq)
+        pygame.image.save(obter_sprite_arma(arma_id, 32, 20), caminho)
+        gerados.append(caminho)
+
+    icones = [
+        "dash_protocolo",
+        "dash_rastro",
+        "garbage_collector",
+        "latencia_ping",
+        "modo_wireframe",
+    ]
+    for cid in icones:
+        caminho = os.path.join(icones_dir, f"icon_{cid}.png")
+        pygame.image.save(obter_icone_config(cid, 32), caminho)
+        gerados.append(caminho)
+
+    return gerados
