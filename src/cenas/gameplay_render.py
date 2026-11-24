@@ -15,6 +15,7 @@ from src.utils.constantes import (
 )
 from src.utils.math_utils import clamp
 from src.sistemas.config_dados import CONFIGURACOES_GAMEPLAY
+from src.sistemas.efeitos_combate import obter_bandas_vsync_y
 
 
 class GameplayRenderMixin:
@@ -537,18 +538,17 @@ class GameplayRenderMixin:
                 pygame.transform.scale(fonte_mundo, (vw, vh), self._world_scaled_surf)
                 screen.blit(self._world_scaled_surf, (ox, oy))
 
-        # Sincronização Vertical (Config 4: vsync == "desligado" -> 2-3 bandas horizontais calibradas com deslocamento oposto)
+        # Sincronização Vertical (Config 4: vsync == "desligado" -> 2 bandas horizontais simétricas alinhadas à física)
         mods = self.config_sistema.obter_modificadores() if hasattr(self, "config_sistema") and self.config_sistema else None
         if getattr(mods, "vsync_tear_refraction", False) and not self.boss_cutscene_ativa:
-            base_tear_y = oy + int(round(getattr(self, "vsync_tear_y", 0.0) * scale))
+            y1_b, y2_b = obter_bandas_vsync_y(getattr(self, "vsync_tear_y", 0.0), ALTURA_TELA)
             strip_h = max(6, int(round(14 * scale)))
             if self._vsync_strip_surf is None or self._vsync_strip_surf.get_size() != (vw, strip_h):
                 self._vsync_strip_surf = pygame.Surface((vw, strip_h))
             lw1 = max(1, int(round(2 * scale)))
             bandas = [
-                (base_tear_y, max(6, int(round(18 * scale)))),
-                (oy + ((base_tear_y - oy + vh // 3) % max(1, vh)), -max(6, int(round(16 * scale)))),
-                (oy + ((base_tear_y - oy + (2 * vh) // 3) % max(1, vh)), max(6, int(round(20 * scale)))),
+                (oy + int(round(y1_b * scale)), max(6, int(round(18 * scale)))),
+                (oy + int(round(y2_b * scale)), -max(6, int(round(16 * scale)))),
             ]
             for ty, shift_signed in bandas:
                 band_y = max(oy, ty - strip_h // 2)

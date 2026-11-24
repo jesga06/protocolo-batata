@@ -12,7 +12,7 @@ from src.armas.melee import Melee
 from src.armas.railgun import Railgun
 from src.entidades.projetil import Projetil
 from src.entidades.geladeira_tsunami import ESTADO_MORTE
-from src.sistemas.efeitos_combate import ContextoCombate
+from src.sistemas.efeitos_combate import ContextoCombate, obter_bandas_vsync_y
 from src.utils import constantes as _const
 from src.utils.constantes import (
     LARGURA_TELA, ALTURA_TELA,
@@ -1427,6 +1427,7 @@ class GameplayCombateMixin:
             # Sincronização Vertical (Desligado): Linha de Rasgo divide tiros do jogador (0.75x) e desvia tiros inimigos (±12°)
             if getattr(mods, "vsync_tear_refraction", False):
                 self.vsync_tear_y = (getattr(self, "vsync_tear_y", 0.0) + 80.0 * dt) % ALTURA_TELA
+                bandas_y = obter_bandas_vsync_y(self.vsync_tear_y, ALTURA_TELA)
                 proj_clones = []
                 ang_split = math.radians(6.0)
                 cos_pos, sin_pos = math.cos(ang_split), math.sin(ang_split)
@@ -1435,7 +1436,7 @@ class GameplayCombateMixin:
                 for proj in self.projeteis:
                     dono_p = getattr(proj, "dono", "jogador")
                     tela_y = proj.y - self.camera.y
-                    if abs(tela_y - self.vsync_tear_y) >= 18.0:
+                    if all(abs(tela_y - by) >= 18.0 for by in bandas_y):
                         continue
                     if (
                         dono_p == "jogador"
