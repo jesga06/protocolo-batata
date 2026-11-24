@@ -1840,15 +1840,15 @@ class GameplayCombateMixin:
                             # Números de Dano (Texto com Peso): Empurrão leve no inimigo (exceto Boss)
                             if getattr(mods, "damage_numbers_knockback", False) and inimigo is not self.chefe_final and not getattr(inimigo, "is_boss", False):
                                 if dx_k != 0.0 or dy_k != 0.0:
-                                    inimigo.x += dx_k * 14.0
-                                    inimigo.y += dy_k * 14.0
+                                    inimigo.x += dx_k * 3.5
+                                    inimigo.y += dy_k * 3.5
                                     self._clamp_entidade_arena(inimigo)
 
                             # Tremor de Tela (screen_shake_stagger): estendido para tiros balísticos (exceto Boss)
                             if getattr(mods, "screen_shake_stagger", False) and inimigo is not self.chefe_final and not getattr(inimigo, "is_boss", False):
                                 if dx_k != 0.0 or dy_k != 0.0:
-                                    inimigo.x += dx_k * 10.0
-                                    inimigo.y += dy_k * 10.0
+                                    inimigo.x += dx_k * 2.5
+                                    inimigo.y += dy_k * 2.5
                                     self._clamp_entidade_arena(inimigo)
                                 inimigo.slow_timer = max(getattr(inimigo, "slow_timer", 0.0), 1.2)
                                 inimigo.slow_fator = 0.50
