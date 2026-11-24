@@ -331,7 +331,7 @@ class GameplayRenderMixin:
         # Hologramas (sombra_espelho / clone_agro)
         for holo in getattr(self, "hologramas", []):
             if hasattr(holo, "desenhar"):
-                holo.desenhar(self.janela, self.camera)
+                holo.desenhar(world_surf, self.camera)
 
         # Armas contínuas: Rifle de Arco (feixe elétrico) e Lança-Chamas (cone de fogo)
         arma_cont = self.jogador.obter_arma_ativa() if (self.jogador.vivo and hasattr(self.jogador, "obter_arma_ativa")) else None
