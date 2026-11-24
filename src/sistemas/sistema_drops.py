@@ -291,6 +291,55 @@ class SistemaDrops:
             self._adicionar_drop(cap)
         return criadas
 
+    def obter_pool_armas_especiais(self, sistema_conquistas=None) -> list[type]:
+        """Retorna o pool de classes de armas especiais disponiveis para drop/capsula."""
+        from src.armas import (
+            Minigun,
+            Shotgun,
+            RifleAssalto,
+            LancaFoguetes,
+            LancaGranadas,
+            Railgun,
+            RifleArco,
+            LancaChamas,
+        )
+
+        pool: list[type] = [
+            Minigun,
+            Shotgun,
+            RifleAssalto,
+            LancaFoguetes,
+            LancaGranadas,
+            Railgun,
+        ]
+        if sistema_conquistas is not None and hasattr(sistema_conquistas, "possui_recompensa"):
+            if sistema_conquistas.possui_recompensa("arma", "rifle_arco"):
+                pool.append(RifleArco)
+            if sistema_conquistas.possui_recompensa("arma", "lanca_chamas"):
+                pool.append(LancaChamas)
+        return pool
+
+    def gerar_micro_sucata(self, x: float, y: float, quantidade: int = 1) -> list[ItemDrop]:
+        """Gera pequenos drops de micro-sucata (Pinhata de Hardware / vida_inimigos)."""
+        criados: list[ItemDrop] = []
+        for _ in range(max(1, int(quantidade))):
+            ox = random.uniform(-22.0, 22.0)
+            oy = random.uniform(-22.0, 22.0)
+            drop = ItemDrop(
+                x=x + ox - 9.0,
+                y=y + oy - 9.0,
+                tipo="micro_sucata",
+                valor=1,
+                tempo_vida=15.0,
+                tempo_scavenger=999.0,
+                largura=18,
+                altura=18,
+                rotulo="Micro-Sucata",
+            )
+            criados.append(drop)
+            self._adicionar_drop(drop)
+        return criados
+
     def update(self, dt: float, pausar_despawn: bool = False):
         """Atualiza timers de todos os drops e remove expirados."""
         self.cooldown_caixa_atual = max(0.0, self.cooldown_caixa_atual - dt)
@@ -299,7 +348,13 @@ class SistemaDrops:
 
         self.drops = [d for d in self.drops if d.ativo and not d.coletado]
 
-    def coletar_jogador(self, jogador, mult_valor_drop: float = 1.0, mult_xp: float = 1.0) -> list[dict]:
+    def coletar_jogador(
+        self,
+        jogador,
+        mult_valor_drop: float = 1.0,
+        mult_xp: float = 1.0,
+        sistema_conquistas=None,
+    ) -> list[dict]:
         """
         Testa colisão do jogador com drops ativos.
         Aplica efeitos imediatos e retorna lista de eventos de coleta ocorridos.
@@ -345,10 +400,34 @@ class SistemaDrops:
                 elif drop.tipo == "overclock":
                     sfx_nome = "sfx_pickup_arma"
 
+                elif drop.tipo == "micro_sucata":
+                    sfx_nome = "sfx_pickup_xp"
+                    arma_esp = getattr(jogador, "arma_especial", None)
+                    recarregou = False
+                    if (
+                        arma_esp is not None
+                        and getattr(arma_esp, "municao_max", 0) > 0
+                        and getattr(arma_esp, "municao_atual", 0) < arma_esp.municao_max
+                    ):
+                        ganho = max(1, int(round(arma_esp.municao_max * 0.10)))
+                        arma_esp.municao_atual = min(arma_esp.municao_max, arma_esp.municao_atual + ganho)
+                        recarregou = True
+                    if not recarregou:
+                        armas_j = getattr(jogador, "armas", []) or []
+                        resfriou = False
+                        for a in armas_j:
+                            if getattr(a, "usa_calor", False) and getattr(a, "calor_atual", 0.0) > 0.0:
+                                a.calor_atual = max(0.0, float(a.calor_atual) - 25.0)
+                                if a.calor_atual <= 0.0:
+                                    a.superaquecida = False
+                                resfriou = True
+                                break
+                        if not resfriou and hasattr(jogador, "ganhar_xp"):
+                            jogador.ganhar_xp(3, mult_xp=mult_xp)
+
                 elif drop.tipo == "arma":
                     sfx_nome = "sfx_pickup_arma"
-                    from src.armas import Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas, Railgun
-                    armas_especiais = [Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas, Railgun]
+                    armas_especiais = self.obter_pool_armas_especiais(sistema_conquistas=sistema_conquistas)
                     classe_arma = random.choice(armas_especiais)
                     nova_arma = classe_arma()
 
