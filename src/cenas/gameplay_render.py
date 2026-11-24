@@ -14,6 +14,7 @@ from src.utils.constantes import (
     AMARELO_XP, AZUL_CIANO, DOURADO, LARANJA_ALERTA, ROXO_ACENTO,
 )
 from src.utils.math_utils import clamp
+from src.sistemas.config_dados import CONFIGURACOES_GAMEPLAY
 
 
 class GameplayRenderMixin:
@@ -327,6 +328,74 @@ class GameplayRenderMixin:
         # Partículas de combate (faíscas, ondas de choque, bursts e detritos)
         self.sistema_particulas.desenhar(self.janela, self.camera)
 
+        # Hologramas (sombra_espelho / clone_agro)
+        for holo in getattr(self, "hologramas", []):
+            if hasattr(holo, "desenhar"):
+                holo.desenhar(self.janela, self.camera)
+
+        # Armas contínuas: Rifle de Arco (feixe elétrico) e Lança-Chamas (cone de fogo)
+        arma_cont = self.jogador.obter_arma_ativa() if (self.jogador.vivo and hasattr(self.jogador, "obter_arma_ativa")) else None
+        if arma_cont is not None and getattr(arma_cont, "eh_continua", False) and getattr(arma_cont, "fluxo_ativo", False):
+            ox_c = self.camera.transform_x(self.jogador.x + self.jogador.largura / 2.0)
+            oy_c = self.camera.transform_y(self.jogador.y + self.jogador.altura / 2.0)
+            ang_c = float(getattr(self.jogador, "aim_angle", 0.0))
+            alc = float(getattr(arma_cont, "alcance", 220.0))
+            if "arco" in str(getattr(arma_cont, "id_arma", "")).lower() or "rifle_arco" in str(type(arma_cont).__name__).lower():
+                pts = [(int(ox_c), int(oy_c))]
+                for seg in range(1, 6):
+                    frac = seg / 5.0
+                    jitter = ((seg * 7 + int(self.tempo_sobrevivencia * 60)) % 9) - 4
+                    px_b = ox_c + math.cos(ang_c) * alc * frac - math.sin(ang_c) * jitter
+                    py_b = oy_c + math.sin(ang_c) * alc * frac + math.cos(ang_c) * jitter
+                    pts.append((int(px_b), int(py_b)))
+                pygame.draw.lines(world_surf, (56, 189, 248), False, pts, width=4)
+                pygame.draw.lines(world_surf, (224, 248, 255), False, pts, width=2)
+            else:
+                abertura = math.radians(float(getattr(arma_cont, "arco_graus", 55.0)) * 0.5)
+                p0 = (int(ox_c), int(oy_c))
+                p1 = (int(ox_c + math.cos(ang_c - abertura) * alc), int(oy_c + math.sin(ang_c - abertura) * alc))
+                p2 = (int(ox_c + math.cos(ang_c + abertura) * alc), int(oy_c + math.sin(ang_c + abertura) * alc))
+                pygame.draw.polygon(world_surf, (249, 115, 22), [p0, p1, p2], width=2)
+                pygame.draw.polygon(world_surf, (250, 204, 21), [p0, ((p0[0] + p1[0]) // 2, (p0[1] + p1[1]) // 2), ((p0[0] + p2[0]) // 2, (p0[1] + p2[1]) // 2)], width=1)
+
+        # Hooks visuais B+ (latencia_ping fantasma, sandbox_isolada, firewall_estatico, etc.)
+        mods = self.config_sistema.obter_modificadores() if hasattr(self, "config_sistema") and self.config_sistema else None
+        if getattr(self, "efeitos_combate", None) is not None:
+            try:
+                from src.sistemas.efeitos_combate import ContextoCombate
+                ctx_render = ContextoCombate(
+                    cena=self,
+                    jogador=self.jogador,
+                    inimigos=self.inimigos,
+                    projeteis=self.projeteis,
+                    drops=getattr(self.sistema_drops, "drops", []),
+                    particulas=self.sistema_particulas,
+                    mods=mods,
+                    sistema_combo=getattr(self, "sistema_combo", None),
+                    sistema_conquistas=getattr(self, "sistema_conquistas", None),
+                    hologramas=getattr(self, "hologramas", None),
+                    tempo_sobrevivencia=getattr(self, "tempo_sobrevivencia", 0.0),
+                )
+                self.efeitos_combate.disparar_ao_pos_render_mundo(ctx_render, world_surf, camera=self.camera)
+            except Exception:
+                pass
+
+        # Passe técnico Modo Wireframe (grade + contornos geométricos + nó vulnerável)
+        if getattr(mods, "modo_wireframe", False):
+            for gx in range(0, LARGURA_TELA, 64):
+                pygame.draw.line(world_surf, (20, 58, 72), (gx, 0), (gx, ALTURA_TELA), width=1)
+            for gy in range(0, ALTURA_TELA, 64):
+                pygame.draw.line(world_surf, (20, 58, 72), (0, gy), (LARGURA_TELA, gy), width=1)
+            for inim in self.inimigos:
+                if not getattr(inim, "vivo", True):
+                    continue
+                ix = int(self.camera.transform_x(inim.x))
+                iy = int(self.camera.transform_y(inim.y))
+                iw = max(8, int(getattr(inim, "largura", 24)))
+                ih = max(8, int(getattr(inim, "altura", 24)))
+                pygame.draw.rect(world_surf, (34, 211, 238), (ix, iy, iw, ih), width=1)
+                pygame.draw.circle(world_surf, (251, 191, 36), (ix + iw // 2, iy + ih // 2), max(3, min(iw, ih) // 4), width=1)
+
         # Barra de HP in-world flutuando abaixo do jogador
         hud_visivel = (self.gerenciador_config.obter_valor("hud") != "desligado")
         if hud_visivel:
@@ -385,23 +454,30 @@ class GameplayRenderMixin:
                 pygame.transform.scale(fonte_mundo, (vw, vh), self._world_scaled_surf)
                 screen.blit(self._world_scaled_surf, (ox, oy))
 
-        # Sincronização Vertical (Config 4: vsync == "desligado" -> Linha de Rasgo ciano escalada por DPI)
+        # Sincronização Vertical (Config 4: vsync == "desligado" -> 2-3 bandas horizontais calibradas com deslocamento oposto)
         mods = self.config_sistema.obter_modificadores() if hasattr(self, "config_sistema") and self.config_sistema else None
         if getattr(mods, "vsync_tear_refraction", False) and not self.boss_cutscene_ativa:
-            tear_y = oy + int(round(getattr(self, "vsync_tear_y", 0.0) * scale))
-            strip_h = max(4, int(round(12 * scale)))
-            shift_x = max(4, int(round(16 * scale)))
-            band_y = max(oy, tear_y - strip_h // 2)
-            band_h = min(strip_h, (oy + vh) - band_y)
-            if band_h > 0 and vw > shift_x:
-                if self._vsync_strip_surf is None or self._vsync_strip_surf.get_size() != (vw, strip_h):
-                    self._vsync_strip_surf = pygame.Surface((vw, strip_h))
-                self._vsync_strip_surf.blit(screen, (0, 0), area=pygame.Rect(ox, band_y, vw, band_h))
-                screen.blit(self._vsync_strip_surf, (ox + shift_x, band_y), area=pygame.Rect(0, 0, vw - shift_x, band_h))
-            lw1 = max(2, int(round(2 * scale)))
-            lw2 = max(1, int(round(1 * scale)))
-            pygame.draw.line(screen, (56, 189, 248), (ox, max(oy, tear_y - 1)), (ox + vw, max(oy, tear_y - 1)), width=lw1)
-            pygame.draw.line(screen, (210, 250, 255), (ox, min(oy + vh - 1, tear_y + lw2)), (ox + vw, min(oy + vh - 1, tear_y + lw2)), width=lw2)
+            base_tear_y = oy + int(round(getattr(self, "vsync_tear_y", 0.0) * scale))
+            strip_h = max(6, int(round(14 * scale)))
+            if self._vsync_strip_surf is None or self._vsync_strip_surf.get_size() != (vw, strip_h):
+                self._vsync_strip_surf = pygame.Surface((vw, strip_h))
+            lw1 = max(1, int(round(2 * scale)))
+            bandas = [
+                (base_tear_y, max(6, int(round(18 * scale)))),
+                (oy + ((base_tear_y - oy + vh // 3) % max(1, vh)), -max(6, int(round(16 * scale)))),
+                (oy + ((base_tear_y - oy + (2 * vh) // 3) % max(1, vh)), max(6, int(round(20 * scale)))),
+            ]
+            for ty, shift_signed in bandas:
+                band_y = max(oy, ty - strip_h // 2)
+                band_h = min(strip_h, (oy + vh) - band_y)
+                abs_shift = abs(shift_signed)
+                if band_h > 0 and vw > abs_shift:
+                    self._vsync_strip_surf.blit(screen, (0, 0), area=pygame.Rect(ox, band_y, vw, band_h))
+                    if shift_signed >= 0:
+                        screen.blit(self._vsync_strip_surf, (ox + abs_shift, band_y), area=pygame.Rect(0, 0, vw - abs_shift, band_h))
+                    else:
+                        screen.blit(self._vsync_strip_surf, (ox, band_y), area=pygame.Rect(abs_shift, 0, vw - abs_shift, band_h))
+                pygame.draw.line(screen, (56, 189, 248), (ox, max(oy, ty)), (ox + vw, max(oy, ty)), width=lw1)
 
         # Iluminação Dinâmica / Fog of War (Config 18) - renderizado sobre (ox, oy, vw, vh) antes do HUD
         val_ilum = self.config_sistema.obter_valor("iluminacao") if hasattr(self, "config_sistema") and self.config_sistema else "desligado"
@@ -453,6 +529,8 @@ class GameplayRenderMixin:
             self.modal_level_up.draw(screen)
         elif self.menu_configs.ativo:
             self.menu_configs.draw(screen)
+        elif hasattr(self, "menu_conquistas") and self.menu_conquistas is not None and self.menu_conquistas.ativo:
+            self.menu_conquistas.draw(screen)
         elif hasattr(self, "menu_debug") and self.menu_debug.ativo:
             self.menu_debug.draw(screen)
         elif self.vitoria:
@@ -575,6 +653,8 @@ class GameplayRenderMixin:
             fill_mun = int((bar_w - 2) * prog_mun)
             if fill_mun > 0:
                 pygame.draw.rect(self.janela.screen, cor_mun, (bar_x + 1, next_y + 1, fill_mun, sub_h - 2))
+            if getattr(arma_ativa, "usa_calor", False) and hasattr(self, "hud") and self.hud is not None and hasattr(self.hud, "desenhar_barra_calor_in_world"):
+                self.hud.desenhar_barra_calor_in_world(self.janela.screen, bar_x, next_y + sub_h + 2, bar_w, arma_ativa)
 
     def _desenhar_hud_tela(self, hud_visivel: bool = True):
         """Renderiza o HUD fixo na tela em DPI nativo: inventário, vitais, telemetria e botão de configurações."""
@@ -598,11 +678,15 @@ class GameplayRenderMixin:
             # 0. Painel compacto de Vitais no topo esquerdo (HP numérico + Overshield ciano + prontidão do Dash)
             if hasattr(self, "hud") and self.hud is not None and hasattr(self.hud, "desenhar_painel_vitais"):
                 self.hud.desenhar_painel_vitais(screen, self.jogador, visivel=hud_visivel)
-            if hasattr(self, "hud") and self.hud is not None and hasattr(self.hud, "desenhar_card_parry"):
-                parries_acumulados = 0
-                if hasattr(self, "gerenciador_config") and self.gerenciador_config is not None:
-                    parries_acumulados = int(self.gerenciador_config.estatisticas.get("parries_total", 0))
-                self.hud.desenhar_card_parry(screen, self.jogador, parries_total=parries_acumulados, visivel=hud_visivel)
+            if hasattr(self, "hud") and self.hud is not None:
+                if hasattr(self, "sistema_conquistas") and self.sistema_conquistas is not None and hasattr(self.hud, "desenhar_pins_conquistas"):
+                    self.hud.desenhar_pins_conquistas(screen, self.sistema_conquistas.obter_resumo_fixadas(), visivel=hud_visivel)
+                if hasattr(self, "sistema_combo") and self.sistema_combo is not None and hasattr(self.hud, "desenhar_indicador_combo"):
+                    self.hud.desenhar_indicador_combo(screen, self.sistema_combo, visivel=hud_visivel)
+                if hasattr(self, "efeitos_combate") and self.efeitos_combate is not None and hasattr(self.hud, "desenhar_barra_ram_gc"):
+                    efeito_gc = self.efeitos_combate.obter_efeito("garbage_collector")
+                    if efeito_gc is not None:
+                        self.hud.desenhar_barra_ram_gc(screen, efeito_gc, visivel=hud_visivel)
 
             # 1. Slots de inventário ([1]-[4] + [3B]) no Top-Left (16, 14, 54x54 lógico)
             slot_tam_l = 54
@@ -808,7 +892,9 @@ class GameplayRenderMixin:
                 self._hud_stats_pill_surf = pygame.Surface((pill_w, pill_h), pygame.SRCALPHA)
                 pygame.draw.rect(self._hud_stats_pill_surf, (11, 14, 23, 220), (0, 0, pill_w, pill_h), border_radius=raio_pill)
             screen.blit(self._hud_stats_pill_surf, (pill_x, pill_y))
-            pygame.draw.rect(screen, cor_borda_sutil, (pill_x, pill_y, pill_w, pill_h), width=max(1, int(round(s))), border_radius=raio_pill)
+            pulso_intro = float(getattr(self, "pulso_assault_intro_timer", 0.0))
+            cor_borda_pill = cor_ouro if (pulso_intro > 0.0 and int(pulso_intro * 10) % 2 == 0) else cor_borda_sutil
+            pygame.draw.rect(screen, cor_borda_pill, (pill_x, pill_y, pill_w, pill_h), width=max(1, int(round(s))), border_radius=raio_pill)
 
             cy_pill = pill_y + pill_h // 2
             tempo_surf = self._obter_fonte("tempo", s).render(texto_tempo, True, BRANCO)
@@ -864,6 +950,7 @@ class GameplayRenderMixin:
             not self.pausado and not self.game_over and not self.vitoria
             and not (self.boss_cutscene_ativa and self.boss_cutscene_fase != "whiteout")
             and not self.menu_configs.ativo and not self.modal_level_up.ativo and not self.modal_overclock.ativo
+            and not (hasattr(self, "menu_conquistas") and self.menu_conquistas is not None and self.menu_conquistas.ativo)
             and not (hasattr(self, "menu_debug") and self.menu_debug.ativo)
         )
         if em_combate_ativo and self.jogador.vivo:
@@ -1064,7 +1151,7 @@ class GameplayRenderMixin:
             ("Tempo de Partida:", tempo_str, DOURADO),
             ("Máquinas Destruídas:", f"{self.abates}", AMARELO_XP),
             ("Dano Total Causado:", f"{self.dano_total_causado:,}", (255, 100, 100)),
-            ("Configurações Desbloqueadas:", f"{len(self.gerenciador_config.desbloqueadas)} / 20", AZUL_CIANO),
+            ("Configurações Desbloqueadas:", f"{len(self.gerenciador_config.desbloqueadas)} / {len(CONFIGURACOES_GAMEPLAY)}", AZUL_CIANO),
             ("Multiplicador de Configurações:", f"x{self.estatisticas_partida_resultado.get('mult_dif', 1.0):.2f}", (180, 210, 240)),
         ]
 
@@ -1118,6 +1205,12 @@ class GameplayRenderMixin:
         btn_menu_rect = pygame.Rect(cx - 160, oy + 324, 320, 40)
         return btn_cont_rect, btn_menu_rect
 
+    def _obter_rect_btn_conquistas_pausa(self) -> pygame.Rect:
+        """Retorna o retângulo clicável do botão Conquistas & Firmware (somente leitura) no overlay de pausa."""
+        oy = (ALTURA_TELA - 600) // 2
+        cx = LARGURA_TELA // 2
+        return pygame.Rect(cx - 160, oy + 376, 320, 40)
+
     def _desenhar_overlay_pausa(self):
         """Overlay modal de pausa projetado em DPI nativo com botões alinhados aos hitboxes lógicos."""
         screen = self.janela.screen
@@ -1142,8 +1235,10 @@ class GameplayRenderMixin:
         screen.blit(t_surf, t_rect)
 
         btn_cont_l, btn_menu_l = self._obter_rects_overlay_pausa()
+        btn_conq_l = self._obter_rect_btn_conquistas_pausa()
         btn_cont_rect = pygame.Rect(px_x(btn_cont_l.x), px_y(btn_cont_l.y), px_s(btn_cont_l.w), px_s(btn_cont_l.h))
         btn_menu_rect = pygame.Rect(px_x(btn_menu_l.x), px_y(btn_menu_l.y), px_s(btn_menu_l.w), px_s(btn_menu_l.h))
+        btn_conq_rect = pygame.Rect(px_x(btn_conq_l.x), px_y(btn_conq_l.y), px_s(btn_conq_l.w), px_s(btn_conq_l.h))
         raio = max(3, int(round(6 * s)))
         bw = max(1, int(round(s)))
 
@@ -1157,9 +1252,14 @@ class GameplayRenderMixin:
         m_surf = fonte_sub.render("[M] Menu Principal", True, DOURADO)
         screen.blit(m_surf, m_surf.get_rect(center=btn_menu_rect.center))
 
+        pygame.draw.rect(screen, (32, 22, 52), btn_conq_rect, border_radius=raio)
+        pygame.draw.rect(screen, ROXO_ACENTO, btn_conq_rect, width=bw, border_radius=raio)
+        q_surf = fonte_sub.render("Conquistas & Firmware", True, BRANCO)
+        screen.blit(q_surf, q_surf.get_rect(center=btn_conq_rect.center))
+
         if hasattr(self, "banner_dicas") and self.banner_dicas is not None:
             dica_w = px_s(560)
-            dica_rect = pygame.Rect(cx_tela - dica_w // 2, btn_menu_rect.bottom + px_s(22), dica_w, px_s(58))
+            dica_rect = pygame.Rect(cx_tela - dica_w // 2, btn_conq_rect.bottom + px_s(18), dica_w, px_s(58))
             self.banner_dicas.desenhar(screen, dica_rect, scale=s)
 
     def _desenhar_overlay_game_over(self):
