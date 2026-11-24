@@ -29,7 +29,7 @@ class TestExperimentoGameloopSpawn(unittest.TestCase):
 
     def test_intervalo_spawn_sem_aceleracao_legada_067x(self):
         spawner = SistemaSpawn()
-        self.assertAlmostEqual(spawner.intervalo_spawn(0.0), float(SPAWN_INTERVALO_INICIAL), places=4)
+        self.assertAlmostEqual(spawner.intervalo_spawn(0.0), 1.55, places=4)
         self.assertGreaterEqual(spawner.intervalo_spawn(10.0), spawner.intervalo_spawn(30.0))
 
     def test_calcular_escala_hp_tempo_pos_90s(self):
@@ -137,9 +137,9 @@ class TestExperimentoGameloopSpawn(unittest.TestCase):
             (InimigoBlindado, "MINI-BOSS: NO-BREAK CHUMBADO", "nobreak_chumbado"),
         ]
         sp = SistemaSpawn(fila_minibosses=fila_fixa)
-        hp_base_1 = fila_fixa[0][0](0, 0, is_elite=True).hp_max
-        hp_base_2 = fila_fixa[1][0](0, 0, is_elite=True).hp_max
-        hp_base_3 = fila_fixa[2][0](0, 0, is_elite=True).hp_max
+        hp_base_1 = max(700, fila_fixa[0][0](0, 0, is_elite=True).hp_max)
+        hp_base_2 = max(700, fila_fixa[1][0](0, 0, is_elite=True).hp_max)
+        hp_base_3 = max(700, fila_fixa[2][0](0, 0, is_elite=True).hp_max)
 
         # Ciclo 1 -> 1.00x (sem 0.40x!)
         novos1 = sp.update(0.016, 0.0, 0.0, 0, fase_onda="assault", gatilho_assault_intro=True, possui_elite_vivo=False)

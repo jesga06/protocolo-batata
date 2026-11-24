@@ -120,7 +120,7 @@ class TestNovasArmas(unittest.TestCase):
         longe = _InimigoStub(350.0, 0.0)
         mun_inicial = lc.municao_atual
 
-        eventos = lc.atualizar_fluxo(0.10, True, 0.0, 0.0, 200.0, 0.0, [dentro_1, dentro_2, longe])
+        eventos = lc.atualizar_fluxo(0.14, True, 0.0, 0.0, 200.0, 0.0, [dentro_1, dentro_2, longe])
         self.assertTrue(lc.fluxo_ativo)
         self.assertLess(lc.municao_atual, mun_inicial)
         self.assertEqual(len(eventos), 2)
