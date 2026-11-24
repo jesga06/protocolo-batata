@@ -711,6 +711,39 @@ class GameplayRenderMixin:
             if getattr(arma_ativa, "usa_calor", False) and hasattr(self, "hud") and self.hud is not None and hasattr(self.hud, "desenhar_barra_calor_in_world"):
                 self.hud.desenhar_barra_calor_in_world(self.janela.screen, bar_x, next_y + sub_h + 2, bar_w, arma_ativa)
 
+    def _resolver_icone_arma(self, arma, chave_padrao: str | None = None):
+        """Resolve o sprite do ícone priorizando `arma.icone_asset` antes do fallback legado por nome."""
+        if arma is not None:
+            icone_chave = getattr(arma, "icone_asset", None)
+            if icone_chave:
+                img = self._obter_sprite_icone(icone_chave)
+                if img is not None:
+                    return img
+            nome_arma = getattr(arma, "nome", "")
+            if "Minigun" in nome_arma:
+                return self._obter_sprite_icone("arma_minigun")
+            if "Escopeta" in nome_arma or "Shotgun" in nome_arma:
+                return self._obter_sprite_icone("arma_shotgun")
+            if "Arco" in nome_arma:
+                return self._obter_sprite_icone("arma_rifle_arco")
+            if "Chamas" in nome_arma:
+                return self._obter_sprite_icone("arma_lanca_chamas")
+            if "Bastão" in nome_arma or "Choque" in nome_arma:
+                return self._obter_sprite_icone("arma_bastao_choque")
+            if "SMG" in nome_arma:
+                return self._obter_sprite_icone("arma_smg")
+            if "Rifle" in nome_arma:
+                return self._obter_sprite_icone("arma_rifle")
+            if "Railgun" in nome_arma:
+                return self._obter_sprite_icone("arma_railgun")
+            if "Foguetes" in nome_arma:
+                return self._obter_sprite_icone("arma_foguetes")
+            if "Granadas" in nome_arma:
+                return self._obter_sprite_icone("arma_granadas")
+        if chave_padrao:
+            return self._obter_sprite_icone(chave_padrao)
+        return None
+
     def _desenhar_hud_tela(self, hud_visivel: bool = True):
         """Renderiza o HUD fixo na tela em DPI nativo: inventário, vitais, telemetria e botão de configurações."""
         screen = self.janela.screen
@@ -794,29 +827,12 @@ class GameplayRenderMixin:
                 cor_badge = BRANCO
 
                 if i == 0:
-                    icone_img = self._obter_sprite_icone("arma_melee")
+                    arma_slot1 = getattr(self.jogador, "arma_melee", None)
+                    icone_img = self._resolver_icone_arma(arma_slot1, "arma_melee")
                 elif i == 1:
                     arma_slot2 = arma_slot2_ref
                     if arma_slot2 is not None:
-                        icone_chave = getattr(arma_slot2, "icone_asset", None)
-                        if icone_chave:
-                            icone_img = self._obter_sprite_icone(icone_chave)
-                        if icone_img is None:
-                            nome_arma2 = getattr(arma_slot2, "nome", "")
-                            if "Minigun" in nome_arma2:
-                                icone_img = self._obter_sprite_icone("arma_minigun")
-                            elif "Escopeta" in nome_arma2 or "Shotgun" in nome_arma2:
-                                icone_img = self._obter_sprite_icone("arma_shotgun")
-                            elif "Rifle" in nome_arma2:
-                                icone_img = self._obter_sprite_icone("arma_rifle")
-                            elif "Railgun" in nome_arma2:
-                                icone_img = self._obter_sprite_icone("arma_railgun")
-                            elif "Foguetes" in nome_arma2:
-                                icone_img = self._obter_sprite_icone("arma_foguetes")
-                            elif "Granadas" in nome_arma2:
-                                icone_img = self._obter_sprite_icone("arma_granadas")
-                            else:
-                                icone_img = self._obter_sprite_icone("arma_pistola")
+                        icone_img = self._resolver_icone_arma(arma_slot2, "arma_pistola")
                         if not getattr(arma_slot2, "municao_infinita", False) and hasattr(arma_slot2, "municao_atual"):
                             mun2 = getattr(arma_slot2, "municao_atual", 0)
                             texto_badge = str(mun2)
@@ -825,19 +841,7 @@ class GameplayRenderMixin:
                         icone_img = self._obter_sprite_icone("arma_pistola")
                 elif i == 2:
                     if self.jogador.arma_especial:
-                        nome_arma = getattr(self.jogador.arma_especial, "nome", "")
-                        if "Minigun" in nome_arma:
-                            icone_img = self._obter_sprite_icone("arma_minigun")
-                        elif "Escopeta" in nome_arma or "Shotgun" in nome_arma:
-                            icone_img = self._obter_sprite_icone("arma_shotgun")
-                        elif "Rifle" in nome_arma:
-                            icone_img = self._obter_sprite_icone("arma_rifle")
-                        elif "Foguetes" in nome_arma:
-                            icone_img = self._obter_sprite_icone("arma_foguetes")
-                        elif "Granadas" in nome_arma:
-                            icone_img = self._obter_sprite_icone("arma_granadas")
-                        elif "Railgun" in nome_arma:
-                            icone_img = self._obter_sprite_icone("arma_railgun")
+                        icone_img = self._resolver_icone_arma(self.jogador.arma_especial)
 
                         mun = getattr(self.jogador.arma_especial, "municao_atual", 0)
                         texto_badge = str(mun)
@@ -901,20 +905,7 @@ class GameplayRenderMixin:
                 screen.blit(num_surf, (sx3b + max(2, int(round(3 * s))), sy3b + max(1, int(round(2 * s)))))
 
                 if getattr(self.jogador, "arma_especial_secundaria", None) is not None:
-                    nome_arma = getattr(self.jogador.arma_especial_secundaria, "nome", "")
-                    icone_img = None
-                    if "Minigun" in nome_arma:
-                        icone_img = self._obter_sprite_icone("arma_minigun")
-                    elif "Escopeta" in nome_arma or "Shotgun" in nome_arma:
-                        icone_img = self._obter_sprite_icone("arma_shotgun")
-                    elif "Rifle" in nome_arma:
-                        icone_img = self._obter_sprite_icone("arma_rifle")
-                    elif "Foguetes" in nome_arma:
-                        icone_img = self._obter_sprite_icone("arma_foguetes")
-                    elif "Granadas" in nome_arma:
-                        icone_img = self._obter_sprite_icone("arma_granadas")
-                    elif "Railgun" in nome_arma:
-                        icone_img = self._obter_sprite_icone("arma_railgun")
+                    icone_img = self._resolver_icone_arma(self.jogador.arma_especial_secundaria)
 
                     if icone_img:
                         icone_nativo = self._escalar_surf_nativa(icone_img, icone_dim, icone_dim)
