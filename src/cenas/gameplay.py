@@ -107,6 +107,11 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
 
         # Chefe Final e Cutscene de Transição
         self.chefe_final = None
+        try:
+            from src.entidades.inimigos.geladeira_tsunami import GeladeiraTsunami
+            GeladeiraTsunami.preaquecer_cache_fontes()
+        except Exception:
+            pass
         self.boss_grace_period_ativo = False
         self.boss_grace_timer = 0.0
         self.boss_cutscene_ativa = False

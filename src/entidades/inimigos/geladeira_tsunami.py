@@ -123,6 +123,15 @@ class GeladeiraTsunami(InimigoBase):
     _aura_cache = {}
     _flash_cache = {}
 
+    @classmethod
+    def preaquecer_cache_fontes(cls):
+        """Pré-aquece a fonte do balão de fala no init da cena (zero alocação em runtime)."""
+        if cls._balao_fonte_cache is None and pygame.font.get_init():
+            try:
+                cls._balao_fonte_cache = pygame.font.SysFont("arial", 13, bold=True)
+            except Exception:
+                cls._balao_fonte_cache = pygame.font.Font(None, 18)
+
     def __init__(
         self,
         x: float,
@@ -861,13 +870,12 @@ class GeladeiraTsunami(InimigoBase):
             except Exception:
                 return
 
-        if self._balao_fonte_cache is None:
-            try:
-                self._balao_fonte_cache = pygame.font.SysFont("arial", 13, bold=True)
-            except Exception:
-                self._balao_fonte_cache = pygame.font.Font(None, 18)
+        if self.__class__._balao_fonte_cache is None:
+            self.__class__.preaquecer_cache_fontes()
 
-        fonte = self._balao_fonte_cache
+        fonte = self.__class__._balao_fonte_cache
+        if fonte is None:
+            return
         linhas = self.balao_fala_texto.split("\n")
         surfs_linhas = [fonte.render(linha, True, (25, 25, 35)) for linha in linhas]
 

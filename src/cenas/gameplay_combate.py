@@ -1414,11 +1414,8 @@ class GameplayCombateMixin:
                         cos_d = math.cos(ang_desvio * sinal)
                         sin_d = math.sin(ang_desvio * sinal)
                         dx_o, dy_o = getattr(proj, "dir_x", 0.0), getattr(proj, "dir_y", 0.0)
-                        vx_o, vy_o = getattr(proj, "vx", 0.0), getattr(proj, "vy", 0.0)
                         proj.dir_x = dx_o * cos_d - dy_o * sin_d
                         proj.dir_y = dx_o * sin_d + dy_o * cos_d
-                        proj.vx = vx_o * cos_d - vy_o * sin_d
-                        proj.vy = vx_o * sin_d + vy_o * cos_d
                 if proj_clones:
                     self.projeteis.extend(proj_clones)
 

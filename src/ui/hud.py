@@ -51,6 +51,8 @@ class HUD:
         self._fonte_timer_boss = self._obter_fonte_nativa("mono", 10, bold=True)
         self._fonte_vitais = self._obter_fonte_nativa("mono", 11, bold=True)
         self._fonte_dash = self._obter_fonte_nativa("mono", 9, bold=True)
+        self._fonte_card_nome = self._obter_fonte_nativa("sans", 10, bold=True)
+        self._fonte_card_mono = self._obter_fonte_nativa("mono", 8, bold=True)
         self._painel_surf_cache: dict[tuple[int, int, int], pygame.Surface] = {}
 
     @staticmethod
