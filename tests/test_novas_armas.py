@@ -81,7 +81,7 @@ class TestNovasArmas(unittest.TestCase):
 
         # Superaquecimento em 100% trava por 1.0s
         smg.tempo_recarga_restante = 0.0
-        smg.calor_atual = 98.0
+        smg.calor_atual = 99.0
         smg.disparar(0.0, 0.0, 100.0, 0.0)
         self.assertTrue(smg.superaquecida)
         self.assertFalse(smg.pode_atirar())

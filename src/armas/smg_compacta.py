@@ -42,7 +42,7 @@ class SMGCompacta(ArmaBase):
             if desaceleracao is None
             else float(desaceleracao)
         )
-        self.calor_por_tiro = 3.0
+        self.calor_por_tiro = 1.0
         self.resfriamento_por_seg = 60.0
         self.zona_ideal_min = 60.0
         self.zona_ideal_max = 92.0
