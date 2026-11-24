@@ -1,7 +1,7 @@
 """
 Catálogo e Definições de Dados do Sistema de Configurações — Protocolo: Batata
 SSOT: CONFIGURACOES.md
-Define todas as 20 configurações de gameplay desbloqueáveis e as 3 configurações de sistema (23 no total).
+Define todas as 28 configurações de gameplay desbloqueáveis e as 3 configurações de sistema (31 no total).
 """
 
 from dataclasses import dataclass, field
@@ -34,6 +34,8 @@ class OpcaoConfig:
     flavor_text: str = ""
     nerf_text: str = "Nenhum"
     buff_text: str = "Nenhum"
+    desbloqueada_por: Optional[str] = None
+    incompativel_com: list[tuple[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -48,10 +50,12 @@ class ConfiguracaoDef:
     is_gameplay: bool = True
     ordem: int = 1
     descricao_sistema: str = ""
+    requer_desbloqueio: Optional[tuple[str, str]] = None
+    exclusiva_conquista: bool = False
 
 
 # =============================================================================
-# CATÁLOGO DE CONFIGURAÇÕES DE GAMEPLAY (20 ITENS DESBLOQUEÁVEIS)
+# CATÁLOGO DE CONFIGURAÇÕES DE GAMEPLAY (28 ITENS DESBLOQUEÁVEIS)
 # =============================================================================
 
 CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
@@ -122,7 +126,8 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 modificadores={"hp_inimigos_mult": 0.80, "graficos_shrapnel": True},
                 flavor_text="O verdadeiro modo batata.",
                 nerf_text="Cenário e partículas simplificados",
-                buff_text="-20% de vida nos inimigos e estilhaços perfurantes ao abatê-los"
+                buff_text="-20% de vida nos inimigos e estilhaços perfurantes ao abatê-los",
+                incompativel_com=[("modo_wireframe", "ligado")],
             ),
         }
     ),
@@ -191,10 +196,10 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "desligado": OpcaoConfig(
                 id="desligado",
                 label="Desligado",
-                modificadores={"vel_jogador_mult": 1.10, "vsync_tear_refraction": True},
-                flavor_text="Espero que seu monitor tenha FreeSync.",
-                nerf_text="Faixa horizontal de rasgo na tela",
-                buff_text="+10% de velocidade e projéteis que cruzam o rasgo saem duplicados"
+                modificadores={"vsync_tear_refraction": True, "vsync_cadencia_contra_varredura": 1.15},
+                flavor_text="Monitor sem sincronia. A imagem rasga, e as trajetórias rasgam junto.",
+                nerf_text="Rasgo de quadro real em bandas horizontais distorcendo mira e projéteis",
+                buff_text="Seus tiros que cruzam o rasgo dividem-se em 2; tiros inimigos sofrem desvio; +15% cadência contra a varredura"
             ),
         }
     ),
@@ -323,10 +328,10 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "75%": OpcaoConfig(
                 id="75%",
                 label="75% (Zoom Out)",
-                modificadores={"hitbox_projeteis_mult": 1.50},
-                flavor_text="Aquilo é uma batata ou uma formiga armada?",
-                nerf_text="Câmera mais distante, sprites menores",
-                buff_text="Tamanho da hitbox de todos os projéteis aumentado em +50% (x1.50)"
+                modificadores={"zoom_balistica_longa": True, "zoom_queima_roupa_mult": 0.85},
+                flavor_text="Mire de longe; tiros à queima-roupa perdem força.",
+                nerf_text="FOV ampliado, sprites menores, inimigos detectam de longe e -15% de dano à queima-roupa",
+                buff_text="Balística Longa: projéteis escalam dano pela distância (até +45%) e ganham +1 perfuração em longa distância"
             ),
             "100%": OpcaoConfig(
                 id="100%",
@@ -339,18 +344,18 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "125%": OpcaoConfig(
                 id="125%",
                 label="125% (Zoom In)",
-                modificadores={"dano_armas_mult": 1.10},
-                flavor_text="Foco total no que está na sua cara.",
-                nerf_text="Campo de visão periférico reduzido",
-                buff_text="Dano de todas as armas aumentado em +10% (x1.10)"
+                modificadores={"zoom_execucao_cd_red": 0.5},
+                flavor_text="Olho no olho. Cada abate encurta sua próxima esquiva.",
+                nerf_text="Campo periférico severamente reduzido (flancos cegos)",
+                buff_text="Execução Próxima: abates reduzem cooldown de Dash/Parry em -0,5s"
             ),
             "150%": OpcaoConfig(
                 id="150%",
                 label="150% (Zoom In)",
-                modificadores={"dano_armas_mult": 1.20},
-                flavor_text="Você consegue ver de perto os inimigos.",
+                modificadores={"zoom_execucao_cd_red": 1.0, "zoom_execucao_limiar_hp": 0.20},
+                flavor_text="Quem entra no seu foco não sai inteiro.",
                 nerf_text="Visão extremamente restrita do mapa",
-                buff_text="Dano de todas as armas aumentado em +20% (x1.20)"
+                buff_text="Execução Próxima Máxima: abates reduzem cooldown de Dash/Parry em -1,0s e executam comuns abaixo de 20% HP"
             ),
         }
     ),
@@ -378,7 +383,12 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 modificadores={"drop_chance_mult": 1.40, "movimento_ram_collision": True},
                 flavor_text="Para que servem as pernas quando o destino tem um cursor?",
                 nerf_text="A batata caminha incessantemente na direção do cursor",
-                buff_text="Drop de itens +40% e andar continuamente te faz atropelar e empurrar inimigos"
+                buff_text="Drop de itens +40% e andar continuamente te faz atropelar e empurrar inimigos",
+                incompativel_com=[
+                    ("controles_tanque", "ligado"),
+                    ("keybinds", "uma_mao"),
+                    ("keybinds", "pesadelo"),
+                ],
             ),
         }
     ),
@@ -422,7 +432,11 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 modificadores={"xp_ganho_mult": 1.20, "keybinds_overdrive_dash": True},
                 flavor_text="Uma mão no volante, a outra no carinho.",
                 nerf_text="Movimentação em QWER, ações 100% no teclado (sem mouse)",
-                buff_text="Ganho de XP +20% e manobras repentinas geram pulso de empurrão"
+                buff_text="Ganho de XP +20% e manobras repentinas geram pulso de empurrão",
+                incompativel_com=[
+                    ("movimento_mouse", "ligado"),
+                    ("controles_tanque", "ligado"),
+                ],
             ),
             "pesadelo": OpcaoConfig(
                 id="pesadelo",
@@ -430,7 +444,10 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 modificadores={"dano_armas_mult": 1.30, "keybinds_overdrive_dash": True},
                 flavor_text="Sua memória muscular acabou de pedir demissão.",
                 nerf_text="Movimento em IJKL com eixo Y do mouse invertido",
-                buff_text="Dano de armas +30% e pulso forte de empurrão ao desviar"
+                buff_text="Dano de armas +30% e pulso forte de empurrão ao desviar",
+                incompativel_com=[
+                    ("movimento_mouse", "ligado"),
+                ],
             ),
         }
     ),
@@ -455,10 +472,10 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "desligado": OpcaoConfig(
                 id="desligado",
                 label="Desligado",
-                modificadores={"vel_jogador_mult": 1.08},
-                flavor_text="Estabilização de imagem é cobrada à parte.",
-                nerf_text="Câmera trava rigidamente no centro do jogador",
-                buff_text="Velocidade de movimento da batata aumentada em +8% (x1.08)"
+                modificadores={"camera_hard_kick": True, "flick_shot_ativo": True},
+                flavor_text="Sem amortecedor. Giros secos viram disparos cirúrgicos.",
+                nerf_text="Tranco Seco (Hard Kick): câmera sem amortecimento aplica coice a cada tiro, dash ou impacto",
+                buff_text="Flick-Shot de Precisão: após giro rápido (>45°) ou parada, próximo tiro sai 2x vel., +1 perfuração e +35% dano"
             ),
         }
     ),
@@ -511,10 +528,10 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "ligado": OpcaoConfig(
                 id="ligado",
                 label="Ligado",
-                modificadores={"loot_enriquecido": True},
-                flavor_text="Alguém deu um apontador laser para o escritório inteiro.",
-                nerf_text="Dobra a presença de Projetores Laser e ativa disparos em rajada tripla",
-                buff_text="Inimigos à distância têm alta chance de dropar caixas e suprimentos"
+                modificadores={"loot_enriquecido": True, "inimigos_ranged_bullet_hell": True},
+                flavor_text="Mais projéteis vindo na sua cara significam mais combustível para contra-atacar.",
+                nerf_text="Dobro de Projetores Laser com rajadas triplas liberadas desde cedo",
+                buff_text="Combustível de Bullet-Hell: loot enriquecido e Parry/Just-Dodge reduz CD e sobrecarrega o próximo tiro"
             ),
         }
     ),
@@ -567,18 +584,18 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "+25%": OpcaoConfig(
                 id="+25%",
                 label="+25% Velocidade",
-                modificadores={"vel_inimigos_mult": 1.25, "xp_ganho_mult": 1.20},
-                flavor_text="Acharam o botão turbo do gabinete.",
-                nerf_text="Inimigos 25% mais rápidos",
-                buff_text="+20% de XP por abate"
+                modificadores={"vel_inimigos_mult": 1.25, "xp_ganho_mult": 1.15, "inercia_cinetica_nivel": 1},
+                flavor_text="Mais rápidos para correr, mais pesados para bater nos colegas.",
+                nerf_text="Inimigos +25% mais rápidos",
+                buff_text="Inércia Cinética: +15% XP e inimigos empurrados derrapam e colidem entre si"
             ),
             "+50%": OpcaoConfig(
                 id="+50%",
                 label="+50% Velocidade",
-                modificadores={"vel_inimigos_mult": 1.50, "xp_ganho_mult": 1.40},
-                flavor_text="Derramaram café na placa-mãe.",
-                nerf_text="Inimigos 50% mais rápidos",
-                buff_text="+40% de XP por abate"
+                modificadores={"vel_inimigos_mult": 1.50, "xp_ganho_mult": 1.30, "inercia_cinetica_nivel": 2},
+                flavor_text="Um único empurrão transforma a horda em strike.",
+                nerf_text="Inimigos +50% mais rápidos",
+                buff_text="Inércia Cinética Máxima: +30% XP e colisões em cadeia de pinos com maior alcance e impacto"
             ),
         }
     ),
@@ -603,18 +620,18 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "+50%": OpcaoConfig(
                 id="+50%",
                 label="+50% HP",
-                modificadores={"hp_inimigos_mult": 1.50, "drop_chance_bonus": 0.20},
-                flavor_text="Chassi reforçado com fita isolante.",
+                modificadores={"hp_inimigos_mult": 1.50, "pinhata_hardware_nivel": 1},
+                flavor_text="Carcaça grossa demais, mas solta peças úteis a cada pancada.",
                 nerf_text="Inimigos com +50% de vida",
-                buff_text="+20% de chance de drop de itens"
+                buff_text="Pinhata de Hardware: a cada 33% de HP perdido libera micro-sucata (munição Slot 3, carga ou XP)"
             ),
             "+100%": OpcaoConfig(
                 id="+100%",
                 label="+100% HP",
-                modificadores={"hp_inimigos_mult": 2.00, "drop_chance_bonus": 0.40},
-                flavor_text="Feitos com o mesmo plástico do Nokia tijolão.",
+                modificadores={"hp_inimigos_mult": 2.00, "pinhata_hardware_nivel": 2, "drop_chance_bonus": 0.15},
+                flavor_text="Quanto mais apanham, mais munição derrubam no chão.",
                 nerf_text="Inimigos com o dobro de vida (+100%)",
-                buff_text="+40% de chance de drop de itens"
+                buff_text="Pinhata de Hardware Pesada: micro-sucata dobrada a cada 33% de HP perdido + 15% bônus de drop"
             ),
         }
     ),
@@ -639,10 +656,10 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "ligado": OpcaoConfig(
                 id="ligado",
                 label="Ligado",
-                modificadores={"dano_fora_visao_mult": 0.50},
-                flavor_text="Esqueceram de pagar a conta de luz do escritório.",
-                nerf_text="Escuridão ao redor da batata limita a visão da arena",
-                buff_text="-50% de dano recebido de inimigos fora do círculo de luz"
+                modificadores={"clarao_fotossensivel": True},
+                flavor_text="No breu total, o primeiro clarão cega quem saiu das sombras.",
+                nerf_text="Escuridão densa fora do halo/cone de luz da batata",
+                buff_text="Clarão Fotossensível: inimigos revelados da escuridão sofrem Crítico Garantido + micro-atordoamento (0,35s)"
             ),
         }
     ),
@@ -667,10 +684,10 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
             "ligado": OpcaoConfig(
                 id="ligado",
                 label="Ligado",
-                modificadores={"dano_armas_mult": 1.20},
-                flavor_text="Cabo VGA mal encaixado.",
-                nerf_text="Inverte todas as cores da tela",
-                buff_text="+20% de dano em todas as armas"
+                modificadores={"polaridade_invertida": True},
+                flavor_text="O que antes bloqueava tiros agora atrai o estrago.",
+                nerf_text="Inversão total de RGB da tela",
+                buff_text="Polaridade Invertida: +40% dano em blindados e surto de velocidade/dano por 2s ao sofrer slow ou graze"
             ),
         }
     ),
@@ -736,6 +753,15 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 nerf_text="-30% dano refletido e +0.25s cooldown melee",
                 buff_text="Arco 135°, janela 0.17s e alcance 1.25x"
             ),
+            "postura_riposte": OpcaoConfig(
+                id="postura_riposte",
+                label="Postura Riposte",
+                modificadores={"parry_precisao": "postura_riposte"},
+                flavor_text="Fique firme; se algo te tocar, devolva atravessando tudo.",
+                nerf_text="Enraíza Cleiton no lugar por 0,45s",
+                buff_text="Invulnerabilidade total na postura + estocada perfurante que atordoa por 1,5s ao aparar",
+                desbloqueada_por="opcao_config:precisao_parry:postura_riposte",
+            ),
         }
     ),
 
@@ -772,6 +798,22 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 nerf_text="Errar o parry aumenta Exposto para +45% de dano recebido",
                 buff_text="Parry bem-sucedido atordoa inimigos próximos por 1.2s"
             ),
+            "firewall_estatico": OpcaoConfig(
+                id="firewall_estatico",
+                label="Firewall Estático",
+                modificadores={"parry_efeito": "firewall_estatico"},
+                flavor_text="Nada devolvido, nada passa.",
+                nerf_text="Não reflete projéteis e cooldown alto (~5,0s-6,0s)",
+                buff_text="Ergue parede energética fixa por 2,5s destruindo projéteis inimigos"
+            ),
+            "ventoinha_360": OpcaoConfig(
+                id="ventoinha_360",
+                label="Ventoinha 360°",
+                modificadores={"parry_efeito": "ventoinha_360"},
+                flavor_text="Cooler em rotação máxima fatiando tudo ao redor.",
+                nerf_text="Alcance 0,75x e cooldown bem alto (~6,0s-8,0s)",
+                buff_text="Giro 360° por 0,6s pulverizando projéteis e aplicando dois cortes circulares"
+            ),
         }
     ),
 
@@ -798,9 +840,208 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 modificadores={"controles_tanque": True, "dano_armas_mult": 1.35, "dano_recebido_mult": 0.80},
                 flavor_text="A/D rotacionam a seta; W/S aceleram ou dão ré.",
                 nerf_text="Sem strafe lateral (direção controlada por rotação)",
-                buff_text="250 HP máx, -20% dano recebido, +35% dano, +1 perfuração, +20% cadência parado e atropelamento frontal"
+                buff_text="250 HP máx, -20% dano recebido, +35% dano, +1 perfuração, +20% cadência parado e atropelamento frontal",
+                incompativel_com=[
+                    ("movimento_mouse", "ligado"),
+                    ("keybinds", "uma_mao"),
+                ],
             ),
         }
+    ),
+
+    # 24. Protocolo de Dash (Controles — Requer habilidade:dash)
+    "dash_protocolo": ConfiguracaoDef(
+        id="dash_protocolo",
+        nome="Protocolo de Dash",
+        categoria=CategoriaConfig.CONTROLES,
+        tipo=TipoControleConfig.SELETOR,
+        valor_padrao="padrao",
+        ordem=24,
+        requer_desbloqueio=("habilidade", "dash"),
+        opcoes={
+            "padrao": OpcaoConfig(
+                id="padrao",
+                label="Padrão",
+                modificadores={},
+                flavor_text="Propulsão direcional calibrada.",
+                nerf_text="Nenhum",
+                buff_text="Nenhum",
+            ),
+            "teleporte_buffer": OpcaoConfig(
+                id="teleporte_buffer",
+                label="Blink de Memória",
+                modificadores={"dash_protocolo": "teleporte_buffer"},
+                flavor_text="Pula os frames do trajeto e frita quem ficou no meio.",
+                nerf_text="+0,6s cooldown, sem controle fino no trajeto e micro-stumble na borda",
+                buff_text="Teleporte instantâneo deixando linha elétrica que corta inimigos",
+            ),
+            "propulsor_instavel": OpcaoConfig(
+                id="propulsor_instavel",
+                label="Propulsor Sem Escudo",
+                modificadores={"dash_protocolo": "propulsor_instavel"},
+                flavor_text="Sem proteção, mas com o dobro de fôlego.",
+                nerf_text="Remove totalmente os i-frames de invulnerabilidade do Dash",
+                buff_text="2 cargas de Dash com recarga 35% mais rápida",
+            ),
+            "sombra_espelho": OpcaoConfig(
+                id="sombra_espelho",
+                label="Sombra Espelho",
+                modificadores={"dash_protocolo": "sombra_espelho"},
+                flavor_text="Um processo espelho atacando do outro ângulo.",
+                nerf_text="No 1º toque Cleiton não se move; projeta sombra por 3,5s (2º toque troca posição)",
+                buff_text="Sombra replica disparos e parries (~55% dano) na direção da mira",
+                desbloqueada_por="opcao_config:dash_protocolo:sombra_espelho",
+            ),
+            "rollback_estado": OpcaoConfig(
+                id="rollback_estado",
+                label="Rollback de Estado",
+                modificadores={"dash_protocolo": "rollback_estado"},
+                flavor_text="Ctrl+Z no próprio corpo.",
+                nerf_text="Direção fixa para o passado + cooldown alto",
+                buff_text="Teleporta ao snapshot de 3s atrás, recupera parte do HP perdido e detona onda de choque",
+                desbloqueada_por="opcao_config:dash_protocolo:rollback_estado",
+            ),
+        },
+    ),
+
+    # 25. Rastro de Dash (Experimental — Requer habilidade:dash)
+    "dash_rastro": ConfiguracaoDef(
+        id="dash_rastro",
+        nome="Rastro de Dash",
+        categoria=CategoriaConfig.EXPERIMENTAL,
+        tipo=TipoControleConfig.SELETOR,
+        valor_padrao="padrao",
+        ordem=25,
+        requer_desbloqueio=("habilidade", "dash"),
+        opcoes={
+            "padrao": OpcaoConfig(
+                id="padrao",
+                label="Padrão",
+                modificadores={},
+                flavor_text="Rastro padrão sem efeitos colaterais.",
+                nerf_text="Nenhum",
+                buff_text="Nenhum",
+            ),
+            "exaustao_termica": OpcaoConfig(
+                id="exaustao_termica",
+                label="Exaustão Térmica",
+                modificadores={"dash_rastro": "exaustao_termica"},
+                flavor_text="Escape quente demais que cozinha quem persegue.",
+                nerf_text="Arma superaquece após o Dash (-25% cadência por 1,2s)",
+                buff_text="Deixa trilha incandescente por 3,5s que queima e aplica +25% vulnerabilidade",
+            ),
+            "vacuo_io": OpcaoConfig(
+                id="vacuo_io",
+                label="Vácuo de I/O",
+                modificadores={"dash_rastro": "vacuo_io"},
+                flavor_text="Curto no alcance, mas junta toda a horda num ponto só.",
+                nerf_text="Alcance do Dash reduzido em -25%",
+                buff_text="Cria vórtice no ponto final que puxa drops e agrupa inimigos",
+            ),
+            "subprocesso_atrasado": OpcaoConfig(
+                id="subprocesso_atrasado",
+                label="Subprocesso Atrasado",
+                modificadores={"dash_rastro": "subprocesso_atrasado"},
+                flavor_text="O processo pai atravessa atrasado paralisando a fila.",
+                nerf_text="Alcance -15% e cooldown +0,4s",
+                buff_text="Fantasma dispara após 0,75s causando dano e atordoamento (1,1s) na linha",
+            ),
+            "thread_fantasma": OpcaoConfig(
+                id="thread_fantasma",
+                label="Thread Fantasma",
+                modificadores={"dash_rastro": "thread_fantasma"},
+                flavor_text="Isca de hardware pronta para estourar.",
+                nerf_text="Cooldown do Dash +40%",
+                buff_text="Deixa Clone Holográfico por 2,5s que atrai agro e explode ao ser destruído",
+                desbloqueada_por="opcao_config:dash_rastro:thread_fantasma",
+            ),
+        },
+    ),
+
+    # 26. Garbage Collector (Performance)
+    "garbage_collector": ConfiguracaoDef(
+        id="garbage_collector",
+        nome="Garbage Collector",
+        categoria=CategoriaConfig.PERFORMANCE,
+        tipo=TipoControleConfig.TOGGLE,
+        valor_padrao="desligado",
+        ordem=26,
+        opcoes={
+            "desligado": OpcaoConfig(
+                id="desligado",
+                label="Desligado",
+                modificadores={},
+                flavor_text="Memória gerenciada de forma contínua.",
+                nerf_text="Nenhum",
+                buff_text="Nenhum",
+            ),
+            "ligado": OpcaoConfig(
+                id="ligado",
+                label="Ligado",
+                modificadores={"garbage_collector": True},
+                flavor_text="Stop-the-World — O coletor trava sua arma, mas limpa o lixo balístico da sala.",
+                nerf_text="Barra de RAM enche em ~12s e trava disparos por ~0,8s",
+                buff_text="Apaga projéteis inimigos próximos e concede +40% cadência por 4s + munição Slot 3",
+            ),
+        },
+    ),
+
+    # 27. Latência Simulada (Experimental — Exclusiva de Conquista)
+    "latencia_ping": ConfiguracaoDef(
+        id="latencia_ping",
+        nome="Latência Simulada",
+        categoria=CategoriaConfig.EXPERIMENTAL,
+        tipo=TipoControleConfig.TOGGLE,
+        valor_padrao="desligado",
+        ordem=27,
+        exclusiva_conquista=True,
+        opcoes={
+            "desligado": OpcaoConfig(
+                id="desligado",
+                label="Desligado",
+                modificadores={},
+                flavor_text="Conexão local 0 ms.",
+                nerf_text="Nenhum",
+                buff_text="Nenhum",
+            ),
+            "ligado": OpcaoConfig(
+                id="ligado",
+                label="Ligado",
+                modificadores={"latencia_ping": True},
+                flavor_text="Ping 80ms — Você já saiu daqui no servidor, e seu tiro chegou duas vezes.",
+                nerf_text="Atraso real de input de ~80ms aplicado a todas as ações (disparo, melee, Parry e Dash)",
+                buff_text="Dessincronia de hitbox e eco de pacote (+30% dano após 0,3s ignorando blindagem)",
+            ),
+        },
+    ),
+
+    # 28. Modo Wireframe (Performance)
+    "modo_wireframe": ConfiguracaoDef(
+        id="modo_wireframe",
+        nome="Modo Wireframe",
+        categoria=CategoriaConfig.PERFORMANCE,
+        tipo=TipoControleConfig.TOGGLE,
+        valor_padrao="desligado",
+        ordem=28,
+        opcoes={
+            "desligado": OpcaoConfig(
+                id="desligado",
+                label="Desligado",
+                modificadores={},
+                flavor_text="Renderização completa com sprites.",
+                nerf_text="Nenhum",
+                buff_text="Nenhum",
+            ),
+            "ligado": OpcaoConfig(
+                id="ligado",
+                label="Ligado",
+                modificadores={"modo_wireframe": True},
+                flavor_text="Sem texturas, só geometria e pontos de ruptura.",
+                nerf_text="Renderização em contornos técnicos minimalistas + grade de debug",
+                buff_text="Nós Vulneráveis: acertar o ângulo exposto causa dano verdadeiro e espalha vulnerabilidade",
+                incompativel_com=[("graficos_qualidade", "baixa")],
+            ),
+        },
     ),
 }
 
@@ -848,7 +1089,7 @@ CONFIGURACOES_SISTEMA: dict[str, ConfiguracaoDef] = {
     ),
 }
 
-# Dicionário consolidado com as configurações (23 no total)
+# Dicionário consolidado com as configurações (31 no total: 28 gameplay + 3 sistema)
 TODAS_CONFIGURACOES: dict[str, ConfiguracaoDef] = {
     **CONFIGURACOES_GAMEPLAY,
     **CONFIGURACOES_SISTEMA
