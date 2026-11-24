@@ -265,11 +265,56 @@ class EfeitoInerciaCinetica(EfeitoCombate):
     def __init__(self, nivel: int = 1):
         self.nivel = max(1, int(nivel))
         self.raio_colisao = 36.0 if self.nivel == 1 else 48.0
+        self._dash_id: int = 0
+        self._empurrados_no_dash: set[int] = set()
+
+    def ao_dash(
+        self,
+        ctx: ContextoCombate,
+        origem: tuple[float, float],
+        destino: tuple[float, float],
+    ) -> None:
+        self._dash_id += 1
+        self._empurrados_no_dash.clear()
 
     def ao_tick(self, ctx: ContextoCombate, dt: float) -> None:
         inimigos = ctx.inimigos
         if not inimigos:
             return
+
+        # Boliche de Dash: jogador em dash empurra inimigos tocados lateralmente, atordoa e ativa derrapagem cinética
+        jog = ctx.jogador
+        if jog is not None and float(getattr(jog, "dash_ativo_timer", 0.0)) > 0.0:
+            jx = float(getattr(jog, "x", 0.0)) + float(getattr(jog, "largura", 42)) * 0.5
+            jy = float(getattr(jog, "y", 0.0)) + float(getattr(jog, "altura", 42)) * 0.5
+            ddx, ddy = getattr(jog, "dash_dir", (1.0, 0.0))
+            ddx, ddy = normalizar_vetor(float(ddx), float(ddy))
+            if ddx == 0.0 and ddy == 0.0:
+                ddx = 1.0
+            px_lat, py_lat = -ddy, ddx
+            raio_jog = max(float(getattr(jog, "largura", 42)), float(getattr(jog, "altura", 42))) * 0.6 + 24.0
+            forca_boliche = 460.0 if self.nivel == 1 else 620.0
+
+            for inim in inimigos:
+                if not getattr(inim, "vivo", True) or _eh_boss(inim):
+                    continue
+                if id(inim) in self._empurrados_no_dash:
+                    continue
+                ix = float(getattr(inim, "x", 0.0)) + float(getattr(inim, "largura", 32)) * 0.5
+                iy = float(getattr(inim, "y", 0.0)) + float(getattr(inim, "altura", 32)) * 0.5
+                raio_inim = max(float(getattr(inim, "largura", 32)), float(getattr(inim, "altura", 32))) * 0.45
+                if math.hypot(ix - jx, iy - jy) <= raio_jog + raio_inim:
+                    self._empurrados_no_dash.add(id(inim))
+                    lado = px_lat * (ix - jx) + py_lat * (iy - jy)
+                    sinal = 1.0 if lado >= 0.0 else -1.0
+                    nx_lat, ny_lat = px_lat * sinal, py_lat * sinal
+                    if hasattr(inim, "aplicar_knockback"):
+                        inim.aplicar_knockback(nx_lat, ny_lat, forca_boliche)
+                    else:
+                        inim.vx_knockback = nx_lat * forca_boliche
+                        inim.vy_knockback = ny_lat * forca_boliche
+                    _aplicar_stun_entidade(inim, 0.75)
+                    inim.em_derrapagem_cinetica = True
 
         # Guarda O(K * N): itera SOMENTE sobre inimigos em derrapagem cinética
         derrapando = [
@@ -296,7 +341,9 @@ class EfeitoInerciaCinetica(EfeitoCombate):
                 getattr(src, "vx_knockback", 0.0),
                 getattr(src, "vy_knockback", 0.0),
             )
-            dano_col = max(4, int(vel_kb * (0.08 if self.nivel == 1 else 0.12)))
+            hp_ref = max(int(getattr(src, "hp", 0) or 0), int(getattr(src, "hp_max", 20) or 20))
+            mult_hp = 0.50 if self.nivel == 1 else 0.80
+            dano_col_base = max(8, int(round(hp_ref * mult_hp)) + int(vel_kb * (0.08 if self.nivel == 1 else 0.12)))
 
             for dst in inimigos:
                 if dst is src or not getattr(dst, "vivo", True):
@@ -308,6 +355,7 @@ class EfeitoInerciaCinetica(EfeitoCombate):
                 dist = math.hypot(dx, dy)
                 if dist <= self.raio_colisao:
                     dst._boliche_cd = 0.25
+                    dano_col = min(dano_col_base, 250) if _eh_boss(dst) else dano_col_base
                     _aplicar_dano_entidade(dst, dano_col)
                     if not getattr(dst, "vivo", True):
                         abates_golpe += 1
@@ -316,6 +364,8 @@ class EfeitoInerciaCinetica(EfeitoCombate):
                         dst.aplicar_knockback(nx, ny, vel_kb * 0.65)
                     if self.nivel >= 2:
                         dst.em_derrapagem_cinetica = True
+            if getattr(src, "em_derrapagem_cinetica", False) and vel_kb < 40.0 and getattr(src, "slow_timer", 0.0) <= 0.0:
+                src.em_derrapagem_cinetica = False
 
         for e in inimigos:
             if getattr(e, "_boliche_cd", 0.0) > 0.0:
