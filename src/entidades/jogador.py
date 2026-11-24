@@ -129,6 +129,18 @@ class Jogador:
         self.dash_cooldown_restante: float = 0.0
         self.dash_dir: tuple[float, float] = (1.0, 0.0)
         self.dash_stutter_trigger: bool = False
+        self.dash_iframes_timer: float = 0.0
+        self.dash_evasao_disponivel: bool = False
+        self.dash_id_atual: int = 0
+        self.dash_cargas_max: int = 1
+        self.dash_cargas_atuais: int = 1
+        self.dash_recarga_mult: float = 1.0
+        self.dash_sem_iframes: bool = False
+        self.dash_alcance_mult: float = 1.0
+        self.enraizado_timer: float = 0.0
+        self.riposte_invuln_timer: float = 0.0
+        self.slot1_id: str = "chave_manutencao"
+        self.slot2_id: str = "pistola"
 
         # Estado Exposto (punição de whiff no parry / duelo) e Controles de Tanque
         self.exposed_timer: float = 0.0
@@ -154,6 +166,16 @@ class Jogador:
             self.hp = max(1, min(new_max, int(round(self.hp * (new_max / float(old_max))))))
         self._tanque_ativo_anterior = ativo_bool
 
+    @property
+    def em_dash_iframes(self) -> bool:
+        return self.dash_iframes_timer > 0.0
+
+    def consumir_just_dodge(self) -> bool:
+        if self.em_dash_iframes and self.dash_evasao_disponivel:
+            self.dash_evasao_disponivel = False
+            return True
+        return False
+
     def iniciar_dash(self, dx: float, dy: float, mods=None) -> bool:
         """
         Aciona o Dash direcional permanente se desbloqueado e fora de cooldown.
@@ -162,8 +184,19 @@ class Jogador:
         """
         if not self.vivo or not self.dash_desbloqueado:
             return False
-        if self.dash_cooldown_restante > 0.0 or self.dash_ativo_timer > 0.0:
+        if self.dash_ativo_timer > 0.0:
             return False
+        if self.dash_cargas_max > 1:
+            if self.dash_cargas_atuais <= 0:
+                return False
+            self.dash_cargas_atuais -= 1
+            if self.dash_cooldown_restante <= 0.0:
+                self.dash_cooldown_restante = float(DASH_COOLDOWN) / max(0.1, float(getattr(self, "dash_recarga_mult", 1.0)))
+        else:
+            if self.dash_cooldown_restante > 0.0:
+                return False
+            self.dash_cargas_atuais = 0
+            self.dash_cooldown_restante = float(DASH_COOLDOWN) / max(0.1, float(getattr(self, "dash_recarga_mult", 1.0)))
 
         ndx, ndy = normalizar_vetor(float(dx), float(dy))
         if ndx == 0.0 and ndy == 0.0:
@@ -175,7 +208,7 @@ class Jogador:
 
         self.dash_dir = (ndx, ndy)
         self.dash_ativo_timer = float(DASH_DURACAO)
-        self.dash_cooldown_restante = float(DASH_COOLDOWN)
+        self.dash_id_atual += 1
 
         iframes = float(DASH_IFRAMES_BASE)
 
@@ -195,7 +228,13 @@ class Jogador:
             iframes += 0.15
             self.dash_stutter_trigger = True
 
-        self.invulnerabilidade_timer = max(self.invulnerabilidade_timer, iframes)
+        if getattr(self, "dash_sem_iframes", False):
+            self.dash_iframes_timer = 0.0
+            self.dash_evasao_disponivel = False
+        else:
+            self.dash_iframes_timer = max(self.dash_iframes_timer, iframes)
+            self.dash_evasao_disponivel = True
+            self.invulnerabilidade_timer = max(self.invulnerabilidade_timer, iframes)
         return True
 
     def aplicar_knockback(self, dir_x: float, dir_y: float, forca: float):
@@ -333,15 +372,41 @@ class Jogador:
             self.slot_ativo = 2
             self.slot_especial_secundario_ativo = False
 
+    def _criar_arma_slot2(self):
+        """Instancia a arma configurada para o Slot 2 (Pistola ou SMGCompacta)."""
+        if getattr(self, "slot2_id", "pistola") == "smg_compacta":
+            from src.armas.smg_compacta import SMGCompacta
+            arma = SMGCompacta()
+        else:
+            from src.armas.pistola import Pistola
+            arma = Pistola()
+        arma._dano_original = arma.dano
+        arma.dano = int(round(arma._dano_original * getattr(self, "mult_dano_config", 1.0)))
+        return arma
+
+    def aplicar_loadout(self, slot1_id: str = "chave_manutencao", slot2_id: str = "pistola") -> None:
+        """Aplica o loadout inicial nos Slots 1 e 2 preservando multiplicadores."""
+        self.slot1_id = str(slot1_id or "chave_manutencao")
+        self.slot2_id = str(slot2_id or "pistola")
+        if self.slot1_id == "bastao_choque":
+            from src.armas.bastao_choque import BastaoChoque
+            arma1 = BastaoChoque()
+        else:
+            from src.armas.melee import Melee
+            arma1 = Melee()
+        arma1._dano_original = arma1.dano
+        arma1.dano = int(round(arma1._dano_original * getattr(self, "mult_dano_config", 1.0)))
+        arma2 = self._criar_arma_slot2()
+        self.armas = [arma1, arma2]
+
     def selecionar_slot(self, slot: int):
         """Alterna a arma ativa para o slot 1, 2 ou 3. Se BIOS Modding ativo e já no Slot 3, alterna entre 3A e 3B."""
         if slot == 3:
-            from src.armas.pistola import Pistola
             if (
                 getattr(self, "bios_modding", False)
                 and self.arma_especial_secundaria is not None
                 and len(self.armas) > 1
-                and not isinstance(self.armas[1], Pistola)
+                and not getattr(self.armas[1], "municao_infinita", False)
                 and self.arma_especial is not None
             ):
                 self.arma_especial, self.armas[1] = self.armas[1], self.arma_especial
@@ -547,12 +612,18 @@ class Jogador:
 
         # Atualiza posição com velocidade por segundo (ou impulso de Dash direcional ativo)
         dt_pos = max(0.0, float(dt))
-        if self.dash_ativo_timer > 0.0:
+        if getattr(self, "enraizado_timer", 0.0) > 0.0:
+            dx = 0.0
+            dy = 0.0
+            move_x, move_y = 0.0, 0.0
+            self.andando_frame = False
+        elif self.dash_ativo_timer > 0.0:
             move_x, move_y = self.dash_dir
             self.andando_frame = True
             self.anim_timer += dt_pos
-            self.x += move_x * self.velocidade_atual * float(DASH_MULT_VEL) * dt_pos
-            self.y += move_y * self.velocidade_atual * float(DASH_MULT_VEL) * dt_pos
+            alcance_mult = float(getattr(self, "dash_alcance_mult", 1.0))
+            self.x += move_x * self.velocidade_atual * float(DASH_MULT_VEL) * alcance_mult * dt_pos
+            self.y += move_y * self.velocidade_atual * float(DASH_MULT_VEL) * alcance_mult * dt_pos
         else:
             move_x, move_y = dx, dy
             self.andando_frame = (dx != 0.0 or dy != 0.0)
@@ -631,7 +702,7 @@ class Jogador:
         if int(quantidade) <= 0:
             return
 
-        if self.invulnerabilidade_timer > 0.0:
+        if self.invulnerabilidade_timer > 0.0 or getattr(self, "riposte_invuln_timer", 0.0) > 0.0:
             return
 
         if self.escudo_ativo:
@@ -841,8 +912,29 @@ class Jogador:
         if getattr(self, "dash_ativo_timer", 0.0) > 0.0:
             self.dash_ativo_timer = max(0.0, self.dash_ativo_timer - dt)
 
+        if getattr(self, "dash_iframes_timer", 0.0) > 0.0:
+            self.dash_iframes_timer = max(0.0, self.dash_iframes_timer - dt)
+            if self.dash_iframes_timer <= 0.0:
+                self.dash_evasao_disponivel = False
+        else:
+            self.dash_evasao_disponivel = False
+
+        if getattr(self, "enraizado_timer", 0.0) > 0.0:
+            self.enraizado_timer = max(0.0, self.enraizado_timer - dt)
+
+        if getattr(self, "riposte_invuln_timer", 0.0) > 0.0:
+            self.riposte_invuln_timer = max(0.0, self.riposte_invuln_timer - dt)
+
         if getattr(self, "dash_cooldown_restante", 0.0) > 0.0:
             self.dash_cooldown_restante = max(0.0, self.dash_cooldown_restante - dt)
+            if self.dash_cooldown_restante <= 0.0 and self.dash_cargas_atuais < self.dash_cargas_max:
+                self.dash_cargas_atuais += 1
+                if self.dash_cargas_atuais < self.dash_cargas_max:
+                    self.dash_cooldown_restante = float(DASH_COOLDOWN) / max(0.1, float(getattr(self, "dash_recarga_mult", 1.0)))
+        elif getattr(self, "dash_cargas_atuais", 1) < getattr(self, "dash_cargas_max", 1):
+            self.dash_cargas_atuais += 1
+            if self.dash_cargas_atuais < self.dash_cargas_max:
+                self.dash_cooldown_restante = float(DASH_COOLDOWN) / max(0.1, float(getattr(self, "dash_recarga_mult", 1.0)))
 
         if getattr(self, "motion_blur_ghosting", False):
             self._rastro_timer = getattr(self, "_rastro_timer", 0.0) + dt
@@ -904,15 +996,11 @@ class Jogador:
         for arma in self.armas:
             arma.update(dt_armas)
 
-        # Fallback de Munição no Slot 2 para Pistola padrão
+        # Fallback de Munição no Slot 2 para arma configurada no Slot 2
         if len(self.armas) > 1:
             arma_slot_2 = self.armas[1]
-            from src.armas.pistola import Pistola
-            if not isinstance(arma_slot_2, Pistola) and getattr(arma_slot_2, "municao_atual", 1) <= 0:
-                p = Pistola()
-                p._dano_original = p.dano
-                p.dano = int(round(p._dano_original * getattr(self, "mult_dano_config", 1.0)))
-                self.armas[1] = p
+            if not getattr(arma_slot_2, "municao_infinita", False) and getattr(arma_slot_2, "municao_atual", 1) <= 0:
+                self.armas[1] = self._criar_arma_slot2()
                 self.arma_especial_secundaria = None
 
         if self.arma_especial is not None:
@@ -926,12 +1014,8 @@ class Jogador:
                 ):
                     self.arma_especial = self.arma_especial_secundaria
                     self.arma_especial.slot = 3
-                    from src.armas.pistola import Pistola
-                    if len(self.armas) > 1 and not isinstance(self.armas[1], Pistola):
-                        p = Pistola()
-                        p._dano_original = p.dano
-                        p.dano = int(round(p._dano_original * getattr(self, "mult_dano_config", 1.0)))
-                        self.armas[1] = p
+                    if len(self.armas) > 1 and not getattr(self.armas[1], "municao_infinita", False):
+                        self.armas[1] = self._criar_arma_slot2()
                     self.arma_especial_secundaria = None
                     self.slot_especial_secundario_ativo = False
                 else:
@@ -1007,26 +1091,40 @@ class Jogador:
             nome_cls = type(arma).__name__.lower()
             mapa_cls = {
                 "melee": "arma_melee",
+                "bastaochoque": "arma_bastao_choque",
                 "pistola": "arma_pistola",
+                "smgcompacta": "arma_smg_compacta",
                 "minigun": "arma_minigun",
                 "shotgun": "arma_shotgun",
                 "rifleassalto": "arma_rifle",
                 "lancafoguetes": "arma_foguetes",
                 "lancagranadas": "arma_granadas",
                 "railgun": "arma_railgun",
+                "riflearco": "arma_rifle_arco",
+                "lancachamas": "arma_lanca_chamas",
             }
             chave = mapa_cls.get(nome_cls)
         if not chave:
             return None
         if chave not in cls._arma_sprite_cache:
+            surf = None
             try:
                 caminho = obter_caminho_asset(chave)
                 if os.path.isfile(caminho):
-                    cls._arma_sprite_cache[chave] = pygame.image.load(caminho).convert_alpha()
-                else:
-                    cls._arma_sprite_cache[chave] = None
+                    surf = pygame.image.load(caminho).convert_alpha()
             except Exception:
-                cls._arma_sprite_cache[chave] = None
+                surf = None
+            if surf is None:
+                try:
+                    from src.utils import pixel_art_sprites
+                    fn = getattr(pixel_art_sprites, "obter_sprite_arma", None)
+                    if callable(fn):
+                        surf = fn(chave)
+                except Exception:
+                    surf = None
+            if surf is not None:
+                cls._arma_sprite_cache[chave] = surf
+            return surf
         return cls._arma_sprite_cache[chave]
 
     def desenhar(self, janela, camera=None):

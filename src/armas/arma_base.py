@@ -31,6 +31,14 @@ class ArmaBase(ABC):
         self.municao_atual = int(municao_max) if not municao_infinita else -1
         self.slot = int(slot)
         self.icone_asset = icone_asset
+        self.eh_continua: bool = False
+        self.usa_calor: bool = False
+        self.calor_atual: float = 0.0
+        self.superaquecida: bool = False
+
+    @property
+    def em_zona_ideal(self) -> bool:
+        return False
 
     @property
     def cooldown_atual(self) -> float:
@@ -52,6 +60,19 @@ class ArmaBase(ABC):
         if not self.municao_infinita and self.municao_atual <= 0:
             return False
         return True
+
+    def atualizar_fluxo(
+        self,
+        dt: float,
+        segurando_gatilho: bool,
+        origem_x: float,
+        origem_y: float,
+        destino_x: float,
+        destino_y: float,
+        inimigos: list,
+    ) -> list[dict]:
+        """Atualiza fluxo contínuo para armas de feixe/cone. Armas balísticas retornam []."""
+        return []
 
     @abstractmethod
     def disparar(self, origem_x: float, origem_y: float, destino_x: float, destino_y: float) -> list:

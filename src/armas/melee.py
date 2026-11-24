@@ -39,15 +39,22 @@ class Melee(ArmaBase):
         self.knockback_forca = float(knockback_forca)
         self.max_alvos_knockback = int(max_alvos_knockback)
         self.arco_graus = float(arco_graus)
+        self._arco_graus_base: float = float(arco_graus)
+        self._cooldown_base: float = float(cooldown)
+        self.id_arma: str = "chave_manutencao"
         self.parry_duracao: float = 0.12
         self.parry_alcance_mult: float = 1.0
         self.parry_janela_restante: float = 0.0
+        self.parry_janela_id: int = 0
         self.parry_angulo: float = 0.0
         self.parry_acertou: bool = False
         self.parry_pode_punir_whiff: bool = False
         self.parry_whiff_penalidade_cd: float = 0.8
         self.parry_dano_mult: float = 1.0
         self.parry_splash_raio: float = 90.0
+        self.parry_modo_postura_riposte: bool = False
+        self.parry_modo_firewall: bool = False
+        self.parry_modo_ventoinha: bool = False
         self.whiff_callback = None
 
     @property
@@ -73,10 +80,33 @@ class Melee(ArmaBase):
 
     def iniciar_golpe_parry(self, angulo: float = 0.0, punir_whiff: bool = True):
         """Abre a janela ativa de parry na direção informada."""
+        self.parry_janela_id = getattr(self, "parry_janela_id", 0) + 1
         self.parry_janela_restante = float(self.parry_duracao)
         self.parry_angulo = float(angulo) if angulo is not None else 0.0
         self.parry_acertou = False
         self.parry_pode_punir_whiff = bool(punir_whiff)
+
+    def executar_parry(
+        self,
+        angulo: float = 0.0,
+        punir_whiff: bool = True,
+        cooldown_override: float | None = None,
+    ) -> bool:
+        """Executa o Quick-Parry (RMB/E) respeitando cooldown obrigatório."""
+        if not self.pode_atirar():
+            return False
+        self.tempo_recarga_restante = (
+            float(cooldown_override) if cooldown_override is not None else float(self.cooldown)
+        )
+        self.iniciar_golpe_parry(angulo=angulo, punir_whiff=punir_whiff)
+        try:
+            from PPlay.sound import Sound
+            sfx_path = obter_caminho_asset("sfx_ataque_melee")
+            sfx = Sound(sfx_path)
+            sfx.play()
+        except Exception:
+            pass
+        return True
 
     def disparar(self, origem_x: float, origem_y: float, destino_x: float, destino_y: float) -> list:
         """Melee não dispara projéteis balísticos convencionais."""
@@ -91,7 +121,8 @@ class Melee(ArmaBase):
         mira_y: float = None,
         angulo_mira: float = None,
         arco_graus: float = None,
-        aplicar_dano: bool = True
+        aplicar_dano: bool = True,
+        abrir_janela_parry: bool = False,
     ) -> list:
         """
         Executa o golpe corpo-a-corpo: causa dano a todos os inimigos no cone direcional de alcance (109px)
@@ -121,8 +152,9 @@ class Melee(ArmaBase):
         elif mira_x is not None and mira_y is not None:
             ang_mira = math.atan2(mira_y - origem_y, mira_x - origem_x)
 
-        # Abre janela ativa de parry sempre que o golpe melee é executado
-        self.iniciar_golpe_parry(ang_mira if ang_mira is not None else 0.0, punir_whiff=True)
+        # Abre janela ativa de parry apenas quando explicitamente solicitado
+        if abrir_janela_parry:
+            self.iniciar_golpe_parry(ang_mira if ang_mira is not None else 0.0, punir_whiff=True)
 
         arco_efetivo = self.arco_graus if arco_graus is None else float(arco_graus)
         meio_arco_rad = math.radians(arco_efetivo / 2.0)
