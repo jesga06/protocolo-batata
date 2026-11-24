@@ -233,9 +233,31 @@ class MenuConfigs:
         self.ativo = True
         self.scroll_y = 0.0
         self.cooldown_input = 0.25
+        self._mouse_pressionado_anterior = False
+        try:
+            pygame.mouse.set_visible(True)
+        except Exception:
+            pass
         if hasattr(self, "banner_dicas") and self.banner_dicas is not None:
             self.banner_dicas.proxima_dica()
         self._tocar_som("sfx_btn_click")
+
+    @staticmethod
+    def _garantir_coords_virtuais(mx: float, my: float) -> tuple[float, float]:
+        """Converte coordenadas nativas da janela para o canvas virtual 1280x720 se necessário."""
+        try:
+            surf = pygame.display.get_surface()
+            if surf is not None:
+                sw, sh = surf.get_size()
+                if (sw, sh) != (LARGURA_TELA, ALTURA_TELA) and sw > 0 and sh > 0:
+                    scale = min(sw / float(LARGURA_TELA), sh / float(ALTURA_TELA))
+                    vx = (sw - LARGURA_TELA * scale) * 0.5
+                    vy = (sh - ALTURA_TELA * scale) * 0.5
+                    if scale > 0:
+                        return (mx - vx) / scale, (my - vy) / scale
+        except Exception:
+            pass
+        return mx, my
 
     def _obter_rects_barra_topo(self) -> tuple[pygame.Rect, pygame.Rect, pygame.Rect, Optional[pygame.Rect]]:
         """Retorna os retângulos das abas, botão Fechar e botão Menu Principal (quando em jogo)."""
@@ -395,22 +417,45 @@ class MenuConfigs:
                 return
 
         # 2. Inputs de Mouse
-        mx, my = (400, 300)
+        try:
+            pygame.mouse.set_visible(True)
+        except Exception:
+            pass
+
         mouse_clicado = False
 
-        if mouse is not None:
+        if mouse is not None and hasattr(mouse, "get_position"):
             try:
                 mx, my = mouse.get_position()
             except Exception:
-                mx, my = (400, 300)
+                mx, my = self._garantir_coords_virtuais(*pygame.mouse.get_pos())
+        else:
+            mx, my = self._garantir_coords_virtuais(*pygame.mouse.get_pos())
 
+        if mouse is not None:
             try:
                 if hasattr(mouse, "button_down") and mouse.button_down(1):
                     mouse_clicado = True
             except Exception:
                 pass
 
-        pressionado_agora = pygame.mouse.get_pressed()[0] if pygame.mouse.get_focused() else False
+        pressionado_agora = False
+        if mouse is not None:
+            try:
+                if hasattr(mouse, "is_button_down") and mouse.is_button_down(1):
+                    pressionado_agora = True
+                elif hasattr(mouse, "is_button_pressed") and mouse.is_button_pressed(1):
+                    pressionado_agora = True
+                elif hasattr(mouse, "button_pressed") and mouse.button_pressed(1):
+                    pressionado_agora = True
+            except Exception:
+                pass
+        if not pressionado_agora:
+            try:
+                pressionado_agora = bool(pygame.mouse.get_pressed()[0])
+            except Exception:
+                pressionado_agora = False
+
         if pressionado_agora and not self._mouse_pressionado_anterior:
             mouse_clicado = True
         self._mouse_pressionado_anterior = pressionado_agora
@@ -519,7 +564,7 @@ class MenuConfigs:
                             if btn_prev_rect.collidepoint(mx, my):
                                 self.ciclar_opcao_gameplay(cdef.id, -1)
                                 return
-                            elif btn_next_rect.collidepoint(mx, my):
+                            elif btn_next_rect.collidepoint(mx, my) or ctrl_rect.collidepoint(mx, my):
                                 self.ciclar_opcao_gameplay(cdef.id, 1)
                                 return
 
@@ -597,6 +642,11 @@ class MenuConfigs:
         """Renderiza a janela do menu de configurações em DPI nativo."""
         if not self.ativo or screen is None:
             return
+
+        try:
+            pygame.mouse.set_visible(True)
+        except Exception:
+            pass
 
         self._atualizar_viewport(screen)
         sw, sh = screen.get_size()
