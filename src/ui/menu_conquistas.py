@@ -78,7 +78,9 @@ class MenuConquistas:
         self.indice_selecionado: int = 0
         self.scroll_y: float = 0.0
         self.cooldown_input: float = 0.0
+        self._tab_cooldown_timer: float = 0.0
         self._mouse_prev_down: bool = False
+        self._hover_pos: tuple[float, float] = (-1.0, -1.0)
         self._mensagem_feedback: str = ""
         self._timer_feedback: float = 0.0
 
@@ -86,6 +88,9 @@ class MenuConquistas:
         self.altura_modal = 560
         self.offset_x = (LARGURA_TELA - self.largura_modal) // 2
         self.offset_y = (ALTURA_TELA - self.altura_modal) // 2
+        self._vp_vx: int = 0
+        self._vp_vy: int = 0
+        self._vp_scale: float = 1.0
 
         # Cache de fontes inicializado no __init__ (zero alocação em draw)
         self._fontes: dict[tuple[str, int, bool], pygame.font.Font] = {
@@ -108,6 +113,33 @@ class MenuConquistas:
             self._fontes[chave] = _criar_fonte(nomes, px, bold=bold)
         return self._fontes[chave]
 
+    def _fonte_vp(self, familia: str, px_logico: float, bold: bool = True) -> pygame.font.Font:
+        px_real = max(8, int(round(float(px_logico) * self._vp_scale)))
+        return self._fonte(familia, px_real, bold=bold)
+
+    def _atualizar_viewport(self, screen: pygame.Surface):
+        """Calcula projeção Native-DPI (vx, vy, scale) e pré-aquece fontes na escala atual."""
+        sw, sh = screen.get_size()
+        if sw < 1 or sh < 1:
+            self._vp_vx, self._vp_vy, self._vp_scale = 0, 0, 1.0
+            return
+        scale = min(sw / float(LARGURA_TELA), sh / float(ALTURA_TELA))
+        self._vp_vx = (sw - int(round(LARGURA_TELA * scale))) // 2
+        self._vp_vy = (sh - int(round(ALTURA_TELA * scale))) // 2
+        self._vp_scale = scale
+
+    def _px(self, val: float) -> int:
+        return self._vp_vx + int(round(val * self._vp_scale))
+
+    def _py(self, val: float) -> int:
+        return self._vp_vy + int(round(val * self._vp_scale))
+
+    def _ps(self, val: float) -> int:
+        return max(1, int(round(val * self._vp_scale)))
+
+    def _pr(self, r: pygame.Rect) -> pygame.Rect:
+        return pygame.Rect(self._px(r.x), self._py(r.y), self._ps(r.width), self._ps(r.height))
+
     def abrir(self, aba: int | None = None):
         self.ativo = True
         if aba is not None:
@@ -115,6 +147,7 @@ class MenuConquistas:
         self.scroll_y = 0.0
         self.indice_selecionado = 0
         self.cooldown_input = 0.22
+        self._tab_cooldown_timer = 0.0
         self._mouse_prev_down = False
         self._mensagem_feedback = ""
         self._timer_feedback = 0.0
@@ -233,12 +266,34 @@ class MenuConquistas:
             x += w + 8
         return rects
 
+    def _obter_area_scroll_rect(self) -> pygame.Rect:
+        return pygame.Rect(
+            self.offset_x + 24,
+            self.offset_y + 132,
+            self.largura_modal - 48,
+            self.altura_modal - 174,
+        )
+
+    def _obter_max_scroll(self) -> float:
+        area_h = self.altura_modal - 174
+        if self.aba_atual == 0:
+            itens = self._obter_itens_conquistas()
+            card_h = 92
+            gap = 8
+            return max(0.0, float(len(itens) * (card_h + gap) - area_h))
+        card_h = 98
+        gap_y = 10
+        total_rows = (len(CHIPS_FIRMWARE) + 1) // 2
+        return max(0.0, float(total_rows * (card_h + gap_y) - area_h))
+
     def update(self, dt: float, teclado=None, mouse=None):
         if not self.ativo:
             return
 
         if self.cooldown_input > 0.0:
             self.cooldown_input = max(0.0, self.cooldown_input - dt)
+        if self._tab_cooldown_timer > 0.0:
+            self._tab_cooldown_timer = max(0.0, self._tab_cooldown_timer - dt)
         if self._timer_feedback > 0.0:
             self._timer_feedback = max(0.0, self._timer_feedback - dt)
 
@@ -250,10 +305,13 @@ class MenuConquistas:
                     self.fechar()
                     return
 
-            if (hasattr(teclado, "key_down") and teclado.key_down("TAB")) or (
-                hasattr(teclado, "key_pressed") and teclado.key_pressed("TAB")
+            if (
+                self._tab_cooldown_timer <= 0.0
+                and hasattr(teclado, "key_down")
+                and teclado.key_down("TAB")
             ):
                 self.alternar_aba((self.aba_atual + 1) % 2)
+                self._tab_cooldown_timer = 0.18
                 return
 
             if hasattr(teclado, "key_down"):
@@ -287,20 +345,31 @@ class MenuConquistas:
 
         self._hover_pos = (mx, my)
 
-        wheel = 0
+        wheel = 0.0
         if mouse is not None and hasattr(mouse, "get_wheel_delta"):
             try:
-                wheel = mouse.get_wheel_delta()
+                wheel += float(mouse.get_wheel_delta() or 0.0)
             except Exception:
-                wheel = 0
+                pass
+        try:
+            from PPlay.window import Window
+            janela = Window.get_instance()
+            for ev in (getattr(janela, "eventos", None) or []):
+                if getattr(ev, "type", None) == pygame.MOUSEWHEEL:
+                    wheel += float(getattr(ev, "y", 0.0))
+        except Exception:
+            pass
         if not wheel:
             try:
                 for ev in pygame.event.get(pygame.MOUSEWHEEL):
-                    wheel += ev.y
+                    wheel += float(getattr(ev, "y", 0.0))
             except Exception:
                 pass
+        max_scroll = self._obter_max_scroll()
         if wheel:
-            self.scroll_y = max(0.0, self.scroll_y - wheel * 28.0)
+            self.scroll_y = clamp(self.scroll_y - wheel * 28.0, 0.0, max_scroll)
+        else:
+            self.scroll_y = clamp(self.scroll_y, 0.0, max_scroll)
 
         mouse_down = False
         mouse_edge_down = False
@@ -325,37 +394,39 @@ class MenuConquistas:
         clicou = mouse_edge_down or (mouse_down and not self._mouse_prev_down)
         self._mouse_prev_down = mouse_down
 
+        area_rect = self._obter_area_scroll_rect()
+
         # Hover nos cards para feedback visual
         if self.aba_atual == 0:
-            area_y = self.offset_y + 134
-            area_h = self.altura_modal - 178
+            area_y = area_rect.y
             itens_hover = self._obter_itens_conquistas()
             card_h = 92
             gap = 8
-            for idx_h, _ in enumerate(itens_hover):
-                cy = area_y + idx_h * (card_h + gap) - int(self.scroll_y)
-                if cy + card_h < area_y or cy > area_y + area_h:
-                    continue
-                if pygame.Rect(self.offset_x + 28, cy, self.largura_modal - 56, card_h).collidepoint(mx, my):
-                    self.indice_selecionado = idx_h
-                    break
+            if area_rect.collidepoint(mx, my):
+                for idx_h, _ in enumerate(itens_hover):
+                    cy = area_y + idx_h * (card_h + gap) - int(self.scroll_y)
+                    if cy + card_h < area_rect.y or cy > area_rect.bottom:
+                        continue
+                    if pygame.Rect(self.offset_x + 28, cy, self.largura_modal - 56, card_h).collidepoint(mx, my):
+                        self.indice_selecionado = idx_h
+                        break
         else:
-            area_y = self.offset_y + 134
-            area_h = self.altura_modal - 178
+            area_y = area_rect.y
             card_w = (self.largura_modal - 72) // 2
             card_h = 98
             gap_x = 16
             gap_y = 10
-            for idx_h, _ in enumerate(CHIPS_FIRMWARE.keys()):
-                col = idx_h % 2
-                row = idx_h // 2
-                cx = self.offset_x + 28 + col * (card_w + gap_x)
-                cy = area_y + row * (card_h + gap_y) - int(self.scroll_y)
-                if cy + card_h < area_y or cy > area_y + area_h:
-                    continue
-                if pygame.Rect(cx, cy, card_w, card_h).collidepoint(mx, my):
-                    self.indice_selecionado = idx_h
-                    break
+            if area_rect.collidepoint(mx, my):
+                for idx_h, _ in enumerate(CHIPS_FIRMWARE.keys()):
+                    col = idx_h % 2
+                    row = idx_h // 2
+                    cx = self.offset_x + 28 + col * (card_w + gap_x)
+                    cy = area_y + row * (card_h + gap_y) - int(self.scroll_y)
+                    if cy + card_h < area_rect.y or cy > area_rect.bottom:
+                        continue
+                    if pygame.Rect(cx, cy, card_w, card_h).collidepoint(mx, my):
+                        self.indice_selecionado = idx_h
+                        break
 
         if not clicou or self.cooldown_input > 0.0:
             return
@@ -379,22 +450,27 @@ class MenuConquistas:
                     self.indice_selecionado = 0
                     return
 
-            area_y = self.offset_y + 134
-            area_h = self.altura_modal - 178
+            if not area_rect.collidepoint(mx, my):
+                return
+
+            area_y = area_rect.y
             itens = self._obter_itens_conquistas()
             card_h = 92
             gap = 8
             for idx, (_tipo, cid, _cdef) in enumerate(itens):
                 cy = area_y + idx * (card_h + gap) - int(self.scroll_y)
-                if cy + card_h < area_y or cy > area_y + area_h:
+                if cy + card_h < area_rect.y or cy > area_rect.bottom:
                     continue
+                card_rect = pygame.Rect(self.offset_x + 28, cy, self.largura_modal - 56, card_h)
                 btn_pin = pygame.Rect(self.offset_x + self.largura_modal - 134, cy + 28, 96, 28)
-                if btn_pin.collidepoint(mx, my):
+                if btn_pin.collidepoint(mx, my) or card_rect.collidepoint(mx, my):
                     self.tentar_alternar_fixada(cid)
                     return
         else:
-            area_y = self.offset_y + 134
-            area_h = self.altura_modal - 178
+            if not area_rect.collidepoint(mx, my):
+                return
+
+            area_y = area_rect.y
             card_w = (self.largura_modal - 72) // 2
             card_h = 98
             gap_x = 16
@@ -404,7 +480,7 @@ class MenuConquistas:
                 row = idx // 2
                 cx = self.offset_x + 28 + col * (card_w + gap_x)
                 cy = area_y + row * (card_h + gap_y) - int(self.scroll_y)
-                if cy + card_h < area_y or cy > area_y + area_h:
+                if cy + card_h < area_rect.y or cy > area_rect.bottom:
                     continue
                 rect_card = pygame.Rect(cx, cy, card_w, card_h)
                 if rect_card.collidepoint(mx, my):
@@ -428,38 +504,43 @@ class MenuConquistas:
         except Exception:
             pass
 
+        self._atualizar_viewport(screen)
         sw, sh = screen.get_size()
-        self.offset_x = (sw - self.largura_modal) // 2
-        self.offset_y = (sh - self.altura_modal) // 2
         ox, oy = self.offset_x, self.offset_y
 
         screen.blit(self._obter_overlay(sw, sh), (0, 0))
 
-        modal_rect = pygame.Rect(ox, oy, self.largura_modal, self.altura_modal)
-        pygame.draw.rect(screen, COR_BG_MODAL, modal_rect, border_radius=8)
-        pygame.draw.rect(screen, COR_CIANO, modal_rect, width=2, border_radius=8)
+        modal_rect = self._pr(pygame.Rect(ox, oy, self.largura_modal, self.altura_modal))
+        pygame.draw.rect(screen, COR_BG_MODAL, modal_rect, border_radius=self._ps(8))
+        pygame.draw.rect(screen, COR_CIANO, modal_rect, width=max(1, self._ps(2)), border_radius=self._ps(8))
 
         # Título
-        f_titulo = self._fonte("sans", 20, True)
-        f_sub = self._fonte("mono", 11, True)
+        f_titulo = self._fonte_vp("sans", 20, True)
+        f_sub = self._fonte_vp("mono", 11, True)
+        f_aba = self._fonte_vp("sans", 13, True)
         titulo_surf = f_titulo.render("SISTEMA DE CONQUISTAS & FIRMWARE", True, BRANCO)
-        screen.blit(titulo_surf, (ox + 28, oy + 18))
+        screen.blit(titulo_surf, (self._px(ox + 28), self._py(oy + 18)))
 
         # Abas e Fechar
         aba0, aba1, btn_fechar = self._obter_rects_topo()
+        hover_pos = getattr(self, "_hover_pos", (-1.0, -1.0))
         for idx, (rect, label) in enumerate([(aba0, "CONQUISTAS"), (aba1, "CHIPS DE FIRMWARE")]):
             ativa = self.aba_atual == idx
-            cor_bg = COR_ELEVADO if ativa else COR_CARD
-            cor_bd = COR_CIANO if ativa else COR_BORDA
-            pygame.draw.rect(screen, cor_bg, rect, border_radius=5)
-            pygame.draw.rect(screen, cor_bd, rect, width=2 if ativa else 1, border_radius=5)
-            s_lbl = self._fonte("sans", 13, True).render(label, True, BRANCO if ativa else COR_TEXTO_SUAVE)
-            screen.blit(s_lbl, s_lbl.get_rect(center=rect.center))
+            hovered = rect.collidepoint(*hover_pos)
+            cor_bg = COR_ELEVADO if (ativa or hovered) else COR_CARD
+            cor_bd = COR_CIANO if (ativa or hovered) else COR_BORDA
+            rect_p = self._pr(rect)
+            pygame.draw.rect(screen, cor_bg, rect_p, border_radius=self._ps(5))
+            pygame.draw.rect(screen, cor_bd, rect_p, width=max(1, self._ps(2 if ativa else 1)), border_radius=self._ps(5))
+            s_lbl = f_aba.render(label, True, BRANCO if (ativa or hovered) else COR_TEXTO_SUAVE)
+            screen.blit(s_lbl, s_lbl.get_rect(center=rect_p.center))
 
-        pygame.draw.rect(screen, (60, 20, 28), btn_fechar, border_radius=5)
-        pygame.draw.rect(screen, COR_CARMESIM, btn_fechar, width=1, border_radius=5)
-        s_close = self._fonte("sans", 13, True).render("FECHAR [ESC]", True, BRANCO)
-        screen.blit(s_close, s_close.get_rect(center=btn_fechar.center))
+        btn_fechar_p = self._pr(btn_fechar)
+        fechar_hover = btn_fechar.collidepoint(*hover_pos)
+        pygame.draw.rect(screen, (90, 26, 36) if fechar_hover else (60, 20, 28), btn_fechar_p, border_radius=self._ps(5))
+        pygame.draw.rect(screen, COR_CARMESIM, btn_fechar_p, width=max(1, self._ps(2 if fechar_hover else 1)), border_radius=self._ps(5))
+        s_close = f_aba.render("FECHAR [ESC]", True, BRANCO)
+        screen.blit(s_close, s_close.get_rect(center=btn_fechar_p.center))
 
         if self.aba_atual == 0:
             self._desenhar_aba_conquistas(screen, ox, oy)
@@ -470,31 +551,36 @@ class MenuConquistas:
         rodape_y = oy + self.altura_modal - 32
         if self._timer_feedback > 0.0 and self._mensagem_feedback:
             s_fb = f_sub.render(self._mensagem_feedback, True, COR_OURO)
-            screen.blit(s_fb, (ox + 28, rodape_y))
+            screen.blit(s_fb, (self._px(ox + 28), self._py(rodape_y)))
         else:
             dica = "TAB: Trocar Aba  |  Mouse/Scroll: Navegar  |  ESC: Fechar"
-            screen.blit(self._fonte("mono", 10, False).render(dica, True, COR_TEXTO_SUAVE), (ox + 28, rodape_y))
+            screen.blit(self._fonte_vp("mono", 10, False).render(dica, True, COR_TEXTO_SUAVE), (self._px(ox + 28), self._py(rodape_y)))
 
     def _desenhar_aba_conquistas(self, screen: pygame.Surface, ox: int, oy: int):
-        f_btn = self._fonte("sans", 11, True)
-        f_nome = self._fonte("sans", 15, True)
-        f_desc = self._fonte("sans", 12, False)
-        f_mono = self._fonte("mono", 11, True)
+        f_btn = self._fonte_vp("sans", 11, True)
+        f_nome = self._fonte_vp("sans", 15, True)
+        f_desc = self._fonte_vp("sans", 12, False)
+        f_mono = self._fonte_vp("mono", 11, True)
+
+        hover_pos = getattr(self, "_hover_pos", (-1.0, -1.0))
 
         for nome_f, r_f in self._obter_rects_filtros():
             ativo = self.filtro_atual == nome_f
-            pygame.draw.rect(screen, COR_ELEVADO if ativo else COR_CARD, r_f, border_radius=4)
-            pygame.draw.rect(screen, COR_CIANO if ativo else COR_BORDA, r_f, width=1, border_radius=4)
-            s = f_btn.render(nome_f, True, BRANCO if ativo else COR_TEXTO_SUAVE)
-            screen.blit(s, s.get_rect(center=r_f.center))
+            hovered_f = r_f.collidepoint(*hover_pos)
+            r_fp = self._pr(r_f)
+            pygame.draw.rect(screen, COR_ELEVADO if (ativo or hovered_f) else COR_CARD, r_fp, border_radius=self._ps(4))
+            pygame.draw.rect(screen, COR_CIANO if (ativo or hovered_f) else COR_BORDA, r_fp, width=1, border_radius=self._ps(4))
+            s = f_btn.render(nome_f, True, BRANCO if (ativo or hovered_f) else COR_TEXTO_SUAVE)
+            screen.blit(s, s.get_rect(center=r_fp.center))
 
         fixadas = getattr(self.sistema_conquistas, "fixadas", []) if self.sistema_conquistas else []
         s_pins = f_mono.render(f"FIXADAS NA HUD: {len(fixadas)}/3", True, COR_OURO)
-        screen.blit(s_pins, (ox + self.largura_modal - 205, oy + 104))
+        screen.blit(s_pins, (self._px(ox + self.largura_modal - 205), self._py(oy + 104)))
 
-        area_rect = pygame.Rect(ox + 24, oy + 132, self.largura_modal - 48, self.altura_modal - 174)
+        area_rect = self._obter_area_scroll_rect()
+        area_rect_p = self._pr(area_rect)
         prev_clip = screen.get_clip()
-        screen.set_clip(area_rect)
+        screen.set_clip(area_rect_p)
 
         itens = self._obter_itens_conquistas()
         card_h = 92
@@ -502,8 +588,7 @@ class MenuConquistas:
         max_scroll = max(0, len(itens) * (card_h + gap) - area_rect.height)
         self.scroll_y = clamp(self.scroll_y, 0.0, float(max_scroll))
 
-        f_recomp = self._fonte("sans", 11, True)
-        hover_pos = getattr(self, "_hover_pos", (-1, -1))
+        f_recomp = self._fonte_vp("sans", 11, True)
 
         for idx, (tipo, cid, cdef) in enumerate(itens):
             cy = area_rect.y + idx * (card_h + gap) - int(self.scroll_y)
@@ -511,8 +596,9 @@ class MenuConquistas:
                 continue
 
             card_rect = pygame.Rect(ox + 28, cy, self.largura_modal - 56, card_h)
+            card_rect_p = self._pr(card_rect)
             fixada = cid in fixadas
-            hovered = card_rect.collidepoint(*hover_pos)
+            hovered = area_rect.collidepoint(*hover_pos) and card_rect.collidepoint(*hover_pos)
 
             if tipo == "continua":
                 estado = self.sistema_conquistas.continuas.get(cid, {"valor": 0, "milestones_concluidos": []}) if self.sistema_conquistas else {"valor": 0, "milestones_concluidos": []}
@@ -540,53 +626,56 @@ class MenuConquistas:
                 recomp_txt = f"Desbloqueia: {formatar_recompensas_conquista(cdef.recompensas)}"
 
             cor_bd = COR_VERDE if concluida else (COR_OURO if fixada else (COR_CIANO if hovered else COR_BORDA))
-            pygame.draw.rect(screen, COR_ELEVADO if hovered else COR_CARD, card_rect, border_radius=5)
-            pygame.draw.rect(screen, cor_bd, card_rect, width=1, border_radius=5)
+            pygame.draw.rect(screen, COR_ELEVADO if hovered else COR_CARD, card_rect_p, border_radius=self._ps(5))
+            pygame.draw.rect(screen, cor_bd, card_rect_p, width=1, border_radius=self._ps(5))
 
-            screen.blit(f_nome.render(cdef.nome, True, COR_OURO if concluida else BRANCO), (card_rect.x + 12, cy + 7))
-            screen.blit(f_desc.render(cdef.descricao[:78], True, COR_TEXTO_SUAVE), (card_rect.x + 12, cy + 28))
-            screen.blit(f_recomp.render(recomp_txt[:82], True, COR_VERDE if concluida else COR_CIANO), (card_rect.x + 12, cy + 47))
-            screen.blit(f_mono.render(status_txt, True, COR_VERDE if concluida else COR_CIANO), (card_rect.x + 12, cy + 68))
+            screen.blit(f_nome.render(cdef.nome, True, COR_OURO if concluida else BRANCO), (self._px(card_rect.x + 12), self._py(cy + 7)))
+            screen.blit(f_desc.render(cdef.descricao[:78], True, COR_TEXTO_SUAVE), (self._px(card_rect.x + 12), self._py(cy + 28)))
+            screen.blit(f_recomp.render(recomp_txt[:82], True, COR_VERDE if concluida else COR_CIANO), (self._px(card_rect.x + 12), self._py(cy + 47)))
+            screen.blit(f_mono.render(status_txt, True, COR_VERDE if concluida else COR_CIANO), (self._px(card_rect.x + 12), self._py(cy + 68)))
 
             # Barra de progresso
             bar_x = card_rect.x + 195
             bar_y = cy + 72
             bar_w = card_rect.width - 330
-            pygame.draw.rect(screen, COR_ELEVADO, (bar_x, bar_y, bar_w, 8), border_radius=3)
+            pygame.draw.rect(screen, COR_ELEVADO, self._pr(pygame.Rect(bar_x, bar_y, bar_w, 8)), border_radius=self._ps(3))
             if progresso > 0.0:
-                pygame.draw.rect(screen, COR_VERDE if concluida else COR_CIANO, (bar_x, bar_y, int(bar_w * progresso), 8), border_radius=3)
+                fill_w = max(1, int(bar_w * progresso))
+                pygame.draw.rect(screen, COR_VERDE if concluida else COR_CIANO, self._pr(pygame.Rect(bar_x, bar_y, fill_w, 8)), border_radius=self._ps(3))
 
             btn_pin = pygame.Rect(ox + self.largura_modal - 134, cy + 28, 96, 28)
-            btn_hover = btn_pin.collidepoint(*hover_pos)
-            pygame.draw.rect(screen, (60, 48, 16) if fixada else (COR_BORDA if btn_hover else COR_ELEVADO), btn_pin, border_radius=4)
-            pygame.draw.rect(screen, COR_OURO if fixada else (COR_CIANO if btn_hover else COR_BORDA), btn_pin, width=1, border_radius=4)
+            btn_pin_p = self._pr(btn_pin)
+            btn_hover = area_rect.collidepoint(*hover_pos) and btn_pin.collidepoint(*hover_pos)
+            pygame.draw.rect(screen, (60, 48, 16) if fixada else (COR_BORDA if btn_hover else COR_ELEVADO), btn_pin_p, border_radius=self._ps(4))
+            pygame.draw.rect(screen, COR_OURO if fixada else (COR_CIANO if btn_hover else COR_BORDA), btn_pin_p, width=1, border_radius=self._ps(4))
             s_pin = f_btn.render("FIXADA" if fixada else "FIXAR", True, COR_OURO if fixada else BRANCO)
-            screen.blit(s_pin, s_pin.get_rect(center=btn_pin.center))
+            screen.blit(s_pin, s_pin.get_rect(center=btn_pin_p.center))
 
         screen.set_clip(prev_clip)
 
     def _desenhar_aba_firmware(self, screen: pygame.Surface, ox: int, oy: int):
-        f_mono = self._fonte("mono", 12, True)
-        f_nome = self._fonte("sans", 13, True)
-        f_desc = self._fonte("sans", 12, False)
-        f_badge = self._fonte("sans", 11, True)
+        f_mono = self._fonte_vp("mono", 12, True)
+        f_nome = self._fonte_vp("sans", 13, True)
+        f_desc = self._fonte_vp("sans", 12, False)
+        f_badge = self._fonte_vp("sans", 11, True)
 
         equipados = list(getattr(self.sistema_conquistas, "modificadores_equipados", [])) if self.sistema_conquistas else []
         slots_max = int(getattr(self.sistema_conquistas, "slots_firmware_max", 1)) if self.sistema_conquistas else 1
 
         s_slots = f_mono.render(f"SLOTS DE FIRMWARE: {len(equipados)}/{slots_max}", True, COR_ROXO)
-        screen.blit(s_slots, (ox + 28, oy + 100))
+        screen.blit(s_slots, (self._px(ox + 28), self._py(oy + 100)))
 
         if self.em_jogo:
-            badge_ro = pygame.Rect(ox + self.largura_modal - 270, oy + 96, 242, 24)
-            pygame.draw.rect(screen, (68, 22, 22), badge_ro, border_radius=4)
-            pygame.draw.rect(screen, COR_CARMESIM, badge_ro, width=1, border_radius=4)
+            badge_ro = self._pr(pygame.Rect(ox + self.largura_modal - 270, oy + 96, 242, 24))
+            pygame.draw.rect(screen, (68, 22, 22), badge_ro, border_radius=self._ps(4))
+            pygame.draw.rect(screen, COR_CARMESIM, badge_ro, width=1, border_radius=self._ps(4))
             s_ro = f_badge.render("SOMENTE LEITURA EM PARTIDA", True, COR_CARMESIM)
             screen.blit(s_ro, s_ro.get_rect(center=badge_ro.center))
 
-        area_rect = pygame.Rect(ox + 24, oy + 132, self.largura_modal - 48, self.altura_modal - 174)
+        area_rect = self._obter_area_scroll_rect()
+        area_rect_p = self._pr(area_rect)
         prev_clip = screen.get_clip()
-        screen.set_clip(area_rect)
+        screen.set_clip(area_rect_p)
 
         card_w = (self.largura_modal - 72) // 2
         card_h = 98
@@ -595,6 +684,8 @@ class MenuConquistas:
         total_rows = (len(CHIPS_FIRMWARE) + 1) // 2
         max_scroll = max(0, total_rows * (card_h + gap_y) - area_rect.height)
         self.scroll_y = clamp(self.scroll_y, 0.0, float(max_scroll))
+
+        hover_pos = getattr(self, "_hover_pos", (-1.0, -1.0))
 
         for idx, (chip_id, chip) in enumerate(CHIPS_FIRMWARE.items()):
             col = idx % 2
@@ -612,26 +703,28 @@ class MenuConquistas:
             equipado = chip_id in equipados
 
             card_rect = pygame.Rect(cx, cy, card_w, card_h)
-            cor_bg = (26, 20, 44) if equipado else COR_CARD
-            cor_bd = COR_ROXO if equipado else (COR_CIANO if desbloqueado else COR_BORDA)
-            pygame.draw.rect(screen, cor_bg, card_rect, border_radius=5)
-            pygame.draw.rect(screen, cor_bd, card_rect, width=2 if equipado else 1, border_radius=5)
+            card_rect_p = self._pr(card_rect)
+            hovered = area_rect.collidepoint(*hover_pos) and card_rect.collidepoint(*hover_pos)
+            cor_bg = (26, 20, 44) if equipado else (COR_ELEVADO if hovered else COR_CARD)
+            cor_bd = COR_ROXO if equipado else (COR_CIANO if (desbloqueado or hovered) else COR_BORDA)
+            pygame.draw.rect(screen, cor_bg, card_rect_p, border_radius=self._ps(5))
+            pygame.draw.rect(screen, cor_bd, card_rect_p, width=max(1, self._ps(2 if equipado else 1)), border_radius=self._ps(5))
 
             cor_nome = COR_OURO if equipado else (BRANCO if desbloqueado else COR_TEXTO_SUAVE)
-            screen.blit(f_nome.render(chip.nome, True, cor_nome), (cx + 10, cy + 8))
+            screen.blit(f_nome.render(chip.nome, True, cor_nome), (self._px(cx + 10), self._py(cy + 8)))
 
             status = "EQUIPADO" if equipado else ("LIBERADO" if desbloqueado else "BLOQUEADO")
             cor_st = COR_ROXO if equipado else (COR_VERDE if desbloqueado else COR_CARMESIM)
             s_st = f_badge.render(status, True, cor_st)
-            screen.blit(s_st, (cx + card_w - s_st.get_width() - 10, cy + 10))
+            screen.blit(s_st, (card_rect_p.right - s_st.get_width() - self._ps(10), self._py(cy + 10)))
 
             # Quebra simples da descrição em 2 linhas
             desc = chip.descricao
             linha1 = desc[:48]
             linha2 = desc[48:96]
-            screen.blit(f_desc.render(linha1, True, COR_TEXTO_SUAVE), (cx + 10, cy + 34))
+            screen.blit(f_desc.render(linha1, True, COR_TEXTO_SUAVE), (self._px(cx + 10), self._py(cy + 34)))
             if linha2:
-                screen.blit(f_desc.render(linha2, True, COR_TEXTO_SUAVE), (cx + 10, cy + 52))
-            screen.blit(f_mono.render(f"[{chip.categoria}]", True, chip.icone_cor), (cx + 10, cy + 74))
+                screen.blit(f_desc.render(linha2, True, COR_TEXTO_SUAVE), (self._px(cx + 10), self._py(cy + 52)))
+            screen.blit(f_mono.render(f"[{chip.categoria}]", True, chip.icone_cor), (self._px(cx + 10), self._py(cy + 74)))
 
         screen.set_clip(prev_clip)
