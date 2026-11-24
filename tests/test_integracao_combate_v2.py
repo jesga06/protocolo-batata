@@ -264,7 +264,7 @@ class TestIntegracaoCombateV2(unittest.TestCase):
         cena.inimigos.append(inim)
         cena.mouse = _StubMouse(pos=(520.0, 416.0), btns={1})
 
-        cena._atualizar_disparos_jogador(0.12, cena._mods_custom, 1.0, 1.0)
+        cena._atualizar_disparos_jogador(0.15, cena._mods_custom, 1.0, 1.0)
         self.assertTrue(rifle.feixe_ativo)
         self.assertLess(inim.hp, 100)
 
@@ -272,7 +272,7 @@ class TestIntegracaoCombateV2(unittest.TestCase):
         cena.jogador.equipar_arma_especial(chamas)
         cena.jogador.selecionar_slot(3)
         hp_antes_chamas = inim.hp
-        cena._atualizar_disparos_jogador(0.12, cena._mods_custom, 1.0, 1.0)
+        cena._atualizar_disparos_jogador(0.15, cena._mods_custom, 1.0, 1.0)
         self.assertTrue(chamas.fluxo_ativo)
         self.assertLess(inim.hp, hp_antes_chamas)
         self.assertGreater(inim.queimadura_timer, 0.0)

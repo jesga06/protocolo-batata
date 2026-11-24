@@ -719,18 +719,18 @@ class GameplayCombateMixin:
                 if hasattr(self, "_enfileirar_notificacoes_conquistas"):
                     self._enfileirar_notificacoes_conquistas(notifs_abate)
                 if ger is not None:
-                if hasattr(ger, "sincronizar_recompensas_conquistas"):
-                    ger.sincronizar_recompensas_conquistas()
-                if hasattr(ger, "salvar_arquivo"):
-                    try:
-                        save_path = getattr(
-                            sys.modules.get("src.cenas.gameplay"),
-                            "SAVE_FILE_PATH",
-                            SAVE_FILE_PATH,
-                        )
-                        ger.salvar_arquivo(save_path)
-                    except Exception:
-                        pass
+                    if hasattr(ger, "sincronizar_recompensas_conquistas"):
+                        ger.sincronizar_recompensas_conquistas()
+                    if hasattr(ger, "salvar_arquivo"):
+                        try:
+                            save_path = getattr(
+                                sys.modules.get("src.cenas.gameplay"),
+                                "SAVE_FILE_PATH",
+                                SAVE_FILE_PATH,
+                            )
+                            ger.salvar_arquivo(save_path)
+                        except Exception:
+                            pass
 
         # Overvolt (Abordagem A2): descarga elétrica automática a cada 25 abates
         if getattr(self.jogador, "overvolt", False):
@@ -936,13 +936,16 @@ class GameplayCombateMixin:
             ang_chama = math.atan2(
                 alvo_y - centro_jogador_y, alvo_x - centro_jogador_x
             )
-            self.sistema_particulas.emitir_jato_chamas(
-                centro_jogador_x,
-                centro_jogador_y,
-                ang_chama,
-                float(getattr(arma, "alcance", 195.0)),
-                float(getattr(arma, "arco_graus", 55.0)),
-            )
+            if hasattr(self, "sistema_particulas") and hasattr(
+                self.sistema_particulas, "emitir_jato_chamas"
+            ):
+                self.sistema_particulas.emitir_jato_chamas(
+                    centro_jogador_x,
+                    centro_jogador_y,
+                    ang_chama,
+                    float(getattr(arma, "alcance", 195.0)),
+                    float(getattr(arma, "arco_graus", 55.0)),
+                )
         if not eventos_fluxo:
             return bool(segurando_gatilho)
 
