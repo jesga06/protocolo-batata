@@ -70,7 +70,7 @@ class DroneCombate(DroneBase):
             largura=d_largura,
             altura=d_altura,
             sprite_key="projetil_pistola",
-            knockback_forca=36.0
+            knockback_forca=9.0
         )
 
         projeteis = [proj]
@@ -89,7 +89,7 @@ class DroneCombate(DroneBase):
                 largura=d_largura,
                 altura=d_altura,
                 sprite_key="projetil_pistola",
-                knockback_forca=36.0
+                knockback_forca=9.0
             )
             projeteis.append(proj_extra)
         elif mk >= 3:
@@ -107,7 +107,7 @@ class DroneCombate(DroneBase):
                     largura=d_largura,
                     altura=d_altura,
                     sprite_key="projetil_pistola",
-                    knockback_forca=36.0
+                    knockback_forca=9.0
                 )
                 projeteis.append(proj_extra)
 

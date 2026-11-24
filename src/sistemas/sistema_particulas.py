@@ -193,7 +193,8 @@ class ArcoParry:
         angulo: float,
         raio: float = 128.0,
         arco_graus: float = 120.0,
-        vida_max: float = 0.24
+        vida_max: float = 0.24,
+        cor: tuple[int, int, int] | None = None,
     ):
         self.x = float(x)
         self.y = float(y)
@@ -202,6 +203,7 @@ class ArcoParry:
         self.arco_graus = float(arco_graus)
         self.vida_max = max(0.01, float(vida_max))
         self.vida = self.vida_max
+        self.cor = cor
 
     @property
     def viva(self) -> bool:
@@ -265,33 +267,41 @@ class SistemaParticulas:
         y: float,
         angulo: float,
         raio: float = 128.0,
-        arco_graus: float = 120.0
+        arco_graus: float = 120.0,
+        mostrar_texto: bool = True,
+        cor: tuple | None = None,
     ):
         """
-        Emite VFX completos de parry: arco dourado brilhante de 120°,
-        anel radial branco-dourado, faíscas direcionais e callout flutuante 'PARRY!'.
+        Emite VFX de parry/golpe RMB: arco luminoso, anel radial, faíscas direcionais
+        e callout flutuante 'PARRY!' (apenas quando mostrar_texto=True).
         """
-        self.arcos_parry.append(ArcoParry(x=x, y=y, angulo=angulo, raio=raio, arco_graus=arco_graus, vida_max=0.24))
+        self.arcos_parry.append(
+            ArcoParry(x=x, y=y, angulo=angulo, raio=raio, arco_graus=arco_graus, vida_max=0.24, cor=cor)
+        )
         if len(self.arcos_parry) > self.MAX_ARCOS:
             del self.arcos_parry[:len(self.arcos_parry) - self.MAX_ARCOS]
 
+        cor_onda = cor if cor is not None else (255, 245, 165)
+        cor_faisca = cor if cor is not None else (255, 225, 90)
+
         # Anel de flash branco-dourado radial
-        self.ondas_choque.append(OndaChoque(x=x, y=y, raio_max=max(48.0, float(raio) * 0.95), vida_max=0.22, cor=(255, 245, 165)))
+        self.ondas_choque.append(OndaChoque(x=x, y=y, raio_max=max(48.0, float(raio) * 0.95), vida_max=0.22, cor=cor_onda))
         if len(self.ondas_choque) > self.MAX_ONDAS:
             del self.ondas_choque[:len(self.ondas_choque) - self.MAX_ONDAS]
 
         # Faíscas direcionais douradas e branco-quente
         dx = math.cos(angulo)
         dy = math.sin(angulo)
-        self.emitir_faiscas(x, y, dir_x=dx, dir_y=dy, cor=(255, 225, 90), qtd=10)
+        self.emitir_faiscas(x, y, dir_x=dx, dir_y=dy, cor=cor_faisca, qtd=10)
         self.emitir_faiscas(x, y, dir_x=dx, dir_y=dy, cor=(255, 250, 210), qtd=6)
 
-        # Callout flutuante "PARRY!"
-        self.textos_dano.append(
-            TextoDano(x=x, y=y - 16.0, dano=0, critico=True, vida_max=0.75, texto="PARRY!", cor=(255, 235, 90))
-        )
-        if len(self.textos_dano) > self.MAX_TEXTOS:
-            del self.textos_dano[:len(self.textos_dano) - self.MAX_TEXTOS]
+        # Callout flutuante "PARRY!" apenas quando um parry real ocorre
+        if mostrar_texto:
+            self.textos_dano.append(
+                TextoDano(x=x, y=y - 16.0, dano=0, critico=True, vida_max=0.75, texto="PARRY!", cor=(255, 235, 90))
+            )
+            if len(self.textos_dano) > self.MAX_TEXTOS:
+                del self.textos_dano[:len(self.textos_dano) - self.MAX_TEXTOS]
 
     def adicionar_onda_dash(self, x: float, y: float):
         """Emite anel expansivo ciano de onda de choque ao iniciar um Dash."""
@@ -440,6 +450,59 @@ class SistemaParticulas:
                 tamanho_final=0.5,
                 cor=cor,
                 decaimento_vel=0.90
+            )
+            self.particulas.append(p)
+
+        if len(self.particulas) > self.MAX_PARTICULAS:
+            del self.particulas[:len(self.particulas) - self.MAX_PARTICULAS]
+
+    def emitir_jato_chamas(
+        self,
+        x: float,
+        y: float,
+        angulo: float,
+        alcance: float,
+        arco_graus: float,
+    ):
+        """
+        Emite partículas leves de fogo, brasa e fumaça ao longo do cone do Lança-Chamas
+        (zero alocações de fontes ou superfícies).
+        """
+        qtd = 3 if self.low_graphics else 6
+        meio_arco_rad = math.radians(max(1.0, float(arco_graus)) * 0.5)
+        alc = max(24.0, float(alcance))
+        paleta_chama = (
+            (255, 220, 90),   # núcleo amarelo-quente
+            (255, 145, 35),   # chama laranja
+            (235, 75, 25),    # brasa vermelho-alaranjada
+            (95, 85, 80),     # fumaça escura leve
+        )
+
+        for i in range(qtd):
+            ang = float(angulo) + random.uniform(-meio_arco_rad, meio_arco_rad)
+            vida = random.uniform(0.18, 0.34)
+            vel = random.uniform(alc * 2.1, alc * 3.3)
+            vx = math.cos(ang) * vel
+            vy = math.sin(ang) * vel
+            if i == qtd - 1 and random.random() < 0.35:
+                cor = paleta_chama[3]
+                tam_ini = random.uniform(4.0, 6.5)
+                tam_fim = random.uniform(6.0, 9.0)
+            else:
+                cor = paleta_chama[i % 3]
+                tam_ini = random.uniform(3.5, 6.0)
+                tam_fim = 1.0
+
+            p = Particula(
+                x=float(x) + random.uniform(-3.0, 3.0),
+                y=float(y) + random.uniform(-3.0, 3.0),
+                vx=vx,
+                vy=vy,
+                vida_max=vida,
+                tamanho_inicial=tam_ini,
+                tamanho_final=tam_fim,
+                cor=cor,
+                decaimento_vel=0.92,
             )
             self.particulas.append(p)
 
@@ -611,7 +674,15 @@ class SistemaParticulas:
 
             if len(pontos) >= 2:
                 larg_ext = max(2, int(round(7 * fator)))
-                cor_ext = (255, int(205 + 40 * fator), int(60 + 50 * fator))
+                cor_custom = getattr(ap, "cor", None)
+                if cor_custom is not None:
+                    cor_ext = (
+                        int(cor_custom[0] * (0.65 + 0.35 * fator)),
+                        int(cor_custom[1] * (0.65 + 0.35 * fator)),
+                        int(cor_custom[2] * (0.65 + 0.35 * fator)),
+                    )
+                else:
+                    cor_ext = (255, int(205 + 40 * fator), int(60 + 50 * fator))
                 pygame.draw.lines(screen, cor_ext, False, pontos, larg_ext)
                 if not is_low_graphics:
                     larg_int = max(1, int(round(3 * fator)))

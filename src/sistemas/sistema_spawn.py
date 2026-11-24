@@ -50,6 +50,7 @@ class SistemaSpawn:
         self.timer_ninja_cd = 0.0
         self.ultimo_minuto_elite = 0
         self.bosses_spawnados_indices = set()
+        self._burst_inicial_feito = False
         self.max_ativos = int(max_ativos)
         if fila_minibosses is not None:
             self.fila_minibosses_run = list(fila_minibosses)
@@ -65,7 +66,7 @@ class SistemaSpawn:
         Calcula a taxa de intervalo entre spawns em segundos (curva suave linear até o mínimo).
         """
         t = max(0.0, float(tempo_s))
-        return max(SPAWN_INTERVALO_MINIMO, SPAWN_INTERVALO_INICIAL - 0.012 * t)
+        return max(SPAWN_INTERVALO_MINIMO, 1.55 - 0.008 * t)
 
     def calcular_escala_hp_tempo(self, tempo_s: float) -> float:
         """
@@ -81,10 +82,10 @@ class SistemaSpawn:
 
     def tamanho_lote(self, tempo_s: float) -> int:
         """
-        Calcula a quantidade de inimigos gerados por pulso de spawn (-30% densidade).
+        Calcula a quantidade de inimigos gerados por pulso de spawn (3 no início, crescendo até 6).
         """
-        base = min(14, 2 + int(float(tempo_s) // 20.0))
-        return max(1, int(round(base * 0.70)))
+        t = max(0.0, float(tempo_s))
+        return min(6, 3 + int(t // 45.0))
 
     def obter_arquetipo_elite(self, boss_idx: int) -> tuple[type, str]:
         """
@@ -238,6 +239,8 @@ class SistemaSpawn:
             )
             boss_elite = cls_elite(x=ex, y=ey, is_elite=True, nome_elite=nome_elite)
             boss_elite.arquetipo_miniboss = arq_id
+            boss_elite.hp_max = max(int(boss_elite.hp_max), 700)
+            boss_elite.hp = boss_elite.hp_max
             escala_ciclo = float(escalas_miniboss[min(ciclo_idx, len(escalas_miniboss) - 1)])
             escala_total = escala_ciclo * float(hp_mult)
             if escala_total != 1.0:
@@ -337,6 +340,14 @@ class SistemaSpawn:
             if self.tempo_decorrido >= 25.0 and permitir_ranged and r < 0.08:
                 return InimigoRanged
             return InimigoRapido if r < 0.32 else InimigoPadrao
+
+        # 2b. Burst inicial de boas-vindas (evita arena vazia nos primeiros segundos)
+        if not self._burst_inicial_feito:
+            self._burst_inicial_feito = True
+            vagas_burst = self.max_ativos - (total_inimigos_vivos + len(novos_inimigos))
+            qtd_burst = min(6, max(0, vagas_burst))
+            for _ in range(qtd_burst):
+                novos_inimigos.append(_spawn_regular(random.choice((InimigoPadrao, InimigoRapido))))
 
         # 3. Verificação de Lote de Inimigos Regulares
         self.timer_spawn += dt

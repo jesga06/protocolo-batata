@@ -171,10 +171,10 @@ class TestPlaytestFixesCore(unittest.TestCase):
 
     def test_smg_compacta_abordagem_b_e_ventilar(self):
         smg = SMGCompacta()
-        self.assertEqual(smg.calor_por_tiro, 1.0)
+        self.assertEqual(smg.calor_por_tiro, 2.0)
         self.assertEqual(smg.zona_ideal_min, 60.0)
         self.assertEqual(smg.zona_ideal_max, 92.0)
-        self.assertEqual(smg.resfriamento_por_seg, 60.0)
+        self.assertEqual(smg.resfriamento_por_seg, 50.0)
 
         smg.calor_atual = 70.0
         self.assertTrue(smg.em_zona_ideal)
@@ -182,7 +182,7 @@ class TestPlaytestFixesCore(unittest.TestCase):
         self.assertAlmostEqual(smg.tempo_recarga_restante, smg.cooldown * 0.80, places=5)
 
         smg.ventilar_calor(25.0)
-        self.assertAlmostEqual(smg.calor_atual, 46.0, places=3)
+        self.assertAlmostEqual(smg.calor_atual, 47.0, places=3)
 
     def test_musica_recupera_apos_pause_alt_tab(self):
         from tests.test_sistema_musica import _criar_sistema_teste

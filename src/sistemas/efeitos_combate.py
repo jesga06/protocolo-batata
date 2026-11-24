@@ -20,6 +20,14 @@ def _eh_boss(obj: Any) -> bool:
     return bool(getattr(obj, "is_boss", False) or getattr(obj, "eh_boss", False))
 
 
+def obter_bandas_vsync_y(base_y: float, altura_total: float = 720.0) -> tuple[float, float]:
+    """Retorna as 2 posições Y simétricas das bandas ativas de VSync tear."""
+    h = max(1.0, float(altura_total))
+    y1 = float(base_y) % h
+    y2 = (y1 + h * 0.5) % h
+    return (y1, y2)
+
+
 def _eh_elite_ou_miniboss(obj: Any) -> bool:
     return bool(
         getattr(obj, "is_elite", False)
@@ -813,7 +821,7 @@ class EfeitoDashRastro(EfeitoCombate):
             for px, py in (origem, (mx, my), destino):
                 self.zonas_fogo.append({"x": px, "y": py, "raio": 48.0, "tempo": 3.5, "tick": 0.0})
         elif self.modo == "vacuo_io":
-            self.vortices.append({"x": float(destino[0]), "y": float(destino[1]), "raio": 180.0, "tempo": 0.8})
+            self.vortices.append({"x": float(destino[0]), "y": float(destino[1]), "raio": 95.0, "tempo": 2.5})
         elif self.modo == "subprocesso_atrasado":
             if ctx.jogador is not None and hasattr(ctx.jogador, "dash_cooldown_restante"):
                 ctx.jogador.dash_cooldown_restante = float(ctx.jogador.dash_cooldown_restante) + 0.4

@@ -21,12 +21,8 @@ class LancaChamas(ArmaBase):
         municao_max: int | None = None,
         dreno_por_seg: float | None = None,
     ):
-        dano_val = int(getattr(_const, "LANCA_CHAMAS_DANO_TICK", 11)) if dano is None else int(dano)
-        tick_val = (
-            float(getattr(_const, "LANCA_CHAMAS_INTERVALO_TICK", 0.10))
-            if intervalo_tick is None
-            else float(intervalo_tick)
-        )
+        dano_val = 5 if dano is None else int(dano)
+        tick_val = 0.14 if intervalo_tick is None else float(intervalo_tick)
         mun_val = int(getattr(_const, "LANCA_CHAMAS_MUNICIAO_MAX", 140)) if municao_max is None else int(municao_max)
         super().__init__(
             nome="Lança-Chamas",
