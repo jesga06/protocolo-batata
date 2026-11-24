@@ -700,4 +700,91 @@ class HUD:
         surf = fonte.render(txt, True, COR_CARMESIM if travado else COR_TEXTO_SUAVE)
         screen.blit(surf, (x + pad_x, y + max(1, int(round(2 * s)))))
 
+    def desenhar_banners_desbloqueio(self, screen, banners: list[dict]) -> None:
+        """
+        Renderiza cards estilo Steam / Cyber-Office empilhados no canto inferior direito
+        para notificar conquistas e desbloqueios em tempo real (zero alocação de fontes).
+        """
+        if screen is None or not banners:
+            return
+
+        ox, oy, vw, vh, s = self._calcular_viewport(screen)
+        f_badge = self._obter_fonte_nativa("mono", 9, bold=True, scale=s)
+        f_titulo = self._obter_fonte_nativa("sans", 11, bold=True, scale=s)
+        f_sub = self._obter_fonte_nativa("sans", 9, bold=False, scale=s)
+
+        card_w = max(180, int(round(304 * s)))
+        card_h = max(48, int(round(72 * s)))
+        gap = max(4, int(round(8 * s)))
+        margem_r = max(8, int(round(18 * s)))
+        margem_b = max(8, int(round(18 * s)))
+        raio = max(2, int(round(6 * s)))
+        pad_x = max(6, int(round(12 * s)))
+        pad_y = max(4, int(round(7 * s)))
+
+        ativos = [b for b in banners if float(b.get("tempo", 0.0)) > 0.0]
+        if not ativos:
+            return
+
+        for idx, banner in enumerate(ativos[:4]):
+            tempo = float(banner.get("tempo", 0.0))
+            tempo_max = max(0.01, float(banner.get("tempo_max", 4.0)))
+            decorrido = max(0.0, tempo_max - tempo)
+
+            slide_ratio = 0.0
+            if decorrido < 0.25:
+                t_in = clamp(decorrido / 0.25, 0.0, 1.0)
+                slide_ratio = (1.0 - t_in) ** 2
+            elif tempo < 0.30:
+                t_out = clamp(tempo / 0.30, 0.0, 1.0)
+                slide_ratio = (1.0 - t_out) ** 2
+
+            slide_px = int(round(slide_ratio * (card_w + margem_r)))
+            x = ox + vw - card_w - margem_r + slide_px
+            y = oy + vh - margem_b - card_h - idx * (card_h + gap)
+
+            cor_destaque = banner.get("cor", COR_OURO)
+            if not isinstance(cor_destaque, tuple) or len(cor_destaque) < 3:
+                cor_destaque = COR_OURO
+
+            painel = self._obter_painel_translucido(card_w, card_h, raio=raio)
+            screen.blit(painel, (x, y))
+
+            rect_card = pygame.Rect(x, y, card_w, card_h)
+            pygame.draw.rect(screen, cor_destaque, rect_card, width=max(1, int(round(1 * s))), border_radius=raio)
+
+            # Filete lateral brilhante
+            barra_w = max(3, int(round(4 * s)))
+            pygame.draw.rect(
+                screen,
+                cor_destaque,
+                pygame.Rect(x, y + max(2, int(round(4 * s))), barra_w, card_h - max(4, int(round(8 * s)))),
+                border_radius=max(1, int(round(2 * s))),
+            )
+
+            # Badge brilhante "DESBLOQUEADO!"
+            badge_surf = f_badge.render("DESBLOQUEADO!", True, cor_destaque)
+            badge_pad_x = max(4, int(round(6 * s)))
+            badge_pad_y = max(1, int(round(2 * s)))
+            badge_rect = pygame.Rect(
+                x + pad_x,
+                y + pad_y,
+                badge_surf.get_width() + badge_pad_x * 2,
+                badge_surf.get_height() + badge_pad_y * 2,
+            )
+            pygame.draw.rect(screen, COR_ELEVADO, badge_rect, border_radius=max(2, int(round(3 * s))))
+            pygame.draw.rect(screen, cor_destaque, badge_rect, width=1, border_radius=max(2, int(round(3 * s))))
+            screen.blit(badge_surf, (badge_rect.x + badge_pad_x, badge_rect.y + badge_pad_y))
+
+            # Título completo da conquista/desbloqueio
+            titulo = str(banner.get("titulo", "Conquista Desbloqueada"))
+            titulo_surf = f_titulo.render(titulo, True, BRANCO)
+            screen.blit(titulo_surf, (x + pad_x, badge_rect.bottom + max(3, int(round(4 * s)))))
+
+            # Subtítulo da recompensa
+            subtitulo = str(banner.get("subtitulo", ""))
+            if subtitulo:
+                sub_surf = f_sub.render(subtitulo, True, COR_CIANO)
+                screen.blit(sub_surf, (x + pad_x, y + card_h - sub_surf.get_height() - pad_y))
+
 
