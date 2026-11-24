@@ -94,6 +94,12 @@ class MenuPrincipalScene(BaseScene):
             cena=self,
         )
         self.banner_dicas = BannerDica()
+        self.mostrar_popup_tutorial = not bool(getattr(self.gerenciador_config, "tutorial_visto", False))
+        self._popup_overlay_cache: dict[tuple[int, int], pygame.Surface] = {}
+        try:
+            pygame.mouse.set_visible(True)
+        except Exception:
+            pass
 
         # Cache de fontes para alta performance (Sans-Serif + Monospace — zero alocação por frame)
         self._fonte_titulo = _carregar_fonte_sans(40, bold=True)
@@ -145,9 +151,47 @@ class MenuPrincipalScene(BaseScene):
             pass
 
     def loop(self):
+        try:
+            pygame.mouse.set_visible(True)
+        except Exception:
+            pass
+
         dt = min(self.janela.delta_time(), 0.1)
         self._ultimo_dt = dt
         self.tempo_acumulado += dt
+
+        if getattr(self, "mostrar_popup_tutorial", False):
+            if self.cooldown_input > 0.0:
+                self.cooldown_input = max(0.0, self.cooldown_input - dt)
+                return
+            mx, my = None, None
+            if self.mouse is not None and hasattr(self.mouse, "get_position"):
+                try:
+                    mx, my = self.mouse.get_position()
+                except Exception:
+                    mx, my = None, None
+            clicou = False
+            if self.mouse is not None and hasattr(self.mouse, "button_down"):
+                try:
+                    clicou = bool(self.mouse.button_down(1))
+                except Exception:
+                    clicou = False
+            if clicou and mx is not None and my is not None:
+                _, btn_ver, btn_nao = self._obter_rects_popup_tutorial()
+                if btn_ver.collidepoint(mx, my):
+                    self._confirmar_popup_tutorial(True)
+                    return
+                if btn_nao.collidepoint(mx, my):
+                    self._confirmar_popup_tutorial(False)
+                    return
+            if self.teclado is not None and hasattr(self.teclado, "key_down"):
+                if self.teclado.key_down("ENTER") or self.teclado.key_down("SPACE") or self.teclado.key_down("t") or self.teclado.key_down("T"):
+                    self._confirmar_popup_tutorial(True)
+                    return
+                if self.teclado.key_down("ESC"):
+                    self._confirmar_popup_tutorial(False)
+                    return
+            return
 
         # Se o Menu de Configurações estiver aberto, delega o loop para ele
         if self.menu_configs.ativo:
@@ -241,6 +285,30 @@ class MenuPrincipalScene(BaseScene):
 
         if self.teclado.key_down("ESC"):
             self.sair_jogo()
+
+    @staticmethod
+    def _obter_rects_popup_tutorial() -> tuple[pygame.Rect, pygame.Rect, pygame.Rect]:
+        """Retorna (modal_rect, btn_ver_tutorial, btn_agora_nao) em coords lógicas 1280x720."""
+        mw, mh = 560, 210
+        mx = (LARGURA_TELA - mw) // 2
+        my = (ALTURA_TELA - mh) // 2
+        modal_rect = pygame.Rect(mx, my, mw, mh)
+        btn_ver = pygame.Rect(mx + 44, my + 136, 220, 42)
+        btn_nao = pygame.Rect(mx + mw - 44 - 220, my + 136, 220, 42)
+        return modal_rect, btn_ver, btn_nao
+
+    def _confirmar_popup_tutorial(self, abrir_tutorial: bool):
+        """Marca tutorial_visto=True, salva save.json e opcionalmente abre o Tutorial."""
+        self.mostrar_popup_tutorial = False
+        self.cooldown_input = 0.2
+        if hasattr(self, "gerenciador_config") and self.gerenciador_config is not None:
+            self.gerenciador_config.tutorial_visto = True
+            try:
+                self.gerenciador_config.salvar_arquivo(SAVE_FILE_PATH)
+            except Exception:
+                pass
+        if abrir_tutorial:
+            self.abrir_tutorial()
 
     @staticmethod
     def _obter_rects_loadout() -> tuple[pygame.Rect, pygame.Rect]:
@@ -485,6 +553,42 @@ class MenuPrincipalScene(BaseScene):
         )
         rodape_rect = rodape_surf.get_rect(centerx=centro_x, bottom=py(ALTURA_TELA - 25))
         screen.blit(rodape_surf, rodape_rect)
+
+        if getattr(self, "mostrar_popup_tutorial", False):
+            if (sw, sh) not in self._popup_overlay_cache:
+                ov = pygame.Surface((sw, sh), pygame.SRCALPHA)
+                ov.fill((6, 9, 16, 200))
+                self._popup_overlay_cache[(sw, sh)] = ov
+            screen.blit(self._popup_overlay_cache[(sw, sh)], (0, 0))
+
+            m_l, bv_l, bn_l = self._obter_rects_popup_tutorial()
+            m_r = pygame.Rect(px(m_l.x), py(m_l.y), ps(m_l.width), ps(m_l.height))
+            bv_r = pygame.Rect(px(bv_l.x), py(bv_l.y), ps(bv_l.width), ps(bv_l.height))
+            bn_r = pygame.Rect(px(bn_l.x), py(bn_l.y), ps(bn_l.width), ps(bn_l.height))
+
+            pygame.draw.rect(screen, _C_HUD_PANEL, m_r, border_radius=ps(10))
+            pygame.draw.rect(screen, _C_CYAN, m_r, width=max(1, ps(2)), border_radius=ps(10))
+            meio_p = (m_r.width - ps(24)) // 2
+            pygame.draw.rect(screen, _C_PURPLE, (m_r.x + ps(12), m_r.y + 1, meio_p, max(2, ps(2))))
+            pygame.draw.rect(screen, _C_GOLD, (m_r.x + ps(12) + meio_p, m_r.y + 1, meio_p, max(2, ps(2))))
+
+            t_pop = fonte_badge.render("BEM-VINDO AO PROTOCOLO: BATATA", True, _C_GOLD)
+            screen.blit(t_pop, t_pop.get_rect(centerx=m_r.centerx, top=m_r.y + ps(22)))
+
+            msg1 = fonte_opcoes.render("Parece ser sua primeira vez jogando —", True, _C_TEXT_PRIMARY)
+            msg2 = fonte_opcoes.render("que tal ver o tutorial?", True, _C_TEXT_PRIMARY)
+            screen.blit(msg1, msg1.get_rect(centerx=m_r.centerx, top=m_r.y + ps(56)))
+            screen.blit(msg2, msg2.get_rect(centerx=m_r.centerx, top=m_r.y + ps(82)))
+
+            pygame.draw.rect(screen, (22, 48, 62), bv_r, border_radius=ps(6))
+            pygame.draw.rect(screen, _C_CYAN, bv_r, width=max(1, ps(2)), border_radius=ps(6))
+            s_ver = fonte_badge.render("Ver Tutorial", True, _C_TEXT_PRIMARY)
+            screen.blit(s_ver, s_ver.get_rect(center=bv_r.center))
+
+            pygame.draw.rect(screen, _C_CARD, bn_r, border_radius=ps(6))
+            pygame.draw.rect(screen, _C_BORDER, bn_r, width=max(1, ps(1)), border_radius=ps(6))
+            s_nao = fonte_badge.render("Agora Não", True, _C_TEXT_SECONDARY)
+            screen.blit(s_nao, s_nao.get_rect(center=bn_r.center))
 
     def iniciar_jogo(self):
         from PPlay.scenemanager import SceneManager
