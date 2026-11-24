@@ -711,6 +711,26 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         if hasattr(self, "_cooldown_menu_toggle") and self._cooldown_menu_toggle > 0.0:
             self._cooldown_menu_toggle = max(0.0, self._cooldown_menu_toggle - dt)
 
+        # Visibilidade do cursor do sistema: visível em pausa/modais/menus, oculto apenas em combate ativo com mira customizada
+        if pygame.display.get_init():
+            menu_conq_ativo_cur = bool(
+                getattr(self, "menu_conquistas", None) is not None
+                and getattr(self.menu_conquistas, "ativo", False)
+            )
+            mostrar_cursor_sistema = bool(
+                self.pausado
+                or self.game_over
+                or self.vitoria
+                or self.menu_configs.ativo
+                or menu_conq_ativo_cur
+                or self.modal_level_up.ativo
+                or self.modal_overclock.ativo
+                or (hasattr(self, "menu_debug") and self.menu_debug.ativo)
+                or (getattr(self, "boss_cutscene_ativa", False) and getattr(self, "boss_cutscene_fase", "") != "whiteout")
+                or not getattr(self.jogador, "vivo", True)
+            )
+            pygame.mouse.set_visible(mostrar_cursor_sistema)
+
         # 0. Se o Menu de Debug estiver ativo, processa seus inputs e congela o jogo
         if hasattr(self, "menu_debug"):
             debug_estava_ativo = self.menu_debug.ativo
@@ -1206,7 +1226,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                         if r_mob < 0.25:
                             mob_boss = InimigoRapido(x=ex, y=ey)
                         elif r_mob < 0.315:
-                            mob_boss = InimigoRanged(x=ex, y=ey)
+                            mob_boss = InimigoRanged(x=ex, y=ey, modo_homing=fogo_cruzado_ranged)
                             if fogo_cruzado_ranged:
                                 mob_boss.rajada_tripla = True
                         else:
@@ -1269,6 +1289,8 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                     for ni in novos_inimigos:
                         if hasattr(ni, "rajada_tripla"):
                             ni.rajada_tripla = True
+                        if hasattr(ni, "modo_homing"):
+                            ni.modo_homing = True
                 self.inimigos.extend(novos_inimigos)
 
                 # Gatilho Nível 12 após 4:30 (270s) OU 3º Ciclo Musical (Opção A) / fallback tempo_elite >= 300s

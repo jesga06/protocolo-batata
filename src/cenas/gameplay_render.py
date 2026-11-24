@@ -259,6 +259,57 @@ class GameplayRenderMixin:
             pygame.draw.circle(world_surf, (95, 32, 12), (fx_t, fy_t), r_zf)
             pygame.draw.circle(world_surf, (255, 115, 25), (fx_t, fy_t), r_zf, width=2)
 
+        # Estados visuais de EfeitoDashRastro (zonas de fogo, vórtices de vácuo, subprocesso pendente e feixe de stun)
+        efeito_dash = (
+            self.efeitos_combate._mapa_efeitos.get("dash_rastro")
+            if getattr(self, "efeitos_combate", None) is not None and hasattr(self.efeitos_combate, "_mapa_efeitos")
+            else None
+        )
+        if efeito_dash is not None:
+            for zf_d in getattr(efeito_dash, "zonas_fogo", []):
+                fx_d = int(self.camera.transform_x(zf_d["x"]))
+                fy_d = int(self.camera.transform_y(zf_d["y"]))
+                r_zfd = max(8, int(zf_d.get("raio", 48.0)))
+                pygame.draw.circle(world_surf, (115, 36, 12), (fx_d, fy_d), r_zfd)
+                pygame.draw.circle(world_surf, (255, 130, 30), (fx_d, fy_d), r_zfd, width=2)
+                pygame.draw.circle(world_surf, (255, 210, 80), (fx_d, fy_d), max(4, r_zfd // 2), width=1)
+
+            for vv in getattr(efeito_dash, "vortices_vacuo", []):
+                vx_d = int(self.camera.transform_x(vv["x"]))
+                vy_d = int(self.camera.transform_y(vv["y"]))
+                r_vv = max(12, int(vv.get("raio", 180.0)))
+                fase_vv = float(vv.get("tempo", 0.0)) * 8.0
+                pygame.draw.circle(world_surf, (34, 211, 238), (vx_d, vy_d), r_vv, width=1)
+                pygame.draw.circle(world_surf, (125, 240, 255), (vx_d, vy_d), max(8, int(r_vv * 0.55)), width=2)
+                for seg_v in range(3):
+                    ang_v0 = fase_vv + seg_v * (2.0 * math.pi / 3.0)
+                    r_esp = max(10, int(r_vv * (0.35 + 0.2 * seg_v)))
+                    rect_esp = pygame.Rect(vx_d - r_esp, vy_d - r_esp, r_esp * 2, r_esp * 2)
+                    pygame.draw.arc(world_surf, (56, 189, 248), rect_esp, ang_v0, ang_v0 + 1.4, width=2)
+
+            for sp in getattr(efeito_dash, "subprocessos_pendentes", []):
+                ox_s = int(self.camera.transform_x(sp["origem"][0]))
+                oy_s = int(self.camera.transform_y(sp["origem"][1]))
+                dx_s = int(self.camera.transform_x(sp["destino"][0]))
+                dy_s = int(self.camera.transform_y(sp["destino"][1]))
+                frac_sp = max(0.0, min(1.0, float(sp.get("tempo", 0.0)) / 0.75))
+                pygame.draw.line(world_surf, (56, 189, 248), (ox_s, oy_s), (dx_s, dy_s), width=1)
+                pygame.draw.circle(world_surf, (125, 240, 255), (ox_s, oy_s), 12, width=1)
+                rect_sp = pygame.Rect(ox_s - 16, oy_s - 16, 32, 32)
+                pygame.draw.arc(world_surf, (250, 204, 21), rect_sp, 0.0, max(0.1, 2.0 * math.pi * frac_sp), width=2)
+
+            for fx_sp in getattr(efeito_dash, "feixes_subprocesso", []):
+                ox_f = int(self.camera.transform_x(fx_sp["origem"][0]))
+                oy_f = int(self.camera.transform_y(fx_sp["origem"][1]))
+                dx_f = int(self.camera.transform_x(fx_sp["destino"][0]))
+                dy_f = int(self.camera.transform_y(fx_sp["destino"][1]))
+                dur_f = max(0.01, float(fx_sp.get("duracao", 0.35)))
+                ratio_f = max(0.0, min(1.0, float(fx_sp.get("tempo", 0.0)) / dur_f))
+                w_fx = max(3, int(round(10 * ratio_f)))
+                pygame.draw.line(world_surf, (56, 189, 248), (ox_f, oy_f), (dx_f, dy_f), width=w_fx)
+                pygame.draw.line(world_surf, (255, 255, 255), (ox_f, oy_f), (dx_f, dy_f), width=max(1, w_fx // 2))
+                pygame.draw.circle(world_surf, (125, 240, 255), (dx_f, dy_f), max(4, int(round(12 * ratio_f))), width=2)
+
         for tp in self.trilhas_plasma:
             tx1 = int(self.camera.transform_x(tp["x1"]))
             ty1 = int(self.camera.transform_y(tp["y1"]))
@@ -321,9 +372,13 @@ class GameplayRenderMixin:
             pygame.draw.circle(world_surf, (56, 189, 248), (bx_t, by_t), r_glow, width=2)
             pygame.draw.circle(world_surf, (220, 250, 255), (bx_t, by_t), max(2, r_glow // 2))
 
-        # Projéteis
+        # Projéteis (tiros do jogador primeiro; projéteis inimigos sempre acima de inimigos, Boss e jogador)
         for proj in self.projeteis:
-            proj.desenhar(self.janela, self.camera)
+            if getattr(proj, "dono", "jogador") != "inimigo":
+                proj.desenhar(self.janela, self.camera)
+        for proj in self.projeteis:
+            if getattr(proj, "dono", "jogador") == "inimigo":
+                proj.desenhar(self.janela, self.camera)
 
         # Partículas de combate (faíscas, ondas de choque, bursts e detritos)
         self.sistema_particulas.desenhar(self.janela, self.camera)
@@ -953,6 +1008,8 @@ class GameplayRenderMixin:
             and not (hasattr(self, "menu_conquistas") and self.menu_conquistas is not None and self.menu_conquistas.ativo)
             and not (hasattr(self, "menu_debug") and self.menu_debug.ativo)
         )
+        if pygame.display.get_init():
+            pygame.mouse.set_visible(not (em_combate_ativo and self.jogador.vivo))
         if em_combate_ativo and self.jogador.vivo:
             val_kb = str(self.config_sistema.obter_valor("keybinds")).lower() if hasattr(self, "config_sistema") and self.config_sistema else "padrao"
             if val_kb == "uma_mao":

@@ -249,6 +249,12 @@ class GameplayCombateMixin:
             cx, cy, self.projeteis, angulo_mira=angulo_mira
         )
         if not rebatidos:
+            if getattr(arma_melee, "ultimo_parry_bloqueado_nao_parriavel", False):
+                arma_melee.ultimo_parry_bloqueado_nao_parriavel = False
+                if hasattr(self, "sistema_particulas") and self.sistema_particulas is not None:
+                    self.sistema_particulas.emitir_faiscas(cx, cy, cor=(239, 68, 68), qtd=6)
+                if hasattr(self, "sistema_audio") and self.sistema_audio is not None and hasattr(self.sistema_audio, "tocar_parry_clang"):
+                    self.sistema_audio.tocar_parry_clang(pitch_mult=0.55)
             return []
 
         mods = self._obter_gerenciador_config().obter_modificadores() if self._obter_gerenciador_config() else None
@@ -411,12 +417,6 @@ class GameplayCombateMixin:
                         "cor": AZUL_CIANO,
                         "x": cx, "y": self.jogador.y - 22, "tempo": 2.6, "tempo_max": 2.6
                     })
-                elif total_parries % 5 == 0:
-                    self.toasts_coleta.append({
-                        "texto": f"PARRY {total_parries}/{DASH_PARRY_META}",
-                        "cor": DOURADO,
-                        "x": cx, "y": self.jogador.y - 18, "tempo": 1.8, "tempo_max": 1.8
-                    })
             else:
                 sis_cnq = self._obter_sistema_conquistas()
                 if sis_cnq is not None and hasattr(sis_cnq, "registrar_evento"):
@@ -426,8 +426,16 @@ class GameplayCombateMixin:
         if efeitos is not None:
             efeitos.disparar_ao_parry(self._construir_ctx_combate(mods), rebatidos)
 
+        if any(int(getattr(pr, "duel_stage", 0)) in (1, 2) for pr in rebatidos) and hasattr(arma_melee, "finalizar_acerto_duelo"):
+            arma_melee.finalizar_acerto_duelo()
+
+        arma_slot2 = getattr(self.jogador, "arma_pistola", None)
+        if arma_slot2 is not None and hasattr(arma_slot2, "ventilar_calor"):
+            arma_slot2.ventilar_calor(25.0)
+
         if extras_gerados:
             self.projeteis.extend(extras_gerados)
+        return rebatidos
         return rebatidos
 
     def _executar_golpe_melee(
@@ -680,6 +688,9 @@ class GameplayCombateMixin:
 
         self.abates += 1
         self.pontos += getattr(inim, "score_valor", 100)
+        arma_slot2 = getattr(self.jogador, "arma_pistola", None)
+        if arma_slot2 is not None and hasattr(arma_slot2, "ventilar_calor") and getattr(arma_slot2, "em_zona_ideal", False):
+            arma_slot2.ventilar_calor(0.5)
         inim_cx = inim.x + getattr(inim, "largura", 28) / 2.0
         inim_cy = inim.y + getattr(inim, "altura", 28) / 2.0
 
@@ -790,6 +801,9 @@ class GameplayCombateMixin:
         """Executa o Dash e notifica partículas, freeze e Pipeline B+ (disparar_ao_dash)."""
         if not self.jogador.iniciar_dash(dx_d, dy_d, mods=mods):
             return False
+        arma_slot2 = getattr(self.jogador, "arma_pistola", None)
+        if arma_slot2 is not None and hasattr(arma_slot2, "ventilar_calor"):
+            arma_slot2.ventilar_calor(25.0)
         if hasattr(self.sistema_particulas, "adicionar_onda_dash"):
             self.sistema_particulas.adicionar_onda_dash(centro_jogador_x, centro_jogador_y)
         if getattr(self.jogador, "dash_stutter_trigger", False):
@@ -829,9 +843,34 @@ class GameplayCombateMixin:
             return False
         if hasattr(self, "sistema_audio") and self.sistema_audio is not None:
             self.sistema_audio.tocar_sfx("sfx_ataque_melee", pitch_aleatorio=True)
-        self._processar_parry_ativo(
+        rebatidos = self._processar_parry_ativo(
             arma_melee, centro_jogador_x, centro_jogador_y, angulo_mira=ang_mira
         )
+        if not rebatidos and hasattr(self, "sistema_particulas") and self.sistema_particulas is not None:
+            raio_parry = float(getattr(arma_melee, "parry_alcance", 64.0))
+            arco_parry = float(getattr(arma_melee, "arco_graus", 120.0))
+            if hasattr(self.sistema_particulas, "adicionar_arco_parry"):
+                self.sistema_particulas.adicionar_arco_parry(
+                    centro_jogador_x,
+                    centro_jogador_y,
+                    ang_mira,
+                    raio=raio_parry,
+                    arco_graus=arco_parry,
+                )
+            self.sistema_particulas.emitir_onda_choque(
+                centro_jogador_x,
+                centro_jogador_y,
+                raio_max=max(42.0, raio_parry),
+                cor=AZUL_CIANO,
+            )
+            self.sistema_particulas.emitir_faiscas(
+                centro_jogador_x,
+                centro_jogador_y,
+                dir_x=math.cos(ang_mira),
+                dir_y=math.sin(ang_mira),
+                cor=(220, 250, 255),
+                qtd=5,
+            )
         return True
 
     def _despachar_tiros_arma(self, arma, novos_tiros: list, mods) -> None:
@@ -1424,7 +1463,10 @@ class GameplayCombateMixin:
                     continue
                 proj._x_ant = proj.x
                 proj._y_ant = proj.y
-                proj.update(dt)
+                if getattr(proj, "dono", "jogador") == "inimigo":
+                    proj.update(dt, pos_alvo=(centro_jogador_x, centro_jogador_y))
+                else:
+                    proj.update(dt)
                 if getattr(proj, "superaquecido", False) and proj.ativo:
                     self.sistema_particulas.emitir_faiscas(
                         proj.x + proj.largura / 2.0,
@@ -1560,7 +1602,7 @@ class GameplayCombateMixin:
                         proj.x, proj.y, proj.largura, proj.altura,
                         hb_jog_x, hb_jog_y, self.jogador.largura, self.jogador.altura
                     ):
-                        if getattr(self.jogador, "em_dash_iframes", False):
+                        if getattr(self.jogador, "em_dash_iframes", False) and not getattr(proj, "nao_desviavel", False):
                             self._tentar_registrar_just_dodge(origem="projetil", mods=mods)
                             continue
                         mult_dano_inim = mult_dano_inim_base
