@@ -98,12 +98,12 @@ class TestStage1ConstantsAndWindow(unittest.TestCase):
     def test_constants_dt_clamp_and_camera_damping(self):
         self.assertAlmostEqual(DT_CLAMP_MAX, 0.05)
         self.assertAlmostEqual(CAMERA_DAMPING_K, 0.115)
-        self.assertAlmostEqual(MELEE_ARCO_GRAUS, 90.0)
+        self.assertAlmostEqual(MELEE_ARCO_GRAUS, 120.0)
         self.assertAlmostEqual(DASH_DURACAO, 0.22)
         self.assertAlmostEqual(DASH_MULT_VEL, 2.6)
         self.assertAlmostEqual(DASH_IFRAMES_BASE, 0.35)
         self.assertAlmostEqual(DASH_COOLDOWN, 1.8)
-        self.assertEqual(DASH_PARRY_META, 50)
+        self.assertEqual(DASH_PARRY_META, 15)
 
     def test_janela_update_clamps_dt_to_dt_clamp_max(self):
         j = Janela(largura_virtual=1280, altura_virtual=720, titulo="Clamp Test")
@@ -126,32 +126,33 @@ class TestParryPersistenceAndDashUnlock(unittest.TestCase):
                 self.assertEqual(gc.estatisticas["parries_total"], 0)
                 self.assertFalse(gc.estatisticas["dash_desbloqueado"])
 
-                # Legacy save without parries_total/dash_desbloqueado loads cleanly
-                legacy = {
+                # Save v2 sem parries_total/dash_desbloqueado carrega estatísticas limpas
+                save_v2 = {
+                    "schema_version": 2,
                     "desbloqueadas": ["fps_cap"],
                     "ativas": {"fps_cap": "ilimitado"},
                     "sistema_configs": {"volume_master": 80},
                     "estatisticas": {"high_score": 1234},
                 }
-                self.assertTrue(gc.from_dict(legacy))
+                self.assertTrue(gc.from_dict(save_v2))
                 self.assertEqual(gc.estatisticas["high_score"], 1234)
                 self.assertEqual(gc.estatisticas["parries_total"], 0)
                 self.assertFalse(gc.estatisticas["dash_desbloqueado"])
 
-                # 1..49 do not unlock dash; 50 unlocks dash; 51 does not re-trigger unlock
+                # 1..14 do not unlock dash; 15 unlocks dash; 16..51 do not re-trigger unlock
                 for i in range(1, 51):
                     total, unlocked = gc.registrar_parry(meta=DASH_PARRY_META)
                     self.assertEqual(total, i)
-                    self.assertEqual(unlocked, i == 50)
+                    self.assertEqual(unlocked, i == DASH_PARRY_META)
 
                 total51, unlocked51 = gc.registrar_parry(meta=DASH_PARRY_META)
                 self.assertEqual(total51, 51)
                 self.assertFalse(unlocked51)
 
-                # Reload from disk and verify persistence
+                # Reload from disk and verify persistence (saves on unlock at 50, zero I/O on normal parry 51)
                 gc_reloaded = GerenciadorConfiguracoes()
                 self.assertTrue(gc_reloaded.carregar_arquivo(save_path))
-                self.assertEqual(gc_reloaded.estatisticas["parries_total"], 51)
+                self.assertEqual(gc_reloaded.estatisticas["parries_total"], 50)
                 self.assertTrue(gc_reloaded.estatisticas["dash_desbloqueado"])
             finally:
                 constantes.SAVE_FILE_PATH = old_save_path
@@ -225,12 +226,12 @@ class TestMeleeParryAndPistolOverload(unittest.TestCase):
 
     def test_melee_120_arc_and_parry_window_reflection(self):
         melee = Melee()
-        self.assertEqual(melee.arco_graus, 90.0)
+        self.assertEqual(melee.arco_graus, 120.0)
         self.assertAlmostEqual(melee.parry_duracao, 0.12)
         self.assertAlmostEqual(melee.parry_alcance, 109.0 * 1.0, places=2)
 
         # Executing attack opens parry window even with empty enemy list
-        melee.executar_ataque(200.0, 200.0, [], angulo_mira=0.0)
+        melee.executar_ataque(200.0, 200.0, [], angulo_mira=0.0, abrir_janela_parry=True)
         self.assertAlmostEqual(melee.parry_janela_restante, 0.12)
 
         # Projectile at +35° (inside 90° arc = +-45°) and distance ~100px (inside 109px)

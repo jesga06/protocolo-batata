@@ -68,10 +68,10 @@ class TestASTNoCheatsAndSSOT(unittest.TestCase):
                     )
 
     def test_strict_20_gameplay_and_3_system_configs_ssot(self):
-        """Catálogo deve expor estritamente 23 configs de gameplay e 3 de sistema (áudio), totalizando 26."""
-        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 23)
+        """Catálogo deve expor estritamente 28 configs de gameplay e 3 de sistema (áudio), totalizando 31."""
+        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 28)
         self.assertEqual(len(CONFIGURACOES_SISTEMA), 3)
-        self.assertEqual(len(TODAS_CONFIGURACOES), 26)
+        self.assertEqual(len(TODAS_CONFIGURACOES), 31)
         self.assertEqual(
             set(CONFIGURACOES_SISTEMA.keys()),
             {"volume_master", "volume_musica", "volume_sfx"}
@@ -98,7 +98,7 @@ class TestASTNoCheatsAndSSOT(unittest.TestCase):
         mods = calcular_modificadores(desbloq, ativas)
         self.assertAlmostEqual(mods.critico_chance, 0.25)
         self.assertAlmostEqual(mods.critico_mult, 2.0)
-        self.assertAlmostEqual(mods.dano_armas_mult, 1.20)
+        self.assertTrue(mods.polaridade_invertida)
 
 
 if __name__ == "__main__":

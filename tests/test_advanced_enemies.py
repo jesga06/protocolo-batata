@@ -39,18 +39,13 @@ class TestInimigoRapidoBalance(unittest.TestCase):
 
     def test_inimigo_rapido_hp_and_2_shot_threshold(self):
         """
-        Valida que o Inimigo Rápido possui 20 HP e morre em exatamente 2 tiros de pistola (10 de dano).
+        Valida que o Inimigo Rápido possui 10 HP (v2.0 SSOT) e morre em 1 tiro de pistola (10 de dano).
         """
         e = InimigoRapido(x=0.0, y=0.0)
-        self.assertEqual(e.hp, 20)
-        self.assertEqual(e.hp_max, 20)
-
-        # 1º Tiro (10 Dano) -> Sobrevive com 10 HP
-        e.receber_dano(10)
-        self.assertTrue(e.vivo)
         self.assertEqual(e.hp, 10)
+        self.assertEqual(e.hp_max, 10)
 
-        # 2º Tiro (10 Dano) -> Destruído
+        # 1º Tiro (10 Dano) -> Destruído
         e.receber_dano(10)
         self.assertFalse(e.vivo)
         self.assertEqual(e.hp, 0)

@@ -78,7 +78,7 @@ class TestAssetsExistenciaEDimensoes(unittest.TestCase):
         icones_dir = os.path.join(ASSETS_DIR, "ui", "icones_configs")
         self.assertTrue(os.path.isdir(icones_dir), "Diretório de ícones de configs não existe!")
         arquivos = [f for f in os.listdir(icones_dir) if f.endswith(".png")]
-        self.assertEqual(len(arquivos), 26, "Devem existir exatamente 26 ícones de configuração (23 gameplay + 3 sistema)!")
+        self.assertEqual(len(arquivos), 31, "Devem existir exatamente 31 ícones de configuração (28 gameplay + 3 sistema)!")
         for arq in arquivos:
             with Image.open(os.path.join(icones_dir, arq)) as img:
                 self.assertEqual(img.size, (32, 32), f"Ícone {arq} deve ser 32x32!")
@@ -107,8 +107,8 @@ class TestConstantesEConfiguracoes(unittest.TestCase):
 
     def test_total_configs_gameplay(self):
         self.assertEqual(
-            len(CONFIGURACOES_GAMEPLAY), 23,
-            "Devem existir exatamente 23 configurações de gameplay no catálogo!"
+            len(CONFIGURACOES_GAMEPLAY), 28,
+            "Devem existir exatamente 28 configurações de gameplay no catálogo!"
         )
 
     def test_total_configs_sistema(self):

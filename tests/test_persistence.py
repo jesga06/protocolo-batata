@@ -46,7 +46,8 @@ class TestPersistence(unittest.TestCase):
         est = gerente.obter_estatisticas()
         self.assertEqual(est["high_score"], 0)
         self.assertEqual(est["melhor_tempo"], 0.0)
-        self.assertTrue(gerente.is_desbloqueada("fps_cap"))
+        # Save legado v1 sem versao_save == 2 é sobrescrito pelo clean save v2 (Decisão 4)
+        self.assertFalse(gerente.is_desbloqueada("fps_cap"))
 
     def test_registro_partida_derrota_e_recordes(self):
         """Testa o registro de uma partida regular com atualização de recordes de pontuação e tempo."""

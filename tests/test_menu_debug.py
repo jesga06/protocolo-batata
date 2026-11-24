@@ -78,7 +78,7 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
     def test_rebalance_constants_values(self):
         """Verifica se as constantes de combate e munição foram atualizadas corretamente."""
         self.assertEqual(MELEE_ALCANCE, 109.0)
-        self.assertEqual(MELEE_ARCO_GRAUS, 90.0)
+        self.assertEqual(MELEE_ARCO_GRAUS, 120.0)
         self.assertEqual(MINIGUN_MUNICIAO_MAX, 300)
         self.assertEqual(SHOTGUN_MUNICIAO_MAX, 60)
         self.assertEqual(RIFLE_MUNICIAO_MAX, 120)
@@ -163,7 +163,7 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         # 8. Ação Desbloquear Todas Configurações
         self.debug_menu.indice_foco = 11
         self.debug_menu._executar_acao_selecionada()
-        self.assertEqual(len(self.cena.config_sistema.desbloqueadas), 23)
+        self.assertEqual(len(self.cena.config_sistema.desbloqueadas), 27)
 
     def test_debug_menu_spawn_drops_and_enemies(self):
         """Testa geração de drops e inimigos nas coordenadas do mundo com centro alinhado."""
@@ -223,8 +223,8 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         self.assertLessEqual(inimigo_vizinho.hp, 0)
         self.assertFalse(inimigo_vizinho.vivo)
 
-        # Alvo distante fora do raio de 80px não sofreu dano -> 40 HP
-        self.assertEqual(inimigo_distante.hp, 40)
+        # Alvo distante fora do raio de 80px não sofreu dano -> 18 HP (v2.0 SSOT)
+        self.assertEqual(inimigo_distante.hp, 18)
         self.assertIn(inimigo_direto, afetados)
         self.assertIn(inimigo_vizinho, afetados)
         self.assertNotIn(inimigo_distante, afetados)
@@ -233,7 +233,7 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         """Testa que o ataque Melee atinge alvos no novo alcance de 109px e arco de 120º."""
         melee = Melee()
         self.assertEqual(melee.alcance, 109.0)
-        self.assertEqual(melee.arco_graus, 90.0)
+        self.assertEqual(melee.arco_graus, 120.0)
 
         # Inimigo com centro em (494, 300) a 94px do jogador (dentro de 109px, mas além do alcance antigo de 84px)
         inimigo_alcance_novo = InimigoPadrao(x=480.0, y=286.0)
@@ -246,7 +246,8 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
             angulo_mira=0.0
         )
         self.assertIn(inimigo_alcance_novo, afetados)
-        self.assertEqual(inimigo_alcance_novo.hp, 30)  # 40 - 10 = 30 HP
+        self.assertFalse(inimigo_alcance_novo.vivo)
+        self.assertLessEqual(inimigo_alcance_novo.hp, 0)  # 18 - 20 = -2 HP
 
     def test_sistema_xp_methods_and_aliases(self):
         """Valida que adicionar_xp, ganhar_xp e xp_necessario funcionam de forma idêntica."""

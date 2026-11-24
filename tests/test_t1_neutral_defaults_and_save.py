@@ -47,7 +47,7 @@ class TestNeutralDefaultStateAndSave(unittest.TestCase):
 
     def test_all_20_gameplay_configs_have_empty_neutral_modifiers(self):
         """Verifica que cada uma das 23 configs possui modificadores vazios ({}) no valor padrão."""
-        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 23, "Devem existir exatamente 23 configurações de gameplay.")
+        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 28, "Devem existir exatamente 28 configurações de gameplay.")
 
         for cid, cdef in CONFIGURACOES_GAMEPLAY.items():
             val_padrao = str(cdef.valor_padrao)

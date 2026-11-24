@@ -80,11 +80,12 @@ class TestGameplayConfigsCatalog(unittest.TestCase):
         self.assertAlmostEqual(mods.drop_chance_bonus, 0.25)
 
     def test_config_04_vsync(self):
-        """Config 4: vsync desligado concede +10% de velocidade com oscilação."""
+        """Config 4: vsync desligado ativa tear refraction e cadência contra-varredura 1.15x (v2.0)."""
         self.mgr.desbloquear_config("vsync")
         self.mgr.definir_valor("vsync", "desligado")
         mods = self.mgr.obter_modificadores()
-        self.assertAlmostEqual(mods.vel_jogador_mult, 1.10)
+        self.assertTrue(mods.vsync_tear_refraction)
+        self.assertAlmostEqual(mods.vsync_cadencia_contra_varredura, 1.15)
 
     def test_config_05_screen_shake(self):
         """Config 5: screen_shake ligado multiplica dano das armas explosivas por 1.20."""
@@ -124,11 +125,12 @@ class TestGameplayConfigsCatalog(unittest.TestCase):
         self.assertTrue(sp.textos_dano[0].critico)
 
     def test_config_09_zoom_hitbox(self):
-        """Config 9: zoom 75% aumenta as hitboxes de projéteis em +50%."""
+        """Config 9: zoom 75% ativa balística longa e multiplicador queima-roupa 0.85x (v2.0)."""
         self.mgr.desbloquear_config("zoom")
         self.mgr.definir_valor("zoom", "75%")
         mods = self.mgr.obter_modificadores()
-        self.assertAlmostEqual(mods.hitbox_projeteis_mult, 1.50)
+        self.assertTrue(mods.zoom_balistica_longa)
+        self.assertAlmostEqual(mods.zoom_queima_roupa_mult, 0.85)
 
     def test_config_10_movimento_mouse_autopilot(self):
         """Config 10: movimento_mouse ligado move o jogador em direção ao cursor e dá +40% de drop rate."""
@@ -195,34 +197,35 @@ class TestGameplayConfigsCatalog(unittest.TestCase):
         self.assertEqual(mods.drops_valor_mult, 2.0)
 
     def test_config_16_velocidade_inimigos(self):
-        """Config 16: velocidade_inimigos +25% aumenta vel_inimigos_mult para 1.25 e dá +20% de XP."""
+        """Config 16: velocidade_inimigos +25% aumenta vel_inimigos_mult para 1.25, +15% XP e inércia cinética 1 (v2.0)."""
         self.mgr.desbloquear_config("velocidade_inimigos")
         self.mgr.definir_valor("velocidade_inimigos", "+25%")
         mods = self.mgr.obter_modificadores()
         self.assertAlmostEqual(mods.vel_inimigos_mult, 1.25)
-        self.assertAlmostEqual(mods.xp_ganho_mult, 1.20)
+        self.assertAlmostEqual(mods.xp_ganho_mult, 1.15)
+        self.assertEqual(mods.inercia_cinetica_nivel, 1)
 
     def test_config_17_vida_inimigos(self):
-        """Config 17: vida_inimigos +50% aumenta hp_inimigos_mult para 1.50 e dá +20% chance de drop."""
+        """Config 17: vida_inimigos +50% aumenta hp_inimigos_mult para 1.50 e ativa pinhata_hardware_nivel 1 (v2.0)."""
         self.mgr.desbloquear_config("vida_inimigos")
         self.mgr.definir_valor("vida_inimigos", "+50%")
         mods = self.mgr.obter_modificadores()
         self.assertAlmostEqual(mods.hp_inimigos_mult, 1.50)
-        self.assertAlmostEqual(mods.drop_chance_bonus, 0.20)
+        self.assertEqual(mods.pinhata_hardware_nivel, 1)
 
     def test_config_18_iluminacao_fog_damage_reduction(self):
-        """Config 18: iluminacao ligada reduz dano de inimigos fora do campo de visão (>195px) em 50%."""
+        """Config 18: iluminacao ligada ativa clarao_fotossensivel (v2.0)."""
         self.mgr.desbloquear_config("iluminacao")
         self.mgr.definir_valor("iluminacao", "ligado")
         mods = self.mgr.obter_modificadores()
-        self.assertAlmostEqual(mods.dano_fora_visao_mult, 0.50)
+        self.assertTrue(mods.clarao_fotossensivel)
 
     def test_config_19_cores_invertidas(self):
-        """Config 19: cores_invertidas ligado concede +20% de dano global."""
+        """Config 19: cores_invertidas ligado ativa polaridade_invertida (v2.0)."""
         self.mgr.desbloquear_config("cores_invertidas")
         self.mgr.definir_valor("cores_invertidas", "ligado")
         mods = self.mgr.obter_modificadores()
-        self.assertAlmostEqual(mods.dano_armas_mult, 1.20)
+        self.assertTrue(mods.polaridade_invertida)
 
     def test_config_20_fogo_amigo(self):
         """Config 20: fogo_amigo ligado concede +25% de dano com auto-dano balístico."""

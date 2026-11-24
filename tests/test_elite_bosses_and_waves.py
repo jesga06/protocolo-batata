@@ -31,14 +31,14 @@ class TestEliteBossesAndWaves(unittest.TestCase):
         inim_normal = InimigoPadrao(0, 0)
         inim_elite = InimigoPadrao(0, 0, is_elite=True, nome_elite="MINI-BOSS: ESTAGIÁRIO SÊNIOR")
 
-        self.assertEqual(inim_normal.hp, 40)
-        self.assertEqual(inim_normal.hp_max, 40)
+        self.assertEqual(inim_normal.hp, 18)
+        self.assertEqual(inim_normal.hp_max, 18)
         self.assertEqual(inim_normal.score_valor, 100)
         self.assertEqual(inim_normal.xp_valor, 5)
 
         self.assertTrue(inim_elite.is_elite)
-        self.assertEqual(inim_elite.hp, 1800)
-        self.assertEqual(inim_elite.hp_max, 1800)
+        self.assertEqual(inim_elite.hp, 810)
+        self.assertEqual(inim_elite.hp_max, 810)
         self.assertEqual(inim_elite.score_valor, 1000)
         self.assertEqual(inim_elite.xp_valor, 50)
         self.assertEqual(inim_elite.nome_elite, "MINI-BOSS: ESTAGIÁRIO SÊNIOR")

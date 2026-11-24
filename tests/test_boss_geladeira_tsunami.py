@@ -165,11 +165,11 @@ class TestTier1FeatureCoverage(unittest.TestCase):
     def test_t1_mini_boss_2x_scale_and_hitbox(self):
         """Verifica que todos os mini-bosses possuem 2x largura, 2x altura e hitbox física 2x."""
         arquetipos = [
-            (InimigoRapido, 31, 31, 20),
+            (InimigoRapido, 31, 31, 10),
             (InimigoTank, 62, 62, 120),
             (InimigoPhasing, 42, 42, 35),
             (InimigoBlindado, 47, 47, 50),
-            (InimigoPadrao, 28, 28, 40)
+            (InimigoPadrao, 28, 28, 18)
         ]
         for cls_inimigo, w_base, h_base, hp_base in arquetipos:
             comum = cls_inimigo(x=100, y=100, is_elite=False)
@@ -656,13 +656,13 @@ class TestTier4RealWorldScenarios(unittest.TestCase):
         self.assertFalse(cena.boss_cutscene_ativa)
         self.assertEqual(boss.estado, ESTADO_FASE1)
 
-        # 5. Combate Fase 1 -> Dano até 70% HP (<= 35000 de 50000) -> Fase 2
-        boss.receber_dano(16000)
+        # 5. Combate Fase 1 -> Dano até <=70% HP (<= 47600 de 68000) -> Fase 2
+        boss.receber_dano(21000)
         boss.update(0.1, (cena.jogador.x, cena.jogador.y))
         self.assertEqual(boss.estado, ESTADO_FASE2)
 
-        # 6. Combate Fase 2 -> Dano até 35% HP (<= 17500 de 50000) -> Fase 3
-        boss.receber_dano(18000)
+        # 6. Combate Fase 2 -> Dano até <=35% HP (<= 23800 de 68000) -> Fase 3
+        boss.receber_dano(24000)
         boss.update(0.1, (cena.jogador.x, cena.jogador.y))
         self.assertEqual(boss.estado, ESTADO_FASE3)
 

@@ -102,12 +102,12 @@ class TestInimigoPadraoIAEColisao(unittest.TestCase):
 
     def test_dano_e_morte_do_inimigo(self):
         e = InimigoPadrao(x=100.0, y=100.0)
-        self.assertEqual(e.hp, 40)
-        e.receber_dano(20)
-        self.assertEqual(e.hp, 20)
+        self.assertEqual(e.hp, 18)
+        e.receber_dano(10)
+        self.assertEqual(e.hp, 8)
         self.assertTrue(e.vivo)
-        e.receber_dano(20)
-        self.assertEqual(e.hp, 0)
+        e.receber_dano(10)
+        self.assertLessEqual(e.hp, 0)
         self.assertFalse(e.vivo)
 
     def test_dano_com_knockback_vetorial(self):
@@ -119,8 +119,8 @@ class TestInimigoPadraoIAEColisao(unittest.TestCase):
 class TestSistemaSpawn(unittest.TestCase):
     def test_escalonamento_intervalo_e_lote(self):
         spawner = SistemaSpawn()
-        # t = 0s -> 2.50 * 0.67 = 1.675s, lote = round(2 * 0.70) = 1
-        self.assertAlmostEqual(spawner.intervalo_spawn(0.0), 2.50 * 0.67)
+        # t = 0s -> 2.50s (SPAWN_INTERVALO_INICIAL), lote = round(2 * 0.70) = 1
+        self.assertAlmostEqual(spawner.intervalo_spawn(0.0), 2.50)
         self.assertEqual(spawner.tamanho_lote(0.0), 1)
 
         # t = 50s -> 2.50 - 0.012 * 50 = 1.90s, lote = round(4 * 0.70) = 3
