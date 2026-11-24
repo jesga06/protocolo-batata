@@ -39,3 +39,4 @@ class BastaoChoque(Melee):
         self.slot = 1
         self.icone_asset = "arma_melee"
         self.sprite_key = "arma_bastao_choque"
+        self.parry_alcance_base = 58.0

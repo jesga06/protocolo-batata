@@ -43,6 +43,7 @@ class Melee(ArmaBase):
         self._cooldown_base: float = float(cooldown)
         self.id_arma: str = "chave_manutencao"
         self.parry_duracao: float = 0.12
+        self.parry_alcance_base: float = 64.0
         self.parry_alcance_mult: float = 1.0
         self.parry_janela_restante: float = 0.0
         self.parry_janela_id: int = 0
@@ -55,12 +56,19 @@ class Melee(ArmaBase):
         self.parry_modo_postura_riposte: bool = False
         self.parry_modo_firewall: bool = False
         self.parry_modo_ventoinha: bool = False
+        self.ultimo_parry_bloqueado_nao_parriavel: bool = False
         self.whiff_callback = None
 
     @property
     def parry_alcance(self) -> float:
-        """Alcance efetivo da janela ativa de parry."""
-        return self.alcance * self.parry_alcance_mult
+        """Alcance efetivo da janela ativa de parry (desacoplado do alcance de LMB)."""
+        return self.parry_alcance_base * self.parry_alcance_mult
+
+    def finalizar_acerto_duelo(self) -> None:
+        """Fecha a janela ativa de parry e reduz cooldown para 0.08s apenas em estágios de Duelo."""
+        self.parry_janela_restante = 0.0
+        self.parry_pode_punir_whiff = False
+        self.tempo_recarga_restante = 0.08
 
     @property
     def parry_ativo(self) -> bool:
@@ -249,8 +257,9 @@ class Melee(ArmaBase):
         if self.parry_janela_restante <= 0.0 or not lista_projeteis:
             return []
 
+        self.ultimo_parry_bloqueado_nao_parriavel = False
         ang_base = float(angulo_mira) if angulo_mira is not None else self.parry_angulo
-        alcance_efetivo = self.alcance * self.parry_alcance_mult
+        alcance_efetivo = self.parry_alcance
         meio_arco_rad = math.radians(self.arco_graus / 2.0)
 
         refletidos = []
@@ -271,6 +280,10 @@ class Melee(ArmaBase):
                 no_cone = (delta <= meio_arco_rad + 1e-5)
 
             if not no_cone:
+                continue
+
+            if getattr(p, "nao_parriavel", False):
+                self.ultimo_parry_bloqueado_nao_parriavel = True
                 continue
 
             if angulo_mira is not None:

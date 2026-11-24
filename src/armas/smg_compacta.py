@@ -42,16 +42,23 @@ class SMGCompacta(ArmaBase):
             if desaceleracao is None
             else float(desaceleracao)
         )
-        self.calor_por_tiro = float(getattr(_const, "SMG_CALOR_POR_TIRO", 7.5))
-        self.resfriamento_por_seg = float(getattr(_const, "SMG_RESFRIAMENTO_POR_SEG", 28.0))
-        self.zona_ideal_min = float(getattr(_const, "SMG_ZONA_IDEAL_MIN", 65.0))
-        self.zona_ideal_max = float(getattr(_const, "SMG_ZONA_IDEAL_MAX", 95.0))
+        self.calor_por_tiro = 3.0
+        self.resfriamento_por_seg = 60.0
+        self.zona_ideal_min = 60.0
+        self.zona_ideal_max = 92.0
         self.trava_superaquecimento = float(getattr(_const, "SMG_TRAVA_SUPERAQUECIMENTO", 1.0))
+        self.atraso_resfriamento = 0.06
 
         self.calor_atual: float = 0.0
         self.superaquecida: bool = False
         self.tempo_trava_calor: float = 0.0
         self._tempo_desde_ultimo_tiro: float = 0.0
+
+    def ventilar_calor(self, quantidade: float) -> float:
+        """Reduz o calor atual em quantidade (ex.: -25.0 em Dash/Parry, -0.5 em abate na zona ideal)."""
+        qtd = max(0.0, float(quantidade))
+        self.calor_atual = max(0.0, self.calor_atual - qtd)
+        return self.calor_atual
 
     @property
     def em_zona_ideal(self) -> bool:
@@ -71,21 +78,21 @@ class SMGCompacta(ArmaBase):
             if self.tempo_trava_calor <= 0.0:
                 self.superaquecida = False
                 self.calor_atual = 0.0
-        elif self._tempo_desde_ultimo_tiro > 0.18 and self.calor_atual > 0.0:
+        elif self._tempo_desde_ultimo_tiro > self.atraso_resfriamento and self.calor_atual > 0.0:
             self.calor_atual = max(0.0, self.calor_atual - self.resfriamento_por_seg * dt_val)
 
     def disparar(self, origem_x: float, origem_y: float, destino_x: float, destino_y: float) -> list[Projetil]:
         if not self.pode_atirar():
             return []
 
-        self.tempo_recarga_restante = self.cooldown
+        na_zona_ideal = self.em_zona_ideal
+        self.tempo_recarga_restante = self.cooldown * (0.80 if na_zona_ideal else 1.0)
         self._tempo_desde_ultimo_tiro = 0.0
 
         dir_x, dir_y = vetor_direcao(origem_x, origem_y, destino_x, destino_y)
         if dir_x == 0.0 and dir_y == 0.0:
             dir_x = 1.0
 
-        na_zona_ideal = self.em_zona_ideal
         if na_zona_ideal:
             dano_proj = max(1, int(round(self.dano * 1.45)))
             vel_proj = self.velocidade_projetil * 1.20
