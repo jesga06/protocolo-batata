@@ -189,8 +189,8 @@ class TestSlot3LifecycleAndAmmoDepletion(unittest.TestCase):
         self.sistema_drops.coletar_jogador(self.jogador, mult_valor_drop=2.0)
         arma = self.jogador.arma_especial
         self.assertIsNotNone(arma)
-        # Se for minigun: 150 * 2 = 300; se shotgun: 30 * 2 = 60, etc.
-        self.assertGreaterEqual(arma.municao_atual, 24)
+        # Se for minigun: 300 * 2 = 600; se railgun: 10 * 2 = 20, etc.
+        self.assertGreaterEqual(arma.municao_atual, 20)
         self.assertEqual(arma.municao_atual, arma.municao_max)
 
     def test_esgotamento_de_municao_auto_swap_para_slot_2(self):

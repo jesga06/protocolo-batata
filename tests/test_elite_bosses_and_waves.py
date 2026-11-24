@@ -82,7 +82,7 @@ class TestEliteBossesAndWaves(unittest.TestCase):
         self.assertIn("FONTE GENÉRICA 500W", elites_m2[0].nome_elite)
 
     def test_drops_garantidos_elite(self):
-        """Valida que a morte de um elite gera +50 XP (5 gemas de 10 XP), 1 caixa de arma e 1 de equipamento."""
+        """Valida que a morte de um elite gera +75 XP (5 gemas de 15 XP), 1 caixa de arma e 1 de equipamento."""
         sistema_drops = SistemaDrops()
         drops_gerados = sistema_drops.gerar_drop_morte_inimigo(
             x=200.0,
@@ -96,7 +96,7 @@ class TestEliteBossesAndWaves(unittest.TestCase):
 
         self.assertEqual(len(xp_drops), 5)
         total_xp = sum(d.valor for d in xp_drops)
-        self.assertEqual(total_xp, 50)
+        self.assertEqual(total_xp, 75)
 
         self.assertEqual(len(arma_drops), 1)
         self.assertEqual(len(equip_drops), 1)
