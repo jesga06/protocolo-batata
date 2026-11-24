@@ -14,14 +14,17 @@ _C_TEXT_PRIMARY = (241, 245, 249)
 _C_TEXT_MUTED = (100, 116, 139)
 
 DICAS_JOGO: tuple[str, ...] = (
-    "Use o botão direito (ou Chave [1]) para dar Parry e rebater projéteis com 3x de dano.",
-    "Acumule 50 Parries com a Chave de Manutenção para desbloquear uma habilidade permanente.",
-    "Na Pistola [2], todo 4º disparo sai sobrecarregado (2.2x de dano e perfurante).",
+    "Botão Esquerdo (LMB) ataca com a arma equipada; Botão Direito (RMB) executa Parry Rápido a qualquer momento.",
+    "Acumule 15 Parries bem-sucedidos para desbloquear o Dash e a SMG Compacta!",
+    "Projéteis Vermelhos são comuns; Shurikens Roxas exigem Parry (ignoram Dash); Setas Amarelas exigem Dash (ignoram Parry).",
+    "Atravessar ataques com os i-frames do Dash ativa Just-Dodge, mantém seu Combo e acelera a recarga.",
+    "Na Pistola [2], todo 4º disparo sai sobrecarregado (2.2x de dano e perfurante). Na SMG Compacta, mire na zona ideal de calor (60%-92%).",
+    "Acompanhe o ritmo Música-Onda: ANTICIPATION (início), HOLD (respiro) e ASSAULT (ataque intenso).",
+    "Fixe até 3 Conquistas na HUD e equipe até 3 Chips de Firmware no Menu Principal antes da partida.",
+    "São 28 Configurações de Gameplay combinando Benefícios e Sacrifícios; ative várias para desafios extras.",
     "Mini-Bosses surgem a cada minuto (1:00 a 4:00): derrote-os em menos de 60s para ganhar Overclock.",
     "Se um Mini-Boss superaquecer após 60s, ele explode sem deixar recompensas.",
     "Drops no chão por 10s podem ser roubados pelo Scavenger — colete itens valiosos rápido.",
-    "Configurações desbloqueadas nos níveis 5 e 11 começam neutras; ajuste-as no Menu de Configs.",
-    "Cada Configuração de Gameplay combina um Benefício e um Sacrifício mecânico.",
     "Pressione [F] durante a partida para alternar o disparo automático (Auto-Fire).",
     "Níveis normais não pausam o jogo: curam +10 HP, empurram inimigos e soltam 2 Cápsulas.",
     "Trituradores Blindados reduzem 30% do dano frontal — ataque pelos flancos ou costas.",
