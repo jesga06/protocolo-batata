@@ -11,7 +11,10 @@ from src.entidades.projetil import Projetil
 from src.armas.pistola import Pistola
 from src.armas.melee import Melee
 from src.armas.railgun import Railgun
-from src.armas import Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas
+from src.armas import (
+    Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas,
+    BastaoChoque, SMGCompacta, RifleArco, LancaChamas,
+)
 from src.equipamentos import DroneCura, DroneCombate, DroneSuporte
 from src.sistemas.sistema_spawn import SistemaSpawn
 from src.sistemas.sistema_drops import SistemaDrops
@@ -19,6 +22,8 @@ from src.sistemas.sistema_scavenger import SistemaScavenger
 from src.sistemas.sistema_particulas import SistemaParticulas
 from src.sistemas.sistema_audio import GerenciadorAudio, AnalisadorFFTBoss
 from src.sistemas.config_sistema import GerenciadorConfiguracoes
+from src.sistemas.sistema_combo import SistemaCombo
+from src.sistemas.efeitos_combate import GerenciadorEfeitosCombate, ContextoCombate
 from src.ui.hud import HUD
 from src.ui.banner_dicas import BannerDica
 from src.ui.modal_level_up import ModalLevelUp
@@ -30,6 +35,7 @@ from PPlay.scenemanager import SceneManager
 from src.utils.constantes import (
     LARGURA_TELA, ALTURA_TELA, LARGURA_ARENA, ALTURA_ARENA,
     CAMERA_DAMPING_K, DT_CLAMP_MAX, DASH_COOLDOWN, DASH_PARRY_META, MELEE_ARCO_GRAUS,
+    SPAWN_MAX_ATIVOS, MINIBOSS_CICLOS_RUN,
     BRANCO, PRETO, CINZA_FUNDO, CINZA_PAINEL, CINZA_BORDA,
     VERMELHO_HP, VERMELHO_DANO, VERDE_CURA, AMARELO_XP, AZUL_CIANO, DOURADO, LARANJA_ALERTA,
     ROXO_ACENTO, ROXO_CLARO, ROXO_ESCURO,
@@ -67,10 +73,34 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         # Sistema de Configurações e Modificadores
         self.gerenciador_config = GerenciadorConfiguracoes()
         self.gerenciador_config.carregar_arquivo(SAVE_FILE_PATH)
-        self.jogador.dash_desbloqueado = bool(self.gerenciador_config.estatisticas.get("dash_desbloqueado", False))
+        self.sistema_conquistas = getattr(self.gerenciador_config, "sistema_conquistas", None)
+        dash_conq = (
+            self.sistema_conquistas.possui_recompensa("habilidade", "dash")
+            if self.sistema_conquistas is not None
+            else False
+        )
+        self.jogador.dash_desbloqueado = bool(
+            self.gerenciador_config.estatisticas.get("dash_desbloqueado", False) or dash_conq
+        )
+        loadout = getattr(self.gerenciador_config, "loadout", {}) or {}
+        if hasattr(self.jogador, "aplicar_loadout"):
+            self.jogador.aplicar_loadout(
+                slot1_id=str(loadout.get("slot1", "chave_manutencao")),
+                slot2_id=str(loadout.get("slot2", "pistola")),
+            )
         self.modal_level_up = ModalLevelUp(self.gerenciador_config, self.jogador, cena=self)
         self.modal_overclock = ModalOverclock(self.jogador, cena=self)
         self.menu_configs = MenuConfigs(self.gerenciador_config, em_jogo=True, cena=self)
+        try:
+            from src.ui.menu_conquistas import MenuConquistas
+            self.menu_conquistas = MenuConquistas(
+                self.gerenciador_config,
+                self.sistema_conquistas,
+                em_jogo=True,
+                cena=self,
+            )
+        except ImportError:
+            self.menu_conquistas = None
 
         # Registra callback de level-up no SistemaXP do jogador
         self.jogador.sistema_xp.registrar_callback_level_up(self._ao_subir_nivel)
@@ -88,12 +118,16 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
 
         # Sistemas de combate, spawn, drops, partículas e progressão
         self.config_sistema = self.gerenciador_config
-        self.spawner = SistemaSpawn(max_ativos=400)
+        self.spawner = SistemaSpawn(max_ativos=SPAWN_MAX_ATIVOS)
         self.sistema_drops = SistemaDrops()
         self.sistema_scavenger = SistemaScavenger()
         self.sistema_particulas = SistemaParticulas()
         self.sistema_audio = GerenciadorAudio()
         self.analisador_fft_boss = AnalisadorFFTBoss()
+        self.sistema_combo = SistemaCombo()
+        self.efeitos_combate = GerenciadorEfeitosCombate()
+        self.hologramas: list = []
+        self.pulso_assault_intro_timer: float = 0.0
         self.hud = HUD()
 
         from src.ui.menu_debug import MenuDebug
@@ -357,7 +391,13 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                     inim.y += dy_p * 32.0
                     self._clamp_entidade_arena(inim)
 
-        tem_bloqueadas = bool(self.gerenciador_config.obter_bloqueadas()) if hasattr(self, "gerenciador_config") and self.gerenciador_config else False
+        if hasattr(self, "gerenciador_config") and self.gerenciador_config:
+            if hasattr(self.gerenciador_config, "obter_configs_bloqueadas_level_up"):
+                tem_bloqueadas = bool(self.gerenciador_config.obter_configs_bloqueadas_level_up())
+            else:
+                tem_bloqueadas = bool(self.gerenciador_config.obter_bloqueadas())
+        else:
+            tem_bloqueadas = False
         eh_marco = tem_bloqueadas and (
             (hasattr(self.jogador.sistema_xp, "eh_nivel_marco_config") and self.jogador.sistema_xp.eh_nivel_marco_config(novo_nivel))
             or (hasattr(self, "modal_level_up") and self.modal_level_up is not None and self.modal_level_up.config_pity_buffer is not None)
@@ -401,30 +441,59 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         parry_prec = getattr(mods, "parry_precisao", "padrao")
         parry_ef = getattr(mods, "parry_efeito", "padrao")
         self.jogador.exposed_mult = 1.45 if parry_ef == "pulso_emp" else 1.25
+        self.jogador.dash_protocolo = str(getattr(mods, "dash_protocolo", "padrao"))
+        self.jogador.dash_rastro = str(getattr(mods, "dash_rastro", "padrao"))
+        if self.jogador.dash_protocolo == "propulsor_instavel":
+            self.jogador.dash_cargas_max = 2
+            self.jogador.dash_sem_iframes = True
+            self.jogador.dash_recarga_mult = 0.70
+        else:
+            self.jogador.dash_cargas_max = 1
+            self.jogador.dash_sem_iframes = False
+            self.jogador.dash_recarga_mult = 1.0
+        self.jogador.dash_cargas_atuais = min(
+            getattr(self.jogador, "dash_cargas_atuais", 1),
+            self.jogador.dash_cargas_max,
+        )
+
         arma_melee = self._obter_arma_melee()
         if arma_melee is not None:
             arma_melee.whiff_callback = self._ao_errar_parry
+            arma_melee.postura_riposte = (parry_prec == "postura_riposte")
+            arma_melee.parry_efeito = parry_ef
+            arco_base = float(getattr(arma_melee, "_arco_graus_base", MELEE_ARCO_GRAUS))
+            cd_base = float(getattr(arma_melee, "_cooldown_base", 0.6))
             if parry_prec == "cirurgico":
                 arma_melee.arco_graus = 65.0
                 arma_melee.parry_duracao = 0.09
                 arma_melee.parry_alcance_mult = 0.85
                 arma_melee.parry_dano_mult = 1.75
                 arma_melee.parry_splash_raio = 140.0
-                arma_melee.cooldown = 0.6
+                arma_melee.cooldown = cd_base
             elif parry_prec == "amplificado":
                 arma_melee.arco_graus = 135.0
                 arma_melee.parry_duracao = 0.17
                 arma_melee.parry_alcance_mult = 1.25
                 arma_melee.parry_dano_mult = 0.70
                 arma_melee.parry_splash_raio = 90.0
-                arma_melee.cooldown = 0.85
+                arma_melee.cooldown = round(cd_base + 0.25, 4)
             else:
-                arma_melee.arco_graus = float(MELEE_ARCO_GRAUS)
+                arma_melee.arco_graus = arco_base
                 arma_melee.parry_duracao = 0.12
                 arma_melee.parry_alcance_mult = 1.0
                 arma_melee.parry_dano_mult = 1.0
                 arma_melee.parry_splash_raio = 90.0
-                arma_melee.cooldown = 0.6
+                arma_melee.cooldown = cd_base
+
+        firmwares = (
+            list(getattr(self.sistema_conquistas, "modificadores_equipados", []))
+            if getattr(self, "sistema_conquistas", None) is not None
+            else []
+        )
+        if hasattr(self, "efeitos_combate") and self.efeitos_combate is not None:
+            self.efeitos_combate.reconstruir(mods, firmwares)
+        if hasattr(self, "sistema_combo") and self.sistema_combo is not None:
+            self.sistema_combo.definir_modo_estilo("medidor_estilo" in firmwares)
 
         for arma in self.jogador.armas:
             if not hasattr(arma, "_dano_original"):
@@ -479,6 +548,14 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
     def _obter_sfx_arma(arma) -> str | None:
         if arma is None:
             return None
+        if isinstance(arma, BastaoChoque):
+            return "sfx_ataque_melee"
+        if isinstance(arma, SMGCompacta):
+            return "sfx_tiro_minigun"
+        if isinstance(arma, RifleArco):
+            return "sfx_tiro_railgun"
+        if isinstance(arma, LancaChamas):
+            return "sfx_tiro_foguete"
         if isinstance(arma, Pistola):
             return "sfx_tiro_pistola"
         if isinstance(arma, Minigun):
@@ -589,22 +666,39 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         if hasattr(self, "sistema_audio") and self.sistema_audio is not None:
             self.sistema_audio.atualizar(dt)
 
-        # Atualiza a máquina de estados da música dinâmica (inclusive pausado / modais / game over)
+        # Atualiza a máquina de estados da música dinâmica (inclusive pausado / modais / game over / hitstop)
         if hasattr(self, "sistema_musica") and self.sistema_musica is not None:
+            menu_conq_ativo = bool(
+                getattr(self, "menu_conquistas", None) is not None
+                and getattr(self.menu_conquistas, "ativo", False)
+            )
             musica_abafada = bool(
                 self.pausado
                 or self.game_over
                 or self.menu_configs.ativo
+                or menu_conq_ativo
                 or self.modal_level_up.ativo
                 or getattr(self.modal_level_up, "tempo_transicao_saida", 0.0) > 0.0
                 or self.modal_overclock.ativo
                 or getattr(self.modal_overclock, "tempo_transicao_saida", 0.0) > 0.0
                 or (hasattr(self, "menu_debug") and self.menu_debug.ativo)
             )
+            possui_elite_agora = any(
+                getattr(e, "is_elite", False) and getattr(e, "vivo", True)
+                for e in getattr(self, "inimigos", [])
+            )
+            pausar_transicao = bool(
+                musica_abafada
+                or self.vitoria
+                or getattr(self, "boss_cutscene_ativa", False)
+                or getattr(self, "boss_grace_period_ativo", False)
+            )
             self.sistema_musica.atualizar(
                 tempo_sobrevivencia=self.tempo_sobrevivencia,
                 abafado=musica_abafada,
                 dt=dt,
+                trava_assault=possui_elite_agora,
+                pausar_transicao=pausar_transicao,
             )
 
         # Atualiza cooldown de reabertura do menu para evitar input bleed (C / ESC)
@@ -619,7 +713,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                 self.pausado = True
                 self.buffer_tiro = 0.0
                 return
-            elif debug_estava_ativo and not self.modal_level_up.ativo and not self.modal_overclock.ativo and not self.menu_configs.ativo and not self.game_over and not self.vitoria:
+            elif debug_estava_ativo and not self.modal_level_up.ativo and not self.modal_overclock.ativo and not self.menu_configs.ativo and not (getattr(self, "menu_conquistas", None) is not None and getattr(self.menu_conquistas, "ativo", False)) and not self.game_over and not self.vitoria:
                 self.pausado = False
 
         # Sincroniza estado de Modo Deus e Munição Infinita
@@ -637,7 +731,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         if self.modal_overclock.ativo or self.modal_overclock.tempo_transicao_saida > 0.0:
             self.modal_overclock.update(dt, self.teclado, self.mouse)
             self.buffer_tiro = 0.0
-            if not self.modal_overclock.ativo and not self.modal_level_up.ativo and not self.menu_configs.ativo and not (hasattr(self, "menu_debug") and self.menu_debug.ativo):
+            if not self.modal_overclock.ativo and not self.modal_level_up.ativo and not self.menu_configs.ativo and not (getattr(self, "menu_conquistas", None) is not None and getattr(self.menu_conquistas, "ativo", False)) and not (hasattr(self, "menu_debug") and self.menu_debug.ativo):
                 self.pausado = False
             return
 
@@ -645,7 +739,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         if self.modal_level_up.ativo or getattr(self.modal_level_up, "tempo_transicao_saida", 0.0) > 0.0:
             self.modal_level_up.update(dt, self.teclado, self.mouse)
             self.buffer_tiro = 0.0
-            if not self.modal_level_up.ativo and getattr(self.modal_level_up, "tempo_transicao_saida", 0.0) <= 0.0 and not self.modal_overclock.ativo and not self.menu_configs.ativo and not (hasattr(self, "menu_debug") and self.menu_debug.ativo):
+            if not self.modal_level_up.ativo and getattr(self.modal_level_up, "tempo_transicao_saida", 0.0) <= 0.0 and not self.modal_overclock.ativo and not self.menu_configs.ativo and not (getattr(self, "menu_conquistas", None) is not None and getattr(self.menu_conquistas, "ativo", False)) and not (hasattr(self, "menu_debug") and self.menu_debug.ativo):
                 self.pausado = False
             return
 
@@ -655,8 +749,17 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
             self.buffer_tiro = 0.0
             if not self.menu_configs.ativo:
                 self._cooldown_menu_toggle = 0.18
-                if not self.modal_level_up.ativo and not self.modal_overclock.ativo and not (hasattr(self, "menu_debug") and self.menu_debug.ativo):
+                if not self.modal_level_up.ativo and not self.modal_overclock.ativo and not (getattr(self, "menu_conquistas", None) is not None and getattr(self.menu_conquistas, "ativo", False)) and not (hasattr(self, "menu_debug") and self.menu_debug.ativo):
                     self.pausado = False
+            return
+
+        # 3b. Se o Menu de Conquistas (somente leitura na pausa) estiver ativo, processa seus inputs
+        if getattr(self, "menu_conquistas", None) is not None and getattr(self.menu_conquistas, "ativo", False):
+            self.menu_conquistas.update(dt, self.teclado, self.mouse)
+            self.buffer_tiro = 0.0
+            if not self.menu_conquistas.ativo:
+                self._cooldown_menu_toggle = 0.18
+                self.pausado = True
             return
 
         # 4. Tecla 'C' ou clique no botão de engrenagem (LARGURA_TELA - 48, 16, 32x32 ou 752..784 legado) antes de qualquer inversão de mouse
@@ -725,6 +828,13 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                     btn_cont_rect, btn_menu_rect = self._obter_rects_overlay_pausa()
                     if btn_cont_rect.collidepoint(mx_p, my_p):
                         self.pausado = False
+                        return
+                    if (
+                        hasattr(self, "_obter_rect_btn_conquistas_pausa")
+                        and getattr(self, "menu_conquistas", None) is not None
+                        and self._obter_rect_btn_conquistas_pausa().collidepoint(mx_p, my_p)
+                    ):
+                        self.menu_conquistas.abrir()
                         return
                     if btn_menu_rect.collidepoint(mx_p, my_p):
                         self._voltar_menu()
@@ -956,6 +1066,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                     d_sup.zonas_estase_pendentes.clear()
             if tiros_drone:
                 for p_dr in tiros_drone:
+                    p_dr.origem_drone = True
                     if hitbox_mult != 1.0:
                         p_dr.largura = max(2, int(round(p_dr.largura * hitbox_mult)))
                         p_dr.altura = max(2, int(round(p_dr.altura * hitbox_mult)))
@@ -968,6 +1079,8 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
             arma_atual = self.jogador.obter_arma_ativa() if self.jogador.vivo else None
             slot_mudou = (hasattr(self, "_ultimo_slot_ativo") and self._ultimo_slot_ativo != slot_atual)
             arma_mudou = (hasattr(self, "_arma_ativa_anterior") and self._arma_ativa_anterior is not None and self._arma_ativa_anterior is not arma_atual)
+            if slot_mudou and hasattr(self, "sistema_combo") and self.sistema_combo is not None and slot_atual is not None:
+                self.sistema_combo.registrar_troca_slot(int(slot_atual))
             if slot_mudou or arma_mudou:
                 for arma_cancel in (
                     getattr(self.jogador, "arma_primaria", None),
@@ -997,10 +1110,52 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                 mult_dano_buff,
             )
 
-        # Atualiza o tempo de vida dos efeitos visuais de Melee
+        # Atualiza o tempo de vida dos efeitos visuais de Melee e pulso de ASSAULT_INTRO
+        if getattr(self, "pulso_assault_intro_timer", 0.0) > 0.0:
+            self.pulso_assault_intro_timer = max(0.0, self.pulso_assault_intro_timer - dt)
         for ef in self.efeitos_melee:
             ef["tempo"] -= dt
         self.efeitos_melee = [ef for ef in self.efeitos_melee if ef["tempo"] > 0]
+
+        # Atualiza SistemaCombo, Hologramas e hooks B+ por tick
+        if hasattr(self, "sistema_combo") and self.sistema_combo is not None:
+            estado_combo = self.sistema_combo.update(dt)
+            combo_qtd = int(estado_combo.get("contagem", getattr(self.sistema_combo, "contagem", 0)))
+            if getattr(self, "sistema_conquistas", None) is not None and combo_qtd > 0:
+                notifs_combo = self.sistema_conquistas.registrar_evento(
+                    "combo_atualizado",
+                    combo_qtd,
+                    contexto={
+                        "combo": combo_qtd,
+                        "duracao_s": float(estado_combo.get("duracao_s", 0.0)),
+                        "rank": estado_combo.get("rank", getattr(self.sistema_combo, "rank", "")),
+                    },
+                )
+                if notifs_combo and hasattr(self, "gerenciador_config") and self.gerenciador_config is not None:
+                    self.gerenciador_config.sincronizar_recompensas_conquistas()
+                    self.gerenciador_config.salvar_arquivo()
+
+        if hasattr(self, "hologramas") and self.hologramas:
+            for holo in self.hologramas:
+                if hasattr(holo, "update"):
+                    holo.update(dt, inimigos=self.inimigos, projeteis=self.projeteis)
+            self.hologramas = [h for h in self.hologramas if getattr(h, "ativo", True)]
+
+        if hasattr(self, "efeitos_combate") and self.efeitos_combate is not None:
+            ctx_tick = ContextoCombate(
+                cena=self,
+                jogador=self.jogador,
+                inimigos=self.inimigos,
+                projeteis=self.projeteis,
+                drops=self.sistema_drops.drops,
+                particulas=getattr(self, "sistema_particulas", None),
+                mods=mods,
+                sistema_combo=getattr(self, "sistema_combo", None),
+                sistema_conquistas=getattr(self, "sistema_conquistas", None),
+                hologramas=getattr(self, "hologramas", None),
+                tempo_sobrevivencia=self.tempo_sobrevivencia,
+            )
+            self.efeitos_combate.disparar_ao_tick(ctx_tick, dt)
 
         # =========================================================================
         # 3. SPAWNER DE INIMIGOS
@@ -1035,16 +1190,46 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                                 mob_boss.rajada_tripla = True
                         else:
                             mob_boss = InimigoPadrao(x=ex, y=ey)
-                        mob_boss.hp_max = max(1, int(round(mob_boss.hp_max * hp_inim_mult)))
+                        escala_hp_tempo = self.spawner.calcular_escala_hp_tempo(self.tempo_sobrevivencia)
+                        mob_boss.hp_max = max(1, int(round(mob_boss.hp_max * hp_inim_mult * escala_hp_tempo)))
                         mob_boss.hp = mob_boss.hp_max
                         mob_boss.velocidade = float(mob_boss.velocidade) * vel_inim_mult
                         self.inimigos.append(mob_boss)
             else:
+                gatilho_intro = (
+                    self.sistema_musica.consumir_evento_assault_intro()
+                    if hasattr(self, "sistema_musica") and self.sistema_musica is not None
+                    else False
+                )
+                if gatilho_intro:
+                    self.pulso_assault_intro_timer = 1.6
+                fase_onda = (
+                    getattr(self.sistema_musica, "fase_onda_atual", "ANTICIPATION")
+                    if hasattr(self, "sistema_musica") and self.sistema_musica is not None
+                    else None
+                )
+                contagens_taticas = {"ranged": 0, "impressora": 0, "tank": 0, "ninja": 0}
+                total_vivos = 0
+                for e in self.inimigos:
+                    if not getattr(e, "vivo", True):
+                        continue
+                    total_vivos += 1
+                    nome_cls = type(e).__name__
+                    if nome_cls == "InimigoRanged":
+                        contagens_taticas["ranged"] += 1
+                    elif nome_cls == "InimigoImpressoraTermica":
+                        contagens_taticas["impressora"] += 1
+                    elif nome_cls == "InimigoTank":
+                        contagens_taticas["tank"] += 1
+                    elif getattr(e, "is_ninja", False):
+                        contagens_taticas["ninja"] += 1
+
+                forcar_rajada = bool(getattr(mods, "inimigos_ranged_bullet_hell", False) or fogo_cruzado_ranged)
                 novos_inimigos = self.spawner.update(
                     dt=dt,
                     camera_x=self.camera.x,
                     camera_y=self.camera.y,
-                    total_inimigos_vivos=len([e for e in self.inimigos if e.vivo]),
+                    total_inimigos_vivos=total_vivos,
                     view_w=LARGURA_TELA,
                     view_h=ALTURA_TELA,
                     arena_w=self.largura_arena,
@@ -1053,7 +1238,11 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                     vel_mult=vel_inim_mult,
                     permitir_ranged=permitir_ranged,
                     possui_elite_vivo=possui_elite,
-                    ninjas_vivos=len([e for e in self.inimigos if getattr(e, "vivo", True) and getattr(e, "is_ninja", False)])
+                    ninjas_vivos=contagens_taticas["ninja"],
+                    fase_onda=fase_onda,
+                    gatilho_assault_intro=gatilho_intro,
+                    contagens_taticas=contagens_taticas,
+                    forcar_rajada_tripla=forcar_rajada,
                 )
                 if fogo_cruzado_ranged:
                     for ni in novos_inimigos:
@@ -1061,12 +1250,17 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                             ni.rajada_tripla = True
                 self.inimigos.extend(novos_inimigos)
 
-                # Gatilho Nível 12 após 4:30 (270s) OU "Jogar aos Lobos" (tempo_elite >= 300s)
+                # Gatilho Nível 12 após 4:30 (270s) OU 3º Ciclo Musical (Opção A) / fallback tempo_elite >= 300s
                 nivel_max = getattr(getattr(self.jogador, "sistema_xp", None), "nivel_max", 12)
+                ciclos_concluidos = (
+                    getattr(self.sistema_musica, "ciclos_assault_concluidos", 0)
+                    if hasattr(self, "sistema_musica") and self.sistema_musica is not None
+                    else 0
+                )
                 if self.chefe_final is None and not self.boss_cutscene_ativa and not self.boss_grace_period_ativo:
                     if getattr(self.jogador, "nivel", 1) >= nivel_max and getattr(self, "tempo_sobrevivencia", 0.0) >= 270.0:
                         self.iniciar_boss_grace_period()
-                    elif not possui_elite and getattr(self.spawner, "tempo_elite", 0.0) >= 300.0:
+                    elif not possui_elite and (ciclos_concluidos >= MINIBOSS_CICLOS_RUN or getattr(self.spawner, "tempo_elite", 0.0) >= 300.0):
                         self.iniciar_boss_grace_period()
 
         # =========================================================================
@@ -1176,6 +1370,10 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
             # Checa dano de contato com reduções da configuração (Iluminação fora de visão)
             if not ram_imune_contato and inimigo.vivo and colisao_aabb(inimigo.x, inimigo.y, inimigo.largura, inimigo.altura,
                             self.jogador.x, self.jogador.y, self.jogador.largura, self.jogador.altura):
+                if getattr(self.jogador, "em_dash_iframes", False):
+                    if hasattr(self, "_tentar_registrar_just_dodge"):
+                        self._tentar_registrar_just_dodge(origem="contato", mods=mods)
+                    continue
                 if getattr(inimigo, "cooldown_contato_atual", 0.0) <= 0.0:
                     dano_contato_base = getattr(inimigo, "dano_contato", 10)
                     mult_dano_inim = mult_dano_inim_base
@@ -1275,7 +1473,10 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                 and getattr(self.chefe_final, "estado", "") not in ("morte", ESTADO_MORTE)):
             if colisao_aabb(self.chefe_final.x, self.chefe_final.y, self.chefe_final.largura, self.chefe_final.altura,
                             self.jogador.x, self.jogador.y, self.jogador.largura, self.jogador.altura):
-                if getattr(self.chefe_final, "cooldown_contato_atual", 0.0) <= 0.0:
+                if getattr(self.jogador, "em_dash_iframes", False):
+                    if hasattr(self, "_tentar_registrar_just_dodge"):
+                        self._tentar_registrar_just_dodge(origem="contato_boss", mods=mods)
+                elif getattr(self.chefe_final, "cooldown_contato_atual", 0.0) <= 0.0:
                     dano_contato_base = getattr(self.chefe_final, "dano_contato", 25)
                     mult_dano_inim = mult_dano_inim_base
                     if val_ilum:
@@ -1283,7 +1484,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                         if dist_vis > 195.0:
                             mult_dano_inim *= getattr(mods, "dano_fora_visao_mult", 0.50)
                     dano_efetivo_contato = max(1, int(round(dano_contato_base * mult_dano_inim)))
-                    nome_inim = getattr(inimigo, "nome_elite", "") or getattr(inimigo, "nome_exibicao", "") or type(inimigo).__name__
+                    nome_inim = getattr(self.chefe_final, "nome_elite", "") or getattr(self.chefe_final, "nome_exibicao", "") or type(self.chefe_final).__name__
                     self.jogador.receber_dano(dano_efetivo_contato, causa_morte=f"Contato com {nome_inim}")
                     self.chefe_final.cooldown_contato_atual = getattr(self.chefe_final, "cooldown_contato_max", 0.4)
                     self.aplicar_shake(10.0, 0.25)
@@ -1310,7 +1511,12 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         mult_drops = getattr(mods, "drops_valor_mult", 1.0) if mods else 1.0
         mult_xp = getattr(mods, "xp_ganho_mult", 1.0) if mods else 1.0
         self.sistema_drops.update(dt, pausar_despawn=is_boss_lutando)
-        eventos_coleta = self.sistema_drops.coletar_jogador(self.jogador, mult_valor_drop=mult_drops, mult_xp=mult_xp)
+        eventos_coleta = self.sistema_drops.coletar_jogador(
+            self.jogador,
+            mult_valor_drop=mult_drops,
+            mult_xp=mult_xp,
+            sistema_conquistas=getattr(self, "sistema_conquistas", None),
+        )
         for ev in eventos_coleta:
             drop_x = ev.get("x", self.jogador.x + 16)
             drop_y = ev.get("y", self.jogador.y + 16)
@@ -1386,6 +1592,15 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                 else:
                     self.jogador.curar(25)
                     self.pontos += 500
+            elif ev["tipo"] == "micro_sucata":
+                self.toasts_coleta.append({
+                    "texto": "+SUCATA",
+                    "cor": AZUL_CIANO,
+                    "x": self.jogador.x + 16,
+                    "y": self.jogador.y - 12,
+                    "tempo": 1.0,
+                    "tempo_max": 1.0,
+                })
             elif ev["tipo"] == "capsula_powerup":
                 drop_obj = ev.get("drop")
                 sub = getattr(drop_obj, "subtipo", "buff_dano_temp") if drop_obj else "buff_dano_temp"
@@ -1411,7 +1626,10 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                 elif sub == "pulso_magnetico":
                     self.jogador.aplicar_pulso_magnetico(self.sistema_drops.drops)
                 elif sub == "caixa_arma":
-                    nova_a = random.choice([Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas, Railgun])()
+                    pool_armas = self.sistema_drops.obter_pool_armas_especiais(
+                        sistema_conquistas=getattr(self, "sistema_conquistas", None)
+                    )
+                    nova_a = random.choice(pool_armas)()
                     self.jogador.equipar_arma_especial(nova_a)
                 elif sub == "caixa_equip":
                     novo_d = random.choice([DroneCura, DroneCombate, DroneSuporte])(tempo_vida=30.0)
@@ -1481,6 +1699,18 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
             "novo_recorde_pontos": resultado.get("novo_recorde_pontos", False),
             "novo_recorde_tempo": resultado.get("novo_recorde_tempo", False)
         }
+        if getattr(self, "sistema_conquistas", None) is not None:
+            if vitoria:
+                self.sistema_conquistas.registrar_evento(
+                    "vitoria_boss",
+                    1,
+                    {
+                        "sem_configs": (mult_dif <= 1.0),
+                        "cabo_vga_solto": bool(getattr(self.gerenciador_config.obter_modificadores(), "fogo_amigo", False)),
+                    },
+                )
+            self.gerenciador_config.sincronizar_recompensas_conquistas()
+            self.gerenciador_config.salvar_arquivo()
 
     def _acionar_vitoria(self):
         """Executa a sequência de vitória pela derrota da Geladeira Tsunami."""
