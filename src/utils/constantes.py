@@ -221,6 +221,7 @@ MELEE_ALVOS_MAX = 6
 MELEE_ARCO_GRAUS = 120.0
 
 # Onda de Choque Defensiva do Parry
+PARRY_ALCANCE_BASE = 64.0
 PARRY_ONDA_RAIO = 135.0
 PARRY_ONDA_DANO = 20
 PARRY_ONDA_KNOCKBACK = 380.0
@@ -241,10 +242,10 @@ SMG_DANO = 9
 SMG_COOLDOWN = 0.11
 SMG_VELOCIDADE_PROJETIL = 520.0
 SMG_DESACELERACAO = 360.0
-SMG_CALOR_POR_TIRO = 7.5
-SMG_RESFRIAMENTO_POR_SEG = 28.0
-SMG_ZONA_IDEAL_MIN = 65.0
-SMG_ZONA_IDEAL_MAX = 95.0
+SMG_CALOR_POR_TIRO = 1.0
+SMG_RESFRIAMENTO_POR_SEG = 60.0
+SMG_ZONA_IDEAL_MIN = 60.0
+SMG_ZONA_IDEAL_MAX = 92.0
 SMG_TRAVA_SUPERAQUECIMENTO = 1.0
 
 # Slot 3: Armas Especiais Temporárias (+50% de Munição)
@@ -363,7 +364,7 @@ ASSET_PATHS = {
     "arma_foguetes": "sprites/armas/arma_foguetes.png",
     "arma_granadas": "sprites/armas/arma_granadas.png",
     "arma_railgun": "sprites/armas/arma_railgun.png",
-    "arma_bastao_choque": "sprites/armas/arma_melee.png",
+    "arma_bastao_choque": "sprites/armas/arma_bastao_choque.png",
     "arma_smg_compacta": "sprites/armas/arma_smg_compacta.png",
     "arma_rifle_arco": "sprites/armas/arma_rifle_arco.png",
     "arma_lanca_chamas": "sprites/armas/arma_lanca_chamas.png",
