@@ -12,6 +12,11 @@ from src.utils.constantes import (
     AMARELO_XP, DOURADO, CINZA_BORDA, AZUL_CIANO, DASH_COOLDOWN
 )
 from src.utils.math_utils import clamp
+from src.sistemas.conquistas_dados import (
+    CHIPS_FIRMWARE,
+    CONQUISTAS_CONTINUAS,
+    CONQUISTAS_UNICAS,
+)
 
 # Paleta Cyber-Office aprovada (Stage 2)
 COR_HUD_BG = (11, 14, 23, 220)       # #0b0e17 translúcido
@@ -25,6 +30,61 @@ COR_OURO = (251, 191, 36)            # #fbbf24
 COR_AMBAR = (245, 158, 11)           # #f59e0b
 COR_CARMESIM = (239, 68, 68)         # #ef4444
 COR_TEXTO_SUAVE = (148, 163, 184)    # #94a3b8
+
+
+_RECOMPENSA_NOMES = {
+    ("habilidade", "dash"): "Dash",
+    ("arma", "smg_compacta"): "SMG Compacta",
+    ("arma", "bastao_choque"): "Bastão de Choque",
+    ("arma", "rifle_arco"): "Rifle de Arco",
+    ("arma", "lanca_chamas"): "Lança-Chamas",
+    ("configuracao", "latencia_ping"): "Config Latência/Ping",
+    ("slot_firmware", "+1"): "+1 Slot de Firmware",
+    ("opcao_config", "precisao_parry:postura_riposte"): "Postura de Riposte (Parry)",
+    ("opcao_config", "dash_rastro:thread_fantasma"): "Thread Fantasma (Dash)",
+    ("opcao_config", "dash_protocolo:sombra_espelho"): "Sombra Espelho (Dash)",
+    ("opcao_config", "dash_protocolo:rollback_estado"): "Rollback de Estado (Dash)",
+}
+
+
+def formatar_recompensas_conquista(recompensas: list[tuple[str, str]]) -> str:
+    """Converte lista de tuplas (tipo, id) em texto legível de desbloqueio."""
+    if not recompensas:
+        return "Troféu Permanente"
+    partes: list[str] = []
+    for tipo, rid in recompensas:
+        chave = (tipo, rid)
+        if chave in _RECOMPENSA_NOMES:
+            partes.append(_RECOMPENSA_NOMES[chave])
+        elif tipo == "modificador_run":
+            chip = CHIPS_FIRMWARE.get(rid)
+            partes.append(f"Firmware {chip.nome}" if chip else f"Firmware {rid}")
+        elif tipo == "trofeu":
+            partes.append("Troféu")
+        else:
+            partes.append(str(rid).replace("_", " ").title())
+    return " + ".join(partes)
+
+
+def _quebrar_texto_hud(fonte: pygame.font.Font, texto: str, max_largura: int, max_linhas: int = 3) -> list[str]:
+    """Quebra texto em múltiplas linhas respeitando max_largura sem truncar nomes."""
+    palavras = str(texto or "").split()
+    if not palavras:
+        return [""]
+    linhas: list[str] = []
+    atual = palavras[0]
+    for idx, pal in enumerate(palavras[1:], start=1):
+        teste = f"{atual} {pal}"
+        if fonte.size(teste)[0] <= max_largura:
+            atual = teste
+        else:
+            linhas.append(atual)
+            if len(linhas) >= max_linhas - 1:
+                linhas.append(" ".join(palavras[idx:]))
+                return linhas
+            atual = pal
+    linhas.append(atual)
+    return linhas[:max_linhas]
 
 
 def _criar_fonte(nomes: tuple[str, ...], tamanho: int, bold: bool = False) -> pygame.font.Font:
@@ -53,6 +113,10 @@ class HUD:
         self._fonte_dash = self._obter_fonte_nativa("mono", 9, bold=True)
         self._fonte_card_nome = self._obter_fonte_nativa("sans", 10, bold=True)
         self._fonte_card_mono = self._obter_fonte_nativa("mono", 8, bold=True)
+        self._fonte_pin_nome = self._obter_fonte_nativa("sans", 10, bold=True)
+        self._fonte_pin_sub = self._obter_fonte_nativa("sans", 8, bold=False)
+        self._fonte_pin_recomp = self._obter_fonte_nativa("sans", 8, bold=True)
+        self._fonte_pin_num = self._obter_fonte_nativa("mono", 9, bold=True)
         self._painel_surf_cache: dict[tuple[int, int, int], pygame.Surface] = {}
 
     @staticmethod
@@ -368,9 +432,53 @@ class HUD:
             t_rect = t_surf.get_rect(centerx=badge_x + badge_w // 2, centery=cy_bar)
             screen.blit(t_surf, t_rect)
 
+    @staticmethod
+    def _resolver_detalhes_pin(item: dict) -> tuple[str, str, str]:
+        """Resolve (nome_completo, texto_desbloqueio, texto_acao) dinâmico para o pin."""
+        cid = str(item.get("id", ""))
+        nome = str(item.get("nome", ""))
+        atual = int(item.get("atual", 0))
+        meta = max(1, int(item.get("meta", 1)))
+        concluida = bool(item.get("concluida", False))
+
+        texto_desbloqueio = str(item.get("recompensa_texto", ""))
+        texto_acao = str(item.get("acao", ""))
+
+        if cid in CONQUISTAS_CONTINUAS:
+            cdef = CONQUISTAS_CONTINUAS[cid]
+            if not nome:
+                nome = cdef.nome
+            if not texto_acao:
+                texto_acao = cdef.descricao
+            if concluida:
+                texto_desbloqueio = "Todos os marcos concluídos!"
+            else:
+                alvo_ms = None
+                for ms in cdef.milestones:
+                    if atual < ms.meta or ms.meta >= meta:
+                        alvo_ms = ms
+                        break
+                if alvo_ms is None and cdef.milestones:
+                    alvo_ms = cdef.milestones[-1]
+                if alvo_ms is not None:
+                    texto_desbloqueio = f"Desbloqueia: {formatar_recompensas_conquista(alvo_ms.recompensas)}"
+        elif cid in CONQUISTAS_UNICAS:
+            cdef = CONQUISTAS_UNICAS[cid]
+            if not nome:
+                nome = cdef.nome
+            if not texto_acao:
+                texto_acao = cdef.descricao
+            if concluida:
+                texto_desbloqueio = "Desbloqueada!"
+            else:
+                texto_desbloqueio = f"Desbloqueia: {formatar_recompensas_conquista(cdef.recompensas)}"
+
+        return nome, texto_desbloqueio, texto_acao
+
     def desenhar_pins_conquistas(self, screen, resumo_fixadas: list[dict], visivel: bool = True):
         """
-        Renderiza 0..3 barras finas discretas no canto superior direito com as conquistas fixadas.
+        Renderiza 0..3 cards compactos no canto superior direito com as conquistas fixadas:
+        nome completo (sem reticências), recompensa dinâmica do próximo marco, instrução e barra.
         100% ocultas quando visivel=False (hud='desligado') ou lista vazia.
         """
         if not visivel or not resumo_fixadas:
@@ -378,45 +486,78 @@ class HUD:
 
         ox, oy, vw, _vh, s = self._calcular_viewport(screen)
         fonte_nome = self._obter_fonte_nativa("sans", 10, bold=True, scale=s)
+        fonte_recomp = self._obter_fonte_nativa("sans", 8, bold=True, scale=s)
+        fonte_sub = self._obter_fonte_nativa("sans", 8, bold=False, scale=s)
         fonte_num = self._obter_fonte_nativa("mono", 9, bold=True, scale=s)
 
-        largura = max(120, int(round(188 * s)))
-        altura_item = max(18, int(round(24 * s)))
-        gap = max(3, int(round(4 * s)))
-        pad_x = max(5, int(round(7 * s)))
-        pad_y = max(3, int(round(4 * s)))
+        largura = max(168, int(round(244 * s)))
+        gap = max(4, int(round(5 * s)))
+        pad_x = max(6, int(round(8 * s)))
+        pad_y = max(4, int(round(5 * s)))
         raio = max(2, int(round(4 * s)))
         borda_w = max(1, int(round(1 * s)))
+        bar_h = max(3, int(round(3 * s)))
+        line_gap = max(1, int(round(2 * s)))
 
         x = ox + vw - int(round(16 * s)) - largura
-        y_base = oy + int(round(72 * s))
+        y_cursor = oy + int(round(72 * s))
 
-        for idx, item in enumerate(resumo_fixadas[:3]):
-            y = y_base + idx * (altura_item + gap)
-            painel = self._obter_painel_translucido(largura, altura_item, raio=raio)
-            screen.blit(painel, (x, y))
+        for item in resumo_fixadas[:3]:
             concluida = bool(item.get("concluida", False))
-            cor_borda = COR_VERDE if concluida else COR_BORDA_SUTIL
-            pygame.draw.rect(screen, cor_borda, (x, y, largura, altura_item), width=borda_w, border_radius=raio)
-
-            nome = str(item.get("nome", ""))
-            if len(nome) > 18:
-                nome = nome[:17] + "…"
             atual = int(item.get("atual", 0))
             meta = max(1, int(item.get("meta", 1)))
             progresso = clamp(float(item.get("progresso", 0.0)), 0.0, 1.0)
 
-            surf_nome = fonte_nome.render(nome, True, COR_OURO if concluida else BRANCO)
+            nome, texto_recomp, texto_acao = self._resolver_detalhes_pin(item)
             txt_num = "OK" if concluida else f"{atual}/{meta}"
             surf_num = fonte_num.render(txt_num, True, COR_VERDE if concluida else COR_TEXTO_SUAVE)
 
-            screen.blit(surf_nome, (x + pad_x, y + pad_y - 1))
-            screen.blit(surf_num, (x + largura - pad_x - surf_num.get_width(), y + pad_y))
+            max_w_nome = max(60, largura - pad_x * 2 - surf_num.get_width() - int(round(6 * s)))
+            linhas_nome = _quebrar_texto_hud(fonte_nome, nome, max_w_nome, max_linhas=2)
+            max_w_sub = max(60, largura - pad_x * 2)
+            linhas_recomp = _quebrar_texto_hud(fonte_recomp, texto_recomp, max_w_sub, max_linhas=2) if texto_recomp else []
+            linhas_acao = _quebrar_texto_hud(fonte_sub, texto_acao, max_w_sub, max_linhas=2) if texto_acao else []
+
+            h_nome = len(linhas_nome) * fonte_nome.get_linesize()
+            h_recomp = len(linhas_recomp) * fonte_recomp.get_linesize() + (line_gap if linhas_recomp else 0)
+            h_acao = len(linhas_acao) * fonte_sub.get_linesize() + (line_gap if linhas_acao else 0)
+            altura_item = pad_y * 2 + h_nome + h_recomp + h_acao + bar_h + max(4, int(round(5 * s)))
+
+            y = y_cursor
+            y_cursor += altura_item + gap
+
+            painel = self._obter_painel_translucido(largura, altura_item, raio=raio)
+            screen.blit(painel, (x, y))
+            cor_borda = COR_VERDE if concluida else COR_BORDA_SUTIL
+            pygame.draw.rect(screen, cor_borda, (x, y, largura, altura_item), width=borda_w, border_radius=raio)
+
+            cy = y + pad_y
+            cor_nome = COR_OURO if concluida else BRANCO
+            for i_ln, ln in enumerate(linhas_nome):
+                s_ln = fonte_nome.render(ln, True, cor_nome)
+                screen.blit(s_ln, (x + pad_x, cy))
+                if i_ln == 0:
+                    screen.blit(surf_num, (x + largura - pad_x - surf_num.get_width(), cy + 1))
+                cy += fonte_nome.get_linesize()
+
+            if linhas_recomp:
+                cy += line_gap
+                cor_rec = COR_VERDE if concluida else COR_CIANO
+                for ln in linhas_recomp:
+                    s_rec = fonte_recomp.render(ln, True, cor_rec)
+                    screen.blit(s_rec, (x + pad_x, cy))
+                    cy += fonte_recomp.get_linesize()
+
+            if linhas_acao:
+                cy += line_gap
+                for ln in linhas_acao:
+                    s_ac = fonte_sub.render(ln, True, COR_TEXTO_SUAVE)
+                    screen.blit(s_ac, (x + pad_x, cy))
+                    cy += fonte_sub.get_linesize()
 
             bar_x = x + pad_x
-            bar_y = y + altura_item - max(4, int(round(6 * s)))
+            bar_y = y + altura_item - pad_y - bar_h
             bar_w = max(10, largura - pad_x * 2)
-            bar_h = max(2, int(round(3 * s)))
             pygame.draw.rect(screen, COR_CARD_BG, (bar_x, bar_y, bar_w, bar_h), border_radius=1)
             fill_w = int(bar_w * progresso)
             if fill_w > 0:
