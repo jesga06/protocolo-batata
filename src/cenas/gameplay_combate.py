@@ -856,6 +856,8 @@ class GameplayCombateMixin:
                     ang_mira,
                     raio=raio_parry,
                     arco_graus=arco_parry,
+                    mostrar_texto=False,
+                    cor=AZUL_CIANO,
                 )
             self.sistema_particulas.emitir_onda_choque(
                 centro_jogador_x,
