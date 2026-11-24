@@ -66,7 +66,11 @@ class MenuDebug:
             ("Rifle Assalto", "RifleAssalto"),
             ("Lanca-Foguetes", "LancaFoguetes"),
             ("Lanca-Granadas", "LancaGranadas"),
-            ("Railgun", "Railgun")
+            ("Railgun", "Railgun"),
+            ("Bastao de Choque", "BastaoChoque"),
+            ("SMG Compacta", "SMGCompacta"),
+            ("Rifle de Arco", "RifleArco"),
+            ("Lanca-Chamas", "LancaChamas"),
         ]
         self.idx_arma = 0
 
@@ -84,6 +88,8 @@ class MenuDebug:
             ("Blindado", "blindado"),
             ("Ranged (Atirador)", "ranged"),
             ("Tanque (Geladeira)", "tank"),
+            ("Impressora Termica", "impressora"),
+            ("Ninja Corporativo", "ninja"),
             ("Chefe de Elite", "elite"),
             ("Geladeira Tsunami (Boss)", "boss")
         ]
@@ -105,9 +111,17 @@ class MenuDebug:
         self.opcoes_pular_tempo = [10, 20, 30]
         self.idx_pular_tempo = 0
 
+        self.opcoes_fases_musica = [
+            ("ANTICIPATION", "anticipation"),
+            ("HOLD", "hold"),
+            ("ASSAULT_INTRO", "assault_intro"),
+            ("ASSAULT", "assault"),
+        ]
+        self.idx_fase_musica = 0
+
         # Índice do menu focado
         self.indice_foco = 0
-        self.total_itens = 16
+        self.total_itens = 18
 
         # Retângulo do painel de Debug centralizado / com offset adaptado para 1280x720
         self.offset_x = (LARGURA_TELA - 800) // 2
@@ -305,6 +319,8 @@ class MenuDebug:
             self.idx_overclock = (self.idx_overclock + direcao) % len(self.opcoes_overclock)
         elif self.indice_foco == 15:  # Pular Tempo + Kit Debug
             self.idx_pular_tempo = (self.idx_pular_tempo + direcao) % len(self.opcoes_pular_tempo)
+        elif self.indice_foco == 16:  # Fase Música-Onda
+            self.idx_fase_musica = (self.idx_fase_musica + direcao) % len(self.opcoes_fases_musica)
 
     def _executar_acao_selecionada(self):
         """Executa ações com a tecla ENTER / ESPAÇO."""
@@ -348,7 +364,10 @@ class MenuDebug:
                 from src.sistemas.config_dados import CONFIGURACOES_GAMEPLAY
                 for cid in CONFIGURACOES_GAMEPLAY.keys():
                     config_sys.desbloquear_config(cid)
-                self._definir_status("TODAS AS 20 CONFIGS DESBLOQUEADAS!")
+                sys_conq = getattr(config_sys, "sistema_conquistas", None) or getattr(self.cena, "sistema_conquistas", None)
+                if sys_conq is not None and hasattr(sys_conq, "recompensas"):
+                    sys_conq.recompensas.setdefault("configuracao", set()).add("latencia_ping")
+                self._definir_status(f"TODAS AS {len(CONFIGURACOES_GAMEPLAY)} CONFIGS DESBLOQUEADAS!")
         elif self.indice_foco == 12:  # Boss Cutscene
             if self.cena and hasattr(self.cena, "iniciar_boss_cutscene"):
                 self.fechar()
@@ -379,6 +398,50 @@ class MenuDebug:
                 self._definir_status("MINI-BOSSES DESTRUÍDOS!")
         elif self.indice_foco == 15:  # Pular Tempo + Kit Debug
             self._aplicar_kit_debug()
+        elif self.indice_foco == 16:  # Forçar Fase Música-Onda
+            nome_fase, estado_fase = self.opcoes_fases_musica[self.idx_fase_musica]
+            sys_mus = getattr(self.cena, "sistema_musica", None) if self.cena else None
+            if sys_mus is None:
+                try:
+                    from src.sistemas.sistema_musica import obter_sistema_musica
+                    sys_mus = obter_sistema_musica()
+                except Exception:
+                    sys_mus = None
+            if sys_mus is not None:
+                loops = -1 if estado_fase in ("hold", "assault") else 0
+                if hasattr(sys_mus, "_tocar_par_estado"):
+                    sys_mus._tocar_par_estado(estado_fase, loops=loops)
+                else:
+                    sys_mus.estado = estado_fase
+                self._definir_status(f"MUSICA-ONDA: {nome_fase}")
+        elif self.indice_foco == 17:  # Desbloquear Todas Conquistas & Firmware
+            sys_conq = getattr(self.cena, "sistema_conquistas", None) if self.cena else None
+            if sys_conq is None and self.cena:
+                cfg = getattr(self.cena, "config_sistema", None) or getattr(self.cena, "gerenciador_config", None)
+                sys_conq = getattr(cfg, "sistema_conquistas", None) if cfg is not None else None
+            if sys_conq is not None:
+                from src.sistemas.conquistas_dados import (
+                    CHIPS_FIRMWARE,
+                    CONQUISTAS_CONTINUAS,
+                    CONQUISTAS_UNICAS,
+                )
+                for cid, cdef in CONQUISTAS_CONTINUAS.items():
+                    max_meta = cdef.milestones[-1].meta if cdef.milestones else 999
+                    sys_conq.continuas[cid] = {
+                        "valor": max_meta,
+                        "milestones_concluidos": list(range(len(cdef.milestones))),
+                    }
+                    for ms in cdef.milestones:
+                        if hasattr(sys_conq, "_conceder_recompensas"):
+                            sys_conq._conceder_recompensas(ms.recompensas)
+                for cid, cdef in CONQUISTAS_UNICAS.items():
+                    sys_conq.unicas_concluidas.add(cid)
+                    if hasattr(sys_conq, "_conceder_recompensas"):
+                        sys_conq._conceder_recompensas(cdef.recompensas)
+                if hasattr(sys_conq, "recompensas"):
+                    sys_conq.recompensas.setdefault("modificador_run", set()).update(CHIPS_FIRMWARE.keys())
+                sys_conq.slots_firmware_max = 3
+                self._definir_status("CONQUISTAS & FIRMWARE DESBLOQUEADOS!")
 
     def _spawnar_item_ou_inimigo_no_mundo(self, x: float, y: float):
         """Gera a entidade selecionada com o CENTRO posicionado exatamente nas coordenadas (x, y)."""
@@ -405,27 +468,49 @@ class MenuDebug:
         elif self.indice_foco == 5:  # Spawn Arma Específica
             nome_a, classe_str = self.opcoes_armas[self.idx_arma]
             from src.armas import (
-                Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas, Railgun
+                Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas, Railgun,
+                BastaoChoque, SMGCompacta, RifleArco, LancaChamas,
             )
-            armas_map = {
-                "Minigun": Minigun,
-                "Shotgun": Shotgun,
-                "RifleAssalto": RifleAssalto,
-                "LancaFoguetes": LancaFoguetes,
-                "LancaGranadas": LancaGranadas,
-                "Railgun": Railgun
-            }
-            if classe_str in armas_map and hasattr(self.cena, "jogador") and self.cena.jogador:
-                nova_arma = armas_map[classe_str]()
-                if hasattr(self.cena.jogador, "equipar_arma_especial"):
-                    self.cena.jogador.equipar_arma_especial(nova_arma)
+            jog = getattr(self.cena, "jogador", None)
+            if jog is not None:
+                if classe_str == "BastaoChoque":
+                    if hasattr(jog, "aplicar_loadout"):
+                        jog.aplicar_loadout("bastao_choque", getattr(jog, "slot2_id", "pistola"))
+                    elif hasattr(jog, "armas") and len(jog.armas) >= 1:
+                        jog.armas[0] = BastaoChoque()
+                    if hasattr(jog, "selecionar_slot"):
+                        jog.selecionar_slot(1)
+                    self._definir_status(f"ARMA EQUIPADA: {nome_a}")
+                elif classe_str == "SMGCompacta":
+                    if hasattr(jog, "aplicar_loadout"):
+                        jog.aplicar_loadout(getattr(jog, "slot1_id", "chave_manutencao"), "smg_compacta")
+                    elif hasattr(jog, "armas") and len(jog.armas) >= 2:
+                        jog.armas[1] = SMGCompacta()
+                    if hasattr(jog, "selecionar_slot"):
+                        jog.selecionar_slot(2)
+                    self._definir_status(f"ARMA EQUIPADA: {nome_a}")
                 else:
-                    self.cena.jogador.arma_especial = nova_arma
-                if hasattr(self.cena.jogador, "selecionar_slot"):
-                    self.cena.jogador.selecionar_slot(3)
-                elif hasattr(self.cena.jogador, "slot_ativo"):
-                    self.cena.jogador.slot_ativo = 3
-                self._definir_status(f"ARMA EQUIPADA: {nome_a}")
+                    armas_map = {
+                        "Minigun": Minigun,
+                        "Shotgun": Shotgun,
+                        "RifleAssalto": RifleAssalto,
+                        "LancaFoguetes": LancaFoguetes,
+                        "LancaGranadas": LancaGranadas,
+                        "Railgun": Railgun,
+                        "RifleArco": RifleArco,
+                        "LancaChamas": LancaChamas,
+                    }
+                    if classe_str in armas_map:
+                        nova_arma = armas_map[classe_str]()
+                        if hasattr(jog, "equipar_arma_especial"):
+                            jog.equipar_arma_especial(nova_arma)
+                        else:
+                            jog.arma_especial = nova_arma
+                        if hasattr(jog, "selecionar_slot"):
+                            jog.selecionar_slot(3)
+                        elif hasattr(jog, "slot_ativo"):
+                            jog.slot_ativo = 3
+                        self._definir_status(f"ARMA EQUIPADA: {nome_a}")
 
         elif self.indice_foco == 6:  # Spawn Drone Específico
             nome_dr, classe_str = self.opcoes_drones[self.idx_drone]
@@ -449,6 +534,8 @@ class MenuDebug:
                 InimigoPadrao, InimigoRapido, InimigoPhasing,
                 InimigoBlindado, InimigoRanged, InimigoTank
             )
+            from src.entidades.inimigo_impressora import InimigoImpressoraTermica
+            from src.entidades.inimigo_ninja import InimigoNinja
             from src.entidades.geladeira_tsunami import GeladeiraTsunami
             inimigo = None
             if tipo_i == "padrao":
@@ -463,6 +550,10 @@ class MenuDebug:
                 inimigo = InimigoRanged(x=x, y=y)
             elif tipo_i == "tank":
                 inimigo = InimigoTank(x=x, y=y)
+            elif tipo_i == "impressora":
+                inimigo = InimigoImpressoraTermica(x=x, y=y)
+            elif tipo_i == "ninja":
+                inimigo = InimigoNinja(x=x, y=y)
             elif tipo_i == "elite":
                 inimigo = InimigoPadrao(x=x, y=y, is_elite=True, nome_elite="CHEFE DE ELITE (DEBUG)")
                 inimigo.hp_max = 120
@@ -600,11 +691,13 @@ class MenuDebug:
             ("9. Curar Vida Max", "[ENTER PARA CURAR]", VERDE_CURA),
             ("10. Tomar Dano 1/8", "[ENTER PARA DANO]", VERMELHO_DANO),
             ("11. Level Up (+X)", f"< +{self.opcoes_level_up[self.idx_level_up]} Nivel >", DOURADO),
-            ("12. Destravar Configs", "[ENTER DESTRAVA 20]", DOURADO),
+            ("12. Destravar Configs", "[ENTER DESTRAVA 28]", DOURADO),
             ("13. Boss Cutscene (Lvl 20)", "[ENTER CUTSCENE]", DOURADO),
             ("14. Conceder Overclock", f"< {self.opcoes_overclock[self.idx_overclock][0]} >", ROXO_CLARO),
             ("15. Matar Chefe", "[ENTER PARA MATAR]", VERMELHO_DANO),
-            ("16. Kit Debug (+Tempo)", f"< +{self.opcoes_pular_tempo[self.idx_pular_tempo]}s +Kit >", (34, 211, 238))
+            ("16. Kit Debug (+Tempo)", f"< +{self.opcoes_pular_tempo[self.idx_pular_tempo]}s +Kit >", (34, 211, 238)),
+            ("17. Fase Musica-Onda", f"< {self.opcoes_fases_musica[self.idx_fase_musica][0]} >", (168, 85, 247)),
+            ("18. Destravar Conq/FW", "[ENTER DESTRAVA TUDO]", DOURADO),
         ]
 
         for i, (label, val_txt, val_cor) in enumerate(itens_config):
