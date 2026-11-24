@@ -165,6 +165,8 @@ class MenuConfigs:
         self._fonte_det_corpo = None
         self._fonte_det_flavor = None
         self._fonte_rodape = None
+        self._toast_conflito: str = ""
+        self._toast_conflito_timer: float = 0.0
 
         self.aplicar_volumes_atuais()
 
@@ -184,6 +186,13 @@ class MenuConfigs:
                 direto = os.path.join(ASSETS_DIR, "ui", "icones_configs", f"icon_{chave_icone}.png")
                 if os.path.isfile(direto):
                     img = pygame.image.load(direto).convert_alpha()
+            except Exception:
+                img = None
+
+        if img is None:
+            try:
+                from src.utils.pixel_art_sprites import obter_icone_config
+                img = obter_icone_config(chave_icone, 32)
             except Exception:
                 img = None
 
@@ -267,16 +276,25 @@ class MenuConfigs:
             self._tocar_som("sfx_btn_click")
 
     def alterar_valor_gameplay(self, config_id: str, novo_valor: Any) -> bool:
-        """Altera o valor de uma configuração de gameplay desbloqueada."""
-        sucesso = self.gerenciador_config.definir_valor(config_id, novo_valor)
+        """Altera o valor de uma configuração de gameplay desbloqueada, tratando conflitos mútuos."""
+        if hasattr(self.gerenciador_config, "definir_valor_com_conflitos"):
+            sucesso, conflitos = self.gerenciador_config.definir_valor_com_conflitos(config_id, novo_valor)
+        else:
+            sucesso = self.gerenciador_config.definir_valor(config_id, novo_valor)
+            conflitos = []
+
         if sucesso:
+            if conflitos:
+                pares = ", ".join(f"{cid} -> {val}" for cid, val in conflitos)
+                self._toast_conflito = f"CONFLITO REVERTIDO: {pares}"
+                self._toast_conflito_timer = 3.2
             self._tocar_som("sfx_btn_click")
             if self.cena and hasattr(self.cena, "aplicar_modificadores"):
                 self.cena.aplicar_modificadores()
         return sucesso
 
     def ciclar_opcao_gameplay(self, config_id: str, direcao: int = 1) -> bool:
-        """Cicla para a próxima opção disponível de uma configuração de gameplay."""
+        """Cicla para a próxima opção disponível (e desbloqueada) de uma configuração de gameplay."""
         if not self.gerenciador_config.is_desbloqueada(config_id):
             return False
 
@@ -284,7 +302,13 @@ class MenuConfigs:
         if not cdef or not cdef.opcoes:
             return False
 
-        chaves_opcoes = list(cdef.opcoes.keys())
+        sys_conq = getattr(self.gerenciador_config, "sistema_conquistas", None)
+        chaves_opcoes = []
+        for k, opt in cdef.opcoes.items():
+            req_opt = getattr(opt, "desbloqueada_por", None)
+            if req_opt and sys_conq is not None and not sys_conq.possui_recompensa("opcao_config", f"{config_id}:{k}"):
+                continue
+            chaves_opcoes.append(k)
         if not chaves_opcoes:
             return False
 
@@ -342,6 +366,8 @@ class MenuConfigs:
         # Decrementa o cooldown de input inicial para prevenir fechamento no mesmo frame
         if self.cooldown_input > 0.0:
             self.cooldown_input = max(0.0, self.cooldown_input - dt)
+        if self._toast_conflito_timer > 0.0:
+            self._toast_conflito_timer = max(0.0, self._toast_conflito_timer - dt)
 
         # 1. Inputs de Teclado
         if teclado is not None:
@@ -746,8 +772,9 @@ class MenuConfigs:
             screen.blit(nome_surf, (self._px(ox + 100), self._py(item_y + 6)))
 
             if not is_desbloqueada:
-                sub_str = "Desbloqueie em marcos"
-                sub_cor = _C_TEXT_MUTED
+                req_conq = bool(getattr(cdef, "exclusiva_conquista", False) or getattr(cdef, "requer_desbloqueio", None))
+                sub_str = "[CONQUISTA]" if req_conq else "Desbloqueie em marcos"
+                sub_cor = _C_AMBER if req_conq else _C_TEXT_MUTED
             elif is_modificada:
                 sub_str = "Sacrifício ativo"
                 sub_cor = _C_GREEN_SOFT
@@ -811,6 +838,13 @@ class MenuConfigs:
         # 3. Painel de Inspeção Detalhado à Direita
         self._desenhar_painel_inspetor(screen)
 
+        if self._toast_conflito_timer > 0.0 and self._toast_conflito:
+            t_surf = self._fonte_btn.render(self._toast_conflito, True, _C_AMBAR if "_C_AMBAR" in globals() else _C_AMBER)
+            t_rect = pygame.Rect(self._px(ox + 48), self._py(oy + 522), t_surf.get_width() + self._ps(20), self._ps(24))
+            pygame.draw.rect(screen, (52, 24, 14), t_rect, border_radius=self._ps(5))
+            pygame.draw.rect(screen, _C_AMBER, t_rect, width=max(1, self._ps(1)), border_radius=self._ps(5))
+            screen.blit(t_surf, t_surf.get_rect(center=t_rect.center))
+
     def _desenhar_painel_inspetor(self, screen: pygame.Surface):
         """Renderiza os detalhes completos da configuração selecionada com cards Benefício vs. Sacrifício."""
         rect = self._pr(self.detalhes_rect)
@@ -834,7 +868,7 @@ class MenuConfigs:
         pygame.draw.rect(screen, _C_CYAN, cat_pill, width=max(1, self._ps(1)), border_radius=self._ps(4))
         screen.blit(cat_surf, cat_surf.get_rect(center=cat_pill.center))
 
-        st_txt = "DESBLOQUEADA" if is_desbloqueada else "BLOQUEADA"
+        st_txt = "DESBLOQUEADA" if is_desbloqueada else ("[CONQUISTA]" if (getattr(cdef, "exclusiva_conquista", False) or getattr(cdef, "requer_desbloqueio", None)) else "BLOQUEADA")
         st_fg = _C_GREEN_SOFT if is_desbloqueada else _C_AMBER
         st_bg = (6, 40, 30) if is_desbloqueada else (45, 28, 12)
         st_bd = _C_GREEN if is_desbloqueada else _C_AMBER
@@ -843,6 +877,14 @@ class MenuConfigs:
         pygame.draw.rect(screen, st_bg, st_pill, border_radius=self._ps(4))
         pygame.draw.rect(screen, st_bd, st_pill, width=max(1, self._ps(1)), border_radius=self._ps(4))
         screen.blit(st_surf, st_surf.get_rect(center=st_pill.center))
+
+        opt_def = cdef.opcoes.get(val_ativo)
+        if opt_def and getattr(opt_def, "incompativel_com", None):
+            cf_surf = self._fonte_cat.render("CONFLITO", True, _C_CRIMSON_SOFT)
+            cf_pill = pygame.Rect(st_pill.right + self._ps(6), rect.y + self._ps(36), cf_surf.get_width() + self._ps(12), cf_surf.get_height() + self._ps(6))
+            pygame.draw.rect(screen, (68, 22, 22), cf_pill, border_radius=self._ps(4))
+            pygame.draw.rect(screen, _C_CRIMSON, cf_pill, width=max(1, self._ps(1)), border_radius=self._ps(4))
+            screen.blit(cf_surf, cf_surf.get_rect(center=cf_pill.center))
 
         val_box = pygame.Rect(rect.x + self._ps(12), rect.y + self._ps(64), rect.width - self._ps(24), self._ps(28))
         pygame.draw.rect(screen, _C_HUD_PANEL, val_box, border_radius=self._ps(6))
