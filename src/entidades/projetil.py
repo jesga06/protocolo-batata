@@ -219,7 +219,7 @@ class Projetil:
                     inimigo.receber_dano(dano_efetivo * 2)
                 inimigos_afetados.append(inimigo)
                 if hasattr(inimigo, "aplicar_knockback"):
-                    inimigo.aplicar_knockback(self.dir_x, self.dir_y, forca=350.0)
+                    inimigo.aplicar_knockback(self.dir_x, self.dir_y, forca=87.5)
             elif dist <= self.raio_explosao:
                 try:
                     inimigo.receber_dano(
@@ -236,7 +236,7 @@ class Projetil:
                 if dist > 0.1 and hasattr(inimigo, "aplicar_knockback"):
                     kx = (e_cx - centro_x) / dist
                     ky = (e_cy - centro_y) / dist
-                    inimigo.aplicar_knockback(kx, ky, forca=280.0)
+                    inimigo.aplicar_knockback(kx, ky, forca=70.0)
 
         # Checa fogo amigo para o jogador e drones
         auto_dano_ativo = False
