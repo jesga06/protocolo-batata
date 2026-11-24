@@ -122,6 +122,10 @@ class TestConquistasEConflitos(unittest.TestCase):
         self.assertFalse(cfg.desbloquear_config("latencia_ping"))
         self.assertFalse(cfg.is_desbloqueada("latencia_ping"))
 
+        cfg_via = GerenciadorConfiguracoes()
+        self.assertTrue(cfg_via.desbloquear_config("latencia_ping", via_conquista=True))
+        self.assertTrue(cfg_via.is_desbloqueada("latencia_ping"))
+
         # 4 opções avançadas travadas por conquista antes de qualquer conquista
         cfg.desbloquear_config("precisao_parry")
         cfg.desbloquear_config("dash_protocolo")

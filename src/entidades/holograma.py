@@ -94,7 +94,7 @@ class EntidadeHolograma:
             for inim in inimigos:
                 if not getattr(inim, "vivo", True):
                     continue
-                if getattr(inim, "eh_boss", False):
+                if getattr(inim, "is_boss", False) or getattr(inim, "eh_boss", False):
                     continue
                 ix = getattr(inim, "x", 0.0) + getattr(inim, "largura", 32) * 0.5
                 iy = getattr(inim, "y", 0.0) + getattr(inim, "altura", 32) * 0.5
@@ -171,6 +171,13 @@ class EntidadeHolograma:
             pygame.draw.rect(surf, borda, (0, 0, self.largura, self.altura), width=2, border_radius=6)
             self._surface_cache = surf
 
-        ox = camera.offset_x if camera is not None and hasattr(camera, "offset_x") else 0.0
-        oy = camera.offset_y if camera is not None and hasattr(camera, "offset_y") else 0.0
-        janela.blit(self._surface_cache, (int(self.x - ox), int(self.y - oy)))
+        screen = getattr(janela, "screen", janela)
+        if camera is not None and hasattr(camera, "transform_x") and hasattr(camera, "transform_y"):
+            px = int(camera.transform_x(self.x))
+            py = int(camera.transform_y(self.y))
+        else:
+            ox = camera.offset_x if camera is not None and hasattr(camera, "offset_x") else 0.0
+            oy = camera.offset_y if camera is not None and hasattr(camera, "offset_y") else 0.0
+            px = int(self.x - ox)
+            py = int(self.y - oy)
+        screen.blit(self._surface_cache, (px, py))

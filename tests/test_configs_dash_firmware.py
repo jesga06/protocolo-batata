@@ -23,7 +23,7 @@ def _criar_ctx(inimigos=None, projeteis=None, jogador=None, sistema_combo=None):
         riposte_invuln_timer=0.0,
         mira_x=350.0,
         mira_y=100.0,
-        arma_especial=SimpleNamespace(municao=10, municao_max=100),
+        arma_especial=SimpleNamespace(municao_atual=10, municao_max=100),
     )
     return ContextoCombate(
         cena=None,
@@ -156,10 +156,10 @@ class TestConfigsDashFirmware(unittest.TestCase):
         ger.disparar_ao_tick(ctx, 0.016)
         self.assertTrue(combo_stub.estilo)
 
-        # recarga_tatica: 3 dashes recuperam munição Slot 3
+        # recarga_tatica: 3 dashes recuperam munição Slot 3 (municao_atual)
         for _ in range(3):
             ger.disparar_ao_dash(ctx, (100.0, 100.0), (150.0, 100.0))
-        self.assertEqual(ctx.jogador.arma_especial.municao, 35)
+        self.assertEqual(ctx.jogador.arma_especial.municao_atual, 35)
 
         # sandbox_isolada: parry cria cúpula fixa no chão e bloqueia projétil inimigo
         ger.disparar_ao_parry(ctx, [])
@@ -185,6 +185,46 @@ class TestConfigsDashFirmware(unittest.TestCase):
         ger.disparar_ao_abate(ctx, inim_elite)
         self.assertAlmostEqual(ctx.jogador.dash_cooldown_restante, 1.0)
         self.assertGreater(ger.obter_efeito("adrenalina_overclock").timer, 0.0)
+
+    def test_dash_teleporte_exaustao_vacuo_subprocesso_e_ventoinha_e_is_boss(self):
+        # 1. teleporte_buffer + exaustao_termica
+        dano_log = []
+        inim = SimpleNamespace(
+            x=150.0, y=100.0, largura=32, altura=32, vivo=True, is_boss=False,
+            slow_timer=0.0, slow_fator=1.0,
+            receber_dano=lambda q: dano_log.append(q),
+        )
+        boss = SimpleNamespace(
+            x=150.0, y=100.0, largura=32, altura=32, vivo=True, is_boss=True,
+            pos_alvo_override=None,
+        )
+        holo = EntidadeHolograma(x=100.0, y=100.0, modo="clone_agro")
+        holo.update(0.1, [inim, boss])
+        self.assertIsNotNone(inim.pos_alvo_override)
+        self.assertIsNone(boss.pos_alvo_override)
+
+        ger = GerenciadorEfeitosCombate()
+        ger.reconstruir(ModificadoresGameplay(dash_protocolo="teleporte_buffer", dash_rastro="exaustao_termica"), [])
+        ctx = _criar_ctx(inimigos=[inim])
+        ger.disparar_ao_dash(ctx, (100.0, 100.0), (250.0, 100.0))
+        self.assertEqual(ctx.jogador.x, 250.0)
+        self.assertGreater(len(dano_log), 0)
+        self.assertGreater(ger.obter_efeito("dash_rastro").sobreaquecimento_timer, 0.0)
+
+        # 2. vacuo_io + subprocesso_atrasado + ventoinha_360
+        ger.reconstruir(ModificadoresGameplay(dash_rastro="vacuo_io"), [])
+        ger.disparar_ao_dash(ctx, (100.0, 100.0), (160.0, 100.0))
+        ger.disparar_ao_tick(ctx, 0.05)
+        self.assertAlmostEqual(ctx.jogador.dash_alcance_mult, 0.75)
+
+        ger.reconstruir(ModificadoresGameplay(dash_rastro="subprocesso_atrasado", parry_efeito="ventoinha_360"), [])
+        ger.disparar_ao_dash(ctx, (100.0, 100.0), (220.0, 100.0))
+        ger.disparar_ao_tick(ctx, 0.80)
+        self.assertGreater(inim.slow_timer, 0.0)
+        self.assertEqual(inim.slow_fator, 0.0)
+
+        ger.disparar_ao_parry(ctx, [])
+        self.assertGreater(ger.obter_efeito("parry_avancado").ventoinha_timer, 0.0)
 
 
 if __name__ == "__main__":

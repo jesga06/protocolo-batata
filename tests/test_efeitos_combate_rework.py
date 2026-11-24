@@ -46,6 +46,8 @@ class TestEfeitosCombateRework(unittest.TestCase):
         ef = ger.obter_efeito("latencia_ping")
         self.assertIsNotNone(ef)
         self.assertAlmostEqual(ef.atraso_s, 0.080, places=3)
+        self.assertEqual(ef.obter_pos_hitbox_atrasada(fallback=(123.0, 456.0)), (123.0, 456.0))
+        self.assertIsNone(ef.obter_pos_hitbox_atrasada())
 
         for tipo in ("disparo", "melee", "parry", "dash"):
             ef.agendar_acao(tipo, {"ok": True}, (100.0, 100.0), 0.5)
@@ -157,6 +159,12 @@ class TestEfeitosCombateRework(unittest.TestCase):
 
         ger.disparar_ao_abate(ctx, inim)
         self.assertLess(ctx.jogador.dash_cooldown_restante, 2.0)
+
+        # is_boss / is_elite nunca são executados por zoom:150%
+        boss = SimpleNamespace(x=200.0, y=100.0, hp=10, hp_max=1000, vivo=True, is_boss=True)
+        elite = SimpleNamespace(x=200.0, y=100.0, hp=10, hp_max=500, vivo=True, is_elite=True)
+        self.assertFalse(ger.disparar_ao_impacto(ctx, boss, 10).get("executar", False))
+        self.assertFalse(ger.disparar_ao_impacto(ctx, elite, 10).get("executar", False))
 
 
 if __name__ == "__main__":

@@ -16,6 +16,68 @@ from src.utils import constantes as _const
 from src.utils.math_utils import normalizar_vetor
 
 
+def _eh_boss(obj: Any) -> bool:
+    return bool(getattr(obj, "is_boss", False) or getattr(obj, "eh_boss", False))
+
+
+def _eh_elite_ou_miniboss(obj: Any) -> bool:
+    return bool(
+        getattr(obj, "is_elite", False)
+        or getattr(obj, "eh_elite", False)
+        or getattr(obj, "eh_miniboss", False)
+    )
+
+
+def _aplicar_dano_entidade(alvo: Any, dano: int) -> None:
+    dano_int = max(0, int(dano))
+    if hasattr(alvo, "receber_dano"):
+        alvo.receber_dano(dano_int)
+    elif hasattr(alvo, "sofrer_dano"):
+        alvo.sofrer_dano(dano_int)
+    elif hasattr(alvo, "hp"):
+        alvo.hp = max(0, int(alvo.hp) - dano_int)
+        if alvo.hp <= 0:
+            alvo.vivo = False
+
+
+def _aplicar_stun_entidade(alvo: Any, duracao: float) -> None:
+    dur = float(duracao)
+    if not _eh_boss(alvo):
+        if hasattr(alvo, "slow_timer"):
+            alvo.slow_timer = max(float(getattr(alvo, "slow_timer", 0.0)), dur)
+        if hasattr(alvo, "slow_fator"):
+            alvo.slow_fator = 0.0
+    if hasattr(alvo, "atordoado_timer"):
+        alvo.atordoado_timer = max(float(getattr(alvo, "atordoado_timer", 0.0)), dur)
+
+
+def _recarregar_municao_arma(arma: Any, fracao: float) -> None:
+    if arma is None:
+        return
+    mmax = int(getattr(arma, "municao_max", 0) or 0)
+    if mmax <= 0:
+        return
+    inc = max(1, int(round(mmax * float(fracao))))
+    if hasattr(arma, "municao_atual"):
+        arma.municao_atual = min(mmax, int(arma.municao_atual) + inc)
+    elif hasattr(arma, "municao"):
+        arma.municao = min(mmax, int(arma.municao) + inc)
+
+
+def _distancia_ponto_segmento(
+    px: float, py: float, ax: float, ay: float, bx: float, by: float
+) -> float:
+    vx = bx - ax
+    vy = by - ay
+    comp2 = vx * vx + vy * vy
+    if comp2 <= 1e-6:
+        return math.hypot(px - ax, py - ay)
+    t = max(0.0, min(1.0, ((px - ax) * vx + (py - ay) * vy) / comp2))
+    proj_x = ax + t * vx
+    proj_y = ay + t * vy
+    return math.hypot(px - proj_x, py - proj_y)
+
+
 @dataclass
 class ContextoCombate:
     """Contexto compartilhado entre GameplayScene/Mixins e o Pipeline B+."""
@@ -105,12 +167,16 @@ class EfeitoZoomBalistica(EfeitoCombate):
             else:
                 bonus = min(0.45, ((dist - 120.0) / 480.0) * 0.45)
                 res["dano_mult"] = 1.0 + bonus
-                if dist >= 320.0 and hasattr(fonte, "perfuracoes_restantes") and not getattr(fonte, "_zoom_perf_aplicada", False):
+                if (
+                    dist >= 320.0
+                    and hasattr(fonte, "perfuracoes_restantes")
+                    and not getattr(fonte, "_zoom_perf_aplicada", False)
+                ):
                     fonte.perfuracoes_restantes += 1
                     fonte._zoom_perf_aplicada = True
 
         if self.execucao_limiar_hp > 0.0:
-            if not getattr(alvo, "eh_boss", False) and not getattr(alvo, "eh_miniboss", False):
+            if not _eh_boss(alvo) and not _eh_elite_ou_miniboss(alvo):
                 hp = getattr(alvo, "hp", 0)
                 hp_max = max(1, getattr(alvo, "hp_max", 1))
                 if 0 < hp and (hp / hp_max) < self.execucao_limiar_hp:
@@ -242,12 +308,7 @@ class EfeitoInerciaCinetica(EfeitoCombate):
                 dist = math.hypot(dx, dy)
                 if dist <= self.raio_colisao:
                     dst._boliche_cd = 0.25
-                    if hasattr(dst, "sofrer_dano"):
-                        dst.sofrer_dano(dano_col)
-                    elif hasattr(dst, "hp"):
-                        dst.hp = max(0, dst.hp - dano_col)
-                        if dst.hp <= 0:
-                            dst.vivo = False
+                    _aplicar_dano_entidade(dst, dano_col)
                     if not getattr(dst, "vivo", True):
                         abates_golpe += 1
                     nx, ny = normalizar_vetor(dx, dy)
@@ -316,8 +377,7 @@ class EfeitoClaraoFotossensivel(EfeitoCombate):
     def ao_impacto(self, ctx: ContextoCombate, alvo: Any, dano: int, fonte: Any = None) -> dict | None:
         if self.clarao_timer > 0.0 and not getattr(alvo, "_revelado_clarao", False):
             alvo._revelado_clarao = True
-            if hasattr(alvo, "atordoado_timer"):
-                alvo.atordoado_timer = max(getattr(alvo, "atordoado_timer", 0.0), 0.35)
+            _aplicar_stun_entidade(alvo, 0.35)
             return {"critico_forcado": True, "stun": 0.35}
         return None
 
@@ -369,6 +429,7 @@ class EfeitoGarbageCollector(EfeitoCombate):
                 self.ram_progresso = 0.0
                 self.buff_cadencia_timer = 4.0
                 apagados = self._limpar_projeteis_proximos(ctx)
+                _recarregar_municao_arma(getattr(ctx.jogador, "arma_especial", None), 0.15)
                 if ctx.sistema_conquistas is not None and apagados > 0:
                     ctx.sistema_conquistas.registrar_evento(
                         "coleta_gc_projeteis",
@@ -433,9 +494,11 @@ class EfeitoLatenciaPing(EfeitoCombate):
             prontas.append(self._fila_acoes.popleft())
         return prontas
 
-    def obter_pos_hitbox_atrasada(self) -> tuple[float, float]:
+    def obter_pos_hitbox_atrasada(
+        self, fallback: Optional[tuple[float, float]] = None
+    ) -> Optional[tuple[float, float]]:
         if not self._historico_pos:
-            return (0.0, 0.0)
+            return fallback
         return self._historico_pos[0]
 
     def ao_tick(self, ctx: ContextoCombate, dt: float) -> None:
@@ -451,13 +514,7 @@ class EfeitoLatenciaPing(EfeitoCombate):
             if eco["tempo"] <= 0.0:
                 alvo = eco["alvo"]
                 if getattr(alvo, "vivo", True):
-                    dano_eco = eco["dano"]
-                    if hasattr(alvo, "sofrer_dano"):
-                        alvo.sofrer_dano(dano_eco)
-                    elif hasattr(alvo, "hp"):
-                        alvo.hp = max(0, alvo.hp - dano_eco)
-                        if alvo.hp <= 0:
-                            alvo.vivo = False
+                    _aplicar_dano_entidade(alvo, eco["dano"])
             else:
                 restantes.append(eco)
         self._ecos_pendentes = restantes
@@ -497,14 +554,21 @@ class EfeitoDashProtocolo(EfeitoCombate):
         self.snapshots: deque[tuple[float, float, int]] = deque(maxlen=30)
         self._amostra_timer: float = 0.0
         self.sombra_ativa: Optional[EntidadeHolograma] = None
+        self.linhas_eletricas: list[dict] = []
 
     def ao_tick(self, ctx: ContextoCombate, dt: float) -> None:
+        dt = float(dt)
+        if self.linhas_eletricas:
+            self.linhas_eletricas = [
+                ln for ln in self.linhas_eletricas if (ln.__setitem__("tempo", ln["tempo"] - dt) or True) and ln["tempo"] > 0.0
+            ]
+
         if self.modo == "propulsor_instavel" and ctx.jogador is not None:
             ctx.jogador.dash_cargas_max = 2
             ctx.jogador.dash_recarga_mult = 1.35
             ctx.jogador.dash_sem_iframes = True
         elif self.modo == "rollback_estado" and ctx.jogador is not None:
-            self._amostra_timer += float(dt)
+            self._amostra_timer += dt
             if self._amostra_timer >= 0.10 or not self.snapshots:
                 self._amostra_timer = 0.0
                 self.snapshots.append(
@@ -523,9 +587,22 @@ class EfeitoDashProtocolo(EfeitoCombate):
         origem: tuple[float, float],
         destino: tuple[float, float],
     ) -> None:
-        if self.modo == "sombra_espelho" and ctx.jogador is not None:
+        if self.modo == "teleporte_buffer" and ctx.jogador is not None:
+            ctx.jogador.x = float(destino[0])
+            ctx.jogador.y = float(destino[1])
+            if hasattr(ctx.jogador, "dash_cooldown_restante"):
+                ctx.jogador.dash_cooldown_restante = float(ctx.jogador.dash_cooldown_restante) + 0.6
+            self.linhas_eletricas.append({"origem": origem, "destino": destino, "tempo": 0.35})
+            for inim in ctx.inimigos:
+                if not getattr(inim, "vivo", True):
+                    continue
+                ix = getattr(inim, "x", 0.0) + getattr(inim, "largura", 32) * 0.5
+                iy = getattr(inim, "y", 0.0) + getattr(inim, "altura", 32) * 0.5
+                if _distancia_ponto_segmento(ix, iy, origem[0], origem[1], destino[0], destino[1]) <= 36.0:
+                    _aplicar_dano_entidade(inim, 28)
+
+        elif self.modo == "sombra_espelho" and ctx.jogador is not None:
             if self.sombra_ativa is not None and self.sombra_ativa.vivo:
-                # 2º toque: troca posição com a sombra
                 sx, sy = self.sombra_ativa.x, self.sombra_ativa.y
                 self.sombra_ativa.x, self.sombra_ativa.y = ctx.jogador.x, ctx.jogador.y
                 ctx.jogador.x, ctx.jogador.y = sx, sy
@@ -540,6 +617,7 @@ class EfeitoDashProtocolo(EfeitoCombate):
                 self.sombra_ativa = sombra
                 if ctx.hologramas is not None:
                     ctx.hologramas.append(sombra)
+
         elif self.modo == "rollback_estado" and ctx.jogador is not None and self.snapshots:
             rx, ry, rhp = self.snapshots[0]
             ctx.jogador.x = rx
@@ -549,6 +627,20 @@ class EfeitoDashProtocolo(EfeitoCombate):
                 hp_max = int(getattr(ctx.jogador, "hp_max", rhp))
                 cura = int(round((rhp - hp_atual) * 0.5))
                 ctx.jogador.hp = min(hp_max, hp_atual + cura)
+            # Onda de choque na chegada
+            cx = rx + getattr(ctx.jogador, "largura", 32) * 0.5
+            cy = ry + getattr(ctx.jogador, "altura", 32) * 0.5
+            for inim in ctx.inimigos:
+                if not getattr(inim, "vivo", True):
+                    continue
+                ix = getattr(inim, "x", 0.0) + getattr(inim, "largura", 32) * 0.5
+                iy = getattr(inim, "y", 0.0) + getattr(inim, "altura", 32) * 0.5
+                dx, dy = ix - cx, iy - cy
+                if math.hypot(dx, dy) <= 140.0:
+                    _aplicar_dano_entidade(inim, 30)
+                    if hasattr(inim, "aplicar_knockback"):
+                        nx, ny = normalizar_vetor(dx, dy)
+                        inim.aplicar_knockback(nx, ny, 320.0)
 
     def ao_disparo(self, ctx: ContextoCombate, arma: Any, projeteis: list) -> list:
         if (
@@ -569,6 +661,79 @@ class EfeitoDashRastro(EfeitoCombate):
 
     def __init__(self, modo: str):
         self.modo = modo
+        self.sobreaquecimento_timer: float = 0.0
+        self.zonas_fogo: list[dict] = []
+        self.vortices: list[dict] = []
+        self.subprocessos_pendentes: list[dict] = []
+
+    def ao_tick(self, ctx: ContextoCombate, dt: float) -> None:
+        dt = float(dt)
+        if self.sobreaquecimento_timer > 0.0:
+            self.sobreaquecimento_timer = max(0.0, self.sobreaquecimento_timer - dt)
+
+        if self.modo == "vacuo_io" and ctx.jogador is not None:
+            ctx.jogador.dash_alcance_mult = 0.75
+        elif self.modo == "subprocesso_atrasado" and ctx.jogador is not None:
+            ctx.jogador.dash_alcance_mult = 0.85
+
+        # Zonas incandescentes de exaustao_termica
+        if self.zonas_fogo:
+            ativas: list[dict] = []
+            for z in self.zonas_fogo:
+                z["tempo"] -= dt
+                z["tick"] -= dt
+                if z["tempo"] > 0.0:
+                    if z["tick"] <= 0.0:
+                        z["tick"] = 0.35
+                        for inim in ctx.inimigos:
+                            if not getattr(inim, "vivo", True):
+                                continue
+                            ix = getattr(inim, "x", 0.0) + getattr(inim, "largura", 32) * 0.5
+                            iy = getattr(inim, "y", 0.0) + getattr(inim, "altura", 32) * 0.5
+                            if math.hypot(ix - z["x"], iy - z["y"]) <= z["raio"]:
+                                _aplicar_dano_entidade(inim, 8)
+                    ativas.append(z)
+            self.zonas_fogo = ativas
+
+        # Vórtices de vacuo_io
+        if self.vortices:
+            v_ativos: list[dict] = []
+            for v in self.vortices:
+                v["tempo"] -= dt
+                if v["tempo"] > 0.0:
+                    for inim in ctx.inimigos:
+                        if not getattr(inim, "vivo", True) or _eh_boss(inim):
+                            continue
+                        ix = getattr(inim, "x", 0.0) + getattr(inim, "largura", 32) * 0.5
+                        iy = getattr(inim, "y", 0.0) + getattr(inim, "altura", 32) * 0.5
+                        dx, dy = v["x"] - ix, v["y"] - iy
+                        dist = math.hypot(dx, dy)
+                        if 8.0 < dist <= v["raio"]:
+                            nx, ny = normalizar_vetor(dx, dy)
+                            inim.x = float(inim.x) + nx * 160.0 * dt
+                            inim.y = float(inim.y) + ny * 160.0 * dt
+                    v_ativos.append(v)
+            self.vortices = v_ativos
+
+        # Subprocesso atrasado (dispara após 0.75s)
+        if self.subprocessos_pendentes:
+            restantes: list[dict] = []
+            for sp in self.subprocessos_pendentes:
+                sp["tempo"] -= dt
+                if sp["tempo"] <= 0.0:
+                    ox, oy = sp["origem"]
+                    dx, dy = sp["destino"]
+                    for inim in ctx.inimigos:
+                        if not getattr(inim, "vivo", True):
+                            continue
+                        ix = getattr(inim, "x", 0.0) + getattr(inim, "largura", 32) * 0.5
+                        iy = getattr(inim, "y", 0.0) + getattr(inim, "altura", 32) * 0.5
+                        if _distancia_ponto_segmento(ix, iy, ox, oy, dx, dy) <= 40.0:
+                            _aplicar_dano_entidade(inim, 30)
+                            _aplicar_stun_entidade(inim, 1.1)
+                else:
+                    restantes.append(sp)
+            self.subprocessos_pendentes = restantes
 
     def ao_dash(
         self,
@@ -576,7 +741,19 @@ class EfeitoDashRastro(EfeitoCombate):
         origem: tuple[float, float],
         destino: tuple[float, float],
     ) -> None:
-        if self.modo == "thread_fantasma":
+        if self.modo == "exaustao_termica":
+            self.sobreaquecimento_timer = 1.2
+            mx = (origem[0] + destino[0]) * 0.5
+            my = (origem[1] + destino[1]) * 0.5
+            for px, py in (origem, (mx, my), destino):
+                self.zonas_fogo.append({"x": px, "y": py, "raio": 48.0, "tempo": 3.5, "tick": 0.0})
+        elif self.modo == "vacuo_io":
+            self.vortices.append({"x": float(destino[0]), "y": float(destino[1]), "raio": 180.0, "tempo": 0.8})
+        elif self.modo == "subprocesso_atrasado":
+            if ctx.jogador is not None and hasattr(ctx.jogador, "dash_cooldown_restante"):
+                ctx.jogador.dash_cooldown_restante = float(ctx.jogador.dash_cooldown_restante) + 0.4
+            self.subprocessos_pendentes.append({"origem": origem, "destino": destino, "tempo": 0.75})
+        elif self.modo == "thread_fantasma":
             clone = EntidadeHolograma(
                 x=origem[0],
                 y=origem[1],
@@ -597,20 +774,52 @@ class EfeitoParryAvancado(EfeitoCombate):
         self.precisao = precisao
         self.efeito = efeito
         self.barreiras_firewall: list[dict] = []
+        self.ventoinha_timer: float = 0.0
+        self.cortes_pendentes: int = 0
+        self._corte_intervalo: float = 0.0
+
+    def _executar_corte_ventoinha(self, ctx: ContextoCombate) -> None:
+        if ctx.jogador is None:
+            return
+        jx = getattr(ctx.jogador, "x", 0.0) + getattr(ctx.jogador, "largura", 32) * 0.5
+        jy = getattr(ctx.jogador, "y", 0.0) + getattr(ctx.jogador, "altura", 32) * 0.5
+        for inim in ctx.inimigos:
+            if not getattr(inim, "vivo", True):
+                continue
+            ix = getattr(inim, "x", 0.0) + getattr(inim, "largura", 32) * 0.5
+            iy = getattr(inim, "y", 0.0) + getattr(inim, "altura", 32) * 0.5
+            if math.hypot(ix - jx, iy - jy) <= 95.0:
+                _aplicar_dano_entidade(inim, 24)
 
     def ao_tick(self, ctx: ContextoCombate, dt: float) -> None:
-        if not self.barreiras_firewall:
-            return
-        restantes: list[dict] = []
-        for b in self.barreiras_firewall:
-            b["tempo"] -= float(dt)
-            if b["tempo"] > 0.0:
+        dt = float(dt)
+        if self.barreiras_firewall:
+            restantes: list[dict] = []
+            for b in self.barreiras_firewall:
+                b["tempo"] -= dt
+                if b["tempo"] > 0.0:
+                    for p in ctx.projeteis:
+                        if getattr(p, "dono", "jogador") == "inimigo" and getattr(p, "ativo", True):
+                            if math.hypot(p.x - b["x"], p.y - b["y"]) <= b["raio"]:
+                                p.ativo = False
+                    restantes.append(b)
+            self.barreiras_firewall = restantes
+
+        if self.ventoinha_timer > 0.0:
+            self.ventoinha_timer = max(0.0, self.ventoinha_timer - dt)
+            if ctx.jogador is not None:
+                jx = getattr(ctx.jogador, "x", 0.0)
+                jy = getattr(ctx.jogador, "y", 0.0)
                 for p in ctx.projeteis:
                     if getattr(p, "dono", "jogador") == "inimigo" and getattr(p, "ativo", True):
-                        if math.hypot(p.x - b["x"], p.y - b["y"]) <= b["raio"]:
+                        if math.hypot(p.x - jx, p.y - jy) <= 110.0:
                             p.ativo = False
-                restantes.append(b)
-        self.barreiras_firewall = restantes
+            if self.cortes_pendentes > 0:
+                self._corte_intervalo -= dt
+                if self._corte_intervalo <= 0.0:
+                    self._executar_corte_ventoinha(ctx)
+                    self.cortes_pendentes -= 1
+                    self._corte_intervalo = 0.30
 
     def ao_parry(self, ctx: ContextoCombate, projeteis_rebatidos: list) -> None:
         if self.precisao == "postura_riposte" and ctx.jogador is not None:
@@ -621,8 +830,7 @@ class EfeitoParryAvancado(EfeitoCombate):
             for inim in ctx.inimigos:
                 if getattr(inim, "vivo", True):
                     if math.hypot(getattr(inim, "x", 0.0) - jx, getattr(inim, "y", 0.0) - jy) <= 180.0:
-                        if hasattr(inim, "atordoado_timer"):
-                            inim.atordoado_timer = max(getattr(inim, "atordoado_timer", 0.0), 1.5)
+                        _aplicar_stun_entidade(inim, 1.5)
 
         if self.efeito == "firewall_estatico" and ctx.jogador is not None:
             self.barreiras_firewall.append(
@@ -634,6 +842,10 @@ class EfeitoParryAvancado(EfeitoCombate):
                 }
             )
         elif self.efeito == "ventoinha_360" and ctx.jogador is not None:
+            self.ventoinha_timer = 0.6
+            self.cortes_pendentes = 1
+            self._corte_intervalo = 0.30
+            self._executar_corte_ventoinha(ctx)
             jx = getattr(ctx.jogador, "x", 0.0)
             jy = getattr(ctx.jogador, "y", 0.0)
             for p in ctx.projeteis:
@@ -706,11 +918,7 @@ class FirmwareRecargaTatica(EfeitoCombate):
             self.pilhas_blindagem = min(3, self.pilhas_blindagem + 1)
             self.timer_blindagem = 4.0
             arma_esp = getattr(ctx.jogador, "arma_especial", None)
-            if arma_esp is not None and hasattr(arma_esp, "municao") and hasattr(arma_esp, "municao_max"):
-                arma_esp.municao = min(
-                    arma_esp.municao_max,
-                    arma_esp.municao + max(1, int(round(arma_esp.municao_max * 0.25))),
-                )
+            _recarregar_municao_arma(arma_esp, 0.25)
 
 
 class FirmwareAdrenalinaOverclock(EfeitoCombate):
@@ -732,7 +940,7 @@ class FirmwareAdrenalinaOverclock(EfeitoCombate):
                 self.abates_recentes = 0
 
     def ao_abate(self, ctx: ContextoCombate, inimigo: Any, fonte: Any = None) -> None:
-        if getattr(inimigo, "eh_elite", False) or getattr(inimigo, "eh_miniboss", False):
+        if _eh_elite_ou_miniboss(inimigo):
             self.timer = 3.5
             return
         self.abates_recentes += 1
@@ -799,8 +1007,8 @@ class FirmwareSobrecargaEstrutural(EfeitoCombate):
         eh_pesado = (
             "blindado" in getattr(alvo, "sprite_key", "")
             or "tank" in getattr(alvo, "sprite_key", "")
-            or getattr(alvo, "eh_elite", False)
-            or getattr(alvo, "eh_boss", False)
+            or _eh_elite_ou_miniboss(alvo)
+            or _eh_boss(alvo)
         )
         if self.acertos_consecutivos >= 3 or eh_pesado:
             self.acertos_consecutivos = 0

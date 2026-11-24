@@ -107,7 +107,10 @@ class GerenciadorConfiguracoes:
             return False
         cdef = CONFIGURACOES_GAMEPLAY[config_id]
         if cdef.exclusiva_conquista:
-            return self.sistema_conquistas.possui_recompensa("configuracao", config_id)
+            return (
+                self.sistema_conquistas.possui_recompensa("configuracao", config_id)
+                or config_id in self.desbloqueadas
+            )
         return config_id in self.desbloqueadas
 
     @staticmethod
