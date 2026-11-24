@@ -12,6 +12,8 @@ from src.armas.melee import Melee
 from src.armas.railgun import Railgun
 from src.entidades.projetil import Projetil
 from src.entidades.geladeira_tsunami import ESTADO_MORTE
+from src.sistemas.efeitos_combate import ContextoCombate
+from src.utils import constantes as _const
 from src.utils.constantes import (
     LARGURA_TELA, ALTURA_TELA,
     DASH_PARRY_META,
@@ -26,6 +28,123 @@ class GameplayCombateMixin:
     Mixin responsável pelas ações de combate, melee, parry, railgun, overvolt,
     resolução de projéteis/colisões e registro de abates da GameplayScene.
     """
+
+    def _obter_gerenciador_config(self):
+        return getattr(self, "gerenciador_config", None) or getattr(self, "config_sistema", None)
+
+    def _obter_efeitos_combate(self):
+        return getattr(self, "efeitos_combate", None)
+
+    def _obter_sistema_combo(self):
+        return getattr(self, "sistema_combo", None)
+
+    def _obter_sistema_conquistas(self):
+        sis = getattr(self, "sistema_conquistas", None)
+        if sis is not None:
+            return sis
+        ger = self._obter_gerenciador_config()
+        return getattr(ger, "sistema_conquistas", None) if ger is not None else None
+
+    def _construir_ctx_combate(self, mods=None, profundidade_recursao: int = 0) -> ContextoCombate:
+        ger = self._obter_gerenciador_config()
+        if mods is None and ger is not None and hasattr(ger, "obter_modificadores"):
+            mods = ger.obter_modificadores()
+        drops_obj = getattr(self, "sistema_drops", None)
+        drops_list = getattr(drops_obj, "drops", []) if drops_obj is not None else []
+        return ContextoCombate(
+            cena=self,
+            jogador=getattr(self, "jogador", None),
+            inimigos=getattr(self, "inimigos", []),
+            projeteis=getattr(self, "projeteis", []),
+            drops=drops_list,
+            particulas=getattr(self, "sistema_particulas", None),
+            mods=mods,
+            sistema_combo=self._obter_sistema_combo(),
+            sistema_conquistas=self._obter_sistema_conquistas(),
+            hologramas=getattr(self, "hologramas", None),
+            tempo_sobrevivencia=float(getattr(self, "tempo_sobrevivencia", 0.0)),
+            profundidade_recursao=int(profundidade_recursao),
+        )
+
+    @staticmethod
+    def _obter_sfx_arma(arma) -> str | None:
+        if arma is None:
+            return None
+        id_arma = str(getattr(arma, "id_arma", "") or "").lower()
+        nome = str(getattr(arma, "nome", "") or "").lower()
+        if id_arma == "smg_compacta" or "smg" in nome:
+            return "sfx_tiro_minigun"
+        if id_arma == "bastao_choque" or "bastão" in nome or "bastao" in nome:
+            return "sfx_ataque_melee"
+        if id_arma == "rifle_arco" or "rifle de arco" in nome or "arco" in id_arma:
+            return "sfx_tiro_railgun"
+        if id_arma == "lanca_chamas" or "lança-chamas" in nome or "lanca_chamas" in nome or "chamas" in id_arma:
+            return "sfx_tiro_foguete"
+        if id_arma == "pistola" or "pistola" in nome:
+            return "sfx_tiro_pistola"
+        if "minigun" in nome:
+            return "sfx_tiro_minigun"
+        if "shotgun" in nome or "escopeta" in nome:
+            return "sfx_tiro_shotgun"
+        if "rifle" in nome:
+            return "sfx_tiro_rifle"
+        if "foguete" in nome:
+            return "sfx_tiro_foguete"
+        if "granada" in nome:
+            return "sfx_tiro_granada"
+        if "railgun" in nome:
+            return "sfx_tiro_railgun"
+        if "chave" in nome or getattr(arma, "slot", None) == 1:
+            return "sfx_ataque_melee"
+        return None
+
+    def _tentar_registrar_just_dodge(self, origem: str = "projetil", mods=None) -> bool:
+        """Consome a janela de Just-Dodge do Dash e notifica Combo, Conquistas e Pipeline B+."""
+        jogador = getattr(self, "jogador", None)
+        if jogador is None or not hasattr(jogador, "consumir_just_dodge"):
+            return False
+        if not jogador.consumir_just_dodge():
+            return False
+
+        sis_combo = self._obter_sistema_combo()
+        if sis_combo is not None:
+            sis_combo.registrar_just_dodge(getattr(jogador, "dash_id_atual", 0))
+
+        sis_cnq = self._obter_sistema_conquistas()
+        if sis_cnq is not None and hasattr(sis_cnq, "registrar_evento"):
+            notifs = sis_cnq.registrar_evento("just_dodge", 1)
+            if notifs:
+                ger = self._obter_gerenciador_config()
+                if ger is not None and hasattr(ger, "sincronizar_recompensas_conquistas"):
+                    ger.sincronizar_recompensas_conquistas()
+                if ger is not None and hasattr(ger, "salvar_arquivo"):
+                    try:
+                        save_path = getattr(
+                            sys.modules.get("src.cenas.gameplay"),
+                            "SAVE_FILE_PATH",
+                            SAVE_FILE_PATH,
+                        )
+                        ger.salvar_arquivo(save_path)
+                    except Exception:
+                        pass
+
+        efeitos = self._obter_efeitos_combate()
+        if efeitos is not None:
+            efeitos.disparar_ao_dash_evasao(
+                self._construir_ctx_combate(mods), {"origem": origem}
+            )
+
+        if hasattr(self, "toasts_coleta"):
+            cx = jogador.x + getattr(jogador, "largura", 32) / 2.0
+            self.toasts_coleta.append({
+                "texto": "JUST-DODGE!",
+                "cor": AZUL_CIANO,
+                "x": cx,
+                "y": jogador.y - 22,
+                "tempo": 1.1,
+                "tempo_max": 1.1,
+            })
+        return True
 
     def _aplicar_efeitos_disparo_extras(self, novos_tiros: list, mods):
         """Aplica efeitos adicionais de disparo (Refrigeração, Multithreading e Auto-Fire Burst)."""
@@ -81,7 +200,7 @@ class GameplayCombateMixin:
             if hasattr(self, "sistema_audio") and self.sistema_audio is not None:
                 self.sistema_audio.tocar_tiro_sobrecarregado()
         elif hasattr(self, "sistema_audio") and self.sistema_audio is not None:
-            chave_sfx = self._obter_sfx_arma(arma_at)
+            chave_sfx = self._obter_sfx_arma(arma_at) or GameplayCombateMixin._obter_sfx_arma(arma_at)
             if chave_sfx:
                 self.sistema_audio.tocar_sfx(chave_sfx, pitch_aleatorio=True)
 
@@ -132,8 +251,46 @@ class GameplayCombateMixin:
         if not rebatidos:
             return []
 
-        mods = self.gerenciador_config.obter_modificadores() if hasattr(self, "gerenciador_config") and self.gerenciador_config else None
+        mods = self._obter_gerenciador_config().obter_modificadores() if self._obter_gerenciador_config() else None
         parry_ef = getattr(mods, "parry_efeito", "padrao") if mods else "padrao"
+
+        # Onda de Choque Defensiva Imediata ("Perigo Vira Arma")
+        raio_onda = float(getattr(_const, "PARRY_ONDA_RAIO", 135.0))
+        dano_onda = int(getattr(_const, "PARRY_ONDA_DANO", 20))
+        kb_onda = float(getattr(_const, "PARRY_ONDA_KNOCKBACK", 380.0))
+        if hasattr(self, "sistema_particulas") and self.sistema_particulas is not None:
+            self.sistema_particulas.emitir_onda_choque(cx, cy, raio_max=raio_onda, cor=DOURADO)
+        for inim in list(getattr(self, "inimigos", [])):
+            if not getattr(inim, "vivo", True) or getattr(inim, "em_fase", False):
+                continue
+            if getattr(inim, "is_boss", False) or inim is getattr(self, "chefe_final", None):
+                continue
+            if getattr(inim, "estado", "") in ("morte", ESTADO_MORTE):
+                continue
+            icx = inim.x + getattr(inim, "largura", 28) / 2.0
+            icy = inim.y + getattr(inim, "altura", 28) / 2.0
+            if distancia(cx, cy, icx, icy) <= raio_onda:
+                dx_k, dy_k = vetor_direcao(cx, cy, icx, icy)
+                if dx_k == 0.0 and dy_k == 0.0:
+                    dx_k = 1.0
+                if hasattr(inim, "aplicar_knockback"):
+                    inim.aplicar_knockback(dx_k, dy_k, kb_onda)
+                else:
+                    inim.x += dx_k * (kb_onda * 0.12)
+                    inim.y += dy_k * (kb_onda * 0.12)
+                if hasattr(self, "_clamp_entidade_arena"):
+                    self._clamp_entidade_arena(inim)
+                ret_onda = inim.receber_dano(
+                    dano_onda,
+                    origem_x=cx,
+                    origem_y=cy,
+                    dir_ataque=(dx_k, dy_k),
+                    fonte="parry_onda",
+                )
+                dano_onda_ef = int(ret_onda) if isinstance(ret_onda, (int, float)) else dano_onda
+                self.dano_total_causado = getattr(self, "dano_total_causado", 0) + dano_onda_ef
+                if not getattr(inim, "vivo", True):
+                    self._registrar_abate_inimigo(inim, mods, origem="parry")
 
         eh_pesado = any(
             getattr(pr, "sobrecarga_termica", False) or int(getattr(pr, "duel_stage", 0)) >= 3
@@ -236,30 +393,38 @@ class GameplayCombateMixin:
                         vy=math.sin(ang_base + off_est) * pr.velocidade
                     ))
 
-            if hasattr(self, "config_sistema") and self.config_sistema is not None and hasattr(self.config_sistema, "registrar_parry"):
-                total_parries, recem_desbloqueou = self.config_sistema.registrar_parry(DASH_PARRY_META)
+        # Contagem única de Parry por parry_janela_id (sem contagem dupla entre gerenciador_config e sistema_conquistas)
+        janela_id = int(getattr(arma_melee, "parry_janela_id", 0))
+        if janela_id != getattr(self, "_ultima_janela_parry_contada", -1):
+            self._ultima_janela_parry_contada = janela_id
+            sis_combo = self._obter_sistema_combo()
+            if sis_combo is not None:
+                sis_combo.registrar_parry(janela_id)
+
+            ger = self._obter_gerenciador_config()
+            if ger is not None and hasattr(ger, "registrar_parry"):
+                total_parries, recem_desbloqueou = ger.registrar_parry(DASH_PARRY_META)
                 if recem_desbloqueou:
                     self.jogador.dash_desbloqueado = True
-                    try:
-                        save_path = getattr(
-                            sys.modules.get("src.cenas.gameplay"),
-                            "SAVE_FILE_PATH",
-                            SAVE_FILE_PATH,
-                        )
-                        self.config_sistema.salvar_arquivo(save_path)
-                    except Exception:
-                        pass
                     self.toasts_coleta.append({
-                        "texto": "DASH DESBLOQUEADO [ESPAÇO]",
+                        "texto": "DASH + SMG COMPACTA DESBLOQUEADOS!",
                         "cor": AZUL_CIANO,
                         "x": cx, "y": self.jogador.y - 22, "tempo": 2.6, "tempo_max": 2.6
                     })
-                elif total_parries % 10 == 0:
+                elif total_parries % 5 == 0:
                     self.toasts_coleta.append({
                         "texto": f"PARRY {total_parries}/{DASH_PARRY_META}",
                         "cor": DOURADO,
                         "x": cx, "y": self.jogador.y - 18, "tempo": 1.8, "tempo_max": 1.8
                     })
+            else:
+                sis_cnq = self._obter_sistema_conquistas()
+                if sis_cnq is not None and hasattr(sis_cnq, "registrar_evento"):
+                    sis_cnq.registrar_evento("parry", 1)
+
+        efeitos = self._obter_efeitos_combate()
+        if efeitos is not None:
+            efeitos.disparar_ao_parry(self._construir_ctx_combate(mods), rebatidos)
 
         if extras_gerados:
             self.projeteis.extend(extras_gerados)
@@ -277,7 +442,7 @@ class GameplayCombateMixin:
         mult_dano_buff: float,
         mods
     ):
-        """Executa golpe corpo-a-corpo (Slot 1, RMB Quick-Melee ou tecla E) com janela de parry."""
+        """Executa golpe corpo-a-corpo puro (Slot 1 / LMB) com knockback e sem janela de parry/whiff."""
         ang_mira = math.atan2(mouse_mundo_y - centro_jogador_y, mouse_mundo_x - centro_jogador_x)
         if hasattr(self, "sistema_audio") and self.sistema_audio is not None:
             self.sistema_audio.tocar_sfx("sfx_ataque_melee", pitch_aleatorio=True)
@@ -288,16 +453,36 @@ class GameplayCombateMixin:
             mira_x=mouse_mundo_x,
             mira_y=mouse_mundo_y,
             angulo_mira=ang_mira,
-            aplicar_dano=False
+            aplicar_dano=False,
+            abrir_janela_parry=False,
         )
-        # Processa parry imediato na ativação do golpe (janela ativa de 0.18s continua nos frames seguintes)
-        self._processar_parry_ativo(arma_melee, centro_jogador_x, centro_jogador_y, angulo_mira=ang_mira)
+
+        sis_combo = self._obter_sistema_combo()
+        mult_combo_dano = 1.0
+        mult_sinc = 1.0
+        if sis_combo is not None:
+            mults_c = sis_combo.obter_multiplicadores()
+            mult_combo_dano = float(mults_c.get("dano_mult", 1.0))
+            if sis_combo.consumir_golpe_sincronizado():
+                mult_sinc = 1.25
+        efeitos = self._obter_efeitos_combate()
+        ctx = self._construir_ctx_combate(mods) if efeitos is not None else None
 
         if isinstance(afetados, (list, tuple)):
             for inim in afetados:
                 dano_base = getattr(arma_melee, "dano", 10)
                 is_crit = (crit_chance > 0.0 and random.random() < crit_chance)
-                dano_melee = math.ceil(dano_base * mult_dano_buff * (crit_mult if is_crit else 1.0))
+                dano_melee = math.ceil(dano_base * mult_dano_buff * mult_combo_dano * mult_sinc * (crit_mult if is_crit else 1.0))
+                if efeitos is not None and ctx is not None:
+                    res_imp = efeitos.disparar_ao_impacto(ctx, inim, dano_melee, fonte="melee")
+                    if res_imp:
+                        if res_imp.get("critico_forcado") and not is_crit:
+                            is_crit = True
+                            dano_melee = math.ceil(dano_melee * crit_mult)
+                        if "dano_mult" in res_imp:
+                            dano_melee = max(1, int(round(dano_melee * float(res_imp["dano_mult"]))))
+                        if "dano_extra" in res_imp:
+                            dano_melee += int(res_imp["dano_extra"])
 
                 if getattr(mods, "screen_shake_stagger", False) and inim is not self.chefe_final and not getattr(inim, "is_boss", False):
                     inim.x += math.cos(ang_mira) * 10.0
@@ -334,7 +519,7 @@ class GameplayCombateMixin:
                     self._aplicar_overvolt_chain(inim, dano_efetivo_m, mods)
 
                 if not getattr(inim, "vivo", True):
-                    self._registrar_abate_inimigo(inim, mods)
+                    self._registrar_abate_inimigo(inim, mods, origem="melee")
                 elif inim is not self.chefe_final and not getattr(inim, "is_boss", False):
                     self._clamp_entidade_arena(inim)
 
@@ -487,15 +672,43 @@ class GameplayCombateMixin:
             if not getattr(alv, "vivo", True):
                 self._registrar_abate_inimigo(alv, mods)
 
-    def _registrar_abate_inimigo(self, inim, mods=None):
-        """Contabiliza o abate de um inimigo, score, efeitos de shrapnel, shake e drops."""
-        if mods is None:
-            mods = self.gerenciador_config.obter_modificadores() if hasattr(self, "gerenciador_config") else None
+    def _registrar_abate_inimigo(self, inim, mods=None, origem: str = "arma"):
+        """Contabiliza o abate de um inimigo, combo, hooks B+, conquistas, score, shrapnel e drops."""
+        ger = self._obter_gerenciador_config()
+        if mods is None and ger is not None and hasattr(ger, "obter_modificadores"):
+            mods = ger.obter_modificadores()
 
         self.abates += 1
         self.pontos += getattr(inim, "score_valor", 100)
         inim_cx = inim.x + getattr(inim, "largura", 28) / 2.0
         inim_cy = inim.y + getattr(inim, "altura", 28) / 2.0
+
+        sis_combo = self._obter_sistema_combo()
+        if sis_combo is not None:
+            sis_combo.registrar_abate(origem=origem)
+
+        efeitos = self._obter_efeitos_combate()
+        if efeitos is not None:
+            efeitos.disparar_ao_abate(self._construir_ctx_combate(mods), inim, fonte=origem)
+
+        sis_cnq = self._obter_sistema_conquistas()
+        if sis_cnq is not None and hasattr(sis_cnq, "registrar_evento"):
+            notifs_abate = list(sis_cnq.registrar_evento("abate", 1) or [])
+            if getattr(inim, "is_elite", False) and not getattr(inim, "superaqueceu", False):
+                notifs_abate.extend(sis_cnq.registrar_evento("miniboss_rapido", 1) or [])
+            if notifs_abate and ger is not None:
+                if hasattr(ger, "sincronizar_recompensas_conquistas"):
+                    ger.sincronizar_recompensas_conquistas()
+                if hasattr(ger, "salvar_arquivo"):
+                    try:
+                        save_path = getattr(
+                            sys.modules.get("src.cenas.gameplay"),
+                            "SAVE_FILE_PATH",
+                            SAVE_FILE_PATH,
+                        )
+                        ger.salvar_arquivo(save_path)
+                    except Exception:
+                        pass
 
         # Overvolt (Abordagem A2): descarga elétrica automática a cada 25 abates
         if getattr(self.jogador, "overvolt", False):
@@ -566,6 +779,225 @@ class GameplayCombateMixin:
                 if hasattr(self, "sistema_audio") and self.sistema_audio is not None:
                     self.sistema_audio.tocar_sfx("sfx_pickup_xp")
 
+    def _disparar_acao_dash(
+        self,
+        dx_d: float,
+        dy_d: float,
+        centro_jogador_x: float,
+        centro_jogador_y: float,
+        mods,
+    ) -> bool:
+        """Executa o Dash e notifica partículas, freeze e Pipeline B+ (disparar_ao_dash)."""
+        if not self.jogador.iniciar_dash(dx_d, dy_d, mods=mods):
+            return False
+        if hasattr(self.sistema_particulas, "adicionar_onda_dash"):
+            self.sistema_particulas.adicionar_onda_dash(centro_jogador_x, centro_jogador_y)
+        if getattr(self.jogador, "dash_stutter_trigger", False):
+            self.jogador.dash_stutter_trigger = False
+            self.arena_freeze_timer = max(self.arena_freeze_timer, 0.15)
+        efeitos = self._obter_efeitos_combate()
+        if efeitos is not None:
+            dest_x = self.jogador.x + self.jogador.largura / 2.0
+            dest_y = self.jogador.y + self.jogador.altura / 2.0
+            efeitos.disparar_ao_dash(
+                self._construir_ctx_combate(mods),
+                (centro_jogador_x, centro_jogador_y),
+                (dest_x, dest_y),
+            )
+        return True
+
+    def _executar_acao_parry(
+        self,
+        arma_melee,
+        centro_jogador_x: float,
+        centro_jogador_y: float,
+        ang_mira: float,
+        mods,
+    ) -> bool:
+        """Executa Quick-Parry (RMB/E) com cooldown obrigatório e checagem imediata no frame 0."""
+        if arma_melee is None or not hasattr(arma_melee, "executar_parry"):
+            return False
+        parry_ef = getattr(mods, "parry_efeito", "padrao") if mods else "padrao"
+        cd_override = (
+            5.5
+            if parry_ef == "firewall_estatico"
+            else (6.5 if parry_ef == "ventoinha_360" else None)
+        )
+        if not arma_melee.executar_parry(
+            ang_mira, punir_whiff=True, cooldown_override=cd_override
+        ):
+            return False
+        if hasattr(self, "sistema_audio") and self.sistema_audio is not None:
+            self.sistema_audio.tocar_sfx("sfx_ataque_melee", pitch_aleatorio=True)
+        self._processar_parry_ativo(
+            arma_melee, centro_jogador_x, centro_jogador_y, angulo_mira=ang_mira
+        )
+        return True
+
+    def _despachar_tiros_arma(self, arma, novos_tiros: list, mods) -> None:
+        """Registra projéteis gerados, aplica efeitos legados e dispara ao_disparo sem recursão."""
+        if not novos_tiros:
+            return
+        self.projeteis.extend(novos_tiros)
+        self._aplicar_efeitos_disparo_extras(novos_tiros, mods)
+        efeitos = self._obter_efeitos_combate()
+        if efeitos is not None:
+            extras = efeitos.disparar_ao_disparo(
+                self._construir_ctx_combate(mods, profundidade_recursao=0),
+                arma,
+                novos_tiros,
+            )
+            if extras:
+                # Réplicas (sombra_espelho / gatilho_duplo / canhoes_perimetrais) nunca re-entram em ao_disparo
+                self.projeteis.extend(extras)
+
+    def _processar_arma_continua(
+        self,
+        arma,
+        dt: float,
+        segurando_gatilho: bool,
+        centro_jogador_x: float,
+        centro_jogador_y: float,
+        alvo_x: float,
+        alvo_y: float,
+        crit_chance: float,
+        crit_mult: float,
+        mult_dano: float,
+        mods,
+    ) -> bool:
+        """Atualiza armas contínuas (RifleArco, LancaChamas) e processa ticks de dano/status/abates."""
+        if arma is None or not hasattr(arma, "atualizar_fluxo"):
+            return False
+        eventos_fluxo = arma.atualizar_fluxo(
+            dt,
+            segurando_gatilho=segurando_gatilho,
+            origem_x=centro_jogador_x,
+            origem_y=centro_jogador_y,
+            destino_x=alvo_x,
+            destino_y=alvo_y,
+            inimigos=self.inimigos,
+        )
+        if not eventos_fluxo:
+            return bool(segurando_gatilho)
+
+        efeitos = self._obter_efeitos_combate()
+        ctx = self._construir_ctx_combate(mods) if efeitos is not None else None
+        show_dmg = (
+            hasattr(self, "config_sistema")
+            and self.config_sistema is not None
+            and str(self.config_sistema.obter_valor("damage_numbers")).lower()
+            in ("ligado", "true", "1")
+        )
+        for ev in eventos_fluxo:
+            alvo = ev.get("alvo")
+            if alvo is None or not getattr(alvo, "vivo", True):
+                continue
+            dano_base_ev = float(ev.get("dano", getattr(arma, "dano", 10)))
+            bonus_crit = float(ev.get("bonus_crit_overvolt", 0.0))
+            crit_eff = min(
+                1.0,
+                crit_chance
+                + (bonus_crit if getattr(self.jogador, "overvolt", False) else 0.0),
+            )
+            is_crit = crit_eff > 0.0 and random.random() < crit_eff
+            dano_hit = max(
+                1,
+                int(round(dano_base_ev * mult_dano * (crit_mult if is_crit else 1.0))),
+            )
+            if efeitos is not None and ctx is not None:
+                res_imp = efeitos.disparar_ao_impacto(ctx, alvo, dano_hit, fonte=arma)
+                if res_imp:
+                    if res_imp.get("critico_forcado") and not is_crit:
+                        is_crit = True
+                        dano_hit = max(1, int(round(dano_hit * crit_mult)))
+                    if "dano_mult" in res_imp:
+                        dano_hit = max(1, int(round(dano_hit * float(res_imp["dano_mult"]))))
+                    if "dano_extra" in res_imp:
+                        dano_hit += int(res_imp["dano_extra"])
+
+            ret_d = alvo.receber_dano(
+                dano_hit, origem_x=centro_jogador_x, origem_y=centro_jogador_y
+            )
+            dano_ef = int(ret_d) if isinstance(ret_d, (int, float)) else dano_hit
+            self.dano_total_causado += dano_ef
+
+            slow_t = float(ev.get("aplicar_slow", 0.0))
+            if slow_t > 0.0 and not getattr(alvo, "is_boss", False):
+                alvo.slow_timer = max(getattr(alvo, "slow_timer", 0.0), slow_t)
+                alvo.slow_fator = min(getattr(alvo, "slow_fator", 1.0), 0.65)
+            queim_t = float(ev.get("aplicar_queimadura", 0.0))
+            if queim_t > 0.0:
+                alvo.queimadura_timer = max(
+                    getattr(alvo, "queimadura_timer", 0.0), queim_t
+                )
+
+            if show_dmg or is_crit:
+                self.sistema_particulas.emitir_texto_dano(
+                    alvo.x + getattr(alvo, "largura", 28) / 2.0,
+                    alvo.y,
+                    dano_ef,
+                    critico=is_crit,
+                )
+            if is_crit:
+                self._aplicar_overvolt_chain(alvo, dano_ef, mods)
+            if not getattr(alvo, "vivo", True):
+                self._registrar_abate_inimigo(alvo, mods, origem="arma")
+        return True
+
+    def _disparar_arma_nao_melee(
+        self,
+        arma,
+        centro_jogador_x: float,
+        centro_jogador_y: float,
+        spawn_origem_x: float,
+        spawn_origem_y: float,
+        alvo_x: float,
+        alvo_y: float,
+        mods,
+        hitbox_mult: float,
+        mult_dano: float,
+    ) -> bool:
+        """Dispara Railgun ou arma balística (Slot 2 / Slot 3), aplicando escalas e ao_disparo."""
+        if arma is None or not self.jogador.vivo:
+            return False
+        if isinstance(arma, Railgun) or "railgun" in getattr(arma, "nome", "").lower():
+            if hasattr(arma, "pode_atirar") and arma.pode_atirar():
+                return self._executar_disparo_railgun(
+                    arma,
+                    centro_jogador_x,
+                    centro_jogador_y,
+                    alvo_x,
+                    alvo_y,
+                    mods=mods,
+                    hitbox_mult=hitbox_mult,
+                    mult_dano_buff=mult_dano,
+                )
+            return False
+
+        if hasattr(arma, "pode_atirar") and arma.pode_atirar() and hasattr(arma, "disparar"):
+            novos_tiros = arma.disparar(spawn_origem_x, spawn_origem_y, alvo_x, alvo_y)
+            if novos_tiros:
+                eh_slot2 = isinstance(arma, Pistola) or getattr(arma, "slot", None) == 2
+                for p in novos_tiros:
+                    if hitbox_mult != 1.0:
+                        p.largura = max(2, int(round(p.largura * hitbox_mult)))
+                        p.altura = max(2, int(round(p.altura * hitbox_mult)))
+                        p.width = p.largura
+                        p.height = p.altura
+                    if mult_dano != 1.0:
+                        p.dano = max(1, math.ceil(p.dano * mult_dano))
+                    if eh_slot2 and getattr(self.jogador, "controles_tanque", False):
+                        p.perfuracoes_restantes = int(getattr(p, "perfuracoes_restantes", 0)) + 1
+                if (
+                    eh_slot2
+                    and getattr(self.jogador, "controles_tanque", False)
+                    and getattr(self.jogador, "tanque_parado", False)
+                ):
+                    arma.tempo_recarga_restante *= 0.80
+                self._despachar_tiros_arma(arma, novos_tiros, mods)
+                return True
+        return False
+
     def _atualizar_disparos_jogador(
         self,
         dt: float,
@@ -573,7 +1005,7 @@ class GameplayCombateMixin:
         hitbox_mult: float,
         mult_dano_buff: float,
     ) -> tuple[float, float, float, float]:
-        """Processa pulso overdrive, mira, auto-fire, dash, parry, disparos primários/dual-wield e quick-melee."""
+        """Processa pulso overdrive, mira, auto-fire, latencia_ping, dash, parry, armas contínuas/balísticas e BIOS dual-wield."""
         centro_jogador_x = self.jogador.x + self.jogador.largura / 2.0
         centro_jogador_y = self.jogador.y + self.jogador.altura / 2.0
 
@@ -622,7 +1054,6 @@ class GameplayCombateMixin:
         autofire_desligado = val_autofire in ("desligado", "0", "false")
 
         if is_uma_mao:
-            # Mira e tiro 100% no teclado: direção do movimento atual, default para cima (0.0, -1.0) se parado
             dir_mov = getattr(self.jogador, "dir_movimento", (0.0, -1.0))
             dir_mira_x, dir_mira_y = float(dir_mov[0]), float(dir_mov[1])
             norm_m = math.hypot(dir_mira_x, dir_mira_y)
@@ -668,7 +1099,7 @@ class GameplayCombateMixin:
                     btn1_pressed = False
                     btn1_down = False
 
-        # Toggle de Auto-Fire na tecla 'F' quando auto_fire == "ligado" (estritamente anulado quando desligado)
+        # Toggle de Auto-Fire na tecla 'F' quando auto_fire == "ligado"
         if not is_uma_mao and not autofire_desligado and self.teclado is not None and hasattr(self.teclado, "key_down"):
             if self.teclado.key_down("f") or self.teclado.key_down("F"):
                 self.auto_fire_toggle_ativo = not getattr(self, "auto_fire_toggle_ativo", False)
@@ -687,33 +1118,30 @@ class GameplayCombateMixin:
             self.buffer_tiro = 0.0
         else:
             if btn1_pressed:
-                self.buffer_tiro = 0.15  # Buffer de 150ms para garantir que cliques rápidos nunca sejam perdidos
+                self.buffer_tiro = 0.15
             else:
                 self.buffer_tiro = max(0.0, self.buffer_tiro - dt)
             disparar_agora = (self.buffer_tiro > 0.0) or (not is_uma_mao and getattr(self, "auto_fire_toggle_ativo", False))
 
-        # Dash Direcional Permanente: SPACE/LSHIFT no modo padrão; LSHIFT em uma_mao (preserva SPACE para disparo)
-        if self.jogador.vivo and self.teclado is not None and hasattr(self.teclado, "key_down"):
-            if is_uma_mao:
-                dash_press = bool(self.teclado.key_down("LSHIFT"))
-            else:
-                dash_press = bool(self.teclado.key_down("SPACE") or self.teclado.key_down("LSHIFT"))
-            if dash_press:
-                dx_d, dy_d = getattr(self.jogador, "dir_movimento_atual", (0.0, 0.0))
-                if self.jogador.iniciar_dash(dx_d, dy_d, mods=mods):
-                    if hasattr(self.sistema_particulas, "adicionar_onda_dash"):
-                        self.sistema_particulas.adicionar_onda_dash(centro_jogador_x, centro_jogador_y)
-                    if getattr(self.jogador, "dash_stutter_trigger", False):
-                        self.jogador.dash_stutter_trigger = False
-                        self.arena_freeze_timer = max(self.arena_freeze_timer, 0.15)
+        # Multiplicadores do SistemaCombo + trava de Garbage Collector
+        sis_combo = self._obter_sistema_combo()
+        combo_mults = sis_combo.obter_multiplicadores() if sis_combo is not None else {"dano_mult": 1.0, "cadencia_mult": 1.0}
+        combo_dano_mult = float(combo_mults.get("dano_mult", 1.0))
+        combo_cadencia_mult = float(combo_mults.get("cadencia_mult", 1.0))
+        mult_dano_efetivo = mult_dano_buff * combo_dano_mult
 
-        # Atualiza janela ativa de Parry da Chave de Manutenção (Melee)
-        arma_melee_slot1 = self._obter_arma_melee()
-        if arma_melee_slot1 is not None:
-            if hasattr(arma_melee_slot1, "atualizar"):
-                arma_melee_slot1.atualizar(dt)
-            if getattr(arma_melee_slot1, "parry_ativo", False) and self.jogador.vivo:
-                self._processar_parry_ativo(arma_melee_slot1, centro_jogador_x, centro_jogador_y)
+        arma_ativa = self.jogador.obter_arma_ativa() if self.jogador.vivo else None
+        if combo_cadencia_mult > 1.0 and arma_ativa is not None and hasattr(arma_ativa, "tempo_recarga_restante"):
+            arma_ativa.tempo_recarga_restante = max(
+                0.0, arma_ativa.tempo_recarga_restante - (combo_cadencia_mult - 1.0) * dt
+            )
+
+        efeitos = self._obter_efeitos_combate()
+        efeito_gc = efeitos.obter_efeito("garbage_collector") if efeitos is not None else None
+        if efeito_gc is not None and getattr(efeito_gc, "disparos_travados", False):
+            disparar_agora = False
+
+        efeito_ping = efeitos.obter_efeito("latencia_ping") if efeitos is not None else None
 
         crit_chance = getattr(mods, "critico_chance", 0.0) if mods else 0.0
         crit_mult = getattr(mods, "critico_mult", 2.0) if mods else 2.0
@@ -721,84 +1149,152 @@ class GameplayCombateMixin:
             crit_chance = min(1.0, crit_chance + 0.30)
             crit_mult = max(crit_mult, 2.0)
 
-        # Direção de mira do jogador
         if not is_uma_mao:
             dir_mira_x, dir_mira_y = vetor_direcao(centro_jogador_x, centro_jogador_y, mouse_mundo_x, mouse_mundo_y)
             if dir_mira_x == 0.0 and dir_mira_y == 0.0:
                 dir_mira_x = 1.0
-        # Ponto de saída do projétil deslocado fora do corpo da batata (evita auto-colisão)
+        ang_mira = math.atan2(dir_mira_y, dir_mira_x)
         spawn_origem_x = centro_jogador_x + dir_mira_x * 24.0
         spawn_origem_y = centro_jogador_y + dir_mira_y * 24.0
 
-        arma_ativa = self.jogador.obter_arma_ativa() if self.jogador.vivo else None
+        arma_melee_slot1 = self._obter_arma_melee()
+        if arma_melee_slot1 is not None:
+            if hasattr(arma_melee_slot1, "atualizar"):
+                arma_melee_slot1.atualizar(dt)
+            if getattr(arma_melee_slot1, "parry_ativo", False) and self.jogador.vivo:
+                self._processar_parry_ativo(arma_melee_slot1, centro_jogador_x, centro_jogador_y)
 
-        # Railgun instantânea (port 1:1 da v2: disparo hitscan perfurante de 1800 px sem carga)
-        if arma_ativa is not None and (isinstance(arma_ativa, Railgun) or "railgun" in getattr(arma_ativa, "nome", "").lower()):
-            if disparar_agora and self.jogador.vivo and arma_ativa.pode_atirar():
-                if self._executar_disparo_railgun(
-                    arma_ativa,
-                    centro_jogador_x, centro_jogador_y,
-                    mouse_mundo_x, mouse_mundo_y,
-                    mods=mods,
-                    hitbox_mult=hitbox_mult,
-                    mult_dano_buff=mult_dano_buff
-                ):
-                    self.buffer_tiro = 0.0
-        elif disparar_agora and self.jogador.vivo and arma_ativa is not None:
-            if isinstance(arma_ativa, Pistola) or getattr(arma_ativa, "slot", None) == 2:
-                if hasattr(arma_ativa, "pode_atirar") and arma_ativa.pode_atirar():
-                    novos_tiros = arma_ativa.disparar(
-                        spawn_origem_x, spawn_origem_y,
-                        mouse_mundo_x, mouse_mundo_y
+        # Consome ações atrasadas por latencia_ping (~80ms)
+        if efeito_ping is not None and self.jogador.vivo:
+            for acao in efeito_ping.consumir_acoes_prontas(dt):
+                tipo_ac = acao.get("tipo")
+                pl = acao.get("payload") or {}
+                if tipo_ac == "dash":
+                    self._disparar_acao_dash(
+                        pl.get("dx", 0.0), pl.get("dy", 0.0),
+                        centro_jogador_x, centro_jogador_y, mods
                     )
-                    if novos_tiros:
-                        for p in novos_tiros:
-                            if hitbox_mult != 1.0:
-                                p.largura = max(2, int(round(p.largura * hitbox_mult)))
-                                p.altura = max(2, int(round(p.altura * hitbox_mult)))
-                                p.width = p.largura
-                                p.height = p.altura
-                            if mult_dano_buff != 1.0:
-                                p.dano = max(1, math.ceil(p.dano * mult_dano_buff))
-                            if getattr(self.jogador, "controles_tanque", False):
-                                p.perfuracoes_restantes = int(getattr(p, "perfuracoes_restantes", 0)) + 1
-                        if getattr(self.jogador, "controles_tanque", False) and getattr(self.jogador, "tanque_parado", False):
-                            arma_ativa.tempo_recarga_restante *= 0.80
-                        self.projeteis.extend(novos_tiros)
+                elif tipo_ac == "parry":
+                    self._executar_acao_parry(
+                        pl.get("arma", arma_melee_slot1),
+                        centro_jogador_x, centro_jogador_y,
+                        acao.get("ang_mira", ang_mira), mods
+                    )
+                elif tipo_ac == "melee":
+                    arma_m = pl.get("arma", arma_melee_slot1)
+                    if arma_m is not None and hasattr(arma_m, "pode_atirar") and arma_m.pode_atirar():
+                        self._executar_golpe_melee(
+                            arma_m,
+                            centro_jogador_x, centro_jogador_y,
+                            pl.get("alvo_x", mouse_mundo_x), pl.get("alvo_y", mouse_mundo_y),
+                            crit_chance, crit_mult, mult_dano_buff, mods
+                        )
+                elif tipo_ac == "disparo":
+                    arma_p = pl.get("arma", arma_ativa)
+                    ax_p = pl.get("alvo_x", mouse_mundo_x)
+                    ay_p = pl.get("alvo_y", mouse_mundo_y)
+                    dx_p, dy_p = vetor_direcao(centro_jogador_x, centro_jogador_y, ax_p, ay_p)
+                    if dx_p == 0.0 and dy_p == 0.0:
+                        dx_p = 1.0
+                    if getattr(arma_p, "eh_continua", False):
+                        self._processar_arma_continua(
+                            arma_p, dt, True,
+                            centro_jogador_x, centro_jogador_y,
+                            ax_p, ay_p,
+                            crit_chance, crit_mult, mult_dano_efetivo, mods
+                        )
+                    else:
+                        self._disparar_arma_nao_melee(
+                            arma_p,
+                            centro_jogador_x, centro_jogador_y,
+                            centro_jogador_x + dx_p * 24.0, centro_jogador_y + dy_p * 24.0,
+                            ax_p, ay_p, mods, hitbox_mult, mult_dano_efetivo
+                        )
+
+        # Dash Direcional Permanente: SPACE/LSHIFT no modo padrão; LSHIFT em uma_mao
+        if self.jogador.vivo and self.teclado is not None and hasattr(self.teclado, "key_down"):
+            dash_press = bool(
+                self.teclado.key_down("LSHIFT")
+                if is_uma_mao
+                else (self.teclado.key_down("SPACE") or self.teclado.key_down("LSHIFT"))
+            )
+            if dash_press:
+                dx_d, dy_d = getattr(self.jogador, "dir_movimento_atual", (0.0, 0.0))
+                if efeito_ping is not None:
+                    efeito_ping.agendar_acao(
+                        "dash", {"dx": dx_d, "dy": dy_d},
+                        (centro_jogador_x, centro_jogador_y), ang_mira
+                    )
+                else:
+                    self._disparar_acao_dash(dx_d, dy_d, centro_jogador_x, centro_jogador_y, mods)
+
+        # Disparo primário (LMB)
+        if self.jogador.vivo and arma_ativa is not None:
+            eh_melee_ativa = isinstance(arma_ativa, Melee) or getattr(arma_ativa, "slot", None) == 1
+            if getattr(arma_ativa, "eh_continua", False):
+                if efeito_ping is not None:
+                    if disparar_agora:
+                        efeito_ping.agendar_acao(
+                            "disparo",
+                            {"arma": arma_ativa, "alvo_x": mouse_mundo_x, "alvo_y": mouse_mundo_y},
+                            (centro_jogador_x, centro_jogador_y),
+                            ang_mira,
+                        )
                         self.buffer_tiro = 0.0
-                        self._aplicar_efeitos_disparo_extras(novos_tiros, mods)
-            elif isinstance(arma_ativa, Melee) or getattr(arma_ativa, "slot", None) == 1:
-                if hasattr(arma_ativa, "pode_atirar") and arma_ativa.pode_atirar():
-                    self._executar_golpe_melee(
-                        arma_ativa,
+                    else:
+                        self._processar_arma_continua(
+                            arma_ativa, dt, False,
+                            centro_jogador_x, centro_jogador_y,
+                            mouse_mundo_x, mouse_mundo_y,
+                            crit_chance, crit_mult, mult_dano_efetivo, mods
+                        )
+                else:
+                    self._processar_arma_continua(
+                        arma_ativa, dt, disparar_agora,
                         centro_jogador_x, centro_jogador_y,
                         mouse_mundo_x, mouse_mundo_y,
-                        crit_chance, crit_mult, mult_dano_buff, mods
+                        crit_chance, crit_mult, mult_dano_efetivo, mods
                     )
-                    self.buffer_tiro = 0.0
-            else:
-                if hasattr(arma_ativa, "pode_atirar") and arma_ativa.pode_atirar():
-                    if hasattr(arma_ativa, "disparar"):
-                        novos_tiros = arma_ativa.disparar(
-                            spawn_origem_x, spawn_origem_y,
-                            mouse_mundo_x, mouse_mundo_y
-                        )
-                        if novos_tiros:
-                            for p in novos_tiros:
-                                if hitbox_mult != 1.0:
-                                    p.largura = max(2, int(round(p.largura * hitbox_mult)))
-                                    p.altura = max(2, int(round(p.altura * hitbox_mult)))
-                                    p.width = p.largura
-                                    p.height = p.altura
-                                if mult_dano_buff != 1.0:
-                                    p.dano = max(1, math.ceil(p.dano * mult_dano_buff))
-                            self.projeteis.extend(novos_tiros)
+            elif disparar_agora:
+                if eh_melee_ativa:
+                    if hasattr(arma_ativa, "pode_atirar") and arma_ativa.pode_atirar():
+                        if efeito_ping is not None:
+                            efeito_ping.agendar_acao(
+                                "melee",
+                                {"arma": arma_ativa, "alvo_x": mouse_mundo_x, "alvo_y": mouse_mundo_y},
+                                (centro_jogador_x, centro_jogador_y),
+                                ang_mira,
+                            )
                             self.buffer_tiro = 0.0
-                            self._aplicar_efeitos_disparo_extras(novos_tiros, mods)
+                        else:
+                            self._executar_golpe_melee(
+                                arma_ativa,
+                                centro_jogador_x, centro_jogador_y,
+                                mouse_mundo_x, mouse_mundo_y,
+                                crit_chance, crit_mult, mult_dano_buff, mods
+                            )
+                            self.buffer_tiro = 0.0
+                else:
+                    if hasattr(arma_ativa, "pode_atirar") and arma_ativa.pode_atirar():
+                        if efeito_ping is not None:
+                            efeito_ping.agendar_acao(
+                                "disparo",
+                                {"arma": arma_ativa, "alvo_x": mouse_mundo_x, "alvo_y": mouse_mundo_y},
+                                (centro_jogador_x, centro_jogador_y),
+                                ang_mira,
+                            )
+                            self.buffer_tiro = 0.0
+                        elif self._disparar_arma_nao_melee(
+                            arma_ativa,
+                            centro_jogador_x, centro_jogador_y,
+                            spawn_origem_x, spawn_origem_y,
+                            mouse_mundo_x, mouse_mundo_y,
+                            mods, hitbox_mult, mult_dano_efetivo
+                        ):
+                            self.buffer_tiro = 0.0
 
-        # Dual-Wield (BIOS Modding - B1): LMB (disparar_agora) dispara também a outra Arma Especial equipada,
-        # preservando o Botão Direito (RMB) exclusivamente para o Parry Rápido.
-        if getattr(self.jogador, "bios_modding", False) and disparar_agora and self.jogador.vivo:
+        # Dual-Wield (BIOS Modding - B1): LMB dispara também a outra Arma Especial equipada (inclui armas contínuas)
+        if getattr(self.jogador, "bios_modding", False) and self.jogador.vivo:
             arma_esp = None
             if getattr(self.jogador, "slot_ativo", None) == 3:
                 if getattr(self.jogador, "arma_especial_secundaria", None) is not None and self.jogador.arma_especial_secundaria is not arma_ativa:
@@ -809,32 +1305,32 @@ class GameplayCombateMixin:
                 arma_esp = self.jogador.arma_especial
 
             if arma_esp is not None:
-                if isinstance(arma_esp, Railgun) or "railgun" in getattr(arma_esp, "nome", "").lower():
-                    if hasattr(arma_esp, "pode_atirar") and arma_esp.pode_atirar():
-                        self._executar_disparo_railgun(
+                if getattr(arma_esp, "eh_continua", False):
+                    self._processar_arma_continua(
+                        arma_esp, dt, disparar_agora,
+                        centro_jogador_x, centro_jogador_y,
+                        mouse_mundo_x, mouse_mundo_y,
+                        crit_chance, crit_mult, mult_dano_efetivo, mods
+                    )
+                elif disparar_agora:
+                    if efeito_ping is not None:
+                        if hasattr(arma_esp, "pode_atirar") and arma_esp.pode_atirar():
+                            efeito_ping.agendar_acao(
+                                "disparo",
+                                {"arma": arma_esp, "alvo_x": mouse_mundo_x, "alvo_y": mouse_mundo_y},
+                                (centro_jogador_x, centro_jogador_y),
+                                ang_mira,
+                            )
+                    else:
+                        self._disparar_arma_nao_melee(
                             arma_esp,
                             centro_jogador_x, centro_jogador_y,
+                            spawn_origem_x, spawn_origem_y,
                             mouse_mundo_x, mouse_mundo_y,
-                            mods=mods,
-                            hitbox_mult=hitbox_mult,
-                            mult_dano_buff=mult_dano_buff
+                            mods, hitbox_mult, mult_dano_efetivo
                         )
-                else:
-                    if hasattr(arma_esp, "pode_atirar") and arma_esp.pode_atirar():
-                        tiros_esp = arma_esp.disparar(spawn_origem_x, spawn_origem_y, mouse_mundo_x, mouse_mundo_y)
-                        if tiros_esp:
-                            for p in tiros_esp:
-                                if hitbox_mult != 1.0:
-                                    p.largura = max(2, int(round(p.largura * hitbox_mult)))
-                                    p.altura = max(2, int(round(p.altura * hitbox_mult)))
-                                    p.width = p.largura
-                                    p.height = p.altura
-                                if mult_dano_buff != 1.0:
-                                    p.dano = max(1, math.ceil(p.dano * mult_dano_buff))
-                            self.projeteis.extend(tiros_esp)
-                            self._aplicar_efeitos_disparo_extras(tiros_esp, mods)
 
-        # Quick-Melee / Parry Rápido (sem trocar de arma): tecla 'E' ou Botão Direito (RMB) sempre disponíveis
+        # Parry Rápido exclusivo (sem trocar de arma): tecla 'E' ou Botão Direito (RMB)
         if self.jogador.vivo and arma_melee_slot1 is not None and hasattr(arma_melee_slot1, "pode_atirar") and arma_melee_slot1.pode_atirar():
             tecla_e_down = bool(
                 self.teclado is not None and hasattr(self.teclado, "key_down") and (
@@ -847,14 +1343,20 @@ class GameplayCombateMixin:
                     rmb_down = bool(self.mouse.button_down(3))
                 elif hasattr(self.mouse, "is_button_down"):
                     rmb_down = bool(self.mouse.is_button_down(3))
-            rmb_quick_melee = rmb_down
-            if tecla_e_down or rmb_quick_melee:
-                self._executar_golpe_melee(
-                    arma_melee_slot1,
-                    centro_jogador_x, centro_jogador_y,
-                    mouse_mundo_x, mouse_mundo_y,
-                    crit_chance, crit_mult, mult_dano_buff, mods
-                )
+            if tecla_e_down or rmb_down:
+                if efeito_ping is not None:
+                    efeito_ping.agendar_acao(
+                        "parry",
+                        {"arma": arma_melee_slot1},
+                        (centro_jogador_x, centro_jogador_y),
+                        ang_mira,
+                    )
+                else:
+                    self._executar_acao_parry(
+                        arma_melee_slot1,
+                        centro_jogador_x, centro_jogador_y,
+                        ang_mira, mods
+                    )
         return centro_jogador_x, centro_jogador_y, crit_chance, crit_mult
 
     def _atualizar_fisica_projeteis(
@@ -867,43 +1369,56 @@ class GameplayCombateMixin:
     ):
         """Atualiza refração VSync tear, deslocamento de projéteis e zonas de fogo/plasma/estase/gelo."""
         if not cutscene_congelada:
-            # Sincronização Vertical (Desligado): Linha de Rasgo que divide projéteis em ±6° uma única vez
+            # Sincronização Vertical (Desligado): Linha de Rasgo divide tiros do jogador (0.75x) e desvia tiros inimigos (±12°)
             if getattr(mods, "vsync_tear_refraction", False):
                 self.vsync_tear_y = (getattr(self, "vsync_tear_y", 0.0) + 80.0 * dt) % ALTURA_TELA
                 proj_clones = []
                 ang_split = math.radians(6.0)
                 cos_pos, sin_pos = math.cos(ang_split), math.sin(ang_split)
                 cos_neg, sin_neg = math.cos(-ang_split), math.sin(-ang_split)
+                ang_desvio = math.radians(12.0)
                 for proj in self.projeteis:
+                    dono_p = getattr(proj, "dono", "jogador")
+                    tela_y = proj.y - self.camera.y
+                    if abs(tela_y - self.vsync_tear_y) >= 18.0:
+                        continue
                     if (
-                        getattr(proj, "dono", "jogador") == "jogador"
+                        dono_p == "jogador"
                         and not getattr(proj, "ja_dividido_tear", False)
                         and not getattr(proj, "split_done", False)
                     ):
-                        tela_y = proj.y - self.camera.y
-                        if abs(tela_y - self.vsync_tear_y) < 18.0:
-                            proj.ja_dividido_tear = True
-                            proj.split_done = True
-                            orig_vx, orig_vy = proj.vx, proj.vy
-                            # Projétil original desvia -6°
-                            orig_dx, orig_dy = proj.dir_x, proj.dir_y
-                            proj.dir_x = orig_dx * cos_neg - orig_dy * sin_neg
-                            proj.dir_y = orig_dx * sin_neg + orig_dy * cos_neg
-                            # Clone diverge +6°
-                            vx_d = orig_vx * cos_pos - orig_vy * sin_pos
-                            vy_d = orig_vx * sin_pos + orig_vy * cos_pos
-                            clone = proj.clonar(vx=vx_d, vy=vy_d, cor=(56, 189, 248))
-                            clone.ja_dividido_tear = True
-                            clone.split_done = True
-                            proj_clones.append(clone)
-                            self.sistema_particulas.emitir_faiscas(
-                                proj.x + getattr(proj, "largura", 6) / 2.0,
-                                proj.y + getattr(proj, "altura", 6) / 2.0,
-                                dir_x=proj.dir_x,
-                                dir_y=proj.dir_y,
-                                cor=(56, 189, 248),
-                                qtd=5
-                            )
+                        proj.ja_dividido_tear = True
+                        proj.split_done = True
+                        proj.dano = max(1, int(round(proj.dano * 0.75)))
+                        orig_vx, orig_vy = proj.vx, proj.vy
+                        orig_dx, orig_dy = proj.dir_x, proj.dir_y
+                        proj.dir_x = orig_dx * cos_neg - orig_dy * sin_neg
+                        proj.dir_y = orig_dx * sin_neg + orig_dy * cos_neg
+                        vx_d = orig_vx * cos_pos - orig_vy * sin_pos
+                        vy_d = orig_vx * sin_pos + orig_vy * cos_pos
+                        clone = proj.clonar(vx=vx_d, vy=vy_d, cor=(56, 189, 248))
+                        clone.ja_dividido_tear = True
+                        clone.split_done = True
+                        proj_clones.append(clone)
+                        self.sistema_particulas.emitir_faiscas(
+                            proj.x + getattr(proj, "largura", 6) / 2.0,
+                            proj.y + getattr(proj, "altura", 6) / 2.0,
+                            dir_x=proj.dir_x,
+                            dir_y=proj.dir_y,
+                            cor=(56, 189, 248),
+                            qtd=5
+                        )
+                    elif dono_p == "inimigo" and not getattr(proj, "ja_desviado_tear", False):
+                        proj.ja_desviado_tear = True
+                        sinal = -1.0 if (id(proj) % 2 == 0) else 1.0
+                        cos_d = math.cos(ang_desvio * sinal)
+                        sin_d = math.sin(ang_desvio * sinal)
+                        dx_o, dy_o = getattr(proj, "dir_x", 0.0), getattr(proj, "dir_y", 0.0)
+                        vx_o, vy_o = getattr(proj, "vx", 0.0), getattr(proj, "vy", 0.0)
+                        proj.dir_x = dx_o * cos_d - dy_o * sin_d
+                        proj.dir_y = dx_o * sin_d + dy_o * cos_d
+                        proj.vx = vx_o * cos_d - vy_o * sin_d
+                        proj.vy = vx_o * sin_d + vy_o * cos_d
                 if proj_clones:
                     self.projeteis.extend(proj_clones)
 
@@ -985,6 +1500,16 @@ class GameplayCombateMixin:
         """Processa sub-stepping de colisões de projéteis, explosões, parry AoE, fogo amigo e limpeza de entidades."""
         mult_explosivo = getattr(mods, "dano_explosivos_mult", 1.0) if mods else 1.0
         auto_dano = getattr(mods, "auto_dano", False) if mods else False
+        efeitos = self._obter_efeitos_combate()
+        ctx_combate = self._construir_ctx_combate(mods) if efeitos is not None else None
+        efeito_ping = efeitos.obter_efeito("latencia_ping") if efeitos is not None else None
+        if efeito_ping is not None:
+            pos_hb = efeito_ping.obter_pos_hitbox_atrasada((centro_jogador_x, centro_jogador_y))
+            hb_jog_x = pos_hb[0] - self.jogador.largura / 2.0
+            hb_jog_y = pos_hb[1] - self.jogador.altura / 2.0
+        else:
+            hb_jog_x = self.jogador.x
+            hb_jog_y = self.jogador.y
 
         for proj in list(self.projeteis):
             if cutscene_congelada:
@@ -1036,8 +1561,11 @@ class GameplayCombateMixin:
                             break
                     if getattr(self.jogador, "vivo", True) and colisao_aabb(
                         proj.x, proj.y, proj.largura, proj.altura,
-                        self.jogador.x, self.jogador.y, self.jogador.largura, self.jogador.altura
+                        hb_jog_x, hb_jog_y, self.jogador.largura, self.jogador.altura
                     ):
+                        if getattr(self.jogador, "em_dash_iframes", False):
+                            self._tentar_registrar_just_dodge(origem="projetil", mods=mods)
+                            continue
                         mult_dano_inim = mult_dano_inim_base
                         if val_ilum:
                             ox = getattr(proj, "x_origem", proj.x + proj.largura / 2.0)
@@ -1057,6 +1585,8 @@ class GameplayCombateMixin:
                                 "x": centro_jogador_x, "y": self.jogador.y - 26, "tempo": 1.8, "tempo_max": 1.8
                             })
                         self.jogador.receber_dano(dano_proj, causa_morte="Projétil Inimigo / Ondas da Geladeira")
+                        if efeitos is not None and ctx_combate is not None:
+                            efeitos.disparar_ao_dano_recebido(ctx_combate, dano_proj, fonte=proj)
                         self.aplicar_shake(6.0, 0.15)
                         proj.ativo = False
                         break
@@ -1162,6 +1692,7 @@ class GameplayCombateMixin:
                                 self.jogador.y += dir_rj_y * 48.0
                                 self._clamp_entidade_arena(self.jogador)
 
+                        origem_abate_exp = "drone" if getattr(proj, "origem_drone", False) else "arma"
                         for inim in afetados:
                             dano_base_exp = int(getattr(proj, "dano", 35) * mult_explosivo)
                             dano_prev = dano_base_exp * 2 if (inim is alvo_direto) else dano_base_exp
@@ -1169,6 +1700,8 @@ class GameplayCombateMixin:
                             dano_exp = max(0, int(hp_ant - getattr(inim, "hp", 0))) if hp_ant is not None and hp_ant > getattr(inim, "hp", 0) else dano_prev
                             is_crit_exp = (inim is alvo_direto)
                             self.dano_total_causado += dano_exp
+                            if efeitos is not None and ctx_combate is not None:
+                                efeitos.disparar_ao_impacto(ctx_combate, inim, dano_exp, fonte=proj)
                             if hasattr(self, "config_sistema") and str(self.config_sistema.obter_valor("damage_numbers")).lower() in ("ligado", "true", "1"):
                                 self.sistema_particulas.emitir_texto_dano(
                                     inim.x + getattr(inim, "largura", 28) / 2.0,
@@ -1179,7 +1712,7 @@ class GameplayCombateMixin:
                             if is_crit_exp:
                                 self._aplicar_overvolt_chain(inim, dano_exp, mods)
                             if not inim.vivo:
-                                self._registrar_abate_inimigo(inim, mods)
+                                self._registrar_abate_inimigo(inim, mods, origem=origem_abate_exp)
                         break
                 else:
                     for inimigo in self.inimigos:
@@ -1229,6 +1762,16 @@ class GameplayCombateMixin:
                             is_crit = bool(getattr(proj, "critico_nativo", False)) or (chance_crit_proj > 0.0 and random.random() < chance_crit_proj)
                             mult_estase = 1.20 if getattr(inimigo, "vulneravel_estase_timer", 0.0) > 0.0 else 1.0
                             dano_final = int(round(proj.dano * mult_estase * (crit_mult if is_crit else 1.0)))
+                            if efeitos is not None and ctx_combate is not None:
+                                res_imp = efeitos.disparar_ao_impacto(ctx_combate, inimigo, dano_final, fonte=proj)
+                                if res_imp:
+                                    if res_imp.get("critico_forcado") and not is_crit:
+                                        is_crit = True
+                                        dano_final = int(round(dano_final * crit_mult))
+                                    if "dano_mult" in res_imp:
+                                        dano_final = max(1, int(round(dano_final * float(res_imp["dano_mult"]))))
+                                    if "dano_extra" in res_imp:
+                                        dano_final += int(res_imp["dano_extra"])
 
                             dx_k, dy_k = getattr(proj, "dir_x", 0.0), getattr(proj, "dir_y", 0.0)
 
@@ -1322,7 +1865,8 @@ class GameplayCombateMixin:
                                             self._registrar_abate_inimigo(inim_sp, mods)
 
                             if not inimigo.vivo:
-                                self._registrar_abate_inimigo(inimigo, mods)
+                                origem_abate = "drone" if getattr(proj, "origem_drone", False) else "arma"
+                                self._registrar_abate_inimigo(inimigo, mods, origem=origem_abate)
 
                             if not getattr(proj, "perfurante", False):
                                 break
