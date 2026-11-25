@@ -24,3 +24,5 @@ Desktop.ini
 .VSCodeCounter/
 *.md
 !docs/GDD - Protocolo Batata.md
+!README.md
+!docs/CATALOGO_ARQUITETURAL.md
