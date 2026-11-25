@@ -7,6 +7,7 @@ import math
 from src.armas.arma_base import ArmaBase
 from src.utils import constantes as _const
 from src.utils.math_utils import distancia
+from src.utils.traducao import t
 
 
 class RifleArco(ArmaBase):
@@ -28,7 +29,7 @@ class RifleArco(ArmaBase):
         )
         mun_val = int(getattr(_const, "RIFLE_ARCO_MUNICIAO_MAX", 120)) if municao_max is None else int(municao_max)
         super().__init__(
-            nome="Rifle de Arco",
+            nome=t("combate_entidades", "arma_rifle_arco"),
             dano=dano_val,
             cooldown=tick_val,
             municao_infinita=False,
@@ -125,13 +126,16 @@ class RifleArco(ArmaBase):
             )
 
         self._tick_timer += dt_val
-        if self._tick_timer >= self.intervalo_tick:
+        ticks_disparados = 0
+        while self._tick_timer >= self.intervalo_tick and ticks_disparados < 4:
             self._tick_timer -= self.intervalo_tick
+            ticks_disparados += 1
+        if ticks_disparados > 0:
             if self.alvo_travado is not None:
                 return [
                     {
                         "alvo": self.alvo_travado,
-                        "dano": self.dano,
+                        "dano": int(self.dano * ticks_disparados),
                         "tipo_fluxo": "arco",
                         "x": self.feixe_destino[0],
                         "y": self.feixe_destino[1],

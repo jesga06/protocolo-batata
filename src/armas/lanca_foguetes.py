@@ -11,6 +11,7 @@ from src.utils.constantes import (
     FOGUETES_DANO, FOGUETES_COOLDOWN, FOGUETES_VELOCIDADE_PROJETIL,
     FOGUETES_RAIO_EXPLOSAO, FOGUETES_MUNICIAO_MAX, obter_caminho_asset
 )
+from src.utils.traducao import t
 
 
 class LancaFoguetes(ArmaBase):
@@ -27,7 +28,7 @@ class LancaFoguetes(ArmaBase):
         municao_max: int = FOGUETES_MUNICIAO_MAX
     ):
         super().__init__(
-            nome="Lança-Foguetes",
+            nome=t("combate_entidades", "arma_lanca_foguetes"),
             dano=dano,
             cooldown=cooldown,
             municao_infinita=False,
@@ -69,12 +70,5 @@ class LancaFoguetes(ArmaBase):
             aceleracao=680.0,
             chao_em_chamas=True
         )
-
-        try:
-            from PPlay.sound import Sound
-            sfx = Sound(obter_caminho_asset("sfx_tiro_foguete"))
-            sfx.play()
-        except Exception:
-            pass
 
         return [projetil]

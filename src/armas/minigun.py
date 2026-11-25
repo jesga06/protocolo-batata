@@ -11,6 +11,7 @@ from src.utils.constantes import (
     MINIGUN_DANO, MINIGUN_COOLDOWN, MINIGUN_VELOCIDADE_PROJETIL,
     MINIGUN_MUNICIAO_MAX, obter_caminho_asset
 )
+from src.utils.traducao import t
 
 
 class Minigun(ArmaBase):
@@ -27,7 +28,7 @@ class Minigun(ArmaBase):
         spread_max_rad: float = 0.06
     ):
         super().__init__(
-            nome="Minigun",
+            nome=t("combate_entidades", "arma_minigun"),
             dano=dano,
             cooldown=cooldown,
             municao_infinita=False,
@@ -81,12 +82,5 @@ class Minigun(ArmaBase):
             sprite_key="projetil_minigun",
             recuo_autor=16.0
         )
-
-        try:
-            from PPlay.sound import Sound
-            sfx = Sound(obter_caminho_asset("sfx_tiro_minigun"))
-            sfx.play()
-        except Exception:
-            pass
 
         return [projetil]

@@ -6,6 +6,7 @@ Arco mais focado e cooldown mais rápido, preservando Quick-Parry (RMB).
 
 from src.armas.melee import Melee
 from src.utils import constantes as _const
+from src.utils.traducao import t
 
 
 class BastaoChoque(Melee):
@@ -34,7 +35,7 @@ class BastaoChoque(Melee):
             max_alvos_knockback=max_alvos_knockback,
             arco_graus=arco_val,
         )
-        self.nome = "Bastão de Choque"
+        self.nome = t("combate_entidades", "arma_bastao_choque")
         self.id_arma = "bastao_choque"
         self.slot = 1
         self.icone_asset = "arma_melee"

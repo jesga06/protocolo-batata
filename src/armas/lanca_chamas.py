@@ -7,6 +7,7 @@ import math
 from src.armas.arma_base import ArmaBase
 from src.utils import constantes as _const
 from src.utils.math_utils import distancia
+from src.utils.traducao import t
 
 
 class LancaChamas(ArmaBase):
@@ -21,11 +22,11 @@ class LancaChamas(ArmaBase):
         municao_max: int | None = None,
         dreno_por_seg: float | None = None,
     ):
-        dano_val = 5 if dano is None else int(dano)
-        tick_val = 0.14 if intervalo_tick is None else float(intervalo_tick)
+        dano_val = int(getattr(_const, "LANCA_CHAMAS_DANO_TICK", 10)) if dano is None else int(dano)
+        tick_val = float(getattr(_const, "LANCA_CHAMAS_INTERVALO_TICK", 0.14)) if intervalo_tick is None else float(intervalo_tick)
         mun_val = int(getattr(_const, "LANCA_CHAMAS_MUNICIAO_MAX", 140)) if municao_max is None else int(municao_max)
         super().__init__(
-            nome="Lança-Chamas",
+            nome=t("combate_entidades", "arma_lanca_chamas"),
             dano=dano_val,
             cooldown=tick_val,
             municao_infinita=False,
@@ -90,10 +91,13 @@ class LancaChamas(ArmaBase):
         self.fluxo_alcance = self.alcance
 
         self._tick_timer += dt_val
-        if self._tick_timer < self.intervalo_tick:
+        ticks_disparados = 0
+        while self._tick_timer >= self.intervalo_tick and ticks_disparados < 4:
+            self._tick_timer -= self.intervalo_tick
+            ticks_disparados += 1
+        if ticks_disparados <= 0:
             return []
 
-        self._tick_timer -= self.intervalo_tick
         meio_arco_rad = math.radians(self.arco_graus / 2.0)
         eventos = []
         for inimigo in inimigos or []:
@@ -112,7 +116,7 @@ class LancaChamas(ArmaBase):
             eventos.append(
                 {
                     "alvo": inimigo,
-                    "dano": self.dano,
+                    "dano": int(self.dano * ticks_disparados),
                     "tipo_fluxo": "chama",
                     "x": cx,
                     "y": cy,

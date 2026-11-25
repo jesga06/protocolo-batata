@@ -26,6 +26,7 @@ class ArmaBase(ABC):
         self._dano_original = self.dano
         self.cooldown = float(cooldown)
         self.tempo_recarga_restante = 0.0
+        self._recarga_excedente = 0.0
         self.municao_infinita = municao_infinita
         self.municao_max = int(municao_max)
         self.municao_atual = int(municao_max) if not municao_infinita else -1
@@ -49,9 +50,18 @@ class ArmaBase(ABC):
         self.tempo_recarga_restante = float(valor)
 
     def update(self, dt: float):
-        """Decrementa o tempo de recarga com base no Delta Time."""
+        """Decrementa o tempo de recarga preservando excedente temporal para compensação de FPS baixo."""
+        dt_val = max(0.0, float(dt))
         if self.tempo_recarga_restante > 0.0:
-            self.tempo_recarga_restante = max(0.0, self.tempo_recarga_restante - dt)
+            restante = self.tempo_recarga_restante - dt_val
+            if restante <= 0.0:
+                self._recarga_excedente = max(0.0, -restante)
+                self.tempo_recarga_restante = 0.0
+            else:
+                self._recarga_excedente = 0.0
+                self.tempo_recarga_restante = restante
+        else:
+            self._recarga_excedente = min(float(self.cooldown) * 2.0, getattr(self, "_recarga_excedente", 0.0) + dt_val)
 
     def pode_atirar(self) -> bool:
         """Verifica se a arma está pronta para disparar (sem cooldown e com munição)."""

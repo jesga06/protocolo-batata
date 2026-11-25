@@ -8,8 +8,9 @@ from src.armas.arma_base import ArmaBase
 from src.utils.math_utils import distancia, vetor_direcao, clamp
 from src.utils.constantes import (
     MELEE_DANO, MELEE_COOLDOWN, MELEE_ALCANCE,
-    MELEE_KNOCKBACK, MELEE_ALVOS_MAX, MELEE_ARCO_GRAUS, obter_caminho_asset
+    MELEE_KNOCKBACK, MELEE_ALVOS_MAX, MELEE_ARCO_GRAUS
 )
+from src.utils.traducao import t
 
 
 class Melee(ArmaBase):
@@ -28,7 +29,7 @@ class Melee(ArmaBase):
         arco_graus: float = MELEE_ARCO_GRAUS
     ):
         super().__init__(
-            nome="Chave de Manutenção",
+            nome=t("combate_entidades", "arma_melee"),
             dano=dano,
             cooldown=cooldown,
             municao_infinita=True,
@@ -36,11 +37,13 @@ class Melee(ArmaBase):
             icone_asset="arma_melee"
         )
         self.alcance = float(alcance)
+        self._alcance_base: float = float(alcance)
         self.knockback_forca = float(knockback_forca)
         self.max_alvos_knockback = int(max_alvos_knockback)
         self.arco_graus = float(arco_graus)
         self._arco_graus_base: float = float(arco_graus)
         self._cooldown_base: float = float(cooldown)
+        self.ultimo_parry_cd_total: float = float(cooldown)
         self.id_arma: str = "chave_manutencao"
         self.parry_duracao: float = 0.12
         self.parry_alcance_base: float = 64.0
@@ -82,6 +85,10 @@ class Melee(ArmaBase):
             if self.parry_janela_restante <= 0.0:
                 if self.parry_pode_punir_whiff and not self.parry_acertou:
                     self.tempo_recarga_restante += float(self.parry_whiff_penalidade_cd)
+                    self.ultimo_parry_cd_total = max(
+                        float(getattr(self, "ultimo_parry_cd_total", self.cooldown)),
+                        float(self.tempo_recarga_restante),
+                    )
                     if callable(self.whiff_callback):
                         self.whiff_callback()
                 self.parry_pode_punir_whiff = False
@@ -103,17 +110,10 @@ class Melee(ArmaBase):
         """Executa o Quick-Parry (RMB/E) respeitando cooldown obrigatório."""
         if not self.pode_atirar():
             return False
-        self.tempo_recarga_restante = (
-            float(cooldown_override) if cooldown_override is not None else float(self.cooldown)
-        )
+        cd_aplicado = float(cooldown_override) if cooldown_override is not None else float(self.cooldown)
+        self.tempo_recarga_restante = cd_aplicado
+        self.ultimo_parry_cd_total = max(0.01, cd_aplicado)
         self.iniciar_golpe_parry(angulo=angulo, punir_whiff=punir_whiff)
-        try:
-            from PPlay.sound import Sound
-            sfx_path = obter_caminho_asset("sfx_ataque_melee")
-            sfx = Sound(sfx_path)
-            sfx.play()
-        except Exception:
-            pass
         return True
 
     def disparar(self, origem_x: float, origem_y: float, destino_x: float, destino_y: float) -> list:
@@ -143,15 +143,6 @@ class Melee(ArmaBase):
             return []
 
         self.tempo_recarga_restante = self.cooldown
-
-        # Efeito sonoro do golpe (sempre que desfere o ataque)
-        try:
-            from PPlay.sound import Sound
-            sfx_path = obter_caminho_asset("sfx_ataque_melee")
-            sfx = Sound(sfx_path)
-            sfx.play()
-        except Exception:
-            pass
 
         # Determina o ângulo central de mira se fornecido
         ang_mira = None
@@ -247,40 +238,60 @@ class Melee(ArmaBase):
         origem_x: float,
         origem_y: float,
         lista_projeteis: list,
-        angulo_mira: float = None
+        angulo_mira: float = None,
+        jogador_largura: float = 32.0,
+        jogador_altura: float = 32.0,
     ) -> list:
         """
         Reflete (Parry) projéteis hostis ativos dentro do alcance de parry e arco de 120°
         enquanto a janela ativa de parry estiver aberta.
+        Em postura_riposte, dá parry em qualquer projétil que encoste na hitbox da batata (360°).
         Retorna a lista de projéteis refletidos.
         """
         if self.parry_janela_restante <= 0.0 or not lista_projeteis:
+            return []
+        if getattr(self, "parry_modo_firewall", False) or getattr(self, "parry_modo_ventoinha", False):
             return []
 
         self.ultimo_parry_bloqueado_nao_parriavel = False
         ang_base = float(angulo_mira) if angulo_mira is not None else self.parry_angulo
         alcance_efetivo = self.parry_alcance
         meio_arco_rad = math.radians(self.arco_graus / 2.0)
+        modo_riposte = bool(getattr(self, "parry_modo_postura_riposte", False))
+        half_jw = float(jogador_largura) * 0.5
+        half_jh = float(jogador_altura) * 0.5
+        pad_hitbox_riposte = 6.0
 
         refletidos = []
         for p in lista_projeteis:
             if not getattr(p, "ativo", False) or getattr(p, "dono", "jogador") == "jogador":
                 continue
 
-            pcx = p.x + getattr(p, "largura", 8) / 2.0
-            pcy = p.y + getattr(p, "altura", 8) / 2.0
-            dist = distancia(origem_x, origem_y, pcx, pcy)
-            if dist > alcance_efetivo:
-                continue
+            pw = float(getattr(p, "largura", 8))
+            ph = float(getattr(p, "altura", 8))
+            pcx = p.x + pw / 2.0
+            pcy = p.y + ph / 2.0
 
-            no_cone = True
-            if ang_base is not None and dist > 1e-4:
-                ang_p = math.atan2(pcy - origem_y, pcx - origem_x)
-                delta = abs(math.atan2(math.sin(ang_p - ang_base), math.cos(ang_p - ang_base)))
-                no_cone = (delta <= meio_arco_rad + 1e-5)
+            if modo_riposte:
+                toca_hitbox = (
+                    abs(pcx - origem_x) <= half_jw + pw * 0.5 + pad_hitbox_riposte
+                    and abs(pcy - origem_y) <= half_jh + ph * 0.5 + pad_hitbox_riposte
+                )
+                if not toca_hitbox:
+                    continue
+            else:
+                dist = distancia(origem_x, origem_y, pcx, pcy)
+                if dist > alcance_efetivo:
+                    continue
 
-            if not no_cone:
-                continue
+                no_cone = True
+                if ang_base is not None and dist > 1e-4:
+                    ang_p = math.atan2(pcy - origem_y, pcx - origem_x)
+                    delta = abs(math.atan2(math.sin(ang_p - ang_base), math.cos(ang_p - ang_base)))
+                    no_cone = (delta <= meio_arco_rad + 1e-5)
+
+                if not no_cone:
+                    continue
 
             if getattr(p, "nao_parriavel", False):
                 self.ultimo_parry_bloqueado_nao_parriavel = True
@@ -316,51 +327,3 @@ class Melee(ArmaBase):
             self.parry_acertou = True
 
         return refletidos
-
-    def rebater_projeteis(
-        self,
-        origem_x: float,
-        origem_y: float,
-        lista_projeteis: list,
-        mira_x: float = None,
-        mira_y: float = None,
-        angulo_mira: float = None
-    ) -> list:
-        """Rebate (Parry) projéteis inimigos dentro do cone de alcance da Chave de Manutenção."""
-        if not lista_projeteis:
-            return []
-        ang_base = None
-        if angulo_mira is not None:
-            ang_base = float(angulo_mira)
-        elif mira_x is not None and mira_y is not None:
-            ang_base = math.atan2(mira_y - origem_y, mira_x - origem_x)
-
-        meio_arco_rad = math.radians((self.arco_graus + 20.0) / 2.0)
-        rebatidos = []
-        for p in lista_projeteis:
-            if not getattr(p, "ativo", False) or getattr(p, "dono", "") != "inimigo":
-                continue
-            pcx = p.x + getattr(p, "largura", 8) / 2.0
-            pcy = p.y + getattr(p, "altura", 8) / 2.0
-            dist = distancia(origem_x, origem_y, pcx, pcy)
-            if dist <= self.alcance + 18.0:
-                no_cone = True
-                if ang_base is not None and dist > 1e-4:
-                    ang_p = math.atan2(pcy - origem_y, pcx - origem_x)
-                    delta = abs(math.atan2(math.sin(ang_p - ang_base), math.cos(ang_p - ang_base)))
-                    no_cone = (delta <= meio_arco_rad)
-                if no_cone:
-                    dir_reb_x = math.cos(ang_base) if ang_base is not None else -getattr(p, "dir_x", 1.0)
-                    dir_reb_y = math.sin(ang_base) if ang_base is not None else -getattr(p, "dir_y", 0.0)
-                    p.dono = "jogador"
-                    p.parried = True
-                    p.dano = max(25, int(round(p.dano * 2.5)))
-                    p.velocidade = max(500.0, float(getattr(p, "velocidade", 300.0)) * 1.6)
-                    p.dir_x = dir_reb_x
-                    p.dir_y = dir_reb_y
-                    p.cor = (255, 215, 0)
-                    p.tempo_vida_restante = max(float(getattr(p, "tempo_vida_restante", 1.0)), 1.6)
-                    if hasattr(p, "alvos_atingidos"):
-                        p.alvos_atingidos.clear()
-                    rebatidos.append(p)
-        return rebatidos

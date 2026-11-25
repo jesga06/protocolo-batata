@@ -7,6 +7,7 @@ from src.equipamentos.drone_base import DroneBase
 from src.entidades.projetil import Projetil
 from src.utils.math_utils import distancia, vetor_direcao
 from src.utils.constantes import obter_caminho_asset
+from src.utils.traducao import t
 
 
 class DroneCombate(DroneBase):
@@ -25,7 +26,7 @@ class DroneCombate(DroneBase):
         velocidade_angular: float = 2.5
     ):
         super().__init__(
-            nome="Drone de Combate",
+            nome=t("combate_entidades", "drone_combate"),
             icone_asset="drone_combate",
             sprite_key="drone_combate",
             tempo_vida=tempo_vida,

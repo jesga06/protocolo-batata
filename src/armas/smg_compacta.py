@@ -1,13 +1,14 @@
 """
 SMG Compacta — Protocolo: Batata
 Arma de Slot 2 alternativa (desbloqueada com Dash em mestre_chave_inglesa M1).
-Mecânica Burst & Vent com barra de calor (0..100), zona ideal (65..95) e trava (1.0s).
+Mecânica Burst & Vent com barra de calor (0..100), zona ideal (60..92) e trava (1.0s).
 """
 
 from src.armas.arma_base import ArmaBase
 from src.entidades.projetil import Projetil
 from src.utils import constantes as _const
 from src.utils.math_utils import vetor_direcao
+from src.utils.traducao import t
 
 
 class SMGCompacta(ArmaBase):
@@ -23,7 +24,7 @@ class SMGCompacta(ArmaBase):
         dano_val = int(getattr(_const, "SMG_DANO", 9)) if dano is None else int(dano)
         cd_val = float(getattr(_const, "SMG_COOLDOWN", 0.11)) if cooldown is None else float(cooldown)
         super().__init__(
-            nome="SMG Compacta",
+            nome=t("combate_entidades", "arma_smg_compacta"),
             dano=dano_val,
             cooldown=cd_val,
             municao_infinita=True,
@@ -42,10 +43,10 @@ class SMGCompacta(ArmaBase):
             if desaceleracao is None
             else float(desaceleracao)
         )
-        self.calor_por_tiro = 2.0
-        self.resfriamento_por_seg = 50.0
-        self.zona_ideal_min = 60.0
-        self.zona_ideal_max = 92.0
+        self.calor_por_tiro = float(getattr(_const, "SMG_CALOR_POR_TIRO", 2.0))
+        self.resfriamento_por_seg = float(getattr(_const, "SMG_RESFRIAMENTO_POR_SEG", 50.0))
+        self.zona_ideal_min = float(getattr(_const, "SMG_ZONA_IDEAL_MIN", 60.0))
+        self.zona_ideal_max = float(getattr(_const, "SMG_ZONA_IDEAL_MAX", 92.0))
         self.trava_superaquecimento = float(getattr(_const, "SMG_TRAVA_SUPERAQUECIMENTO", 1.0))
         self.atraso_resfriamento = 0.24
 
@@ -124,12 +125,5 @@ class SMGCompacta(ArmaBase):
         if self.calor_atual >= 100.0:
             self.superaquecida = True
             self.tempo_trava_calor = self.trava_superaquecimento
-
-        try:
-            from PPlay.sound import Sound
-            sfx_path = _const.obter_caminho_asset("sfx_tiro_pistola")
-            Sound(sfx_path).play()
-        except Exception:
-            pass
 
         return [projetil]

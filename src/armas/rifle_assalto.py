@@ -10,6 +10,7 @@ from src.utils.constantes import (
     RIFLE_DANO, RIFLE_COOLDOWN, RIFLE_VELOCIDADE_PROJETIL,
     RIFLE_MUNICIAO_MAX, obter_caminho_asset
 )
+from src.utils.traducao import t
 
 
 class RifleAssalto(ArmaBase):
@@ -25,7 +26,7 @@ class RifleAssalto(ArmaBase):
         municao_max: int = RIFLE_MUNICIAO_MAX
     ):
         super().__init__(
-            nome="Rifle de Assalto",
+            nome=t("combate_entidades", "arma_rifle_assalto"),
             dano=dano,
             cooldown=cooldown,
             municao_infinita=False,
@@ -68,12 +69,5 @@ class RifleAssalto(ArmaBase):
             chance_critico_arma=0.30,
             cor=(255, 225, 60) if is_crit else None
         )
-
-        try:
-            from PPlay.sound import Sound
-            sfx = Sound(obter_caminho_asset("sfx_tiro_rifle"))
-            sfx.play()
-        except Exception:
-            pass
 
         return [projetil]
