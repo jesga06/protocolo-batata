@@ -14,8 +14,20 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+from src.sistemas.config_sistema import GerenciadorConfiguracoes
 from src.sistemas.sistema_xp import SistemaXP
-from src.ui.banner_dicas import BannerDica, DICAS_JOGO
+from src.ui.banner_dicas import (
+    BANCO_DICAS,
+    BannerDica,
+    CONDICOES_DICAS,
+    CONDICOES_PARAMETRIZADAS,
+    DICAS_JOGO,
+    avaliar_condicao,
+    dica,
+    dica_elegivel,
+    obter_dicas_elegiveis,
+    validar_condicao_spec,
+)
 from src.ui.hud import HUD
 
 
@@ -64,24 +76,82 @@ class TestDicasEParryHUD(unittest.TestCase):
         surf = pygame.Surface((1280, 720))
         banner.desenhar(surf, pygame.Rect(100, 600, 700, 56), scale=1.0)
 
-    def test_hud_card_parry_renderiza_apenas_quando_dash_bloqueado(self):
-        hud = HUD()
-        surf_bloqueado = pygame.Surface((1280, 720))
-        surf_bloqueado.fill((0, 0, 0))
-        hud.desenhar_card_parry(surf_bloqueado, _JogadorStub(False), parries_total=42, visivel=True)
+    def test_dicas_condicionais_save_zerado_vs_desbloqueios(self):
+        cfg = GerenciadorConfiguracoes()
+        pool_zerado = " ".join(obter_dicas_elegiveis(cfg)).lower()
+        self.assertIn("15 parries", pool_zerado)
+        self.assertNotIn("smg compacta", pool_zerado)
+        self.assertNotIn("zona ideal de calor", pool_zerado)
+        self.assertNotIn("firmware", pool_zerado)
+        self.assertNotIn("auto-fire", pool_zerado)
+        self.assertNotIn("bastão de choque", pool_zerado)
+        self.assertNotIn("mira oculta", pool_zerado)
+        self.assertNotIn("postura riposte", pool_zerado)
+        self.assertNotIn("29 configurações", pool_zerado)
+        self.assertNotIn("just-dodge", pool_zerado)
+        self.assertNotIn("combo", " ".join(DICAS_JOGO).lower())
 
-        surf_desbloqueado = pygame.Surface((1280, 720))
-        surf_desbloqueado.fill((0, 0, 0))
-        hud.desenhar_card_parry(surf_desbloqueado, _JogadorStub(True), parries_total=100, visivel=True)
+        # Desbloquear Dash + SMG + 2 configs
+        cfg.sistema_conquistas.recompensas["habilidade"].add("dash")
+        cfg.sistema_conquistas.recompensas["arma"].add("smg_compacta")
+        cfg.desbloqueadas.add("auto_fire")
+        cfg.desbloqueadas.add("mira_oculta")
+        pool_dash = " ".join(obter_dicas_elegiveis(cfg)).lower()
+        self.assertNotIn("acumule 15 parries", pool_dash)
+        self.assertIn("smg compacta", pool_dash)
+        self.assertIn("just-dodge", pool_dash)
+        self.assertIn("auto-fire", pool_dash)
+        self.assertIn("mira oculta", pool_dash)
+        self.assertIn("loadout", pool_dash)
+        self.assertIn("primeiro chip de firmware", pool_dash)
+        self.assertNotIn("2/4/6", pool_dash)
 
-        # Canto superior direito deve ter pixels desenhados quando bloqueado e permanecer preto quando desbloqueado
-        regiao_dir_bloq = pygame.transform.average_color(surf_bloqueado, pygame.Rect(950, 60, 320, 80))
-        regiao_dir_desbloq = pygame.transform.average_color(surf_desbloqueado, pygame.Rect(950, 60, 320, 80))
-        self.assertGreater(sum(regiao_dir_bloq[:3]), 0)
-        self.assertEqual(regiao_dir_desbloq[:3], (0, 0, 0))
+        # Desbloquear primeiro Chip de Firmware + Bastao + Postura Riposte
+        cfg.sistema_conquistas.recompensas["modificador_run"].add("gatilho_duplo")
+        cfg.sistema_conquistas.recompensas["arma"].add("bastao_choque")
+        cfg.sistema_conquistas.recompensas["opcao_config"].add("precisao_parry:postura_riposte")
+        pool_fw = " ".join(obter_dicas_elegiveis(cfg)).lower()
+        self.assertIn("2/4/6", pool_fw)
+        self.assertIn("bastão de choque", pool_fw)
+        self.assertIn("ripostar", pool_fw)
+
+        # Reset save volta instantaneamente ao pool inicial seguro
+        banner = BannerDica(gerenciador_config=cfg, indice_inicial=0)
+        banner.indice_atual = max(0, len(obter_dicas_elegiveis(cfg)) - 1)
+        cfg._resetar_para_v2_limpo()
+        self.assertNotIn("firmware", banner.texto_atual.lower())
+
+        # Registro exposto de condicoes + avaliacao parametrizada + validacao
+        self.assertGreaterEqual(len(CONDICOES_DICAS), 30)
+        self.assertGreaterEqual(len(CONDICOES_PARAMETRIZADAS), 15)
+        self.assertGreater(len(BANCO_DICAS), 15)
+        cfg.sistema_conquistas.recompensas["arma"].add("rifle_arco")
+        self.assertTrue(avaliar_condicao(("arma", "rifle_arco"), cfg))
+        self.assertFalse(avaliar_condicao(("min_configs_ativas", 2), cfg))
+        with self.assertRaises(ValueError):
+            validar_condicao_spec("condicao_inexistente_xyz")
+
+    def test_dica_expressao_legivel_e_validacao(self):
+        cfg = GerenciadorConfiguracoes()
+        cfg.sistema_conquistas.recompensas["arma"].add("rifle_arco")
+        cfg.estatisticas["parries_total"] = 20
+
+        self.assertTrue(avaliar_condicao("arma('rifle_arco') and parries >= 15", cfg))
+        self.assertTrue(avaliar_condicao("arma:rifle_arco and not dash_desbloqueado", cfg))
+        self.assertFalse(avaliar_condicao("arma('smg_compacta') or dash_desbloqueado", cfg))
+
+        item = dica("Teste", quando="arma('rifle_arco') and parries >= 15", exceto="dash_desbloqueado")
+        self.assertTrue(dica_elegivel(item, cfg))
+        cfg.sistema_conquistas.recompensas["habilidade"].add("dash")
+        self.assertFalse(dica_elegivel(item, cfg))
+
+        for invalida in ("arma('x') and condicao_falsa_xyz", "desconhecida('x')", "parries == 10", "a + b"):
+            with self.assertRaises(ValueError):
+                validar_condicao_spec(invalida)
 
     def test_in_world_dash_e_municao_abaixo_do_hp(self):
         from src.cenas.gameplay import GameplayScene
+        from src.armas.minigun import Minigun
 
         cena = GameplayScene()
         surf = pygame.Surface((1280, 720))
@@ -94,14 +164,22 @@ class TestDicasEParryHUD(unittest.TestCase):
         base_y = int(cena.jogador.y + cena.jogador.altura + 5.0)
         cx = int(cena.jogador.x + cena.jogador.largura / 2.0)
 
-        # Dash bloqueado: apenas 1 barra extra (munição) em base_y + 7; linha 2 (base_y + 12) vazia
+        # Pistola (munição infinita) sem Dash bloqueado: SEM barra amarela estática abaixo do HP
         cena.jogador.dash_desbloqueado = False
+        surf.fill((0, 0, 0))
+        cena._desenhar_hp_in_world()
+        self.assertEqual(surf.get_at((cx, base_y + 8))[:3], (0, 0, 0))
+        self.assertEqual(surf.get_at((cx, base_y + 13))[:3], (0, 0, 0))
+
+        # Arma finita (Slot 3): barra de munição em base_y + 7; linha 2 (base_y + 12) vazia sem Dash
+        cena.jogador.equipar_arma_especial(Minigun())
+        cena.jogador.selecionar_slot(3)
         surf.fill((0, 0, 0))
         cena._desenhar_hp_in_world()
         self.assertNotEqual(surf.get_at((cx, base_y + 8))[:3], (0, 0, 0))
         self.assertEqual(surf.get_at((cx, base_y + 13))[:3], (0, 0, 0))
 
-        # Dash desbloqueado: barra do dash em base_y + 7 (ciano) e barra de munição em base_y + 12
+        # Dash desbloqueado + arma finita: barra do dash em base_y + 7 (ciano) e barra de munição em base_y + 12
         cena.jogador.dash_desbloqueado = True
         cena.jogador.dash_cooldown_restante = 0.0
         surf.fill((0, 0, 0))

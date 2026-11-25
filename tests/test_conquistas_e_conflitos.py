@@ -15,9 +15,9 @@ from src.sistemas.conquistas_dados import (
 
 class TestConquistasEConflitos(unittest.TestCase):
     def test_catalogo_28_configs_e_regra_r1(self):
-        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 28)
+        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 29)
         self.assertEqual(len(CONFIGURACOES_SISTEMA), 3)
-        self.assertEqual(len(CHIPS_FIRMWARE), 9)
+        self.assertEqual(len(CHIPS_FIRMWARE), 8)
         self.assertEqual(len(CONQUISTAS_CONTINUAS), 5)
         self.assertEqual(len(CONQUISTAS_UNICAS), 11)
 
@@ -176,7 +176,8 @@ class TestConquistasEConflitos(unittest.TestCase):
 
             # Agora progride e faz round-trip v2
             cfg.sistema_conquistas.registrar_evento("parry", 50)
-            cfg.sistema_conquistas.registrar_evento("abate", 250)
+            cfg.sistema_conquistas.registrar_evento("abate", 1500)
+            cfg.sistema_conquistas.registrar_evento("miniboss_rapido", 1, {"configs_nao_neutras": 2})
             cfg.sincronizar_recompensas_conquistas()
             self.assertEqual(cfg.sistema_conquistas.slots_firmware_max, 2)
             self.assertTrue(cfg.sistema_conquistas.equipar_firmware("gatilho_duplo"))

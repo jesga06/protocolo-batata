@@ -1,10 +1,9 @@
 import unittest
 from src.armas.melee import Melee
 from src.entidades.jogador import Jogador
-from src.sistemas.sistema_combo import SistemaCombo
 
 
-class TestComboEJustDodge(unittest.TestCase):
+class TestJustDodgeEMelee(unittest.TestCase):
     def test_separacao_lmb_rmb_melee(self):
         melee = Melee()
         whiffs = []
@@ -56,50 +55,6 @@ class TestComboEJustDodge(unittest.TestCase):
         self.assertTrue(j.iniciar_dash(1.0, 0.0))
         self.assertFalse(j.em_dash_iframes)
         self.assertFalse(j.consumir_just_dodge())
-
-    def test_trava_anti_bullet_hell_combo(self):
-        combo = SistemaCombo()
-        self.assertTrue(combo.registrar_parry(janela_id=1))
-        self.assertFalse(combo.registrar_parry(janela_id=1))
-        self.assertEqual(combo.contagem, 3)
-
-        self.assertTrue(combo.registrar_just_dodge(dash_id=7))
-        self.assertFalse(combo.registrar_just_dodge(dash_id=7))
-        self.assertEqual(combo.contagem, 6)
-
-    def test_abates_drone_excluidos(self):
-        combo = SistemaCombo()
-        self.assertFalse(combo.registrar_abate(origem="drone"))
-        self.assertEqual(combo.contagem, 0)
-
-        self.assertTrue(combo.registrar_abate(origem="arma"))
-        self.assertEqual(combo.contagem, 1)
-
-    def test_unificacao_medidor_estilo_ranks_e_overdrive(self):
-        combo = SistemaCombo()
-        self.assertEqual(combo.rank, "")
-
-        combo.definir_modo_estilo(True)
-        self.assertEqual(combo.rank, "D")
-
-        for _ in range(5):
-            combo.registrar_abate("arma")
-        self.assertEqual(combo.rank, "C")
-
-        for _ in range(7):
-            combo.registrar_abate("arma")
-        self.assertEqual(combo.rank, "B")
-
-        for _ in range(10):
-            combo.registrar_abate("arma")
-        self.assertEqual(combo.rank, "A")
-        self.assertFalse(combo.consumir_pulso_overdrive())
-
-        for _ in range(13):
-            combo.registrar_abate("arma")
-        self.assertEqual(combo.rank, "S")
-        self.assertTrue(combo.consumir_pulso_overdrive())
-        self.assertFalse(combo.consumir_pulso_overdrive())
 
 
 if __name__ == "__main__":

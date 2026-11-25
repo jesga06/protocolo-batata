@@ -5,7 +5,7 @@ exercitando:
 - Progressão completa de ondas musicais (ANTICIPATION -> HOLD -> ASSAULT_INTRO -> ASSAULT -> Mini-Boss -> Geladeira Tsunami)
 - 8 configs não-neutras ativas simultaneamente (vsync, modo_wireframe, latencia_ping, garbage_collector,
   velocidade_inimigos, vida_inimigos, dash_protocolo, dash_rastro)
-- Chip de Firmware equipado (medidor_estilo)
+- Chip de Firmware equipado (gatilho_duplo)
 - Todas as 4 novas armas (BastaoChoque, SMGCompacta, RifleArco, LancaChamas)
 - EntidadeHolograma (sombra e clone_agro)
 - Abertura e fechamento do MenuConquistas
@@ -52,7 +52,7 @@ class TestSmokeGameloopV2(unittest.TestCase):
     def test_660_frames_headless_v2_simulation_and_zero_io_font_audit(self):
         cena = GameplayScene()
 
-        # 1. Ativa 8 configs não-neutras solicitadas + Firmware medidor_estilo
+        # 1. Ativa 8 configs não-neutras solicitadas + Firmware gatilho_duplo
         configs_alvo = {
             "vsync": "desligado",
             "modo_wireframe": "ligado",
@@ -72,9 +72,9 @@ class TestSmokeGameloopV2(unittest.TestCase):
                 cena.config_sistema.ativas[cid] = val
 
         if cena.sistema_conquistas is not None:
-            cena.sistema_conquistas.recompensas.setdefault("modificador_run", set()).add("medidor_estilo")
-            if "medidor_estilo" not in cena.sistema_conquistas.modificadores_equipados:
-                cena.sistema_conquistas.modificadores_equipados.append("medidor_estilo")
+            cena.sistema_conquistas.recompensas.setdefault("modificador_run", set()).add("gatilho_duplo")
+            if "gatilho_duplo" not in cena.sistema_conquistas.modificadores_equipados:
+                cena.sistema_conquistas.modificadores_equipados.append("gatilho_duplo")
 
         cena.aplicar_modificadores()
 

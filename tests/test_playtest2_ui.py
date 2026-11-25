@@ -100,6 +100,7 @@ class TestPlaytest2UI(unittest.TestCase):
 
     def test_02_menu_conquistas_tab_debounce_no_spam(self):
         cfg = GerenciadorConfiguracoes()
+        cfg.sistema_conquistas.recompensas["modificador_run"].add("gatilho_duplo")
         menu = MenuConquistas(cfg, cfg.sistema_conquistas, em_jogo=False)
         menu.abrir(aba=0)
         menu.cooldown_input = 0.0

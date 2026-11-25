@@ -67,11 +67,34 @@ class TestPlaytest2Balance(unittest.TestCase):
 
     def test_lanca_chamas_dps_balanceado(self):
         lc = LancaChamas()
-        self.assertEqual(lc.dano, 5)
+        self.assertEqual(lc.dano, 10)
         self.assertAlmostEqual(lc.intervalo_tick, 0.14, places=5)
         dps = lc.dano / lc.intervalo_tick
-        self.assertGreater(dps, 30.0)
-        self.assertLess(dps, 40.0)
+        self.assertGreater(dps, 65.0)
+        self.assertLess(dps, 78.0)
+
+    def test_lanca_chamas_dot_queimadura_ativo(self):
+        from src.cenas.gameplay import GameplayScene
+        from src.entidades.inimigo_padrao import InimigoPadrao
+        from src.entidades.inimigo_ninja import InimigoNinja
+
+        cena = GameplayScene()
+        alvo = InimigoPadrao(200.0, 200.0)
+        alvo.hp = 100
+        alvo.queimadura_timer = 2.5
+        ninja = InimigoNinja(260.0, 200.0)
+        hp_ninja_ini = ninja.hp
+        ninja.queimadura_timer = 2.5
+        cena.inimigos = [alvo, ninja]
+
+        for _ in range(5):
+            cena._processar_queimaduras(0.5)
+
+        # 5 ticks de 0.5s * 6 de dano = 30 de dano DoT no inimigo comum; timer zerado
+        self.assertEqual(alvo.hp, 70)
+        self.assertAlmostEqual(alvo.queimadura_timer, 0.0, places=4)
+        # Ninja permanece imune a efeito secundário de queimadura
+        self.assertEqual(ninja.hp, hp_ninja_ini)
 
     def test_knockback_tiros_reduzido_75_por_cento(self):
         # 1. Projetil explosivo: direto 87.5, radial 70.0
@@ -144,17 +167,18 @@ class TestPlaytest2Balance(unittest.TestCase):
         novos2 = spawner.update(0.016, 0.0, 0.0, total_inimigos_vivos=6)
         self.assertEqual(len(novos2), 0)
 
-        # Mini-Boss Impressora Matricial respeita piso de 700 HP (700 / 875 / 1050)
+        # Mini-Boss Impressora Matricial normalizado em Ciclo 1 ([750..850]) e escalado nos ciclos seguintes (945 / 1050)
         e1 = [
             e for e in spawner.update(0.016, 0.0, 0.0, 6, fase_onda="assault", gatilho_assault_intro=True)
             if getattr(e, "is_elite", False)
         ]
-        self.assertEqual(e1[0].hp_max, 700)
+        self.assertGreaterEqual(e1[0].hp_max, 750)
+        self.assertLessEqual(e1[0].hp_max, 850)
         e2 = [
             e for e in spawner.update(0.016, 0.0, 0.0, 6, fase_onda="assault", gatilho_assault_intro=True)
             if getattr(e, "is_elite", False)
         ]
-        self.assertEqual(e2[0].hp_max, 875)
+        self.assertEqual(e2[0].hp_max, 945)
         e3 = [
             e for e in spawner.update(0.016, 0.0, 0.0, 6, fase_onda="assault", gatilho_assault_intro=True)
             if getattr(e, "is_elite", False)
@@ -166,8 +190,10 @@ class TestPlaytest2Balance(unittest.TestCase):
         ctx = ContextoCombate(cena=None, jogador=None, inimigos=[], projeteis=[], drops=[])
         efeito.ao_dash(ctx, (0.0, 0.0), (120.0, 80.0))
         self.assertEqual(len(efeito.vortices), 1)
+        self.assertAlmostEqual(efeito.vortices[0]["x"], 0.0, places=3)
+        self.assertAlmostEqual(efeito.vortices[0]["y"], 0.0, places=3)
         self.assertAlmostEqual(efeito.vortices[0]["raio"], 95.0, places=3)
-        self.assertAlmostEqual(efeito.vortices[0]["tempo"], 2.5, places=3)
+        self.assertAlmostEqual(efeito.vortices[0]["tempo"], 3.5, places=3)
 
         y1, y2 = obter_bandas_vsync_y(100.0, 720.0)
         self.assertAlmostEqual(y1, 100.0, places=3)

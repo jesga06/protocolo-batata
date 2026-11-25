@@ -101,7 +101,7 @@ class TestStage1ConstantsAndWindow(unittest.TestCase):
         self.assertAlmostEqual(MELEE_ARCO_GRAUS, 120.0)
         self.assertAlmostEqual(DASH_DURACAO, 0.22)
         self.assertAlmostEqual(DASH_MULT_VEL, 2.6)
-        self.assertAlmostEqual(DASH_IFRAMES_BASE, 0.35)
+        self.assertAlmostEqual(DASH_IFRAMES_BASE, 0.26)
         self.assertAlmostEqual(DASH_COOLDOWN, 1.8)
         self.assertEqual(DASH_PARRY_META, 15)
 
@@ -182,7 +182,7 @@ class TestDashIframesAndOverdriveCoexistence(unittest.TestCase):
         self.assertTrue(j.iniciar_dash(1.0, 0.0))
         self.assertAlmostEqual(j.dash_ativo_timer, DASH_DURACAO, places=4)
         self.assertAlmostEqual(j.dash_cooldown_restante, DASH_COOLDOWN, places=4)
-        self.assertAlmostEqual(j.invulnerabilidade_timer, 0.35, places=4)
+        self.assertAlmostEqual(j.invulnerabilidade_timer, 0.26, places=4)
         self.assertFalse(j.dash_stutter_trigger)
 
     def test_dash_iframes_stacking_motion_blur_and_fps_stutter(self):
@@ -190,8 +190,8 @@ class TestDashIframesAndOverdriveCoexistence(unittest.TestCase):
         j.dash_desbloqueado = True
         mods = ModificadoresGameplay(motion_blur_ghosting=True, fps_stutter_dodge=True)
         self.assertTrue(j.iniciar_dash(1.0, 0.0, mods=mods))
-        # 0.35 base + 0.20 motion_blur + 0.15 fps_stutter = 0.70s
-        self.assertAlmostEqual(j.invulnerabilidade_timer, 0.70, places=4)
+        # 0.26 base + 0.08 motion_blur + 0.06 fps_stutter = 0.40s
+        self.assertAlmostEqual(j.invulnerabilidade_timer, 0.40, places=4)
         self.assertTrue(j.dash_stutter_trigger)
 
     def test_dash_coexists_with_passive_keybinds_overdrive_dash(self):

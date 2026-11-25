@@ -124,35 +124,35 @@ class TestExperimentoGameloopSpawn(unittest.TestCase):
 
     def test_rotacao_3_minibosses_e_hp_cheio_progressivo_sem_nerf_040x(self):
         spawner = SistemaSpawn()
-        self.assertEqual(len(spawner.fila_minibosses_run), 3)
+        self.assertEqual(len(spawner.fila_minibosses_run), 2)
         ids = [item[2] for item in spawner.fila_minibosses_run]
-        self.assertEqual(len(set(ids)), 3)
+        self.assertEqual(len(set(ids)), 2)
         todos_ids = {item[2] for item in SistemaSpawn.ARQUETIPOS_MINIBOSS_4}
         self.assertTrue(set(ids).issubset(todos_ids))
 
-        # Fila determinística para verificar escalas exatas 1.00x, 1.25x, 1.50x
+        # Fila determinística para verificar normalização Ciclo 1 [750..850] e escalas 1.35x, 1.50x
         fila_fixa = [
             (InimigoRapido, "MINI-BOSS: IMPRESSORA MATRICIAL", "impressora_matricial"),
             (InimigoTank, "MINI-BOSS: FONTE GENÉRICA 500W", "fonte_generica"),
             (InimigoBlindado, "MINI-BOSS: NO-BREAK CHUMBADO", "nobreak_chumbado"),
         ]
         sp = SistemaSpawn(fila_minibosses=fila_fixa)
-        hp_base_1 = max(700, fila_fixa[0][0](0, 0, is_elite=True).hp_max)
         hp_base_2 = max(700, fila_fixa[1][0](0, 0, is_elite=True).hp_max)
         hp_base_3 = max(700, fila_fixa[2][0](0, 0, is_elite=True).hp_max)
 
-        # Ciclo 1 -> 1.00x (sem 0.40x!)
+        # Ciclo 1 -> normalizado [750, 850]
         novos1 = sp.update(0.016, 0.0, 0.0, 0, fase_onda="assault", gatilho_assault_intro=True, possui_elite_vivo=False)
         elites1 = [e for e in novos1 if getattr(e, "is_elite", False)]
         self.assertEqual(len(elites1), 1)
-        self.assertEqual(elites1[0].hp_max, hp_base_1)
+        self.assertGreaterEqual(elites1[0].hp_max, 750)
+        self.assertLessEqual(elites1[0].hp_max, 850)
         self.assertEqual(elites1[0].arquetipo_miniboss, "impressora_matricial")
 
-        # Ciclo 2 -> 1.25x
+        # Ciclo 2 -> 1.35x
         novos2 = sp.update(0.016, 0.0, 0.0, 0, fase_onda="assault", gatilho_assault_intro=True, possui_elite_vivo=False)
         elites2 = [e for e in novos2 if getattr(e, "is_elite", False)]
         self.assertEqual(len(elites2), 1)
-        self.assertEqual(elites2[0].hp_max, int(round(hp_base_2 * 1.25)))
+        self.assertEqual(elites2[0].hp_max, int(round(hp_base_2 * 1.35)))
         self.assertEqual(elites2[0].arquetipo_miniboss, "fonte_generica")
 
         # Ciclo 3 -> 1.50x

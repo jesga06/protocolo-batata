@@ -130,6 +130,35 @@ class TestPlaytestFixesCore(unittest.TestCase):
         self.assertAlmostEqual(projs[0].velocidade, 470.0, places=1)
         self.assertEqual(projs[0].largura, 20)
         self.assertTrue(projs[0].nao_desviavel)
+        self.assertTrue(projs[0].homing_ativo)
+
+    def test_ninja_shuriken_homing_progressivo_e_velocidades_preservadas(self):
+        ninja = InimigoNinja(0.0, 0.0)
+        ninja.timer_tiro = ninja.cooldown_tiro
+        ninja.update(0.05, (200.0, 0.0))
+        p1 = ninja.obter_projeteis_pendentes()[0]
+        self.assertEqual(p1.duel_stage, 1)
+        self.assertAlmostEqual(p1.velocidade, 380.0, places=1)
+        self.assertTrue(p1.homing_ativo)
+        self.assertTrue(p1.nao_desviavel)
+
+        ninja.disparar_contra_ataque_duelo(2, (200.0, 0.0))
+        ninja.update(0.30, (200.0, 0.0))
+        p2 = ninja.obter_projeteis_pendentes()[0]
+        self.assertEqual(p2.duel_stage, 2)
+        self.assertAlmostEqual(p2.velocidade, 470.0, places=1)
+        self.assertTrue(p2.homing_ativo)
+        self.assertGreater(p2.homing_taxa_rad, p1.homing_taxa_rad)
+        self.assertLess(p2.homing_radar_dot, p1.homing_radar_dot)
+
+        ninja.disparar_contra_ataque_duelo(3, (200.0, 0.0))
+        ninja.update(0.30, (200.0, 0.0))
+        p3 = ninja.obter_projeteis_pendentes()[0]
+        self.assertEqual(p3.duel_stage, 3)
+        self.assertAlmostEqual(p3.velocidade, 560.0, places=1)
+        self.assertTrue(p3.homing_ativo)
+        self.assertGreater(p3.homing_taxa_rad, p2.homing_taxa_rad)
+        self.assertLess(p3.homing_radar_dot, p2.homing_radar_dot)
 
     def test_ranged_lead_e_modo_homing(self):
         ranged_normal = InimigoRanged(0.0, 0.0, modo_homing=False)

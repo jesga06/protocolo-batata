@@ -5,7 +5,7 @@ Valida:
 2. screen_shake_stagger: aplicado tanto em explosivos quanto em tiros balísticos e melee (com clamp de arena e sem empurrar Boss).
 3. I-frames aditivos: 0.20s base + 0.35s (fps_stutter_dodge) + 0.40s (motion_blur_ghosting) = 0.95s, e receber_dano(0) ignorado.
 4. Railgun com auto_fire="desligado": sustenta carga após button_down(1) enquanto segurado e cancela ao trocar de slot.
-5. Todos os 6 módulos de BIOS Overclock no loop real.
+5. Todos os 6 módulos de Upgrade de BIOS no loop real.
 """
 
 import os
@@ -115,8 +115,8 @@ class TestMechanicsE2ERealLoop(unittest.TestCase):
         self.assertGreater(inim_m.slow_timer, 0.0)
         self.assertEqual(inim_m.slow_fator, 0.50)
 
-    def test_additive_iframes_020_base_plus_035_fps_plus_040_blur(self):
-        """Dano não-letal ativa 0.2s base + 0.35s (fps_stutter_dodge) + 0.40s (motion_blur_ghosting) = 0.95s."""
+    def test_additive_iframes_007_base_plus_008_fps_plus_010_blur(self):
+        """Dano não-letal ativa 0.07s base + 0.08s (fps_stutter_dodge) + 0.10s (motion_blur_ghosting) = 0.25s."""
         j = self.cena.jogador
         j.hp = 100
         j.invulnerabilidade_timer = 0.0
@@ -125,16 +125,57 @@ class TestMechanicsE2ERealLoop(unittest.TestCase):
         j.receber_dano(0)
         self.assertEqual(j.invulnerabilidade_timer, 0.0)
 
-        # Apenas base (0.20s)
+        # Apenas base (0.07s)
         j.receber_dano(10)
-        self.assertAlmostEqual(j.invulnerabilidade_timer, 0.20, places=4)
+        self.assertAlmostEqual(j.invulnerabilidade_timer, 0.07, places=4)
 
-        # Com fps_stutter_dodge (+0.35s) e motion_blur_ghosting (+0.40s) -> 0.95s
+        # Com fps_stutter_dodge (+0.08s) e motion_blur_ghosting (+0.10s) -> 0.25s
         j.invulnerabilidade_timer = 0.0
         j.fps_stutter_dodge = True
         j.motion_blur_ghosting = True
         j.receber_dano(10)
-        self.assertAlmostEqual(j.invulnerabilidade_timer, 0.95, places=4)
+        self.assertAlmostEqual(j.invulnerabilidade_timer, 0.25, places=4)
+
+    def test_dampened_enemy_separation_gentle_and_non_explosive(self):
+        """Dois inimigos sobrepostos se afastam suavemente sem teleporte; inimigo em fase é ignorado."""
+        from src.entidades.inimigo_padrao import InimigoPadrao
+        from src.entidades.inimigo_phasing import InimigoPhasing
+        mods = self.cena.config_sistema.obter_modificadores()
+        e1 = InimigoPadrao(400.0, 400.0)
+        e2 = InimigoPadrao(402.0, 400.0)
+        e_fase = InimigoPhasing(400.0, 400.0)
+        e_fase.timer_ciclo = 0.2
+        self.assertTrue(e_fase.em_fase)
+        self.cena.inimigos = [e1, e2, e_fase]
+
+        self.cena._resolver_fisica_suave_horda(0.016, mods, False, False)
+        dist_apos_1_frame = abs(e2.x - e1.x)
+        # Empurrão suave: separa além dos 2px iniciais, mas limitado (sem teleporte instantâneo)
+        self.assertGreater(dist_apos_1_frame, 2.0)
+        self.assertLess(dist_apos_1_frame, 10.0)
+        # Inimigo em fase permanece intocado
+        self.assertEqual(e_fase.x, 400.0)
+
+    def test_dampened_minion_block_pushes_walking_player_but_dash_bypasses(self):
+        """Minion block suave empurra jogador andando para fora da sobreposição; Dash ignora o bloqueio."""
+        from src.entidades.inimigo_padrao import InimigoPadrao
+        mods = self.cena.config_sistema.obter_modificadores()
+        j = self.cena.jogador
+        j.x, j.y = 500.0, 500.0
+        inim = InimigoPadrao(505.0, 500.0)
+        self.cena.inimigos = [inim]
+
+        # Andando sem Dash: empurra jogador para a esquerda (-X) e dá leve chega-pra-lá no inimigo
+        self.cena._resolver_fisica_suave_horda(0.016, mods, False, False)
+        self.assertLess(j.x, 500.0)
+        self.assertGreater(inim.x, 505.0)
+
+        # Em Dash: minion block é ignorado
+        j.x, j.y = 500.0, 500.0
+        j.dash_desbloqueado = True
+        j.iniciar_dash(1.0, 0.0, mods=mods)
+        self.cena._resolver_fisica_suave_horda(0.016, mods, False, False)
+        self.assertEqual(j.x, 500.0)
 
     def test_railgun_fires_instant_hitscan_beam_piercing_multiple_enemies(self):
         """Port v2: Railgun dispara feixe hitscan instantâneo com auto_fire='desligado' perfurando múltiplos alvos."""

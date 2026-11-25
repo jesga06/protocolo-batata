@@ -39,13 +39,13 @@ class TestIntegracaoCoreV2(unittest.TestCase):
         self.assertEqual(C.SPAWN_MAX_IMPRESSORA, 2)
         self.assertEqual(C.SPAWN_MAX_TANK, 3)
         self.assertEqual(C.DASH_PARRY_META, 15)
-        self.assertEqual(C.BOSS_GELADEIRA_HP_BASE, 68000)
-        self.assertEqual(C.GELADEIRA_TSUNAMI_HP, 68000)
+        self.assertEqual(C.BOSS_GELADEIRA_HP_BASE, 48000)
+        self.assertEqual(C.GELADEIRA_TSUNAMI_HP, 48000)
         self.assertAlmostEqual(C.MUSICA_LOOKAHEAD_SEGUNDOS, 0.50)
         self.assertAlmostEqual(C.LATENCIA_PING_ATRASO_S, 0.08)
-        self.assertEqual(C.TOTAL_CONFIGS_GAMEPLAY, 28)
-        self.assertEqual(C.MINIBOSS_CICLOS_RUN, 3)
-        self.assertEqual(C.MINIBOSS_ESCALA_HP_CICLOS, (1.0, 1.25, 1.50))
+        self.assertEqual(C.TOTAL_CONFIGS_GAMEPLAY, 29)
+        self.assertEqual(C.MINIBOSS_CICLOS_RUN, 2)
+        self.assertEqual(C.MINIBOSS_ESCALA_HP_CICLOS, (1.0, 1.35, 1.50))
 
         for chave in (
             "arma_bastao_choque",
@@ -95,7 +95,6 @@ class TestIntegracaoCoreV2(unittest.TestCase):
     def test_gameplay_scene_init_bastao_sfx_musica_hitstop_e_boss_ciclo3(self):
         cena = GameplayScene()
         self.assertEqual(cena.spawner.max_ativos, C.SPAWN_MAX_ATIVOS)
-        self.assertIsNotNone(cena.sistema_combo)
         self.assertIsNotNone(cena.efeitos_combate)
         self.assertEqual(cena.hologramas, [])
 

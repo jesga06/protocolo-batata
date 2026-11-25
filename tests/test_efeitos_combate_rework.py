@@ -4,7 +4,7 @@ import unittest
 
 from src.entidades.projetil import Projetil
 from src.sistemas.config_efeitos import ModificadoresGameplay
-from src.sistemas.efeitos_combate import ContextoCombate, GerenciadorEfeitosCombate
+from src.sistemas.efeitos_combate import ContextoCombate, EfeitoModoWireframe, GerenciadorEfeitosCombate
 from src.sistemas.sistema_conquistas import SistemaConquistas
 
 
@@ -156,6 +156,14 @@ class TestEfeitosCombateRework(unittest.TestCase):
         self.assertTrue(res.get("critico_forcado"))
         self.assertGreater(res.get("dano_extra", 0), 0)
         self.assertEqual(res.get("micro_sucata"), 2)  # 85% HP perdido -> cruzou 33% e 66%
+
+        # Modo Wireframe: escalonamento +30% inimigo e +35% projétil, reversível
+        EfeitoModoWireframe.sincronizar_entidade(inim, EfeitoModoWireframe.MULT_HITBOX_INIMIGO)
+        EfeitoModoWireframe.sincronizar_entidade(p, EfeitoModoWireframe.MULT_HITBOX_PROJETIL)
+        self.assertEqual((inim.largura, inim.altura), (42, 42))
+        self.assertEqual((p.largura, p.altura), (11, 11))
+        EfeitoModoWireframe.sincronizar_entidade(inim, 1.0)
+        self.assertEqual((inim.largura, inim.altura), (32, 32))
 
         ger.disparar_ao_abate(ctx, inim)
         self.assertLess(ctx.jogador.dash_cooldown_restante, 2.0)

@@ -88,7 +88,18 @@ class TestPlaytestFixesUI(unittest.TestCase):
             }
         ]
         _, recomp2, _ = hud._resolver_detalhes_pin(resumo_m2[0])
-        self.assertIn("Gatilho Duplo", recomp2)
+        self.assertIn("Troféu", recomp2)
+
+        resumo_oc = {
+            "id": "primeiro_overclock_sujo",
+            "nome": "Primeiro Overclock Sujo",
+            "atual": 0,
+            "meta": 1,
+            "progresso": 0.0,
+            "concluida": False,
+        }
+        _, recomp_oc, _ = hud._resolver_detalhes_pin(resumo_oc)
+        self.assertIn("Gatilho Duplo", recomp_oc)
 
         with patch("pygame.font.SysFont", side_effect=AssertionError("SysFont não deve ser chamado por frame!")):
             hud.desenhar_pins_conquistas(self.screen, resumo_m1, visivel=True)
@@ -97,6 +108,7 @@ class TestPlaytestFixesUI(unittest.TestCase):
     def test_03_menu_conquistas_mouse_clicks_and_rewards(self):
         cfg = GerenciadorConfiguracoes()
         sys_conq = cfg.sistema_conquistas
+        sys_conq.recompensas["modificador_run"].add("gatilho_duplo")
         menu = MenuConquistas(cfg, sys_conq, em_jogo=False)
         menu.abrir(aba=0)
         menu.cooldown_input = 0.0
@@ -160,11 +172,11 @@ class TestPlaytestFixesUI(unittest.TestCase):
         self.assertIn("impressora", inim_ids)
         self.assertIn("ninja", inim_ids)
 
-        # Destravar todas as 28 configs
+        # Destravar todas as 29 configs
         dbg.indice_foco = 11
         dbg._executar_acao_selecionada()
         self.assertTrue(all(cfg.is_desbloqueada(cid) for cid in CONFIGURACOES_GAMEPLAY))
-        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 28)
+        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 29)
 
         # Destravar todas conquistas & firmware
         dbg.indice_foco = 17
@@ -177,7 +189,7 @@ class TestPlaytestFixesUI(unittest.TestCase):
         self.assertNotIn("50 parries", junto)
         self.assertNotIn("23 configs", junto)
         self.assertIn("15 parries", junto)
-        self.assertIn("28 configurações", junto)
+        self.assertIn("29 configurações", junto)
 
         from src.cenas.tutorial import TutorialScene
         tut = TutorialScene.__new__(TutorialScene)

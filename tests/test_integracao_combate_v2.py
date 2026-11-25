@@ -20,7 +20,6 @@ from src.entidades.projetil import Projetil
 from src.sistemas.config_efeitos import ModificadoresGameplay
 from src.sistemas.config_sistema import GerenciadorConfiguracoes
 from src.sistemas.efeitos_combate import GerenciadorEfeitosCombate
-from src.sistemas.sistema_combo import SistemaCombo
 from src.sistemas.sistema_conquistas import SistemaConquistas
 
 
@@ -130,7 +129,6 @@ class _CenaCombateTeste(GameplayCombateMixin):
         self.config_sistema = self.gerenciador_config
         self.sistema_conquistas = SistemaConquistas()
         self.gerenciador_config.sistema_conquistas = self.sistema_conquistas
-        self.sistema_combo = SistemaCombo()
         self.efeitos_combate = GerenciadorEfeitosCombate()
         self._mods_custom = mods or ModificadoresGameplay()
         self.efeitos_combate.reconstruir(self._mods_custom, firmwares or [])
@@ -232,7 +230,6 @@ class TestIntegracaoCombateV2(unittest.TestCase):
 
         # Contagem única -> 14 + 1 = 15 -> desbloqueia Dash + SMG Compacta!
         self.assertEqual(cena.sistema_conquistas.continuas["mestre_chave_inglesa"]["valor"], 15)
-        self.assertEqual(cena.sistema_combo.contagem, 3)
         self.assertTrue(cena.jogador.dash_desbloqueado)
         self.assertTrue(cena.sistema_conquistas.possui_recompensa("habilidade", "dash"))
         self.assertTrue(cena.sistema_conquistas.possui_recompensa("arma", "smg_compacta"))
@@ -252,7 +249,6 @@ class TestIntegracaoCombateV2(unittest.TestCase):
         )
 
         self.assertEqual(cena.jogador.hp, hp_antes)
-        self.assertEqual(cena.sistema_combo.contagem, 3)
         self.assertEqual(cena.sistema_conquistas.continuas["velocidade_de_clock"]["valor"], 1)
 
     def test_armas_continuas_e_smg_compacta(self):
@@ -328,18 +324,6 @@ class TestIntegracaoCombateV2(unittest.TestCase):
         replicas = [p for p in cena.projeteis if getattr(p, "eh_replica", False)]
         self.assertGreaterEqual(len(replicas), 1)
         self.assertLessEqual(len(replicas), 12)
-
-        # Drone kill não soma no SistemaCombo
-        inim_drone = _StubInimigo(500.0, 500.0, hp=10)
-        inim_drone.vivo = False
-        cena._registrar_abate_inimigo(inim_drone, mods, origem="drone")
-        self.assertEqual(cena.sistema_combo.contagem, 0)
-
-        # Abate normal soma +1 no SistemaCombo
-        inim_arma = _StubInimigo(510.0, 510.0, hp=10)
-        inim_arma.vivo = False
-        cena._registrar_abate_inimigo(inim_arma, mods, origem="arma")
-        self.assertEqual(cena.sistema_combo.contagem, 1)
 
     def test_obter_sfx_4_novas_armas(self):
         self.assertEqual(GameplayCombateMixin._obter_sfx_arma(BastaoChoque()), "sfx_ataque_melee")

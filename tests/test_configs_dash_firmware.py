@@ -7,7 +7,7 @@ from src.sistemas.config_efeitos import ModificadoresGameplay
 from src.sistemas.efeitos_combate import ContextoCombate, GerenciadorEfeitosCombate
 
 
-def _criar_ctx(inimigos=None, projeteis=None, jogador=None, sistema_combo=None):
+def _criar_ctx(inimigos=None, projeteis=None, jogador=None):
     jog = jogador or SimpleNamespace(
         x=100.0,
         y=100.0,
@@ -31,7 +31,6 @@ def _criar_ctx(inimigos=None, projeteis=None, jogador=None, sistema_combo=None):
         inimigos=inimigos if inimigos is not None else [],
         projeteis=projeteis if projeteis is not None else [],
         drops=[],
-        sistema_combo=sistema_combo,
         hologramas=[],
     )
 
@@ -125,7 +124,75 @@ class TestConfigsDashFirmware(unittest.TestCase):
         ger.disparar_ao_tick(ctx, 0.05)
         self.assertFalse(proj.ativo)
 
-    def test_todos_9_chips_de_firmware(self):
+    def test_subprocesso_atrasado_segue_posicao_atual_do_jogador(self):
+        mods = ModificadoresGameplay(dash_rastro="subprocesso_atrasado")
+        ger = GerenciadorEfeitosCombate()
+        ger.reconstruir(mods, [])
+
+        inim_no_trajeto_novo = SimpleNamespace(x=240.0, y=284.0, largura=32, altura=32, vivo=True, hp=100, stun_timer=0.0)
+        inim_destino_antigo = SimpleNamespace(x=204.0, y=84.0, largura=32, altura=32, vivo=True, hp=100, stun_timer=0.0)
+        ctx = _criar_ctx(inimigos=[inim_no_trajeto_novo, inim_destino_antigo])
+        ger.disparar_ao_dash(ctx, (100.0, 100.0), (220.0, 100.0))
+
+        # Jogador anda para (400, 500) antes do feixe disparar
+        ctx.jogador.x = 400.0
+        ctx.jogador.y = 500.0
+        ger.disparar_ao_tick(ctx, 0.80)
+
+        ef_rastro = ger.obter_efeito("dash_rastro")
+        self.assertEqual(len(ef_rastro.feixes_subprocesso), 1)
+        feixe = ef_rastro.feixes_subprocesso[0]
+        self.assertAlmostEqual(feixe["destino"][0], 416.0)
+        self.assertAlmostEqual(feixe["destino"][1], 516.0)
+        self.assertLess(inim_no_trajeto_novo.hp, 100)
+        self.assertEqual(inim_destino_antigo.hp, 100)
+
+    def test_sombra_espelho_atira_na_mira_cena_e_replica_parry(self):
+        mods = ModificadoresGameplay(dash_protocolo="sombra_espelho")
+        ger = GerenciadorEfeitosCombate()
+        ger.reconstruir(mods, [])
+
+        jog_sem_mira = SimpleNamespace(
+            x=100.0,
+            y=100.0,
+            largura=32,
+            altura=32,
+            hp=150,
+            hp_max=150,
+            dash_cooldown_restante=1.0,
+            arma_melee=SimpleNamespace(parry_janela_id=7, parry_alcance=110.0, parry_duracao=0.25),
+        )
+        cena_mock = SimpleNamespace(
+            largura_arena=2240.0,
+            altura_arena=1560.0,
+            _ultimo_mouse_mundo=(236.0, 500.0),
+        )
+        proj_perto_sombra = Projetil(x=220.0, y=120.0, dir_x=0.0, dir_y=-1.0, dono="inimigo", dano=20)
+        ctx = ContextoCombate(
+            cena=cena_mock,
+            jogador=jog_sem_mira,
+            inimigos=[],
+            projeteis=[proj_perto_sombra],
+            drops=[],
+            hologramas=[],
+        )
+        ger.disparar_ao_dash(ctx, (100.0, 100.0), (236.0, 100.0))
+        self.assertEqual(len(ctx.hologramas), 1)
+
+        # Disparo deve mirar para baixo em direção a (236, 500), não horizontalmente
+        orig = [Projetil(x=100.0, y=100.0, dir_x=1.0, dir_y=0.0, dano=20)]
+        reps = ger.disparar_ao_disparo(ctx, None, orig)
+        self.assertEqual(len(reps), 1)
+        self.assertAlmostEqual(reps[0].dir_x, 0.0, places=2)
+        self.assertGreater(reps[0].dir_y, 0.95)
+
+        # Parry deve ser replicado ao redor da sombra, rebatendo proj_perto_sombra na mira
+        ger.disparar_ao_parry(ctx, [])
+        self.assertEqual(proj_perto_sombra.dono, "jogador")
+        self.assertTrue(proj_perto_sombra.refletido_parry)
+        self.assertGreater(proj_perto_sombra.dir_y, 0.95)
+
+    def test_todos_8_chips_de_firmware(self):
         chips = [
             "gatilho_duplo",
             "recarga_tatica",
@@ -135,10 +202,7 @@ class TestConfigsDashFirmware(unittest.TestCase):
             "overclock_termico",
             "sandbox_isolada",
             "reset_voraz",
-            "medidor_estilo",
         ]
-        combo_stub = SimpleNamespace(estilo=False)
-        combo_stub.definir_modo_estilo = lambda ativo: setattr(combo_stub, "estilo", ativo)
 
         ger = GerenciadorEfeitosCombate()
         ger.reconstruir(ModificadoresGameplay(), chips)
@@ -150,11 +214,9 @@ class TestConfigsDashFirmware(unittest.TestCase):
             x=200.0, y=100.0, largura=32, altura=32, hp=200, hp_max=200,
             vivo=True, eh_elite=True, sprite_key="inimigo_blindado",
         )
-        ctx = _criar_ctx(inimigos=[inim_elite], projeteis=[proj_inim], sistema_combo=combo_stub)
+        ctx = _criar_ctx(inimigos=[inim_elite], projeteis=[proj_inim])
 
-        # medidor_estilo ativa no tick
         ger.disparar_ao_tick(ctx, 0.016)
-        self.assertTrue(combo_stub.estilo)
 
         # recarga_tatica: 3 dashes recuperam munição Slot 3 (municao_atual)
         for _ in range(3):

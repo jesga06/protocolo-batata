@@ -246,7 +246,7 @@ class TestTier1FeatureCoverage(unittest.TestCase):
         self.assertTrue(cena.modal_overclock.ativo)
         self.assertEqual(len(cena.modal_overclock.cards_sorteados), 3)
 
-    # --- R1: All 6 Overclock BIOS Modules ---
+    # --- R1: All 6 Upgrade de BIOS Modules ---
     def test_t1_all_6_overclock_bios_modules(self):
         """Verifica a aplicação e ativação de todos os 6 módulos de Overclock."""
         ids_modulos = [m["id"] for m in CATALOGO_OVERCLOCKS]
@@ -406,9 +406,24 @@ class TestTier1FeatureCoverage(unittest.TestCase):
             cena.loop()
 
         mobs_comuns = [inim for inim in cena.inimigos if inim != boss and not getattr(inim, "is_caixa_som", False)]
-        self.assertLessEqual(len(mobs_comuns), 22)
+        self.assertLessEqual(len(mobs_comuns), 24)
+        from src.entidades.inimigo_phasing import InimigoPhasing
+        from src.entidades.inimigo_impressora import InimigoImpressoraTermica
+        from src.entidades.inimigo_ninja import InimigoNinja
+        from src.entidades.inimigo_blindado import InimigoBlindado
         for mob in mobs_comuns:
-            self.assertIsInstance(mob, (InimigoPadrao, InimigoRapido, InimigoRanged))
+            self.assertIsInstance(
+                mob,
+                (
+                    InimigoPadrao,
+                    InimigoRapido,
+                    InimigoRanged,
+                    InimigoPhasing,
+                    InimigoImpressoraTermica,
+                    InimigoNinja,
+                    InimigoBlindado,
+                ),
+            )
 
     # --- R5: Debug Commands in MenuDebug ---
     def test_t1_debug_commands_in_menudebug(self):

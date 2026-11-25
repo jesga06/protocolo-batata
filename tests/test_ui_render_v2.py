@@ -8,7 +8,6 @@ import pygame
 
 from src.sistemas.config_dados import CONFIGURACOES_GAMEPLAY
 from src.sistemas.config_sistema import GerenciadorConfiguracoes
-from src.sistemas.sistema_combo import SistemaCombo
 from src.ui.hud import HUD
 from src.ui.menu_configs import MenuConfigs
 from src.ui.menu_conquistas import MenuConquistas
@@ -54,14 +53,6 @@ class TestUIRenderV2(unittest.TestCase):
         hud.desenhar_pins_conquistas(self.screen, resumo, visivel=True)
         hud.desenhar_pins_conquistas(self.screen, resumo, visivel=False)
 
-        combo = SistemaCombo()
-        combo.definir_modo_estilo(True)
-        for i in range(1, 15):
-            combo.registrar_parry(i)
-        self.assertEqual(combo.rank, "S")
-        hud.desenhar_indicador_combo(self.screen, combo, visivel=True)
-        hud.desenhar_indicador_combo(self.screen, combo, visivel=False)
-
         arma_smg = SimpleNamespace(usa_calor=True, calor_atual=80.0, superaquecida=False, em_zona_ideal=True)
         hud.desenhar_barra_calor_in_world(self.screen, 100, 100, 34, arma_smg)
 
@@ -92,7 +83,7 @@ class TestUIRenderV2(unittest.TestCase):
         self.assertIn("depurador_escritorio", sc.fixadas)
 
     def test_04_menu_configs_28_e_conflitos(self):
-        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 28)
+        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 29)
         cfg = GerenciadorConfiguracoes()
         cfg.desbloquear_config("dash_protocolo", via_conquista=True)
         cfg.desbloquear_config("dash_rastro", via_conquista=True)
@@ -132,19 +123,15 @@ class TestUIRenderV2(unittest.TestCase):
         hud = HUD()
         menu_conq = MenuConquistas(cfg, sc, em_jogo=False)
         menu_conq.abrir(aba=0)
-        combo = SistemaCombo()
-        combo.registrar_parry(1)
         resumo = sc.obter_resumo_fixadas()
 
         # Primeira passagem aquece caches
         hud.desenhar_pins_conquistas(self.screen, resumo, visivel=True)
-        hud.desenhar_indicador_combo(self.screen, combo, visivel=True)
         menu_conq.draw(self.screen)
 
         with patch("pygame.font.Font", side_effect=AssertionError("Font alocada em draw()!")), \
              patch("pygame.font.SysFont", side_effect=AssertionError("SysFont alocada em draw()!")):
             hud.desenhar_pins_conquistas(self.screen, resumo, visivel=True)
-            hud.desenhar_indicador_combo(self.screen, combo, visivel=True)
             menu_conq.draw(self.screen)
 
         # Valida troca de loadout no MenuPrincipalScene
