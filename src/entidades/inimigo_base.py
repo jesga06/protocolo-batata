@@ -111,7 +111,7 @@ class InimigoBase:
                 if base_sprite is not None:
                     try:
                         cls._sprite_cache[chave] = pygame.transform.scale(base_sprite, (int(w), int(h)))
-                    except Exception:
+                    except pygame.error:
                         cls._sprite_cache[chave] = None
                 else:
                     cls._sprite_cache[chave] = None
@@ -125,12 +125,18 @@ class InimigoBase:
                         cls._sprite_cache[chave] = img
                     else:
                         cls._sprite_cache[chave] = obter_sprite_inimigo(chave)
-                except Exception:
+                except (pygame.error, OSError, KeyError):
                     try:
                         cls._sprite_cache[chave] = obter_sprite_inimigo(chave)
-                    except Exception:
+                    except (pygame.error, OSError, KeyError):
                         cls._sprite_cache[chave] = None
         return cls._sprite_cache[chave]
+
+    def _obter_direcao_movimento(
+        self, cx: float, cy: float, tx: float, ty: float
+    ) -> tuple[float, float]:
+        """Retorna o vetor unitário de deslocamento em direção ao alvo (sobrescritível por subclasses)."""
+        return vetor_direcao(cx, cy, tx, ty)
 
     def update(self, dt: float, pos_alvo: tuple[float, float]):
         """
@@ -168,8 +174,8 @@ class InimigoBase:
         cy = self.y + self.altura / 2.0
         tx, ty = getattr(self, "pos_alvo_override", None) or pos_alvo
 
-        # Cálculo do vetor unitário beeline a partir do centro real
-        ux, uy = vetor_direcao(cx, cy, tx, ty)
+        # Cálculo do vetor unitário de movimento a partir do centro real
+        ux, uy = self._obter_direcao_movimento(cx, cy, tx, ty)
         if ux != 0.0 or uy != 0.0:
             self._dir_mov = (ux, uy)
 
@@ -308,11 +314,15 @@ class InimigoBase:
         if self.cooldown_contato_atual > 0.0:
             self.cooldown_contato_atual = max(0.0, self.cooldown_contato_atual - dt)
 
-        # Decrementa slow_timer e cooldown_ram_atual
+        # Decrementa slow_timer, vulneravel_timer e cooldown_ram_atual
         if self.slow_timer > 0.0:
             self.slow_timer = max(0.0, self.slow_timer - dt)
             if self.slow_timer <= 0.0:
                 self.slow_fator = 1.0
+        if getattr(self, "vulneravel_timer", 0.0) > 0.0:
+            self.vulneravel_timer = max(0.0, self.vulneravel_timer - dt)
+            if self.vulneravel_timer <= 0.0:
+                self.vulneravel_mult = 1.0
         if self.cooldown_ram_atual > 0.0:
             self.cooldown_ram_atual = max(0.0, self.cooldown_ram_atual - dt)
 
@@ -342,11 +352,18 @@ class InimigoBase:
             return 0
 
         dano_aplicado = int(quantidade)
+        ignorar_blindagem = bool(kwargs.pop("ignorar_blindagem", False))
+        kwargs.pop("fonte", None)
+        if not ignorar_blindagem and getattr(self, "vulneravel_timer", 0.0) > 0.0:
+            dano_aplicado = max(1, int(round(dano_aplicado * float(getattr(self, "vulneravel_mult", 1.2)))))
+        elif ignorar_blindagem and getattr(self, "vulneravel_timer", 0.0) > 0.0:
+            dano_aplicado = max(1, int(round(dano_aplicado * float(getattr(self, "vulneravel_mult", 1.2)))))
+
         dir_ataque = kwargs.get("dir_ataque", None)
         if dir_ataque is None and len(args) >= 3:
             dir_ataque = args[2]
 
-        if getattr(self, "arquetipo_miniboss", "") == "nobreak_chumbado" and dir_ataque is not None:
+        if not ignorar_blindagem and getattr(self, "arquetipo_miniboss", "") == "nobreak_chumbado" and dir_ataque is not None:
             adx, ady = normalizar_vetor(dir_ataque[0], dir_ataque[1])
             # Direção de movimento do boss (prioriza facing_x/facing_y de inimigo blindado, depois _dir_mov)
             if hasattr(self, "facing_x") and hasattr(self, "facing_y"):
@@ -373,7 +390,7 @@ class InimigoBase:
                 from PPlay.sound import Sound
                 sfx = Sound(obter_caminho_asset("sfx_morte_inimigo"))
                 sfx.play()
-            except Exception:
+            except (pygame.error, OSError, ImportError):
                 pass
         return dano_aplicado
 
@@ -492,7 +509,7 @@ class InimigoBase:
                 aura_cx = dim_aura // 2
                 aura_cy = dim_aura // 2
                 screen.blit(aura_surf, (centro_x - aura_cx, centro_y - aura_cy))
-            except Exception:
+            except (pygame.error, OSError, ImportError):
                 pass
 
         sprite = None
@@ -505,7 +522,7 @@ class InimigoBase:
                     self.is_elite,
                     getattr(self, "arquetipo_miniboss", "")
                 )
-            except Exception:
+            except (pygame.error, OSError, KeyError):
                 sprite = None
 
         if sprite is None:

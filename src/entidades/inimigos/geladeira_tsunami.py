@@ -22,6 +22,7 @@ from src.utils.constantes import (
     AZUL_CIANO, LARANJA_ALERTA
 )
 from src.utils.math_utils import distancia, vetor_direcao, normalizar_vetor, clamp, lerp, colisao_aabb
+from src.utils.traducao import t
 
 
 ESTADO_INTRO = "intro"
@@ -51,7 +52,7 @@ class CaixaDeSomBoss(InimigoBase):
             altura=40,
             sprite_key="caixa_som_boss",
             is_elite=False,
-            nome_elite="CAIXA DE SOM"
+            nome_elite=t("combate_entidades", "boss_caixa_som")
         )
         self.is_caixa_som = True
         self.timer_onda = 0.8
@@ -213,19 +214,19 @@ class GeladeiraTsunami(InimigoBase):
         self.y = self.y_intro_origem
 
         # Balão de fala
-        self.balao_fala_texto = "Você já passou da validade.\nSente a pressão, neném."
+        self.balao_fala_texto = t("combate_entidades", "boss_geladeira_fala")
         self.fala_intro = self.balao_fala_texto
         self.mostrar_balao_fala = True
         self.timer_balao_fala = 3.5
 
         # Fase 1: Heavy Stalk + Subwoofer Pulse (anéis sônicos com brecha de esquiva)
         self.timer_pulso_fase1 = 0.0
-        self.intervalo_pulso_fase1 = 1.45
+        self.intervalo_pulso_fase1 = 1.15
 
         # Fase 2: Telegraphed Bass Rush Dash (500 px/s) + Subwoofer Totems
         self.subestado_fase2 = "stalk"  # "stalk", "telegraph", "dash"
         self.timer_ciclo_fase2 = 0.0
-        self.intervalo_dash_fase2 = 2.6
+        self.intervalo_dash_fase2 = 2.0
         self.timer_telegraph_fase2 = 0.0
         self.duracao_telegraph = 0.65
         self.timer_dash_fase2 = 0.0
@@ -234,14 +235,14 @@ class GeladeiraTsunami(InimigoBase):
         self.dash_dir_y = 0.0
         self.dash_velocidade = 500.0
         self.timer_totem_fase2 = 0.0
-        self.intervalo_totem_fase2 = 2.2
+        self.intervalo_totem_fase2 = 1.8
 
         # Fase 3: Center Stage Anchor + Sonic Tsunami Helix
         self.angulo_helix = 0.0
         self.timer_tiro_helix = 0.0
         self.intervalo_tiro_helix = 0.09
         self.timer_bass_blast = 0.0
-        self.intervalo_bass_blast = 1.40
+        self.intervalo_bass_blast = 1.10
         self.centro_arena_x = (LARGURA_ARENA - self.largura) / 2.0
         self.centro_arena_y = (ALTURA_ARENA - self.altura) / 2.0
 
@@ -483,7 +484,7 @@ class GeladeiraTsunami(InimigoBase):
 
         # Cubos de Gelo que geram poças congeladas no chão
         self.timer_cubo_gelo = getattr(self, "timer_cubo_gelo", 0.0) + dt
-        if self.timer_cubo_gelo >= 4.2:
+        if self.timer_cubo_gelo >= 3.0:
             self.timer_cubo_gelo = 0.0
             self.pocas_gelo_pendentes.append({
                 "x": clamp(tx + random.uniform(-60.0, 60.0), 80.0, float(LARGURA_ARENA - 80.0)),

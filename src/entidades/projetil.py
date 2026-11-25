@@ -8,6 +8,7 @@ import os
 import pygame
 from src.utils.constantes import ASSETS_DIR, ASSET_PATHS, obter_caminho_asset, AMARELO_XP, LARANJA_ALERTA, VERMELHO_DANO
 from src.utils.math_utils import normalizar_vetor, distancia, vetor_direcao
+from src.utils.traducao import t
 
 
 class Projetil:
@@ -98,6 +99,7 @@ class Projetil:
         self.homing_ativo: bool = bool(kwargs.get("homing_ativo", False))
         self.homing_taxa_rad: float = float(kwargs.get("homing_taxa_rad", 1.6))
         self.homing_radar_dot: float = float(kwargs.get("homing_radar_dot", 0.25))
+        self.homing_alvo_cursor: bool = bool(kwargs.get("homing_alvo_cursor", False))
         self.eh_impressora: bool = bool(kwargs.get("eh_impressora", False))
         self.rastro_posicoes: list[tuple[float, float]] = list(kwargs.get("rastro_posicoes", []))
 
@@ -213,7 +215,8 @@ class Projetil:
                         dano_efetivo * 2,
                         origem_x=centro_x,
                         origem_y=centro_y,
-                        dir_ataque=dir_ataque
+                        dir_ataque=dir_ataque,
+                        quebra_blindagem=True,
                     )
                 except TypeError:
                     inimigo.receber_dano(dano_efetivo * 2)
@@ -226,7 +229,8 @@ class Projetil:
                         dano_efetivo,
                         origem_x=centro_x,
                         origem_y=centro_y,
-                        dir_ataque=dir_ataque
+                        dir_ataque=dir_ataque,
+                        quebra_blindagem=True,
                     )
                 except TypeError:
                     inimigo.receber_dano(dano_efetivo)
@@ -253,7 +257,7 @@ class Projetil:
             dist_j = distancia(centro_x, centro_y, j_cx, j_cy)
             if dist_j <= self.raio_explosao:
                 try:
-                    jogador.receber_dano(dano_efetivo, causa_morte="Fogo Amigo (Explosão própria)")
+                    jogador.receber_dano(dano_efetivo, causa_morte=t("combate_entidades", "causa_fogo_amigo_explosao"))
                 except TypeError:
                     jogador.receber_dano(dano_efetivo)
 
@@ -271,14 +275,6 @@ class Projetil:
                     dist_d = distancia(centro_x, centro_y, d_cx, d_cy)
                     if dist_d <= self.raio_explosao:
                         dr.receber_dano(dano_efetivo)
-
-        # Reproduz efeito sonoro de explosão
-        try:
-            from PPlay.sound import Sound
-            sfx = Sound(obter_caminho_asset("sfx_explosao"))
-            sfx.play()
-        except Exception:
-            pass
 
         return inimigos_afetados
 
@@ -385,8 +381,8 @@ class Projetil:
         draw_x = camera.transform_x(self.x) if camera else self.x
         draw_y = camera.transform_y(self.y) if camera else self.y
 
-        largura_janela = getattr(janela, "largura", 800)
-        altura_janela = getattr(janela, "altura", 600)
+        largura_janela = getattr(janela, "largura", 1280)
+        altura_janela = getattr(janela, "altura", 720)
         screen = getattr(janela, "screen", janela)
         is_low_graphics = getattr(janela, "low_graphics", False)
 

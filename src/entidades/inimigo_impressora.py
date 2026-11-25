@@ -14,10 +14,11 @@ from src.utils.constantes import (
     INIMIGO_IMPRESSORA_XP,
 )
 from src.utils.math_utils import distancia, vetor_direcao, lerp
+from src.utils.traducao import t
 
 
 class InimigoImpressoraTermica(InimigoBase):
-    nome_exibicao = "Impressora Térmica"
+    nome_exibicao = t("combate_entidades", "inim_impressora")
 
     def __init__(
         self,

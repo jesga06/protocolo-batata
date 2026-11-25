@@ -10,17 +10,20 @@ from src.entidades.projetil import Projetil
 from src.utils.constantes import (
     INIMIGO_RANGED_HP, INIMIGO_RANGED_VELOCIDADE,
     INIMIGO_RANGED_DANO, INIMIGO_RANGED_COOLDOWN_ATAQUE,
-    INIMIGO_RANGED_XP, INIMIGO_RANGED_DISTANCIA_TIRO
+    INIMIGO_RANGED_COOLDOWN_TIRO, INIMIGO_RANGED_XP,
+    INIMIGO_RANGED_DISTANCIA_STANDOFF, INIMIGO_RANGED_DISTANCIA_TIRO,
+    INIMIGO_RANGED_CHANCE_DROP_ARMA,
 )
 from src.utils.math_utils import distancia, vetor_direcao, lerp
+from src.utils.traducao import t
 
 
 class InimigoRanged(InimigoBase):
-    nome_exibicao = "Projetor Laser"
+    nome_exibicao = t("combate_entidades", "inim_ranged")
     """
-    Inimigo armado com canhão balístico que mantém distância de tiro (stand-off de 280px)
-    e dispara periodicamente projéteis vermelhos no jogador a cada 1.2s em alcance <= 350px.
-    Possui tabela de loot enriquecida (15% drop de arma, 15% drop de equipamento).
+    Inimigo armado com canhão balístico que mantém distância de tiro (stand-off de 300px)
+    e dispara periodicamente projéteis vermelhos no jogador a cada 0.95s em alcance <= 480px.
+    Possui tabela de loot enriquecida (30% drop de arma, 15% drop de equipamento).
     """
 
     def __init__(
@@ -32,9 +35,9 @@ class InimigoRanged(InimigoBase):
         dano_contato: int = INIMIGO_RANGED_DANO,
         cooldown_contato: float = INIMIGO_RANGED_COOLDOWN_ATAQUE,
         xp_valor: int = INIMIGO_RANGED_XP,
-        distancia_standoff: float = 300.0,
-        distancia_tiro_max: float = 480.0,
-        cooldown_tiro: float = 0.95,
+        distancia_standoff: float = INIMIGO_RANGED_DISTANCIA_STANDOFF,
+        distancia_tiro_max: float = INIMIGO_RANGED_DISTANCIA_TIRO,
+        cooldown_tiro: float = INIMIGO_RANGED_COOLDOWN_TIRO,
         dano_projetil: int = 10,
         vel_projetil: float = 390.0,
         is_elite: bool = False,
@@ -71,7 +74,7 @@ class InimigoRanged(InimigoBase):
 
         # Tabela de loot enriquecida
         self.loot_enriquecido = True
-        self.chance_drop_arma = 0.3
+        self.chance_drop_arma = float(INIMIGO_RANGED_CHANCE_DROP_ARMA)
         self.chance_drop_equipamento = 0.15
 
     def update(self, dt: float, pos_alvo: tuple[float, float], vel_alvo: tuple[float, float] = None):

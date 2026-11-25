@@ -148,8 +148,8 @@ class ItemDrop:
         draw_y = camera.transform_y(self.y) if camera else self.y
 
         # Culling fora da tela / câmera
-        largura_tela = getattr(janela, "largura", 800)
-        altura_tela = getattr(janela, "altura", 600)
+        largura_tela = getattr(janela, "largura", 1280)
+        altura_tela = getattr(janela, "altura", 720)
         margem = 64
         if draw_x < -margem or draw_x > largura_tela + margem or draw_y < -margem or draw_y > altura_tela + margem:
             return

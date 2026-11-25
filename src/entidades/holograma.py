@@ -126,9 +126,23 @@ class EntidadeHolograma:
 
         cx = self.x + self.largura * 0.5
         cy = self.y + self.altura * 0.5
-        dx, dy = normalizar_vetor(alvo_x - cx, alvo_y - cy)
-        if dx == 0.0 and dy == 0.0:
-            dx, dy = 1.0, 0.0
+        base_dx, base_dy = normalizar_vetor(alvo_x - cx, alvo_y - cy)
+        if base_dx == 0.0 and base_dy == 0.0:
+            base_dx, base_dy = 1.0, 0.0
+        ang_alvo = math.atan2(base_dy, base_dx)
+
+        # Preserva leque relativo em disparos multiplos (ex.: escopeta) mantendo centro na mira
+        angulos_orig = [
+            math.atan2(float(getattr(p, "dir_y", 0.0)), float(getattr(p, "dir_x", 1.0)))
+            for p in projeteis_origem
+            if not (getattr(p, "origem_holograma", False) or getattr(p, "eh_replica", False))
+        ]
+        ang_ref = 0.0
+        if angulos_orig:
+            sx_ang = sum(math.cos(a) for a in angulos_orig)
+            sy_ang = sum(math.sin(a) for a in angulos_orig)
+            if abs(sx_ang) > 1e-6 or abs(sy_ang) > 1e-6:
+                ang_ref = math.atan2(sy_ang, sx_ang)
 
         replicas: list[Projetil] = []
         for p in projeteis_origem:
@@ -136,6 +150,11 @@ class EntidadeHolograma:
                 continue
             if len(replicas) >= max_replicas:
                 break
+            ang_p = math.atan2(float(getattr(p, "dir_y", 0.0)), float(getattr(p, "dir_x", 1.0)))
+            offset_ang = math.atan2(math.sin(ang_p - ang_ref), math.cos(ang_p - ang_ref)) if len(angulos_orig) > 1 else 0.0
+            ang_final = ang_alvo + offset_ang
+            dx = math.cos(ang_final)
+            dy = math.sin(ang_final)
             dano_rep = max(1, int(round(getattr(p, "dano", 10) * self.dano_mult)))
             vel_rep = float(getattr(p, "velocidade", 420.0))
             rep = Projetil(
@@ -153,6 +172,10 @@ class EntidadeHolograma:
                 cor=(80, 230, 255),
                 perfurante=bool(getattr(p, "perfurante", False)),
             )
+            rep.homing_ativo = bool(getattr(p, "homing_ativo", False))
+            rep.homing_alvo_cursor = bool(getattr(p, "homing_alvo_cursor", False))
+            rep.homing_taxa_rad = float(getattr(p, "homing_taxa_rad", 1.65))
+            rep.homing_radar_dot = float(getattr(p, "homing_radar_dot", 0.25))
             rep.origem_holograma = True
             rep.eh_replica = True
             replicas.append(rep)

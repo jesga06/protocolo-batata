@@ -9,13 +9,14 @@ from src.utils.constantes import (
     INIMIGO_RAPIDO_DANO, INIMIGO_RAPIDO_COOLDOWN_ATAQUE,
     INIMIGO_RAPIDO_XP
 )
+from src.utils.traducao import t
 
 
 class InimigoRapido(InimigoBase):
     """
     Inimigo veloz de assédio (Mouse Óptico) que persegue o jogador em ritmo frenético.
     """
-    nome_exibicao = "Mouse Óptico"
+    nome_exibicao = t("combate_entidades", "inim_rapido")
 
     def __init__(
         self,

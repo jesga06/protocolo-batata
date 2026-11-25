@@ -9,13 +9,14 @@ from src.utils.constantes import (
     INIMIGO_PADRAO_DANO, INIMIGO_PADRAO_COOLDOWN_ATAQUE,
     INIMIGO_PADRAO_XP
 )
+from src.utils.traducao import t
 
 
 class InimigoPadrao(InimigoBase):
     """
     Inimigo rastejante padrão (Gabinete de Firma) com HP baixo, velocidade média e dano de contato moderado.
     """
-    nome_exibicao = "Gabinete de Firma"
+    nome_exibicao = t("combate_entidades", "inim_padrao")
 
     def __init__(
         self,

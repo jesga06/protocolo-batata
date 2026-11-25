@@ -6,10 +6,11 @@ from src.utils.constantes import (
     INIMIGO_PHASING_DANO, INIMIGO_PHASING_COOLDOWN_ATAQUE,
     INIMIGO_PHASING_XP, INIMIGO_PHASING_CICLO
 )
+from src.utils.traducao import t
 
 
 class InimigoPhasing(InimigoBase):
-    nome_exibicao = "Monitor CRT"
+    nome_exibicao = t("combate_entidades", "inim_phasing")
     """
     Inimigo etéreo que alterna ciclicamente entre o estado tangível e o estado em fase (Warranty Void).
     Ciclo de 3.0s: durante 1.2s entra em fase, tornando-se semi-transparente (alpha ~90) e
