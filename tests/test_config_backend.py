@@ -28,10 +28,10 @@ class TestConfigCatalogAndStructure(unittest.TestCase):
     """Testa a integridade do catálogo e definições de configurações."""
 
     def test_all_25_configs_cataloged(self):
-        """Verifica a presença exata de 23 configs de gameplay e 3 sistêmicas de áudio (26 total)."""
-        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 23)
+        """Verifica a presença exata de 29 configs de gameplay e 3 sistêmicas de áudio (32 total)."""
+        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 29)
         self.assertEqual(len(CONFIGURACOES_SISTEMA), 3)
-        self.assertEqual(len(TODAS_CONFIGURACOES), 26)
+        self.assertEqual(len(TODAS_CONFIGURACOES), 32)
 
         # Verifica configs de sistema de áudio e ausência de stubs S4/S5
         self.assertIn("volume_master", CONFIGURACOES_SISTEMA)
@@ -107,21 +107,17 @@ class TestModifierCalculations(unittest.TestCase):
         }
 
         mods = calcular_modificadores(desbloqueadas, ativas)
-        esperado_dano = 1.15 * 1.30 * 1.20 * 1.25 * 1.20  # 2.691
+        # v2.0: auto_fire(1.15) * keybinds(1.30) * fogo_amigo(1.25) = 1.86875
+        esperado_dano = 1.15 * 1.30 * 1.25
         self.assertAlmostEqual(mods.dano_armas_mult, esperado_dano, places=5)
         self.assertTrue(mods.auto_dano)
+        self.assertTrue(mods.polaridade_invertida)
 
     def test_multiplicative_stacking_speed_and_xp(self):
         """
-        Testa velocidade do jogador e ganho de XP:
-        Velocidade:
-        - vsync ("desligado", 1.10) * motion_blur ("ligado", 1.15) * suavizacao_camera ("desligado", 1.08) * keybinds ("arrow_keys", 1.15)
-          = 1.10 * 1.15 * 1.08 * 1.15 = 1.57149x
-        XP:
-        - hud ("desligado", 1.25) * keybinds ("uma_mao", 1.20) * velocidade_inimigos ("+50%", 1.40)
-          = 1.25 * 1.20 * 1.40 = 2.10x
+        Testa velocidade do jogador e ganho de XP (v2.0 SSOT).
         """
-        # Teste Velocidade
+        # Teste Velocidade: motion_blur ("ligado", 1.15) * keybinds ("arrow_keys", 1.15) = 1.3225
         desbloqueadas_vel = {"vsync", "motion_blur", "suavizacao_camera", "keybinds"}
         ativas_vel = {
             "vsync": "desligado",
@@ -130,10 +126,10 @@ class TestModifierCalculations(unittest.TestCase):
             "keybinds": "arrow_keys"
         }
         mods_vel = calcular_modificadores(desbloqueadas_vel, ativas_vel)
-        esperado_vel = 1.10 * 1.15 * 1.08 * 1.15
+        esperado_vel = 1.15 * 1.15
         self.assertAlmostEqual(mods_vel.vel_jogador_mult, esperado_vel, places=5)
 
-        # Teste XP
+        # Teste XP: hud ("desligado", 1.25) * keybinds ("uma_mao", 1.20) * velocidade_inimigos ("+50%", 1.30) = 1.95
         desbloqueadas_xp = {"hud", "keybinds", "velocidade_inimigos"}
         ativas_xp = {
             "hud": "desligado",
@@ -141,7 +137,7 @@ class TestModifierCalculations(unittest.TestCase):
             "velocidade_inimigos": "+50%"
         }
         mods_xp = calcular_modificadores(desbloqueadas_xp, ativas_xp)
-        esperado_xp = 1.25 * 1.20 * 1.40  # 2.10
+        esperado_xp = 1.25 * 1.20 * 1.30
         self.assertAlmostEqual(mods_xp.xp_ganho_mult, esperado_xp, places=5)
 
 
@@ -154,7 +150,7 @@ class TestConfigManager(unittest.TestCase):
         # Inicialmente tudo está bloqueado
         self.assertFalse(manager.is_desbloqueada("fps_cap"))
         self.assertEqual(len(manager.obter_desbloqueadas()), 0)
-        self.assertEqual(len(manager.obter_bloqueadas()), 23)
+        self.assertEqual(len(manager.obter_bloqueadas()), 26)
 
         # Tentativa de alterar config bloqueada falha
         self.assertFalse(manager.definir_valor("fps_cap", "15"))

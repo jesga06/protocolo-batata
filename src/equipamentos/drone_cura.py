@@ -4,6 +4,7 @@ Equipamento de Slot 4: orbita o jogador e restaura 5 HP periodicamente a cada 3.
 """
 
 from src.equipamentos.drone_base import DroneBase
+from src.utils.traducao import t
 
 
 class DroneCura(DroneBase):
@@ -20,7 +21,7 @@ class DroneCura(DroneBase):
         velocidade_angular: float = 2.5
     ):
         super().__init__(
-            nome="Drone de Cura",
+            nome=t("combate_entidades", "drone_cura"),
             icone_asset="drone_cura",
             sprite_key="drone_cura",
             tempo_vida=tempo_vida,

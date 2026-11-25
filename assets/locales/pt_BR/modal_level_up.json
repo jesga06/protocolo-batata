@@ -1,0 +1,256 @@
+{
+  "_meta": {
+    "categoria": "modal_level_up",
+    "descricao": "Textos do Modal de Level Up (títulos, fila, 12 cartas consumíveis, cards de marco e botões).",
+    "placeholders_disponiveis": {
+      "qtd": "int — quantidade de escolhas restantes ou upgrades na fila",
+      "nome_cfg": "str — nome da configuração desbloqueada",
+      "indice": "int — número da tecla de atalho do card (1, 2 ou 3)"
+    }
+  },
+  "entradas": {
+    "resumo_personalizacao_flexivel": {
+      "texto": "Personalização flexível",
+      "contexto": "Fallback de benefício para config sem buffs explícitos.",
+      "placeholders": {}
+    },
+    "resumo_nenhum_sacrificio": {
+      "texto": "Nenhum sacrifício",
+      "contexto": "Fallback de sacrifício para config sem nerfs.",
+      "placeholders": {}
+    },
+    "resumo_nenhum": {
+      "texto": "Nenhum",
+      "contexto": "Texto neutro quando não há buffs/nerfs.",
+      "placeholders": {}
+    },
+    "categoria_consumivel": {
+      "texto": "Consumível",
+      "contexto": "Categoria exibida na tag dos cards consumíveis.",
+      "placeholders": {}
+    },
+    "cura_pequena_nome": {
+      "texto": "Reparo +25",
+      "contexto": "Nome do card consumível Cura +25.",
+      "placeholders": {}
+    },
+    "cura_pequena_buff": {
+      "texto": "Recupera 25 de vida na hora.",
+      "contexto": "Descrição do card Cura +25.",
+      "placeholders": {}
+    },
+    "cura_grande_nome": {
+      "texto": "Reparo +50",
+      "contexto": "Nome do card consumível Cura +50.",
+      "placeholders": {}
+    },
+    "cura_grande_buff": {
+      "texto": "Recupera 50 de vida na hora.",
+      "contexto": "Descrição do card Cura +50.",
+      "placeholders": {}
+    },
+    "xp_pequeno_nome": {
+      "texto": "Pacote de XP +15",
+      "contexto": "Nome do card consumível XP +15.",
+      "placeholders": {}
+    },
+    "xp_pequeno_buff": {
+      "texto": "Concede 15 de XP imediatamente.",
+      "contexto": "Descrição do card XP +15.",
+      "placeholders": {}
+    },
+    "xp_grande_nome": {
+      "texto": "Pacote de XP +30",
+      "contexto": "Nome do card consumível XP +30.",
+      "placeholders": {}
+    },
+    "xp_grande_buff": {
+      "texto": "Concede 30 de XP imediatamente.",
+      "contexto": "Descrição do card XP +30.",
+      "placeholders": {}
+    },
+    "buff_dano_nome": {
+      "texto": "Munição Superaquecida",
+      "contexto": "Nome do card consumível de dano temporário.",
+      "placeholders": {}
+    },
+    "buff_dano_desc": {
+      "texto": "+5% de dano. Tiros soltam brasas e atravessam +1 alvo por 15s.",
+      "contexto": "Descrição curta do card de dano.",
+      "placeholders": {}
+    },
+    "buff_dano_buff": {
+      "texto": "+5% de dano por 15s. Seus tiros soltam brasas e atravessam +1 inimigo.",
+      "contexto": "Texto do bloco de efeito do card de dano.",
+      "placeholders": {}
+    },
+    "buff_vel_nome": {
+      "texto": "Passo Fantasma",
+      "contexto": "Nome do card consumível de velocidade temporária.",
+      "placeholders": {}
+    },
+    "buff_vel_desc": {
+      "texto": "+8% de velocidade e desacelera inimigos próximos em 40% por 15s.",
+      "contexto": "Descrição curta do card de velocidade.",
+      "placeholders": {}
+    },
+    "buff_vel_buff": {
+      "texto": "+8% de velocidade por 15s. Desacelera inimigos muito próximos em 40%.",
+      "contexto": "Texto do bloco de efeito do card de velocidade.",
+      "placeholders": {}
+    },
+    "buff_cadencia_nome": {
+      "texto": "Armas Reforçadas",
+      "contexto": "Nome do card consumível de cadência temporária.",
+      "placeholders": {}
+    },
+    "buff_cadencia_desc": {
+      "texto": "+8% de cadência. Armas especiais não gastam munição por 15s.",
+      "contexto": "Descrição curta do card de cadência.",
+      "placeholders": {}
+    },
+    "buff_cadencia_buff": {
+      "texto": "+8% de cadência de tiro por 15s. Armas especiais não gastam munição.",
+      "contexto": "Texto do bloco de efeito do card de cadência.",
+      "placeholders": {}
+    },
+    "buff_resistencia_nome": {
+      "texto": "Casca Grossa",
+      "contexto": "Nome do card consumível de resistência temporária.",
+      "placeholders": {}
+    },
+    "buff_resistencia_desc": {
+      "texto": "-8% de dano recebido. Empurra e dá choque em quem encostar por 15s.",
+      "contexto": "Descrição curta do card de resistência.",
+      "placeholders": {}
+    },
+    "buff_resistencia_buff": {
+      "texto": "-8% de dano recebido por 15s. Empurra e dá choque em inimigos que encostarem.",
+      "contexto": "Texto do bloco de efeito do card de resistência.",
+      "placeholders": {}
+    },
+    "escudo_nome": {
+      "texto": "Escudo de Emergência",
+      "contexto": "Nome do card consumível Escudo.",
+      "placeholders": {}
+    },
+    "escudo_buff": {
+      "texto": "Bloqueia o próximo dano recebido e garante 4s de invulnerabilidade.",
+      "contexto": "Texto do bloco de efeito do card Escudo.",
+      "placeholders": {}
+    },
+    "pulso_nome": {
+      "texto": "Ímã de Arena",
+      "contexto": "Nome do card consumível Ímã de Arena.",
+      "placeholders": {}
+    },
+    "pulso_buff": {
+      "texto": "Puxa todos os itens e gemas de XP da arena até você.",
+      "contexto": "Texto do bloco de efeito do card Ímã de Arena.",
+      "placeholders": {}
+    },
+    "caixa_arma_nome": {
+      "texto": "Caixa de Arma",
+      "contexto": "Nome do card consumível Caixa de Arma Especial.",
+      "placeholders": {}
+    },
+    "caixa_arma_buff": {
+      "texto": "Equipa uma arma aleatória no Slot 3.",
+      "contexto": "Texto do bloco de efeito do card Caixa de Arma Especial.",
+      "placeholders": {}
+    },
+    "caixa_equip_nome": {
+      "texto": "Módulo de Drone",
+      "contexto": "Nome do card consumível Módulo de Drone.",
+      "placeholders": {}
+    },
+    "caixa_equip_buff": {
+      "texto": "Ativa um drone no Slot 4 por 30s (ou evolui um ativo para MK-II/MK-III).",
+      "contexto": "Texto do bloco de efeito do card Módulo de Drone.",
+      "placeholders": {}
+    },
+    "banner_config_titulo": {
+      "texto": "Config: {nome_cfg}",
+      "contexto": "Título do banner de desbloqueio ao escolher uma configuração no Level Up.",
+      "placeholders": {
+        "nome_cfg": "str — nome da configuração desbloqueada"
+      }
+    },
+    "banner_config_subtitulo": {
+      "texto": "Disponível em Configurações (C)",
+      "contexto": "Subtítulo do banner de desbloqueio de configuração.",
+      "placeholders": {}
+    },
+    "titulo_marco": {
+      "texto": "LEVEL UP!  •  MARCO DE SISTEMA",
+      "contexto": "Título do modal em nível de marco com cartas de configuração.",
+      "placeholders": {}
+    },
+    "titulo_padrao": {
+      "texto": "LEVEL UP!",
+      "contexto": "Título padrão do modal de Level Up.",
+      "placeholders": {}
+    },
+    "subtitulo_multiplas": {
+      "texto": "Escolha {qtd} protocolos com [1] [2] [3] ou clique nos cards",
+      "contexto": "Subtítulo quando há mais de 1 escolha restante no modal.",
+      "placeholders": {
+        "qtd": "int — número de escolhas restantes"
+      }
+    },
+    "subtitulo_mais_um": {
+      "texto": "Escolha mais 1 protocolo com [1] [2] [3] ou clique no card",
+      "contexto": "Subtítulo quando falta 1 escolha após já ter escolhido outra.",
+      "placeholders": {}
+    },
+    "subtitulo_unico": {
+      "texto": "Escolha um protocolo com [1] [2] [3] ou clique no card",
+      "contexto": "Subtítulo padrão para escolher 1 card.",
+      "placeholders": {}
+    },
+    "fila_restante": {
+      "texto": "+{qtd} UPGRADE(S) RESTANTE(S) NA FILA",
+      "contexto": "Badge âmbar exibido quando há outros Level Ups aguardando na fila.",
+      "placeholders": {
+        "qtd": "int — quantidade restante na fila"
+      }
+    },
+    "tag_selecionado": {
+      "texto": "SELECIONADO",
+      "contexto": "Tag no topo do card já selecionado.",
+      "placeholders": {}
+    },
+    "tag_config_marco": {
+      "texto": "CONFIGURAÇÃO • MARCO",
+      "contexto": "Tag no topo do card de configuração em nível de marco.",
+      "placeholders": {}
+    },
+    "header_beneficio": {
+      "texto": "+ BENEFÍCIO",
+      "contexto": "Cabeçalho verde do sub-card de benefícios de uma config.",
+      "placeholders": {}
+    },
+    "header_efeito": {
+      "texto": "+ EFEITO",
+      "contexto": "Cabeçalho verde do sub-card de efeito de um consumível.",
+      "placeholders": {}
+    },
+    "header_sacrificio": {
+      "texto": "- SACRIFÍCIO",
+      "contexto": "Cabeçalho vermelho do sub-card de sacrifício de uma config.",
+      "placeholders": {}
+    },
+    "cta_selecionar": {
+      "texto": "SELECIONAR [{indice}]",
+      "contexto": "Botão inferior do card no modal de Level Up.",
+      "placeholders": {
+        "indice": "int — número do card (1, 2 ou 3)"
+      }
+    },
+    "rodape": {
+      "texto": "[1] [2] [3] Selecionar pelo teclado   •   [Mouse] Clique no card",
+      "contexto": "Rodapé de instruções do modal de Level Up.",
+      "placeholders": {}
+    }
+  }
+}

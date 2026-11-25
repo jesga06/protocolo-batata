@@ -68,10 +68,10 @@ class TestASTNoCheatsAndSSOT(unittest.TestCase):
                     )
 
     def test_strict_20_gameplay_and_3_system_configs_ssot(self):
-        """Catálogo deve expor estritamente 23 configs de gameplay e 3 de sistema (áudio), totalizando 26."""
-        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 23)
+        """Catálogo deve expor estritamente 29 configs de gameplay e 3 de sistema (áudio), totalizando 32."""
+        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 29)
         self.assertEqual(len(CONFIGURACOES_SISTEMA), 3)
-        self.assertEqual(len(TODAS_CONFIGURACOES), 26)
+        self.assertEqual(len(TODAS_CONFIGURACOES), 32)
         self.assertEqual(
             set(CONFIGURACOES_SISTEMA.keys()),
             {"volume_master", "volume_musica", "volume_sfx"}
@@ -86,7 +86,7 @@ class TestASTNoCheatsAndSSOT(unittest.TestCase):
         self.assertIn("tiros e bombas", shake_def.opcoes["ligado"].buff_text.lower())
 
         blur_def = CONFIGURACOES_GAMEPLAY["motion_blur"]
-        self.assertIn("0.40s", blur_def.opcoes["ligado"].buff_text)
+        self.assertIn("0.10s", blur_def.opcoes["ligado"].buff_text)
 
         kb_def = CONFIGURACOES_GAMEPLAY["keybinds"]
         self.assertIn("100% no teclado", kb_def.opcoes["uma_mao"].nerf_text.lower())
@@ -98,7 +98,7 @@ class TestASTNoCheatsAndSSOT(unittest.TestCase):
         mods = calcular_modificadores(desbloq, ativas)
         self.assertAlmostEqual(mods.critico_chance, 0.25)
         self.assertAlmostEqual(mods.critico_mult, 2.0)
-        self.assertAlmostEqual(mods.dano_armas_mult, 1.20)
+        self.assertTrue(mods.polaridade_invertida)
 
 
 if __name__ == "__main__":

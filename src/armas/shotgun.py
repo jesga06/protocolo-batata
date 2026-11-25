@@ -11,6 +11,7 @@ from src.utils.constantes import (
     SHOTGUN_PELLETS, SHOTGUN_SPREAD_ANGULO, SHOTGUN_MUNICIAO_MAX,
     obter_caminho_asset
 )
+from src.utils.traducao import t
 
 
 class Shotgun(ArmaBase):
@@ -28,7 +29,7 @@ class Shotgun(ArmaBase):
         municao_max: int = SHOTGUN_MUNICIAO_MAX
     ):
         super().__init__(
-            nome="Escopeta",
+            nome=t("combate_entidades", "arma_shotgun"),
             dano=dano,
             cooldown=cooldown,
             municao_infinita=False,
@@ -76,15 +77,8 @@ class Shotgun(ArmaBase):
                 largura=6,
                 altura=6,
                 sprite_key="projetil_shotgun",
-                knockback_forca=42.0
+                knockback_forca=10.5
             )
             projeteis.append(proj)
-
-        try:
-            from PPlay.sound import Sound
-            sfx = Sound(obter_caminho_asset("sfx_tiro_shotgun"))
-            sfx.play()
-        except Exception:
-            pass
 
         return projeteis

@@ -14,23 +14,9 @@ from src.utils.constantes import (
     DROP_TEMPO_DESAPARECER, DROP_TEMPO_SCAVENGER_ATIVAR, DROP_CURA_VALOR_BASE
 )
 from src.entidades.drop import ItemDrop
+from src.utils.traducao import t
 
-_FONT_CACHE: dict[tuple[int, bool], pygame.font.Font] = {}
-
-
-def _obter_fonte_debug(tamanho: int, bold: bool = False) -> pygame.font.Font:
-    px_sz = max(8, int(tamanho))
-    chave = (px_sz, bold)
-    if chave in _FONT_CACHE:
-        return _FONT_CACHE[chave]
-    for nome in ("jetbrainsmono", "firacode", "consolas", "dejavusansmono"):
-        f = pygame.font.SysFont(nome, px_sz, bold=bold)
-        if f is not None:
-            _FONT_CACHE[chave] = f
-            return f
-    f = pygame.font.SysFont("consolas", px_sz, bold=bold)
-    _FONT_CACHE[chave] = f
-    return f
+from src.utils.fontes import carregar_fonte_mono as _obter_fonte_debug
 
 
 class MenuDebug:
@@ -51,41 +37,47 @@ class MenuDebug:
 
         # Catálogos de opções de spawn
         self.opcoes_tipo_drop = [
-            ("XP (+5)", "xp", 5),
-            ("XP (+50)", "xp", 50),
-            ("Cura (+35)", "cura", DROP_CURA_VALOR_BASE),
-            ("Caixa de Arma", "arma", 1),
-            ("Caixa Equipamento", "equipamento", 1),
-            ("Núcleo Overclock", "overclock", 1)
+            (t("menu_debug", "drop_xp_5"), "xp", 5),
+            (t("menu_debug", "drop_xp_50"), "xp", 50),
+            (t("menu_debug", "drop_cura"), "cura", DROP_CURA_VALOR_BASE),
+            (t("menu_debug", "drop_arma"), "arma", 1),
+            (t("menu_debug", "drop_equipamento"), "equipamento", 1),
+            (t("menu_debug", "drop_overclock"), "overclock", 1)
         ]
         self.idx_tipo_drop = 0
 
         self.opcoes_armas = [
-            ("Minigun", "Minigun"),
-            ("Shotgun", "Shotgun"),
-            ("Rifle Assalto", "RifleAssalto"),
-            ("Lanca-Foguetes", "LancaFoguetes"),
-            ("Lanca-Granadas", "LancaGranadas"),
-            ("Railgun", "Railgun")
+            (t("menu_debug", "arma_minigun"), "Minigun"),
+            (t("menu_debug", "arma_shotgun"), "Shotgun"),
+            (t("menu_debug", "arma_rifle_assalto"), "RifleAssalto"),
+            (t("menu_debug", "arma_lanca_foguetes"), "LancaFoguetes"),
+            (t("menu_debug", "arma_lanca_granadas"), "LancaGranadas"),
+            (t("menu_debug", "arma_railgun"), "Railgun"),
+            (t("menu_debug", "arma_bastao_choque"), "BastaoChoque"),
+            (t("menu_debug", "arma_smg_compacta"), "SMGCompacta"),
+            (t("menu_debug", "arma_rifle_arco"), "RifleArco"),
+            (t("menu_debug", "arma_lanca_chamas"), "LancaChamas"),
         ]
         self.idx_arma = 0
 
         self.opcoes_drones = [
-            ("Drone Cura", "DroneCura"),
-            ("Drone Combate", "DroneCombate"),
-            ("Drone Suporte", "DroneSuporte")
+            (t("menu_debug", "drone_cura"), "DroneCura"),
+            (t("menu_debug", "drone_combate"), "DroneCombate"),
+            (t("menu_debug", "drone_suporte"), "DroneSuporte")
         ]
         self.idx_drone = 0
 
         self.opcoes_inimigos = [
-            ("Padrao (Estagiario)", "padrao"),
-            ("Rapido (Cafeina)", "rapido"),
-            ("Phasing (Warranty)", "phasing"),
-            ("Blindado", "blindado"),
-            ("Ranged (Atirador)", "ranged"),
-            ("Tanque (Geladeira)", "tank"),
-            ("Chefe de Elite", "elite"),
-            ("Geladeira Tsunami (Boss)", "boss")
+            (t("menu_debug", "inim_padrao"), "padrao"),
+            (t("menu_debug", "inim_rapido"), "rapido"),
+            (t("menu_debug", "inim_phasing"), "phasing"),
+            (t("menu_debug", "inim_blindado"), "blindado"),
+            (t("menu_debug", "inim_ranged"), "ranged"),
+            (t("menu_debug", "inim_tank"), "tank"),
+            (t("menu_debug", "inim_impressora"), "impressora"),
+            (t("menu_debug", "inim_ninja"), "ninja"),
+            (t("menu_debug", "inim_elite"), "elite"),
+            (t("menu_debug", "inim_boss"), "boss")
         ]
         self.idx_inimigo = 0
 
@@ -93,21 +85,29 @@ class MenuDebug:
         self.idx_level_up = 0
 
         self.opcoes_overclock = [
-            ("Multithreading", "multithreading"),
-            ("Refrigeração", "refrigeracao"),
-            ("Overvolt", "overvolt"),
-            ("BIOS Modding", "bios_modding"),
-            ("Proteção Surtos", "protecao_surtos"),
-            ("Upgrade Barramento", "upgrade_barramento")
+            (t("menu_debug", "ov_multithreading"), "multithreading"),
+            (t("menu_debug", "ov_refrigeracao"), "refrigeracao"),
+            (t("menu_debug", "ov_overvolt"), "overvolt"),
+            (t("menu_debug", "ov_bios_modding"), "bios_modding"),
+            (t("menu_debug", "ov_protecao_surtos"), "protecao_surtos"),
+            (t("menu_debug", "ov_upgrade_barramento"), "upgrade_barramento")
         ]
         self.idx_overclock = 0
 
         self.opcoes_pular_tempo = [10, 20, 30]
         self.idx_pular_tempo = 0
 
+        self.opcoes_fases_musica = [
+            (t("menu_debug", "fase_anticipation"), "anticipation"),
+            (t("menu_debug", "fase_hold"), "hold"),
+            (t("menu_debug", "fase_assault_intro"), "assault_intro"),
+            (t("menu_debug", "fase_assault"), "assault"),
+        ]
+        self.idx_fase_musica = 0
+
         # Índice do menu focado
         self.indice_foco = 0
-        self.total_itens = 16
+        self.total_itens = 18
 
         # Retângulo do painel de Debug centralizado / com offset adaptado para 1280x720
         self.offset_x = (LARGURA_TELA - 800) // 2
@@ -142,7 +142,7 @@ class MenuDebug:
         """Abre o menu de debug e congela a partida."""
         self.ativo = True
         self.cooldown_input = 0.25
-        self._mensagem_status = "DEBUG MENU ATIVADO"
+        self._mensagem_status = t("menu_debug", "status_ativado")
         self._timer_status = 2.0
         if self.cena and hasattr(self.cena, "pausado"):
             self.cena.pausado = True
@@ -238,18 +238,7 @@ class MenuDebug:
             mouse_clicado = True
 
         if mouse_clicado and self.cooldown_input <= 0.0:
-            if self.cena and getattr(self.cena, "mouse", None):
-                try:
-                    mx, my = self.cena.mouse.get_position()
-                except Exception:
-                    mx, my = pygame.mouse.get_pos() if pygame.mouse.get_focused() else (400, 300)
-            elif mouse is not None and hasattr(mouse, "get_position"):
-                try:
-                    mx, my = mouse.get_position()
-                except Exception:
-                    mx, my = pygame.mouse.get_pos() if pygame.mouse.get_focused() else (400, 300)
-            else:
-                mx, my = pygame.mouse.get_pos() if pygame.mouse.get_focused() else (400, 300)
+            mx, my = self._obter_pos_mouse_virtual(mouse)
 
             if self.rect_painel.collidepoint(mx, my):
                 # Clique dentro do painel do menu de debug
@@ -271,15 +260,32 @@ class MenuDebug:
                             self._alterar_opcao(-1)
                     self.cooldown_input = 0.20
             else:
-                # Clique fora do painel: gera spawn nas coordenadas do mundo do jogo
-                cam_x = getattr(self.cena.camera, "x", 0.0) if (self.cena and hasattr(self.cena, "camera")) else 0.0
-                cam_y = getattr(self.cena.camera, "y", 0.0) if (self.cena and hasattr(self.cena, "camera")) else 0.0
+                # Clique fora do painel: gera spawn nas coordenadas do mundo considerando o zoom ativo
                 largura_arena = getattr(self.cena, "largura_arena", LARGURA_ARENA)
                 altura_arena = getattr(self.cena, "altura_arena", ALTURA_ARENA)
-                mundo_x = max(20.0, min(float(largura_arena) - 20.0, mx + cam_x))
-                mundo_y = max(20.0, min(float(altura_arena) - 20.0, my + cam_y))
+                if self.cena is not None and hasattr(self.cena, "_obter_mouse_mundo"):
+                    raw_wx, raw_wy = self.cena._obter_mouse_mundo(mx, my)
+                else:
+                    cam_x = getattr(self.cena.camera, "x", 0.0) if (self.cena and hasattr(self.cena, "camera")) else 0.0
+                    cam_y = getattr(self.cena.camera, "y", 0.0) if (self.cena and hasattr(self.cena, "camera")) else 0.0
+                    raw_wx, raw_wy = mx + cam_x, my + cam_y
+                mundo_x = max(20.0, min(float(largura_arena) - 20.0, raw_wx))
+                mundo_y = max(20.0, min(float(altura_arena) - 20.0, raw_wy))
                 self._spawnar_item_ou_inimigo_no_mundo(mundo_x, mundo_y)
                 self.cooldown_input = 0.25
+
+    def _obter_pos_mouse_virtual(self, mouse=None) -> tuple[float, float]:
+        mouse_ref = (self.cena.mouse if (self.cena and getattr(self.cena, "mouse", None)) else mouse)
+        if mouse_ref is not None and hasattr(mouse_ref, "get_position"):
+            return mouse_ref.get_position()
+        if pygame.mouse.get_focused():
+            px, py = pygame.mouse.get_pos()
+            from PPlay.window import Window
+            janela = Window.get_instance()
+            if janela is not None and hasattr(janela, "screen_to_virtual_coords"):
+                return janela.screen_to_virtual_coords(px, py)
+            return float(px), float(py)
+        return (LARGURA_TELA / 2.0, ALTURA_TELA / 2.0)
 
     def _alterar_opcao(self, direcao: int):
         """Altera valores de toggles e opções com as setas esquerda/direita."""
@@ -305,6 +311,8 @@ class MenuDebug:
             self.idx_overclock = (self.idx_overclock + direcao) % len(self.opcoes_overclock)
         elif self.indice_foco == 15:  # Pular Tempo + Kit Debug
             self.idx_pular_tempo = (self.idx_pular_tempo + direcao) % len(self.opcoes_pular_tempo)
+        elif self.indice_foco == 16:  # Fase Música-Onda
+            self.idx_fase_musica = (self.idx_fase_musica + direcao) % len(self.opcoes_fases_musica)
 
     def _executar_acao_selecionada(self):
         """Executa ações com a tecla ENTER / ESPAÇO."""
@@ -319,12 +327,12 @@ class MenuDebug:
         elif self.indice_foco == 8:  # Curar Vida Completa
             if self.cena and hasattr(self.cena, "jogador") and self.cena.jogador:
                 self.cena.jogador.hp = self.cena.jogador.hp_max
-                self._definir_status("VIDA RESTAURADA AO MAXIMO!")
+                self._definir_status(t("menu_debug", "status_vida_max"))
         elif self.indice_foco == 9:  # Tomar Dano (1/8 HP)
             if self.cena and hasattr(self.cena, "jogador") and self.cena.jogador:
                 dano = max(1, self.cena.jogador.hp_max // 8)
                 self.cena.jogador.receber_dano(dano)
-                self._definir_status(f"DANO RECEBIDO: -{dano} HP")
+                self._definir_status(t("menu_debug", "status_dano", dano=dano))
         elif self.indice_foco == 10:  # Subir Nível (+X)
             qtd = self.opcoes_level_up[self.idx_level_up]
             if self.cena and hasattr(self.cena, "jogador") and self.cena.jogador:
@@ -341,26 +349,29 @@ class MenuDebug:
                         elif hasattr(sistema_xp, "adicionar_xp"):
                             sistema_xp.adicionar_xp(xp_faltante)
                 self.fechar()
-                self._definir_status(f"LEVEL UP (+{qtd}) ATIVADO!")
+                self._definir_status(t("menu_debug", "status_level_up", qtd=qtd))
         elif self.indice_foco == 11:  # Desbloquear Todas Configurações
             config_sys = getattr(self.cena, "config_sistema", None) or getattr(self.cena, "gerenciador_config", None)
             if config_sys is not None:
                 from src.sistemas.config_dados import CONFIGURACOES_GAMEPLAY
                 for cid in CONFIGURACOES_GAMEPLAY.keys():
                     config_sys.desbloquear_config(cid)
-                self._definir_status("TODAS AS 20 CONFIGS DESBLOQUEADAS!")
+                sys_conq = getattr(config_sys, "sistema_conquistas", None) or getattr(self.cena, "sistema_conquistas", None)
+                if sys_conq is not None and hasattr(sys_conq, "recompensas"):
+                    sys_conq.recompensas.setdefault("configuracao", set()).add("latencia_ping")
+                self._definir_status(t("menu_debug", "status_configs_desbloqueadas", qtd=len(CONFIGURACOES_GAMEPLAY)))
         elif self.indice_foco == 12:  # Boss Cutscene
             if self.cena and hasattr(self.cena, "iniciar_boss_cutscene"):
                 self.fechar()
                 self.cena.iniciar_boss_cutscene()
-                self._definir_status("BOSS CUTSCENE INICIADA!")
+                self._definir_status(t("menu_debug", "status_boss_cutscene"))
         elif self.indice_foco == 13:  # Conceder Overclock
             nome_ov, id_ov = self.opcoes_overclock[self.idx_overclock]
             if self.cena and hasattr(self.cena, "jogador") and self.cena.jogador:
                 self.cena.jogador.aplicar_overclock(id_ov)
                 if hasattr(self.cena, "aplicar_modificadores"):
                     self.cena.aplicar_modificadores()
-                self._definir_status(f"OVERCLOCK CONCEDIDO: {nome_ov}")
+                self._definir_status(t("menu_debug", "status_overclock", nome=nome_ov))
         elif self.indice_foco == 14:  # Matar Chefe
             if self.cena and hasattr(self.cena, "chefe_final") and self.cena.chefe_final:
                 chefe = self.cena.chefe_final
@@ -369,16 +380,73 @@ class MenuDebug:
                 chefe.receber_dano(chefe.hp + 9999)
                 if hasattr(self.cena, "_registrar_abate_inimigo"):
                     self.cena._registrar_abate_inimigo(chefe)
-                self._definir_status("GELADEIRA TSUNAMI DESTRUÍDA!")
+                self._definir_status(t("menu_debug", "status_boss_destruido"))
             elif self.cena and hasattr(self.cena, "inimigos"):
                 for inim in self.cena.inimigos:
                     if getattr(inim, "is_elite", False):
                         inim.receber_dano(inim.hp + 999)
                         if hasattr(self.cena, "_registrar_abate_inimigo"):
                             self.cena._registrar_abate_inimigo(inim)
-                self._definir_status("MINI-BOSSES DESTRUÍDOS!")
+                self._definir_status(t("menu_debug", "status_minibosses_destruidos"))
         elif self.indice_foco == 15:  # Pular Tempo + Kit Debug
             self._aplicar_kit_debug()
+        elif self.indice_foco == 16:  # Forçar Fase Música-Onda
+            nome_fase, estado_fase = self.opcoes_fases_musica[self.idx_fase_musica]
+            sys_mus = getattr(self.cena, "sistema_musica", None) if self.cena else None
+            if sys_mus is None:
+                try:
+                    from src.sistemas.sistema_musica import obter_sistema_musica
+                    sys_mus = obter_sistema_musica()
+                except Exception:
+                    sys_mus = None
+            if sys_mus is not None:
+                loops = -1 if estado_fase in ("hold", "assault") else 0
+                if hasattr(sys_mus, "_tocar_par_estado"):
+                    sys_mus._tocar_par_estado(estado_fase, loops=loops)
+                else:
+                    sys_mus.estado = estado_fase
+                self._definir_status(t("menu_debug", "status_musica_onda", nome=nome_fase))
+        elif self.indice_foco == 17:  # Desbloquear Todas Conquistas & Firmware
+            cfg = (
+                (getattr(self.cena, "config_sistema", None) or getattr(self.cena, "gerenciador_config", None))
+                if self.cena
+                else None
+            )
+            sys_conq = getattr(self.cena, "sistema_conquistas", None) if self.cena else None
+            if sys_conq is None and cfg is not None:
+                sys_conq = getattr(cfg, "sistema_conquistas", None)
+            if sys_conq is not None:
+                from src.sistemas.conquistas_dados import (
+                    CHIPS_FIRMWARE,
+                    CONQUISTAS_CONTINUAS,
+                    CONQUISTAS_UNICAS,
+                )
+                for cid, cdef in CONQUISTAS_CONTINUAS.items():
+                    max_meta = cdef.milestones[-1].meta if cdef.milestones else 999
+                    sys_conq.continuas[cid] = {
+                        "valor": max_meta,
+                        "milestones_concluidos": list(range(len(cdef.milestones))),
+                    }
+                    for ms in cdef.milestones:
+                        if hasattr(sys_conq, "_conceder_recompensas"):
+                            sys_conq._conceder_recompensas(ms.recompensas)
+                for cid, cdef in CONQUISTAS_UNICAS.items():
+                    sys_conq.unicas_concluidas.add(cid)
+                    if hasattr(sys_conq, "_conceder_recompensas"):
+                        sys_conq._conceder_recompensas(cdef.recompensas)
+                if hasattr(sys_conq, "recompensas"):
+                    sys_conq.recompensas.setdefault("modificador_run", set()).update(CHIPS_FIRMWARE.keys())
+                sys_conq.slots_firmware_max = 3
+                sys_conq.monge_15fps_segundos = 120.0
+                if cfg is not None:
+                    if hasattr(cfg, "sincronizar_recompensas_conquistas"):
+                        cfg.sincronizar_recompensas_conquistas()
+                    if hasattr(cfg, "salvar"):
+                        cfg.salvar()
+                if self.cena is not None and getattr(self.cena, "jogador", None) is not None:
+                    if hasattr(self.cena.jogador, "dash_desbloqueado"):
+                        self.cena.jogador.dash_desbloqueado = True
+                self._definir_status(t("menu_debug", "status_conq_fw_desbloqueados"))
 
     def _spawnar_item_ou_inimigo_no_mundo(self, x: float, y: float):
         """Gera a entidade selecionada com o CENTRO posicionado exatamente nas coordenadas (x, y)."""
@@ -400,32 +468,54 @@ class MenuDebug:
                 self.cena.sistema_drops.drops.append(drop)
             elif hasattr(self.cena, "drops"):
                 self.cena.drops.append(drop)
-            self._definir_status(f"DROP SPAWNADO: {nome_d}")
+            self._definir_status(t("menu_debug", "status_drop_spawnado", nome=nome_d))
 
         elif self.indice_foco == 5:  # Spawn Arma Específica
             nome_a, classe_str = self.opcoes_armas[self.idx_arma]
             from src.armas import (
-                Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas, Railgun
+                Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas, Railgun,
+                BastaoChoque, SMGCompacta, RifleArco, LancaChamas,
             )
-            armas_map = {
-                "Minigun": Minigun,
-                "Shotgun": Shotgun,
-                "RifleAssalto": RifleAssalto,
-                "LancaFoguetes": LancaFoguetes,
-                "LancaGranadas": LancaGranadas,
-                "Railgun": Railgun
-            }
-            if classe_str in armas_map and hasattr(self.cena, "jogador") and self.cena.jogador:
-                nova_arma = armas_map[classe_str]()
-                if hasattr(self.cena.jogador, "equipar_arma_especial"):
-                    self.cena.jogador.equipar_arma_especial(nova_arma)
+            jog = getattr(self.cena, "jogador", None)
+            if jog is not None:
+                if classe_str == "BastaoChoque":
+                    if hasattr(jog, "aplicar_loadout"):
+                        jog.aplicar_loadout("bastao_choque", getattr(jog, "slot2_id", "pistola"))
+                    elif hasattr(jog, "armas") and len(jog.armas) >= 1:
+                        jog.armas[0] = BastaoChoque()
+                    if hasattr(jog, "selecionar_slot"):
+                        jog.selecionar_slot(1)
+                    self._definir_status(t("menu_debug", "status_arma_equipada", nome=nome_a))
+                elif classe_str == "SMGCompacta":
+                    if hasattr(jog, "aplicar_loadout"):
+                        jog.aplicar_loadout(getattr(jog, "slot1_id", "chave_manutencao"), "smg_compacta")
+                    elif hasattr(jog, "armas") and len(jog.armas) >= 2:
+                        jog.armas[1] = SMGCompacta()
+                    if hasattr(jog, "selecionar_slot"):
+                        jog.selecionar_slot(2)
+                    self._definir_status(t("menu_debug", "status_arma_equipada", nome=nome_a))
                 else:
-                    self.cena.jogador.arma_especial = nova_arma
-                if hasattr(self.cena.jogador, "selecionar_slot"):
-                    self.cena.jogador.selecionar_slot(3)
-                elif hasattr(self.cena.jogador, "slot_ativo"):
-                    self.cena.jogador.slot_ativo = 3
-                self._definir_status(f"ARMA EQUIPADA: {nome_a}")
+                    armas_map = {
+                        "Minigun": Minigun,
+                        "Shotgun": Shotgun,
+                        "RifleAssalto": RifleAssalto,
+                        "LancaFoguetes": LancaFoguetes,
+                        "LancaGranadas": LancaGranadas,
+                        "Railgun": Railgun,
+                        "RifleArco": RifleArco,
+                        "LancaChamas": LancaChamas,
+                    }
+                    if classe_str in armas_map:
+                        nova_arma = armas_map[classe_str]()
+                        if hasattr(jog, "equipar_arma_especial"):
+                            jog.equipar_arma_especial(nova_arma)
+                        else:
+                            jog.arma_especial = nova_arma
+                        if hasattr(jog, "selecionar_slot"):
+                            jog.selecionar_slot(3)
+                        elif hasattr(jog, "slot_ativo"):
+                            jog.slot_ativo = 3
+                        self._definir_status(t("menu_debug", "status_arma_equipada", nome=nome_a))
 
         elif self.indice_foco == 6:  # Spawn Drone Específico
             nome_dr, classe_str = self.opcoes_drones[self.idx_drone]
@@ -441,7 +531,7 @@ class MenuDebug:
                     self.cena.jogador.adicionar_drone(novo_drone)
                 elif hasattr(self.cena.jogador, "drone"):
                     self.cena.jogador.drone = novo_drone
-                self._definir_status(f"DRONE ATIVADO: {nome_dr}")
+                self._definir_status(t("menu_debug", "status_drone_ativado", nome=nome_dr))
 
         elif self.indice_foco == 7:  # Spawn Inimigo (Centro alinhado com o clique)
             nome_i, tipo_i = self.opcoes_inimigos[self.idx_inimigo]
@@ -449,7 +539,9 @@ class MenuDebug:
                 InimigoPadrao, InimigoRapido, InimigoPhasing,
                 InimigoBlindado, InimigoRanged, InimigoTank
             )
-            from src.entidades.geladeira_tsunami import GeladeiraTsunami
+            from src.entidades.inimigo_impressora import InimigoImpressoraTermica
+            from src.entidades.inimigo_ninja import InimigoNinja
+            from src.entidades.inimigos.geladeira_tsunami import GeladeiraTsunami
             inimigo = None
             if tipo_i == "padrao":
                 inimigo = InimigoPadrao(x=x, y=y)
@@ -463,8 +555,12 @@ class MenuDebug:
                 inimigo = InimigoRanged(x=x, y=y)
             elif tipo_i == "tank":
                 inimigo = InimigoTank(x=x, y=y)
+            elif tipo_i == "impressora":
+                inimigo = InimigoImpressoraTermica(x=x, y=y)
+            elif tipo_i == "ninja":
+                inimigo = InimigoNinja(x=x, y=y)
             elif tipo_i == "elite":
-                inimigo = InimigoPadrao(x=x, y=y, is_elite=True, nome_elite="CHEFE DE ELITE (DEBUG)")
+                inimigo = InimigoPadrao(x=x, y=y, is_elite=True, nome_elite=t("menu_debug", "nome_elite_debug"))
                 inimigo.hp_max = 120
                 inimigo.hp = 120
                 inimigo.score_valor = 500
@@ -482,7 +578,7 @@ class MenuDebug:
                     inimigo.x = x - getattr(inimigo, "largura", 28) / 2.0
                     inimigo.y = y - getattr(inimigo, "altura", 28) / 2.0
                 self.cena.inimigos.append(inimigo)
-                self._definir_status(f"INIMIGO SPAWNADO: {nome_i}")
+                self._definir_status(t("menu_debug", "status_inimigo_spawnado", nome=nome_i))
 
     def _aplicar_kit_debug(self):
         """Avança 10/20/30s, equipa arma especial (sem Railgun), aplica consumíveis e 1 mod de BIOS."""
@@ -531,7 +627,7 @@ class MenuDebug:
 
         if hasattr(self.cena, "aplicar_modificadores"):
             self.cena.aplicar_modificadores()
-        self._definir_status(f"+{int(segs)}s + ARMA + CONSUMIVEIS + BIOS + DASH!")
+        self._definir_status(t("menu_debug", "status_kit_debug", qtd=int(segs)))
 
     def _definir_status(self, texto: str):
         self._mensagem_status = str(texto)
@@ -576,7 +672,7 @@ class MenuDebug:
         pygame.draw.rect(screen, (168, 85, 247), painel_px, width=max(1, ps(2)), border_radius=ps(8))
 
         # 2. Cabeçalho do Console
-        tit_surf = fonte_tit.render("CONSOLE DEBUG (F1 / ~)", True, DOURADO)
+        tit_surf = fonte_tit.render(t("menu_debug", "titulo"), True, DOURADO)
         screen.blit(tit_surf, (painel_px.x + ps(12), painel_px.y + ps(12)))
         pygame.draw.line(
             screen,
@@ -587,24 +683,28 @@ class MenuDebug:
         )
 
         # 3. Lista de Itens e Toggles
+        lbl_lig = t("menu_debug", "estado_ligado")
+        lbl_des = t("menu_debug", "estado_desligado")
         y_cursor = self.rect_painel.y + 40
         itens_config = [
-            ("1. Spawn Natural", "LIGADO" if self.spawn_natural_ativo else "DESLIGADO", VERDE_CURA if self.spawn_natural_ativo else VERMELHO_DANO),
-            ("2. Congelar Timer", "LIGADO" if self.timer_congelado else "DESLIGADO", LARANJA_ALERTA if self.timer_congelado else CINZA_TEXTO),
-            ("3. Municao Infinita", "LIGADO" if self.municao_infinita else "DESLIGADO", DOURADO if self.municao_infinita else CINZA_TEXTO),
-            ("4. Modo Deus (HP Inf)", "LIGADO" if self.modo_deus else "DESLIGADO", DOURADO if self.modo_deus else CINZA_TEXTO),
-            ("5. Spawn Drop", f"< {self.opcoes_tipo_drop[self.idx_tipo_drop][0]} >", ROXO_CLARO),
-            ("6. Equipar Arma", f"< {self.opcoes_armas[self.idx_arma][0]} >", ROXO_CLARO),
-            ("7. Ativar Drone", f"< {self.opcoes_drones[self.idx_drone][0]} >", ROXO_CLARO),
-            ("8. Spawn Inimigo", f"< {self.opcoes_inimigos[self.idx_inimigo][0]} >", ROXO_CLARO),
-            ("9. Curar Vida Max", "[ENTER PARA CURAR]", VERDE_CURA),
-            ("10. Tomar Dano 1/8", "[ENTER PARA DANO]", VERMELHO_DANO),
-            ("11. Level Up (+X)", f"< +{self.opcoes_level_up[self.idx_level_up]} Nivel >", DOURADO),
-            ("12. Destravar Configs", "[ENTER DESTRAVA 20]", DOURADO),
-            ("13. Boss Cutscene (Lvl 20)", "[ENTER CUTSCENE]", DOURADO),
-            ("14. Conceder Overclock", f"< {self.opcoes_overclock[self.idx_overclock][0]} >", ROXO_CLARO),
-            ("15. Matar Chefe", "[ENTER PARA MATAR]", VERMELHO_DANO),
-            ("16. Kit Debug (+Tempo)", f"< +{self.opcoes_pular_tempo[self.idx_pular_tempo]}s +Kit >", (34, 211, 238))
+            (t("menu_debug", "item_1"), lbl_lig if self.spawn_natural_ativo else lbl_des, VERDE_CURA if self.spawn_natural_ativo else VERMELHO_DANO),
+            (t("menu_debug", "item_2"), lbl_lig if self.timer_congelado else lbl_des, LARANJA_ALERTA if self.timer_congelado else CINZA_TEXTO),
+            (t("menu_debug", "item_3"), lbl_lig if self.municao_infinita else lbl_des, DOURADO if self.municao_infinita else CINZA_TEXTO),
+            (t("menu_debug", "item_4"), lbl_lig if self.modo_deus else lbl_des, DOURADO if self.modo_deus else CINZA_TEXTO),
+            (t("menu_debug", "item_5"), t("menu_debug", "selector_valor", valor=self.opcoes_tipo_drop[self.idx_tipo_drop][0]), ROXO_CLARO),
+            (t("menu_debug", "item_6"), t("menu_debug", "selector_valor", valor=self.opcoes_armas[self.idx_arma][0]), ROXO_CLARO),
+            (t("menu_debug", "item_7"), t("menu_debug", "selector_valor", valor=self.opcoes_drones[self.idx_drone][0]), ROXO_CLARO),
+            (t("menu_debug", "item_8"), t("menu_debug", "selector_valor", valor=self.opcoes_inimigos[self.idx_inimigo][0]), ROXO_CLARO),
+            (t("menu_debug", "item_9"), t("menu_debug", "item_9_acao"), VERDE_CURA),
+            (t("menu_debug", "item_10"), t("menu_debug", "item_10_acao"), VERMELHO_DANO),
+            (t("menu_debug", "item_11"), t("menu_debug", "selector_level_up", qtd=self.opcoes_level_up[self.idx_level_up]), DOURADO),
+            (t("menu_debug", "item_12"), t("menu_debug", "item_12_acao"), DOURADO),
+            (t("menu_debug", "item_13"), t("menu_debug", "item_13_acao"), DOURADO),
+            (t("menu_debug", "item_14"), t("menu_debug", "selector_valor", valor=self.opcoes_overclock[self.idx_overclock][0]), ROXO_CLARO),
+            (t("menu_debug", "item_15"), t("menu_debug", "item_15_acao"), VERMELHO_DANO),
+            (t("menu_debug", "item_16"), t("menu_debug", "selector_kit_tempo", qtd=self.opcoes_pular_tempo[self.idx_pular_tempo]), (34, 211, 238)),
+            (t("menu_debug", "item_17"), t("menu_debug", "selector_valor", valor=self.opcoes_fases_musica[self.idx_fase_musica][0]), (168, 85, 247)),
+            (t("menu_debug", "item_18"), t("menu_debug", "item_18_acao"), DOURADO),
         ]
 
         for i, (label, val_txt, val_cor) in enumerate(itens_config):
@@ -646,18 +746,12 @@ class MenuDebug:
             status_surf = fonte_hint.render(self._mensagem_status, True, DOURADO)
             screen.blit(status_surf, (painel_px.x + ps(12), py(y_cursor)))
         else:
-            hint_txt = "SETAS: Navegar | ENTER: Acao | CLIQUE: Spawn"
+            hint_txt = t("menu_debug", "rodape_dica")
             hint_surf = fonte_hint.render(hint_txt, True, CINZA_TEXTO)
             screen.blit(hint_surf, (painel_px.x + ps(12), py(y_cursor)))
 
         # 5. Mira Visual no Cursor do Mouse para Spawn no Mundo (projetada em DPI nativo)
-        if self.cena and getattr(self.cena, "mouse", None):
-            try:
-                mx, my = self.cena.mouse.get_position()
-            except Exception:
-                mx, my = pygame.mouse.get_pos() if pygame.mouse.get_focused() else (400, 300)
-        else:
-            mx, my = pygame.mouse.get_pos() if pygame.mouse.get_focused() else (400, 300)
+        mx, my = self._obter_pos_mouse_virtual()
         if not self.rect_painel.collidepoint(mx, my):
             smx, smy = px(mx), py(my)
             r_mira = ps(10)
@@ -668,13 +762,13 @@ class MenuDebug:
             pygame.draw.line(screen, DOURADO, (smx, smy - l_mira), (smx, smy + l_mira), w_mira)
             entidade_spawn_label = ""
             if self.indice_foco == 4:
-                entidade_spawn_label = f"Spawn: {self.opcoes_tipo_drop[self.idx_tipo_drop][0]}"
+                entidade_spawn_label = t("menu_debug", "mira_spawn", nome=self.opcoes_tipo_drop[self.idx_tipo_drop][0])
             elif self.indice_foco == 5:
-                entidade_spawn_label = f"Equipar: {self.opcoes_armas[self.idx_arma][0]}"
+                entidade_spawn_label = t("menu_debug", "mira_equipar", nome=self.opcoes_armas[self.idx_arma][0])
             elif self.indice_foco == 6:
-                entidade_spawn_label = f"Drone: {self.opcoes_drones[self.idx_drone][0]}"
+                entidade_spawn_label = t("menu_debug", "mira_drone", nome=self.opcoes_drones[self.idx_drone][0])
             elif self.indice_foco == 7:
-                entidade_spawn_label = f"Spawn: {self.opcoes_inimigos[self.idx_inimigo][0]}"
+                entidade_spawn_label = t("menu_debug", "mira_spawn", nome=self.opcoes_inimigos[self.idx_inimigo][0])
 
             if entidade_spawn_label:
                 mira_txt = fonte_hint.render(entidade_spawn_label, True, DOURADO)

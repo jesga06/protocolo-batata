@@ -10,6 +10,7 @@ from src.utils.constantes import (
     PISTOLA_DANO, PISTOLA_COOLDOWN, PISTOLA_VELOCIDADE_PROJETIL,
     obter_caminho_asset
 )
+from src.utils.traducao import t
 
 
 class Pistola(ArmaBase):
@@ -25,7 +26,7 @@ class Pistola(ArmaBase):
         tempo_vida_projetil: float = 2.5
     ):
         super().__init__(
-            nome="Padrão de Fábrica",
+            nome=t("combate_entidades", "arma_pistola"),
             dano=dano,
             cooldown=cooldown,
             municao_infinita=True,
@@ -89,14 +90,5 @@ class Pistola(ArmaBase):
                 largura=8,
                 altura=8
             )
-
-        # Tenta reproduzir efeito sonoro de tiro de forma segura
-        try:
-            from PPlay.sound import Sound
-            sfx_path = obter_caminho_asset("sfx_tiro_pistola")
-            sfx = Sound(sfx_path)
-            sfx.play()
-        except Exception:
-            pass
 
         return [projetil]

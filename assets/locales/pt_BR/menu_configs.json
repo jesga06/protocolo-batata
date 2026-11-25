@@ -1,0 +1,253 @@
+{
+  "_meta": {
+    "categoria": "menu_configs",
+    "descricao": "Textos do Menu de Configurações (abas Gameplay e Áudio & Sistema, inspetor e modal de confirmação de cota Firmware).",
+    "placeholders_disponiveis": {
+      "pares": "str — pares de configurações revertidas por conflito",
+      "n_antes": "int — quantidade de configs ativas antes da alteração",
+      "n_depois": "int — quantidade de configs ativas após a alteração",
+      "slot": "int — número do slot de Firmware afetado",
+      "nome_chip": "str — nome do Chip de Firmware desativado",
+      "cota": "int — cota mínima de configs exigida pelo slot",
+      "escala": "float — multiplicador de escala da mira"
+    }
+  },
+  "entradas": {
+    "titulo": {
+      "texto": "CONFIGURAÇÕES DO SISTEMA",
+      "contexto": "Cabeçalho principal do Menu de Configurações.",
+      "placeholders": {}
+    },
+    "subtitulo_gameplay": {
+      "texto": "Ative sacrifícios técnicos para desbloquear vantagens mecânicas.",
+      "contexto": "Subtítulo exibido quando a aba Gameplay está ativa.",
+      "placeholders": {}
+    },
+    "subtitulo_sistema": {
+      "texto": "Ajustes de áudio e volumes do sistema",
+      "contexto": "Subtítulo exibido quando a aba Áudio & Sistema está ativa.",
+      "placeholders": {}
+    },
+    "aba_gameplay": {
+      "texto": "GAMEPLAY",
+      "contexto": "Rótulo da primeira aba do Menu de Configurações.",
+      "placeholders": {}
+    },
+    "aba_sistema": {
+      "texto": "ÁUDIO & SISTEMA",
+      "contexto": "Rótulo da segunda aba do Menu de Configurações.",
+      "placeholders": {}
+    },
+    "btn_menu_principal": {
+      "texto": "MENU PRINCIPAL",
+      "contexto": "Botão no topo para voltar ao Menu Principal durante uma partida.",
+      "placeholders": {}
+    },
+    "btn_fechar": {
+      "texto": "FECHAR [ESC]",
+      "contexto": "Botão no topo direito para fechar o Menu de Configurações.",
+      "placeholders": {}
+    },
+    "rodape": {
+      "texto": "[TAB] Abas   •   [ESC / C] Salvar e Fechar   •   [Mouse] Ajustar Opções",
+      "contexto": "Rodapé de atalhos do Menu de Configurações.",
+      "placeholders": {}
+    },
+    "cat_todas": {
+      "texto": "TODAS",
+      "contexto": "Filtro para exibir todas as categorias de configurações.",
+      "placeholders": {}
+    },
+    "cat_performance": {
+      "texto": "PERFORMANCE",
+      "contexto": "Filtro da categoria Performance.",
+      "placeholders": {}
+    },
+    "cat_interface": {
+      "texto": "INTERFACE",
+      "contexto": "Filtro da categoria Interface.",
+      "placeholders": {}
+    },
+    "cat_controles": {
+      "texto": "CONTROLES",
+      "contexto": "Filtro da categoria Controles.",
+      "placeholders": {}
+    },
+    "cat_dificuldade": {
+      "texto": "DIFICULDADE",
+      "contexto": "Filtro da categoria Dificuldade.",
+      "placeholders": {}
+    },
+    "cat_experimental": {
+      "texto": "EXPERIMENTAL",
+      "contexto": "Filtro da categoria Experimental.",
+      "placeholders": {}
+    },
+    "lista_vazia_titulo": {
+      "texto": "Nenhuma configuração desbloqueada",
+      "contexto": "Mensagem principal quando o jogador ainda não desbloqueou configs na categoria filtrada.",
+      "placeholders": {}
+    },
+    "lista_vazia_subtitulo": {
+      "texto": "Alcance os marcos de nível (5, 11) ou conclua desafios!",
+      "contexto": "Subtítulo orientando como desbloquear configurações.",
+      "placeholders": {}
+    },
+    "item_tag_conquista": {
+      "texto": "[CONQUISTA]",
+      "contexto": "Tag exibida em configurações exclusivas de conquista.",
+      "placeholders": {}
+    },
+    "item_desbloqueie_marcos": {
+      "texto": "Desbloqueie em marcos",
+      "contexto": "Subtítulo de configuração bloqueada por marco de nível.",
+      "placeholders": {}
+    },
+    "item_sacrificio_ativo": {
+      "texto": "Sacrifício ativo",
+      "contexto": "Subtítulo quando a configuração está em um valor não-neutro.",
+      "placeholders": {}
+    },
+    "item_padrao_neutro": {
+      "texto": "Padrão",
+      "contexto": "Subtítulo quando a configuração está em seu valor padrão neutro.",
+      "placeholders": {}
+    },
+    "item_bloqueada": {
+      "texto": "BLOQUEADA",
+      "contexto": "Badge exibido no lugar do controle quando a config está bloqueada.",
+      "placeholders": {}
+    },
+    "inspetor_titulo_vazio": {
+      "texto": "INSPETOR DE CONFIGS",
+      "contexto": "Título do painel inspetor quando nenhuma config está selecionada.",
+      "placeholders": {}
+    },
+    "inspetor_dica_1": {
+      "texto": "Desbloqueie e selecione uma",
+      "contexto": "Primeira linha de instrução no inspetor vazio.",
+      "placeholders": {}
+    },
+    "inspetor_dica_2": {
+      "texto": "configuração à esquerda.",
+      "contexto": "Segunda linha de instrução no inspetor vazio.",
+      "placeholders": {}
+    },
+    "inspetor_desbloqueada": {
+      "texto": "DESBLOQUEADA",
+      "contexto": "Badge de status no inspetor para config desbloqueada.",
+      "placeholders": {}
+    },
+    "inspetor_conflito": {
+      "texto": "CONFLITO",
+      "contexto": "Badge de alerta no inspetor quando a opção tem incompatibilidade.",
+      "placeholders": {}
+    },
+    "inspetor_modo_ativo": {
+      "texto": "MODO ATIVO",
+      "contexto": "Rótulo da caixa de valor atual no inspetor.",
+      "placeholders": {}
+    },
+    "inspetor_beneficio_titulo": {
+      "texto": "+ BENEFÍCIO",
+      "contexto": "Cabeçalho do sub-card verde de benefício no inspetor.",
+      "placeholders": {}
+    },
+    "inspetor_sem_beneficio": {
+      "texto": "Nenhum bônus ativo no padrão",
+      "contexto": "Texto exibido no card de benefício quando no valor neutro.",
+      "placeholders": {}
+    },
+    "inspetor_sacrificio_titulo": {
+      "texto": "- SACRIFÍCIO",
+      "contexto": "Cabeçalho do sub-card vermelho de sacrifício no inspetor.",
+      "placeholders": {}
+    },
+    "inspetor_sem_sacrificio": {
+      "texto": "Nenhum sacrifício no padrão",
+      "contexto": "Texto exibido no card de sacrifício quando no valor neutro.",
+      "placeholders": {}
+    },
+    "toast_conflito_revertido": {
+      "texto": "CONFLITO REVERTIDO: {pares}",
+      "contexto": "Toast exibido quando uma alteração reverte automaticamente opções conflitantes.",
+      "placeholders": {
+        "pares": "str — lista 'config -> valor' revertida"
+      }
+    },
+    "sistema_titulo_audio": {
+      "texto": "ÁUDIO & MÚSICA",
+      "contexto": "Cabeçalho da seção de volumes na aba Áudio & Sistema.",
+      "placeholders": {}
+    },
+    "slider_master": {
+      "texto": "Volume Geral (Master)",
+      "contexto": "Rótulo do slider de volume geral.",
+      "placeholders": {}
+    },
+    "slider_musica": {
+      "texto": "Volume da Música",
+      "contexto": "Rótulo do slider de volume da música.",
+      "placeholders": {}
+    },
+    "slider_sfx": {
+      "texto": "Volume dos Efeitos (SFX)",
+      "contexto": "Rótulo do slider de volume dos efeitos sonoros.",
+      "placeholders": {}
+    },
+    "sistema_titulo_mira": {
+      "texto": "MIRA & CURSOR",
+      "contexto": "Cabeçalho da seção de customização estética da mira.",
+      "placeholders": {}
+    },
+    "mira_cor": {
+      "texto": "Cor da Mira:",
+      "contexto": "Rótulo do seletor de cor da mira.",
+      "placeholders": {}
+    },
+    "mira_tamanho": {
+      "texto": "Tamanho da Mira:",
+      "contexto": "Rótulo do seletor de escala da mira.",
+      "placeholders": {}
+    },
+    "mira_escala_valor": {
+      "texto": "{escala:.2f}x",
+      "contexto": "Texto dos botões de multiplicador de tamanho da mira.",
+      "placeholders": {
+        "escala": "float — fator de escala da mira"
+      }
+    },
+    "modal_hotswap_titulo": {
+      "texto": "CONFIRMAÇÃO",
+      "contexto": "Título do modal de confirmação ao reduzir configs ativas abaixo da cota de um Firmware equipado.",
+      "placeholders": {}
+    },
+    "modal_hotswap_subtitulo": {
+      "texto": "Configs ativas cairão de {n_antes} para {n_depois}. Chips desativados:",
+      "contexto": "Descrição do impacto da redução de cota no modal de confirmação.",
+      "placeholders": {
+        "n_antes": "int — configs ativas antes",
+        "n_depois": "int — configs ativas depois"
+      }
+    },
+    "modal_hotswap_chip_linha": {
+      "texto": "• Slot {slot}: {nome_chip} (requer {cota} configs ativas)",
+      "contexto": "Linha listando cada chip de Firmware que será desativado.",
+      "placeholders": {
+        "slot": "int — número do slot",
+        "nome_chip": "str — nome do chip",
+        "cota": "int — cota necessária"
+      }
+    },
+    "btn_confirmar": {
+      "texto": "CONFIRMAR",
+      "contexto": "Botão de confirmação no modal de queda de cota.",
+      "placeholders": {}
+    },
+    "btn_cancelar": {
+      "texto": "CANCELAR",
+      "contexto": "Botão de cancelamento no modal de queda de cota.",
+      "placeholders": {}
+    }
+  }
+}

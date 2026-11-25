@@ -39,18 +39,13 @@ class TestInimigoRapidoBalance(unittest.TestCase):
 
     def test_inimigo_rapido_hp_and_2_shot_threshold(self):
         """
-        Valida que o Inimigo Rápido possui 20 HP e morre em exatamente 2 tiros de pistola (10 de dano).
+        Valida que o Inimigo Rápido possui 10 HP (v2.0 SSOT) e morre em 1 tiro de pistola (10 de dano).
         """
         e = InimigoRapido(x=0.0, y=0.0)
-        self.assertEqual(e.hp, 20)
-        self.assertEqual(e.hp_max, 20)
-
-        # 1º Tiro (10 Dano) -> Sobrevive com 10 HP
-        e.receber_dano(10)
-        self.assertTrue(e.vivo)
         self.assertEqual(e.hp, 10)
+        self.assertEqual(e.hp_max, 10)
 
-        # 2º Tiro (10 Dano) -> Destruído
+        # 1º Tiro (10 Dano) -> Destruído
         e.receber_dano(10)
         self.assertFalse(e.vivo)
         self.assertEqual(e.hp, 0)
@@ -115,10 +110,10 @@ class TestInimigoRanged(unittest.TestCase):
         self.assertEqual(len(e.projeteis_pendentes), 0)
 
     def test_rich_loot_table_attributes(self):
-        """Valida que o Inimigo Ranged possui flags de loot enriquecido (15% arma, 15% equip)."""
+        """Valida que o Inimigo Ranged possui flags de loot enriquecido (30% arma, 15% equip)."""
         e = InimigoRanged(x=100.0, y=100.0)
         self.assertTrue(e.loot_enriquecido)
-        self.assertAlmostEqual(e.chance_drop_arma, 0.15)
+        self.assertAlmostEqual(e.chance_drop_arma, 0.3)
         self.assertAlmostEqual(e.chance_drop_equipamento, 0.15)
 
 
@@ -246,6 +241,120 @@ class TestInimigoBlindado(unittest.TestCase):
         self.assertTrue(self.e.is_ataque_frontal(dir_ataque=(-1.0, 0.0)))
         # Projétil vindo da esquerda em direção à direita (dir_x = 1.0, dir_y = 0.0) - pelas costas
         self.assertFalse(self.e.is_ataque_frontal(dir_ataque=(1.0, 0.0)))
+
+    def test_tank_controls_slow_turn_and_forward_movement(self):
+        """Gira lentamente em direção ao alvo e anda reto na direção frontal atual (controles de tanque)."""
+        e = InimigoBlindado(x=100.0, y=100.0, hp=50, vel_giro_rad_s=1.0)
+        # Começa olhando para direita (0 rad), alvo diretamente abaixo (90 deg = +pi/2)
+        cx_ini = e.x + e.largura / 2.0
+        cy_ini = e.y + e.altura / 2.0
+        e.update(dt=0.25, pos_alvo=(cx_ini, cy_ini + 300.0))
+
+        # Após 0.25s a 1.0 rad/s, deve ter girado ~0.25 rad (não instantaneamente para pi/2)
+        ang = math.atan2(e.facing_y, e.facing_x)
+        self.assertAlmostEqual(ang, 0.25, places=3)
+        self.assertGreater(e.x, 100.0)  # Ainda avançou majoritariamente para a frente (+X)
+
+    def test_two_frontal_breakable_hits_shatter_armor(self):
+        """Explosão/melee/sobrecarregado pela frente quebram a placa em 2 golpes e liberam 100% de dano."""
+        e = InimigoBlindado(x=100.0, y=100.0, hp=200)
+        cx = e.x + e.largura / 2.0
+        cy = e.y + e.altura / 2.0
+
+        # Tiro comum frontal não gasta cargas
+        e.receber_dano(10, origem_x=cx + 100.0, origem_y=cy, quebra_blindagem=False)
+        self.assertEqual(e.cargas_blindagem, 2)
+        self.assertFalse(e.blindagem_quebrada)
+
+        # Golpe válido pelas costas não gasta cargas
+        e.receber_dano(10, origem_x=cx - 100.0, origem_y=cy, quebra_blindagem=True)
+        self.assertEqual(e.cargas_blindagem, 2)
+        self.assertFalse(e.blindagem_quebrada)
+
+        # 1º golpe frontal válido: sofre redução (10*0.7=7), reduz carga para 1 e gera evento rachadura
+        d1 = e.receber_dano(10, origem_x=cx + 100.0, origem_y=cy, quebra_blindagem=True)
+        self.assertEqual(d1, 7)
+        self.assertEqual(e.cargas_blindagem, 1)
+        self.assertFalse(e.blindagem_quebrada)
+        self.assertEqual(e.eventos_blindagem_pendentes[-1]["tipo"], "rachadura")
+
+        # 2º golpe frontal válido: sofre redução neste golpe (7), quebra a placa (cargas=0) e gera evento quebra
+        d2 = e.receber_dano(10, origem_x=cx + 100.0, origem_y=cy, quebra_blindagem=True)
+        self.assertEqual(d2, 7)
+        self.assertEqual(e.cargas_blindagem, 0)
+        self.assertTrue(e.blindagem_quebrada)
+        self.assertEqual(e.eventos_blindagem_pendentes[-1]["tipo"], "quebra")
+
+        # A partir de então, tiros comuns pela frente causam 100% do dano
+        d3 = e.receber_dano(20, origem_x=cx + 100.0, origem_y=cy, quebra_blindagem=False)
+        self.assertEqual(d3, 20)
+
+    def test_miniboss_armor_regenerates_after_10s_and_resets_on_frontal_hit(self):
+        """Mini-Boss No-Break regenera placa após 10s sem ataque frontal que quebra; novo ataque reseta 10s e ele mira no jogador."""
+        boss = InimigoBlindado(x=100.0, y=100.0, hp=800, is_elite=True, nome_elite="NO-BREAK")
+        boss.arquetipo_miniboss = "nobreak_chumbado"
+        cx = boss.x + boss.largura / 2.0
+        cy = boss.y + boss.altura / 2.0
+
+        # Quebra a placa em 2 golpes frontais válidos
+        boss.receber_dano(10, origem_x=cx + 100.0, origem_y=cy, quebra_blindagem=True)
+        boss.receber_dano(10, origem_x=cx + 100.0, origem_y=cy, quebra_blindagem=True)
+        self.assertTrue(boss.blindagem_quebrada)
+        self.assertAlmostEqual(boss.timer_regen_blindagem, 10.0)
+
+        # Passam 6s (alvo à frente) -> ainda quebrada (restam 4s)
+        boss.update(dt=6.0, pos_alvo=(cx + 3000.0, cy))
+        self.assertTrue(boss.blindagem_quebrada)
+        self.assertAlmostEqual(boss.timer_regen_blindagem, 4.0)
+
+        cx = boss.x + boss.largura / 2.0
+        cy = boss.y + boss.altura / 2.0
+
+        # Tiro comum frontal NÃO reseta o timer de 10s
+        boss.receber_dano(10, origem_x=cx + 100.0, origem_y=cy, quebra_blindagem=False)
+        self.assertAlmostEqual(boss.timer_regen_blindagem, 4.0)
+
+        # Golpe quebrador pelas costas NÃO reseta o timer de 10s
+        boss.receber_dano(10, origem_x=cx - 100.0, origem_y=cy, quebra_blindagem=True)
+        self.assertAlmostEqual(boss.timer_regen_blindagem, 4.0)
+
+        # Golpe quebrador FRONTAL reseta o timer para 10.0s
+        boss.receber_dano(10, origem_x=cx + 100.0, origem_y=cy, quebra_blindagem=True)
+        self.assertAlmostEqual(boss.timer_regen_blindagem, 10.0)
+
+        # Passam 10.1s sem ataques frontais válidos -> placa regenera
+        boss.obter_projeteis_pendentes()
+        boss.timer_habilidade_elite = 2.55
+        boss.update(dt=10.1, pos_alvo=(boss.x + boss.largura / 2.0, boss.y + boss.altura / 2.0 + 3000.0))
+        self.assertFalse(boss.blindagem_quebrada)
+        self.assertEqual(boss.cargas_blindagem, 2)
+        self.assertEqual(boss.eventos_blindagem_pendentes[-1]["tipo"], "regenerada")
+
+        # Leque de 5 projéteis do No-Break mira na direção de pos_alvo (para baixo +Y), independente do facing
+        projs = boss.obter_projeteis_pendentes()
+        self.assertEqual(len(projs), 5)
+        self.assertGreater(projs[2].dir_y, 0.9)
+
+    def test_render_rotacionado_intacto_e_quebrado_headless(self):
+        """Renderização intacta, sem escudo e low_graphics executa sem erros em superfície headless."""
+        import pygame
+        pygame.init()
+        surf = pygame.Surface((400, 400), pygame.SRCALPHA)
+
+        class JanelaMock:
+            largura = 400
+            altura = 400
+            low_graphics = False
+            screen = surf
+
+        e = InimigoBlindado(x=100.0, y=100.0, hp=50)
+        e.facing_x, e.facing_y = math.cos(0.7), math.sin(0.7)
+        e.desenhar(JanelaMock())
+        e.blindagem_quebrada = True
+        e.desenhar(JanelaMock())
+        JanelaMock.low_graphics = True
+        e.blindagem_quebrada = False
+        e.desenhar(JanelaMock())
 
 
 if __name__ == "__main__":

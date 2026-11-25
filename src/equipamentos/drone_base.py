@@ -9,6 +9,7 @@ import os
 import pygame
 from src.utils.constantes import ASSETS_DIR, ASSET_PATHS, obter_caminho_asset, AZUL_CIANO, VERDE_CURA, DOURADO
 from src.utils.math_utils import normalizar_vetor
+from src.utils.traducao import t
 
 
 class DroneBase:
@@ -19,7 +20,7 @@ class DroneBase:
 
     def __init__(
         self,
-        nome: str = "Drone Base",
+        nome: str = t("combate_entidades", "drone_base"),
         icone_asset: str = "drone_combate",
         sprite_key: str = "drone_combate",
         tempo_vida: float = 30.0,

@@ -12,10 +12,11 @@ from src.utils.constantes import (
     INIMIGO_CUBO_CRIOGENICO_XP,
 )
 from src.utils.math_utils import distancia, vetor_direcao, lerp
+from src.utils.traducao import t
 
 
 class CuboCriogenico(InimigoBase):
-    nome_exibicao = "Cubo Criogênico"
+    nome_exibicao = t("combate_entidades", "inim_cubo_criogenico")
 
     def __init__(self, x: float, y: float):
         super().__init__(

@@ -11,6 +11,7 @@ from src.utils.constantes import (
     GRANADAS_DANO, GRANADAS_COOLDOWN, GRANADAS_VELOCIDADE_PROJETIL,
     GRANADAS_RAIO_EXPLOSAO, GRANADAS_MUNICIAO_MAX, obter_caminho_asset
 )
+from src.utils.traducao import t
 
 
 class LancaGranadas(ArmaBase):
@@ -27,7 +28,7 @@ class LancaGranadas(ArmaBase):
         municao_max: int = GRANADAS_MUNICIAO_MAX
     ):
         super().__init__(
-            nome="Lança-Granadas",
+            nome=t("combate_entidades", "arma_lanca_granadas"),
             dano=dano,
             cooldown=cooldown,
             municao_infinita=False,
@@ -70,12 +71,5 @@ class LancaGranadas(ArmaBase):
             arco_parabolico=True,
             fragmentar=True
         )
-
-        try:
-            from PPlay.sound import Sound
-            sfx = Sound(obter_caminho_asset("sfx_tiro_granada"))
-            sfx.play()
-        except Exception:
-            pass
 
         return [projetil]

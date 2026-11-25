@@ -1,0 +1,355 @@
+{
+  "_meta": {
+    "categoria": "tutorial",
+    "descricao": "Textos da tela de Tutorial / Guia de Sobrevivência (4 abas).",
+    "placeholders_disponiveis": {
+      "titulo": "str — título da subseção no padrão '- {titulo}:' ou '* {titulo}:'"
+    }
+  },
+  "entradas": {
+    "titulo": {
+      "texto": "GUIA DE SOBREVIVÊNCIA",
+      "contexto": "Cabeçalho principal da tela de Tutorial.",
+      "placeholders": {}
+    },
+    "tab_1": {
+      "texto": "[1] CONTROLES",
+      "contexto": "Aba 1 do Tutorial.",
+      "placeholders": {}
+    },
+    "tab_2": {
+      "texto": "[2] PROJÉTEIS & RITMO",
+      "contexto": "Aba 2 do Tutorial.",
+      "placeholders": {}
+    },
+    "tab_3": {
+      "texto": "[3] ARSENAL & DROPS",
+      "contexto": "Aba 3 do Tutorial.",
+      "placeholders": {}
+    },
+    "tab_4": {
+      "texto": "[4] INIMIGOS & SISTEMAS",
+      "contexto": "Aba 4 do Tutorial.",
+      "placeholders": {}
+    },
+    "sec_controles": {
+      "texto": "CONTROLES PRINCIPAIS",
+      "contexto": "Título da seção de controles na aba 1.",
+      "placeholders": {}
+    },
+    "ctrl_wasd_tecla": {
+      "texto": "W, A, S, D",
+      "contexto": "Keybind de movimentação na aba 1.",
+      "placeholders": {}
+    },
+    "ctrl_wasd_desc": {
+      "texto": "Move Cleiton pelo escritório.",
+      "contexto": "Descrição da movimentação na aba 1.",
+      "placeholders": {}
+    },
+    "ctrl_lmb_tecla": {
+      "texto": "LMB (Clique esq.)",
+      "contexto": "Keybind do botão esquerdo do mouse na aba 1.",
+      "placeholders": {}
+    },
+    "ctrl_lmb_desc": {
+      "texto": "Ataca com a arma equipada.",
+      "contexto": "Descrição do ataque primário na aba 1.",
+      "placeholders": {}
+    },
+    "ctrl_rmb_tecla": {
+      "texto": "RMB (Clique dir.)",
+      "contexto": "Keybind do botão direito do mouse na aba 1.",
+      "placeholders": {}
+    },
+    "ctrl_rmb_desc": {
+      "texto": "Parry.",
+      "contexto": "Descrição do Parry Rápido na aba 1.",
+      "placeholders": {}
+    },
+    "ctrl_dash_tecla": {
+      "texto": "SHIFT / ESPAÇO",
+      "contexto": "Keybind do Dash na aba 1.",
+      "placeholders": {}
+    },
+    "ctrl_dash_desc": {
+      "texto": "Dash com período de invencibilidade. Just-Dodges acelera a recarga.",
+      "contexto": "Descrição do Dash e Just-Dodge na aba 1.",
+      "placeholders": {}
+    },
+    "ctrl_slots_tecla": {
+      "texto": "TECLAS 1, 2, 3 / F",
+      "contexto": "Keybind de troca de slots, Auto-Fire e Configs na aba 1.",
+      "placeholders": {}
+    },
+    "ctrl_slots_desc": {
+      "texto": "Troca Slots [1..3]; [F] alterna Auto-Fire; [C] abre Configs.",
+      "contexto": "Descrição dos atalhos de slots e menus na aba 1.",
+      "placeholders": {}
+    },
+    "sec_hud_combo": {
+      "texto": "HUD & CONQUISTAS FIXADAS",
+      "contexto": "Título da segunda seção na aba 1.",
+      "placeholders": {}
+    },
+    "hud_topo_tit": {
+      "texto": "Topo Central",
+      "contexto": "Subtítulo da área topo central da HUD na aba 1.",
+      "placeholders": {}
+    },
+    "hud_topo_desc": {
+      "texto": "Cronômetro, abates, pontuação, barra de XP e vida dos chefes.",
+      "contexto": "Descrição do topo central da HUD na aba 1.",
+      "placeholders": {}
+    },
+    "hud_dir_tit": {
+      "texto": "Canto Superior Direito",
+      "contexto": "Subtítulo do canto superior direito da HUD na aba 1.",
+      "placeholders": {}
+    },
+    "hud_dir_desc": {
+      "texto": "Exibe até 3 Conquistas Fixadas com progresso e recompensa ao vivo.",
+      "contexto": "Descrição do canto superior direito da HUD na aba 1.",
+      "placeholders": {}
+    },
+    "hud_esq_tit": {
+      "texto": "Canto Superior Esquerdo",
+      "contexto": "Subtítulo do canto superior esquerdo da HUD na aba 1.",
+      "placeholders": {}
+    },
+    "hud_esq_desc": {
+      "texto": "4 slots (Melee, Pistola/SMG, Especial, Drones) e seus atributos.",
+      "contexto": "Descrição do canto superior esquerdo da HUD na aba 1.",
+      "placeholders": {}
+    },
+    "sec_projeteis": {
+      "texto": "3 TIPOS DE PROJÉTEIS INIMIGOS",
+      "contexto": "Título da seção de projéteis na aba 2.",
+      "placeholders": {}
+    },
+    "proj_comum_tit": {
+      "texto": "Projétil Comum (Vermelho)",
+      "contexto": "Título do card de projétil comum na aba 2.",
+      "placeholders": {}
+    },
+    "proj_comum_desc": {
+      "texto": "Pode ser rebatido com Parry (RMB) OU atravessado com Dash.",
+      "contexto": "Descrição do projétil comum na aba 2.",
+      "placeholders": {}
+    },
+    "proj_shuriken_tit": {
+      "texto": "Shuriken Ninja (Roxo-Magenta) - NÃO-DESVIÁVEL",
+      "contexto": "Título do card de shuriken na aba 2.",
+      "placeholders": {}
+    },
+    "proj_shuriken_desc": {
+      "texto": "Ignora i-frames do Dash! Exige PARRY (RMB). Exclusivo do Ninja Corporativo.",
+      "contexto": "Descrição do shuriken na aba 2.",
+      "placeholders": {}
+    },
+    "proj_seta_tit": {
+      "texto": "Seta de Perigo (Amarela-Preta) - NÃO-PARRIÁVEL",
+      "contexto": "Título do card de seta de perigo na aba 2.",
+      "placeholders": {}
+    },
+    "proj_seta_desc": {
+      "texto": "Ignora Parry! Exige DASH / Just-Dodge. Exclusivo de Ranged (quando a config estiver ativa).",
+      "contexto": "Descrição da seta de perigo na aba 2.",
+      "placeholders": {}
+    },
+    "sec_ritmo": {
+      "texto": "RITMO DE COMBATE & DESBLOQUEIOS",
+      "contexto": "Título da seção de ritmo na aba 2.",
+      "placeholders": {}
+    },
+    "ritmo_fases_tit": {
+      "texto": "Fases de Combate",
+      "contexto": "Subtítulo das fases música-onda na aba 2.",
+      "placeholders": {}
+    },
+    "ritmo_fases_desc": {
+      "texto": "Respiro -> Preparo -> Aglomeração -> Assalto",
+      "contexto": "Descrição das fases música-onda na aba 2.",
+      "placeholders": {}
+    },
+    "ritmo_parries_tit": {
+      "texto": "15 Parries = Dash + SMG",
+      "contexto": "Subtítulo de desbloqueio por 15 Parries na aba 2.",
+      "placeholders": {}
+    },
+    "ritmo_parries_desc": {
+      "texto": "Realize 15 Parries para liberar Dash e SMG Compacta.",
+      "contexto": "Descrição do desbloqueio por 15 Parries na aba 2.",
+      "placeholders": {}
+    },
+    "sec_arsenal": {
+      "texto": "ARSENAL",
+      "contexto": "Título da seção de arsenal na aba 3.",
+      "placeholders": {}
+    },
+    "arsenal_slot1_tit": {
+      "texto": "Slot 1: Chave Inglesa / Bastão de Choque",
+      "contexto": "Subtítulo do Slot 1 na aba 3.",
+      "placeholders": {}
+    },
+    "arsenal_slot1_desc": {
+      "texto": "LMB golpeia, RMB dá Parry. O Bastão tem um arco mais focado, mas tem golpes mais rápidos.",
+      "contexto": "Descrição do Slot 1 na aba 3.",
+      "placeholders": {}
+    },
+    "arsenal_slot2_tit": {
+      "texto": "Slot 2: Pistola / SMG Compacta",
+      "contexto": "Subtítulo do Slot 2 na aba 3.",
+      "placeholders": {}
+    },
+    "arsenal_slot2_desc": {
+      "texto": "Pistola: O 4º tiro é sobrecarregado. SMG: Tem uma zona ideal de calor que dá +25% na cadência de disparos.",
+      "contexto": "Descrição do Slot 2 na aba 3.",
+      "placeholders": {}
+    },
+    "arsenal_slot3_tit": {
+      "texto": "Slot 3: Escopeta, Rifle, Minigun, Foguetes, Granadas, Railgun, Lança-Chamas, Rifle de Arco",
+      "contexto": "Subtítulo do Slot 3 padrão na aba 3.",
+      "placeholders": {}
+    },
+    "arsenal_slot3_desc": {
+      "texto": "Armas pesadas com munição limitada obtidas em Caixas de Arma.",
+      "contexto": "Descrição do Slot 3 padrão na aba 3.",
+      "placeholders": {}
+    },
+    "arsenal_slot3_novas_tit": {
+      "texto": "REMOVER",
+      "contexto": "Subtítulo das novas armas do Slot 3 na aba 3.",
+      "placeholders": {}
+    },
+    "arsenal_slot3_novas_desc": {
+      "texto": "REMOVER",
+      "contexto": "Descrição das novas armas do Slot 3 na aba 3.",
+      "placeholders": {}
+    },
+    "sec_drops": {
+      "texto": "ITENS E COLETÁVEIS",
+      "contexto": "Título da seção de drops na aba 3.",
+      "placeholders": {}
+    },
+    "drops_xp_cura_tit": {
+      "texto": "Gema XP / Caixa de Reparo",
+      "contexto": "Subtítulo de Gema XP e Caixa Reparo na aba 3.",
+      "placeholders": {}
+    },
+    "drops_xp_cura_desc": {
+      "texto": "Sobe até Nível 12 ou cura +35 HP. Drops que ficam no chão por >10s podem ser roubados pelo Scavenger!",
+      "contexto": "Descrição de Gema XP e Caixa Reparo na aba 3.",
+      "placeholders": {}
+    },
+    "drops_drone_overclock_tit": {
+      "texto": "Módulo Drone / Núcleo Overclock",
+      "contexto": "Subtítulo de Módulo Drone e Núcleo Overclock na aba 3.",
+      "placeholders": {}
+    },
+    "drops_drone_overclock_desc": {
+      "texto": "Evolui Drones (MK-I a MK-III) ou instala um Upgrade de BIOS ao vencer um Mini-Boss em <60s.",
+      "contexto": "Descrição de Módulo Drone e Núcleo Overclock na aba 3.",
+      "placeholders": {}
+    },
+    "sec_inimigos": {
+      "texto": "INIMIGOS DO ESCRITÓRIO",
+      "contexto": "Título da seção de inimigos na aba 4.",
+      "placeholders": {}
+    },
+    "inim_classicos_tit": {
+      "texto": "Gabinete / Mouse / Scanner / CRT / Blindado",
+      "contexto": "Subtítulo dos inimigos clássicos na aba 4.",
+      "placeholders": {}
+    },
+    "inim_classicos_desc": {
+      "texto": "Gabinete é um inimigo padrão. Mouse é um inimigo rápido. Scanner é um inimigo parrudo. CRT fica intangível a cada 3s. Blindado reduz 30% do dano.",
+      "contexto": "Descrição dos inimigos clássicos na aba 4.",
+      "placeholders": {}
+    },
+    "inim_ranged_tit": {
+      "texto": "Projetor Laser (Ranged)",
+      "contexto": "Subtítulo do Projetor Laser na aba 4.",
+      "placeholders": {}
+    },
+    "inim_ranged_desc": {
+      "texto": "Atira projéteis vermelhos ou Setas Amarelas (Não-Parriáveis), caso a config esteja ativa.",
+      "contexto": "Descrição do Projetor Laser na aba 4.",
+      "placeholders": {}
+    },
+    "inim_impressora_tit": {
+      "texto": "Impressora Térmica",
+      "contexto": "Subtítulo da Impressora Térmica na aba 4.",
+      "placeholders": {}
+    },
+    "inim_impressora_desc": {
+      "texto": "Dispara projéteis grandes de alto impacto.",
+      "contexto": "Descrição da Impressora Térmica na aba 4.",
+      "placeholders": {}
+    },
+    "inim_ninja_tit": {
+      "texto": "Ninja Corporativo",
+      "contexto": "Subtítulo do Ninja Corporativo na aba 4.",
+      "placeholders": {}
+    },
+    "inim_ninja_desc": {
+      "texto": "Lança Shurikens Roxas (Não-Desviáveis) e inicia Duelos! Sofre dano só de tiros diretos, Railgun, Arco ou Lança-Chamas.",
+      "contexto": "Descrição do Ninja Corporativo na aba 4.",
+      "placeholders": {}
+    },
+    "sec_sistemas": {
+      "texto": "CONQUISTAS, FIRMWARE & 29 CONFIGURAÇÕES",
+      "contexto": "Título da seção de sistemas na aba 4.",
+      "placeholders": {}
+    },
+    "sist_conq_tit": {
+      "texto": "Conquistas & Chips de Firmware",
+      "contexto": "Subtítulo de Conquistas e Firmware na aba 4.",
+      "placeholders": {}
+    },
+    "sist_conq_desc": {
+      "texto": "Desbloqueie armas, habilidades e até 3 Slots de Firmware equipáveis no Menu Principal.",
+      "contexto": "Descrição de Conquistas e Firmware na aba 4.",
+      "placeholders": {}
+    },
+    "sist_configs_tit": {
+      "texto": "29 Configurações de Gameplay",
+      "contexto": "Subtítulo das 29 Configurações na aba 4.",
+      "placeholders": {}
+    },
+    "sist_configs_desc": {
+      "texto": "Cada config combina um Benefício e um Sacrifício mecânico. Ative várias para ter um jogo mais... diferenciado.",
+      "contexto": "Descrição das 29 Configurações na aba 4.",
+      "placeholders": {}
+    },
+    "sist_chefes_tit": {
+      "texto": "Mini-Bosses & Geladeira Tsunami",
+      "contexto": "Subtítulo de chefes na aba 4.",
+      "placeholders": {}
+    },
+    "sist_chefes_desc": {
+      "texto": "2 Mini-Bosses durante os ciclos de ação da música. O Chefe Final entra no Nível 12 após ~3 min ou após os 2 ciclos finalizarem.",
+      "contexto": "Descrição de Mini-Bosses e Geladeira Tsunami na aba 4.",
+      "placeholders": {}
+    },
+    "rodape": {
+      "texto": "[1, 2, 3, 4] / [A / D] / [SETAS] ou CLIQUE para trocar de página   •   [ESC / ENTER] Voltar",
+      "contexto": "Rodapé com instruções de navegação do Tutorial.",
+      "placeholders": {}
+    },
+    "item_traco": {
+      "texto": "- {titulo}:",
+      "contexto": "Prefixo formatado com hífen para títulos de subseções no Tutorial.",
+      "placeholders": {
+        "titulo": "str — título da subseção"
+      }
+    },
+    "item_asterisco": {
+      "texto": "* {titulo}:",
+      "contexto": "Prefixo formatado com asterisco para títulos de drops/inimigos no Tutorial.",
+      "placeholders": {
+        "titulo": "str — título do item"
+      }
+    }
+  }
+}

@@ -1,0 +1,1784 @@
+{
+  "_meta": {
+    "categoria": "configs_catalogo",
+    "descricao": "Catálogo completo das 29 configurações de gameplay e 3 configurações de sistema (nomes, rótulos, benefícios, sacrifícios e flavor texts).",
+    "placeholders_disponiveis": {}
+  },
+  "entradas": {
+    "fps_cap__nome": {
+      "texto": "Limite de Quadros",
+      "contexto": "Nome da configuração 'fps_cap' (categoria Performance) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "fps_cap__opt_ilimitado__label": {
+      "texto": "Ilimitado",
+      "contexto": "Rótulo da opção 'ilimitado' da config 'fps_cap'.",
+      "placeholders": {}
+    },
+    "fps_cap__opt_ilimitado__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'ilimitado' da config 'fps_cap'.",
+      "placeholders": {}
+    },
+    "fps_cap__opt_ilimitado__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'ilimitado' da config 'fps_cap'.",
+      "placeholders": {}
+    },
+    "fps_cap__opt_ilimitado__flavor": {
+      "texto": "Seu monitor atualizando em toda sua glória.",
+      "contexto": "Flavor text da opção 'ilimitado' da config 'fps_cap'.",
+      "placeholders": {}
+    },
+    "fps_cap__opt_45__label": {
+      "texto": "45 FPS",
+      "contexto": "Rótulo da opção '45' da config 'fps_cap'.",
+      "placeholders": {}
+    },
+    "fps_cap__opt_45__buff": {
+      "texto": "Dano recebido de inimigos reduzido em 15%.",
+      "contexto": "Texto de benefício da opção '45' da config 'fps_cap'.",
+      "placeholders": {}
+    },
+    "fps_cap__opt_45__nerf": {
+      "texto": "Fluidez reduzida a 45 FPS.",
+      "contexto": "Texto de sacrifício da opção '45' da config 'fps_cap'.",
+      "placeholders": {}
+    },
+    "fps_cap__opt_45__flavor": {
+      "texto": "Mais FPS que o GTA VI no PS5 base.",
+      "contexto": "Flavor text da opção '45' da config 'fps_cap'.",
+      "placeholders": {}
+    },
+    "fps_cap__opt_30__label": {
+      "texto": "30 FPS",
+      "contexto": "Rótulo da opção '30' da config 'fps_cap'.",
+      "placeholders": {}
+    },
+    "fps_cap__opt_30__buff": {
+      "texto": "Velocidade dos inimigos reduzida em 10%.",
+      "contexto": "Texto de benefício da opção '30' da config 'fps_cap'.",
+      "placeholders": {}
+    },
+    "fps_cap__opt_30__nerf": {
+      "texto": "Fluidez reduzida a 30 FPS.",
+      "contexto": "Texto de sacrifício da opção '30' da config 'fps_cap'.",
+      "placeholders": {}
+    },
+    "fps_cap__opt_30__flavor": {
+      "texto": "\"O olho humano não consegue ver além de 30 FPS.\"",
+      "contexto": "Flavor text da opção '30' da config 'fps_cap'.",
+      "placeholders": {}
+    },
+    "fps_cap__opt_15__label": {
+      "texto": "15 FPS",
+      "contexto": "Rótulo da opção '15' da config 'fps_cap'.",
+      "placeholders": {}
+    },
+    "fps_cap__opt_15__buff": {
+      "texto": "Dano de inimigos reduzido em 27.75% e velocidade reduzida em 19%.",
+      "contexto": "Texto de benefício da opção '15' da config 'fps_cap'.",
+      "placeholders": {}
+    },
+    "fps_cap__opt_15__nerf": {
+      "texto": "Experiência autêntica de jogar algo feito em Python.",
+      "contexto": "Texto de sacrifício da opção '15' da config 'fps_cap'.",
+      "placeholders": {}
+    },
+    "fps_cap__opt_15__flavor": {
+      "texto": "Cada frame foi desenhado à mão por monges tibetanos.",
+      "contexto": "Flavor text da opção '15' da config 'fps_cap'.",
+      "placeholders": {}
+    },
+    "graficos_qualidade__nome": {
+      "texto": "Qualidade Gráfica",
+      "contexto": "Nome da configuração 'graficos_qualidade' (categoria Performance) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "graficos_qualidade__opt_alta__label": {
+      "texto": "Alta",
+      "contexto": "Rótulo da opção 'alta' da config 'graficos_qualidade'.",
+      "placeholders": {}
+    },
+    "graficos_qualidade__opt_alta__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'alta' da config 'graficos_qualidade'.",
+      "placeholders": {}
+    },
+    "graficos_qualidade__opt_alta__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'alta' da config 'graficos_qualidade'.",
+      "placeholders": {}
+    },
+    "graficos_qualidade__opt_alta__flavor": {
+      "texto": "Tudo bonitinho.",
+      "contexto": "Flavor text da opção 'alta' da config 'graficos_qualidade'.",
+      "placeholders": {}
+    },
+    "graficos_qualidade__opt_baixa__label": {
+      "texto": "Baixa",
+      "contexto": "Rótulo da opção 'baixa' da config 'graficos_qualidade'.",
+      "placeholders": {}
+    },
+    "graficos_qualidade__opt_baixa__buff": {
+      "texto": "Inimigos tem 20% a menos de vida e soltam estilhaços perfurantes ao serem abatidos.",
+      "contexto": "Texto de benefício da opção 'baixa' da config 'graficos_qualidade'.",
+      "placeholders": {}
+    },
+    "graficos_qualidade__opt_baixa__nerf": {
+      "texto": "Cenário e partículas muito simplificados.",
+      "contexto": "Texto de sacrifício da opção 'baixa' da config 'graficos_qualidade'.",
+      "placeholders": {}
+    },
+    "graficos_qualidade__opt_baixa__flavor": {
+      "texto": "O verdadeiro Protocolo Batata.",
+      "contexto": "Flavor text da opção 'baixa' da config 'graficos_qualidade'.",
+      "placeholders": {}
+    },
+    "resolucao__nome": {
+      "texto": "Resolução",
+      "contexto": "Nome da configuração 'resolucao' (categoria Performance) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "resolucao__opt_100%__label": {
+      "texto": "100%",
+      "contexto": "Rótulo da opção '100%' da config 'resolucao'.",
+      "placeholders": {}
+    },
+    "resolucao__opt_100%__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção '100%' da config 'resolucao'.",
+      "placeholders": {}
+    },
+    "resolucao__opt_100%__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção '100%' da config 'resolucao'.",
+      "placeholders": {}
+    },
+    "resolucao__opt_100%__flavor": {
+      "texto": "Cada pixel em seu devido lugar.",
+      "contexto": "Flavor text da opção '100%' da config 'resolucao'.",
+      "placeholders": {}
+    },
+    "resolucao__opt_75%__label": {
+      "texto": "75%",
+      "contexto": "Rótulo da opção '75%' da config 'resolucao'.",
+      "placeholders": {}
+    },
+    "resolucao__opt_75%__buff": {
+      "texto": "Drop de itens 10% mais frequentes e área de impacto dos tiros aumentada em +25%.",
+      "contexto": "Texto de benefício da opção '75%' da config 'resolucao'.",
+      "placeholders": {}
+    },
+    "resolucao__opt_75%__nerf": {
+      "texto": "Visão levemente pixelada.",
+      "contexto": "Texto de sacrifício da opção '75%' da config 'resolucao'.",
+      "placeholders": {}
+    },
+    "resolucao__opt_75%__flavor": {
+      "texto": "Menos pixels na tela, mais caixas no chão.",
+      "contexto": "Flavor text da opção '75%' da config 'resolucao'.",
+      "placeholders": {}
+    },
+    "resolucao__opt_50%__label": {
+      "texto": "50%",
+      "contexto": "Rótulo da opção '50%' da config 'resolucao'.",
+      "placeholders": {}
+    },
+    "resolucao__opt_50%__buff": {
+      "texto": "Drop de itens 25% mais frequentes e área de impacto dos tiros aumentada em +50%.",
+      "contexto": "Texto de benefício da opção '50%' da config 'resolucao'.",
+      "placeholders": {}
+    },
+    "resolucao__opt_50%__nerf": {
+      "texto": "Visão consideravelmente pixelada.",
+      "contexto": "Texto de sacrifício da opção '50%' da config 'resolucao'.",
+      "placeholders": {}
+    },
+    "resolucao__opt_50%__flavor": {
+      "texto": "Lembranças de uma época de monitores CRT.",
+      "contexto": "Flavor text da opção '50%' da config 'resolucao'.",
+      "placeholders": {}
+    },
+    "resolucao__opt_25%__label": {
+      "texto": "25%",
+      "contexto": "Rótulo da opção '25%' da config 'resolucao'.",
+      "placeholders": {}
+    },
+    "resolucao__opt_25%__buff": {
+      "texto": "Drop de itens 50% mais frequentes e área de impacto dos tiros dobrada.",
+      "contexto": "Texto de benefício da opção '25%' da config 'resolucao'.",
+      "placeholders": {}
+    },
+    "resolucao__opt_25%__nerf": {
+      "texto": "Cenário praticamente indecifrável.",
+      "contexto": "Texto de sacrifício da opção '25%' da config 'resolucao'.",
+      "placeholders": {}
+    },
+    "resolucao__opt_25%__flavor": {
+      "texto": "Dá pra contar os pixels nos dedos.",
+      "contexto": "Flavor text da opção '25%' da config 'resolucao'.",
+      "placeholders": {}
+    },
+    "vsync__nome": {
+      "texto": "V-Sync",
+      "contexto": "Nome da configuração 'vsync' (categoria Performance) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "vsync__opt_ligado__label": {
+      "texto": "Ligado",
+      "contexto": "Rótulo da opção 'ligado' da config 'vsync'.",
+      "placeholders": {}
+    },
+    "vsync__opt_ligado__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'ligado' da config 'vsync'.",
+      "placeholders": {}
+    },
+    "vsync__opt_ligado__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'ligado' da config 'vsync'.",
+      "placeholders": {}
+    },
+    "vsync__opt_ligado__flavor": {
+      "texto": "Possível fonte de input lag.",
+      "contexto": "Flavor text da opção 'ligado' da config 'vsync'.",
+      "placeholders": {}
+    },
+    "vsync__opt_desligado__label": {
+      "texto": "Desligado",
+      "contexto": "Rótulo da opção 'desligado' da config 'vsync'.",
+      "placeholders": {}
+    },
+    "vsync__opt_desligado__buff": {
+      "texto": "Tiros que cruzam os rasgos na tela se dividem em 2. Tiros inimigos são desviados. +15% de cadência de disparo ao atirar contra os rasgos.",
+      "contexto": "Texto de benefício da opção 'desligado' da config 'vsync'.",
+      "placeholders": {}
+    },
+    "vsync__opt_desligado__nerf": {
+      "texto": "Possível screen tearing.",
+      "contexto": "Texto de sacrifício da opção 'desligado' da config 'vsync'.",
+      "placeholders": {}
+    },
+    "vsync__opt_desligado__flavor": {
+      "texto": "Seu monitor não vai aguentar o tranco da GPU.",
+      "contexto": "Flavor text da opção 'desligado' da config 'vsync'.",
+      "placeholders": {}
+    },
+    "screen_shake__nome": {
+      "texto": "Tremor de Tela",
+      "contexto": "Nome da configuração 'screen_shake' (categoria Performance) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "screen_shake__opt_desligado__label": {
+      "texto": "Desligado",
+      "contexto": "Rótulo da opção 'desligado' da config 'screen_shake'.",
+      "placeholders": {}
+    },
+    "screen_shake__opt_desligado__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'desligado' da config 'screen_shake'.",
+      "placeholders": {}
+    },
+    "screen_shake__opt_desligado__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'desligado' da config 'screen_shake'.",
+      "placeholders": {}
+    },
+    "screen_shake__opt_desligado__flavor": {
+      "texto": "Câmera firme.",
+      "contexto": "Flavor text da opção 'desligado' da config 'screen_shake'.",
+      "placeholders": {}
+    },
+    "screen_shake__opt_ligado__label": {
+      "texto": "Ligado",
+      "contexto": "Rótulo da opção 'ligado' da config 'screen_shake'.",
+      "placeholders": {}
+    },
+    "screen_shake__opt_ligado__buff": {
+      "texto": "+20% de dano explosivo. Impactos de tiros e bombas empurram e desaceleram inimigos.",
+      "contexto": "Texto de benefício da opção 'ligado' da config 'screen_shake'.",
+      "placeholders": {}
+    },
+    "screen_shake__opt_ligado__nerf": {
+      "texto": "A tela treme em disparos pesados, explosões e dano.",
+      "contexto": "Texto de sacrifício da opção 'ligado' da config 'screen_shake'.",
+      "placeholders": {}
+    },
+    "screen_shake__opt_ligado__flavor": {
+      "texto": "A experiência IMAX no conforto da sua casa.",
+      "contexto": "Flavor text da opção 'ligado' da config 'screen_shake'.",
+      "placeholders": {}
+    },
+    "motion_blur__nome": {
+      "texto": "Desfoque de Movimento",
+      "contexto": "Nome da configuração 'motion_blur' (categoria Performance) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "motion_blur__opt_desligado__label": {
+      "texto": "Desligado",
+      "contexto": "Rótulo da opção 'desligado' da config 'motion_blur'.",
+      "placeholders": {}
+    },
+    "motion_blur__opt_desligado__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'desligado' da config 'motion_blur'.",
+      "placeholders": {}
+    },
+    "motion_blur__opt_desligado__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'desligado' da config 'motion_blur'.",
+      "placeholders": {}
+    },
+    "motion_blur__opt_desligado__flavor": {
+      "texto": "Imagem limpa.",
+      "contexto": "Flavor text da opção 'desligado' da config 'motion_blur'.",
+      "placeholders": {}
+    },
+    "motion_blur__opt_ligado__label": {
+      "texto": "Ligado",
+      "contexto": "Rótulo da opção 'ligado' da config 'motion_blur'.",
+      "placeholders": {}
+    },
+    "motion_blur__opt_ligado__buff": {
+      "texto": "+15% de velocidade de movimento. +0.10s de i-frames após sofrer dano (+0.08s no Dash).",
+      "contexto": "Texto de benefício da opção 'ligado' da config 'motion_blur'.",
+      "placeholders": {}
+    },
+    "motion_blur__opt_ligado__nerf": {
+      "texto": "Borrão constante em todos os elementos da UI.",
+      "contexto": "Texto de sacrifício da opção 'ligado' da config 'motion_blur'.",
+      "placeholders": {}
+    },
+    "motion_blur__opt_ligado__flavor": {
+      "texto": "Parece que passaram vaselina na lente.",
+      "contexto": "Flavor text da opção 'ligado' da config 'motion_blur'.",
+      "placeholders": {}
+    },
+    "hud__nome": {
+      "texto": "Exibição de Interface",
+      "contexto": "Nome da configuração 'hud' (categoria Interface) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "hud__opt_ligado__label": {
+      "texto": "Ligado",
+      "contexto": "Rótulo da opção 'ligado' da config 'hud'.",
+      "placeholders": {}
+    },
+    "hud__opt_ligado__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'ligado' da config 'hud'.",
+      "placeholders": {}
+    },
+    "hud__opt_ligado__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'ligado' da config 'hud'.",
+      "placeholders": {}
+    },
+    "hud__opt_ligado__flavor": {
+      "texto": "Barras de vida, experiência, inventário e cronômetro visíveis.",
+      "contexto": "Flavor text da opção 'ligado' da config 'hud'.",
+      "placeholders": {}
+    },
+    "hud__opt_desligado__label": {
+      "texto": "Desligado",
+      "contexto": "Rótulo da opção 'desligado' da config 'hud'.",
+      "placeholders": {}
+    },
+    "hud__opt_desligado__buff": {
+      "texto": "+25% de XP e pulso magnético a cada 4s que puxa todos os drops do mapa até você.",
+      "contexto": "Texto de benefício da opção 'desligado' da config 'hud'.",
+      "placeholders": {}
+    },
+    "hud__opt_desligado__nerf": {
+      "texto": "Oculta completamente HP, XP, inventário, timer, e outros elementos de UI.",
+      "contexto": "Texto de sacrifício da opção 'desligado' da config 'hud'.",
+      "placeholders": {}
+    },
+    "hud__opt_desligado__flavor": {
+      "texto": "Com certeza você ainda tem vida sobrando.\nProvavelmente.",
+      "contexto": "Flavor text da opção 'desligado' da config 'hud'.",
+      "placeholders": {}
+    },
+    "damage_numbers__nome": {
+      "texto": "Números de Dano",
+      "contexto": "Nome da configuração 'damage_numbers' (categoria Interface) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "damage_numbers__opt_desligado__label": {
+      "texto": "Desligado",
+      "contexto": "Rótulo da opção 'desligado' da config 'damage_numbers'.",
+      "placeholders": {}
+    },
+    "damage_numbers__opt_desligado__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'desligado' da config 'damage_numbers'.",
+      "placeholders": {}
+    },
+    "damage_numbers__opt_desligado__nerf": {
+      "texto": "Acertos críticos desabilitados.",
+      "contexto": "Texto de sacrifício da opção 'desligado' da config 'damage_numbers'.",
+      "placeholders": {}
+    },
+    "damage_numbers__opt_desligado__flavor": {
+      "texto": "\"Grita baixo, nengue.\" - Cunamata",
+      "contexto": "Flavor text da opção 'desligado' da config 'damage_numbers'.",
+      "placeholders": {}
+    },
+    "damage_numbers__opt_ligado__label": {
+      "texto": "Ligado",
+      "contexto": "Rótulo da opção 'ligado' da config 'damage_numbers'.",
+      "placeholders": {}
+    },
+    "damage_numbers__opt_ligado__buff": {
+      "texto": "Habilita Críticos (25% de chance).",
+      "contexto": "Texto de benefício da opção 'ligado' da config 'damage_numbers'.",
+      "placeholders": {}
+    },
+    "damage_numbers__opt_ligado__nerf": {
+      "texto": "Poluição visual.",
+      "contexto": "Texto de sacrifício da opção 'ligado' da config 'damage_numbers'.",
+      "placeholders": {}
+    },
+    "damage_numbers__opt_ligado__flavor": {
+      "texto": "\"Malditos números...\"",
+      "contexto": "Flavor text da opção 'ligado' da config 'damage_numbers'.",
+      "placeholders": {}
+    },
+    "zoom__nome": {
+      "texto": "Nível de Zoom",
+      "contexto": "Nome da configuração 'zoom' (categoria Interface) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "zoom__opt_75%__label": {
+      "texto": "75%",
+      "contexto": "Rótulo da opção '75%' da config 'zoom'.",
+      "placeholders": {}
+    },
+    "zoom__opt_75%__buff": {
+      "texto": "Projéteis escalam dano pela distância (até +45%) e perfuram inimigos a longa distância.",
+      "contexto": "Texto de benefício da opção '75%' da config 'zoom'.",
+      "placeholders": {}
+    },
+    "zoom__opt_75%__nerf": {
+      "texto": "Sprites menores, inimigos lhe detectam de longe e -15% de dano à queima-roupa",
+      "contexto": "Texto de sacrifício da opção '75%' da config 'zoom'.",
+      "placeholders": {}
+    },
+    "zoom__opt_75%__flavor": {
+      "texto": "\"Não consigo ver nada\" - Pica-Pau",
+      "contexto": "Flavor text da opção '75%' da config 'zoom'.",
+      "placeholders": {}
+    },
+    "zoom__opt_100%__label": {
+      "texto": "100%",
+      "contexto": "Rótulo da opção '100%' da config 'zoom'.",
+      "placeholders": {}
+    },
+    "zoom__opt_100%__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção '100%' da config 'zoom'.",
+      "placeholders": {}
+    },
+    "zoom__opt_100%__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção '100%' da config 'zoom'.",
+      "placeholders": {}
+    },
+    "zoom__opt_100%__flavor": {
+      "texto": "Tudo perfeitamente enquadrado.",
+      "contexto": "Flavor text da opção '100%' da config 'zoom'.",
+      "placeholders": {}
+    },
+    "zoom__opt_125%__label": {
+      "texto": "125%",
+      "contexto": "Rótulo da opção '125%' da config 'zoom'.",
+      "placeholders": {}
+    },
+    "zoom__opt_125%__buff": {
+      "texto": "Abates reduzem cooldown do Dash e Parry em 0,5s.",
+      "contexto": "Texto de benefício da opção '125%' da config 'zoom'.",
+      "placeholders": {}
+    },
+    "zoom__opt_125%__nerf": {
+      "texto": "Campo de visão reduzido.",
+      "contexto": "Texto de sacrifício da opção '125%' da config 'zoom'.",
+      "placeholders": {}
+    },
+    "zoom__opt_125%__flavor": {
+      "texto": "Ctrl +",
+      "contexto": "Flavor text da opção '125%' da config 'zoom'.",
+      "placeholders": {}
+    },
+    "zoom__opt_150%__label": {
+      "texto": "150%",
+      "contexto": "Rótulo da opção '150%' da config 'zoom'.",
+      "placeholders": {}
+    },
+    "zoom__opt_150%__buff": {
+      "texto": "Abates reduzem cooldown do Dash e Parry em 1,0s, além de executar inimigos comuns abaixo de 20% HP.",
+      "contexto": "Texto de benefício da opção '150%' da config 'zoom'.",
+      "placeholders": {}
+    },
+    "zoom__opt_150%__nerf": {
+      "texto": "Campo de visão severamente reduzido.",
+      "contexto": "Texto de sacrifício da opção '150%' da config 'zoom'.",
+      "placeholders": {}
+    },
+    "zoom__opt_150%__flavor": {
+      "texto": "Visão de túnel.",
+      "contexto": "Flavor text da opção '150%' da config 'zoom'.",
+      "placeholders": {}
+    },
+    "movimento_mouse__nome": {
+      "texto": "Movimento pelo Mouse",
+      "contexto": "Nome da configuração 'movimento_mouse' (categoria Controles) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "movimento_mouse__opt_desligado__label": {
+      "texto": "Desligado",
+      "contexto": "Rótulo da opção 'desligado' da config 'movimento_mouse'.",
+      "placeholders": {}
+    },
+    "movimento_mouse__opt_desligado__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'desligado' da config 'movimento_mouse'.",
+      "placeholders": {}
+    },
+    "movimento_mouse__opt_desligado__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'desligado' da config 'movimento_mouse'.",
+      "placeholders": {}
+    },
+    "movimento_mouse__opt_desligado__flavor": {
+      "texto": "Controle manual.",
+      "contexto": "Flavor text da opção 'desligado' da config 'movimento_mouse'.",
+      "placeholders": {}
+    },
+    "movimento_mouse__opt_ligado__label": {
+      "texto": "Ligado",
+      "contexto": "Rótulo da opção 'ligado' da config 'movimento_mouse'.",
+      "placeholders": {}
+    },
+    "movimento_mouse__opt_ligado__buff": {
+      "texto": "Drop de itens aumenta em 40%. Andar continuamente te faz atropelar e empurrar inimigos no caminho.",
+      "contexto": "Texto de benefício da opção 'ligado' da config 'movimento_mouse'.",
+      "placeholders": {}
+    },
+    "movimento_mouse__opt_ligado__nerf": {
+      "texto": "A batata caminha incessantemente na direção do cursor.",
+      "contexto": "Texto de sacrifício da opção 'ligado' da config 'movimento_mouse'.",
+      "placeholders": {}
+    },
+    "movimento_mouse__opt_ligado__flavor": {
+      "texto": "Equivalente a equipar uma cenoura perto de um porco.",
+      "contexto": "Flavor text da opção 'ligado' da config 'movimento_mouse'.",
+      "placeholders": {}
+    },
+    "keybinds__nome": {
+      "texto": "Keybinds",
+      "contexto": "Nome da configuração 'keybinds' (categoria Controles) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "keybinds__opt_padrao__label": {
+      "texto": "Padrão",
+      "contexto": "Rótulo da opção 'padrao' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "keybinds__opt_padrao__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'padrao' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "keybinds__opt_padrao__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'padrao' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "keybinds__opt_padrao__flavor": {
+      "texto": "Keybinds normais para seres humanos normais.",
+      "contexto": "Flavor text da opção 'padrao' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "keybinds__opt_invertido__label": {
+      "texto": "Invertido",
+      "contexto": "Rótulo da opção 'invertido' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "keybinds__opt_invertido__buff": {
+      "texto": "Dano de armas aumentado em 10. Manobras repentinas geram pulso de empurrão.",
+      "contexto": "Texto de benefício da opção 'invertido' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "keybinds__opt_invertido__nerf": {
+      "texto": "Teclas de movimento invertidas (W: baixo, S: cima, etc.)",
+      "contexto": "Texto de sacrifício da opção 'invertido' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "keybinds__opt_invertido__flavor": {
+      "texto": "Incrivelmente fácil de se adaptar.",
+      "contexto": "Flavor text da opção 'invertido' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "keybinds__opt_arrow_keys__label": {
+      "texto": "Setinhas",
+      "contexto": "Rótulo da opção 'arrow_keys' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "keybinds__opt_arrow_keys__buff": {
+      "texto": "Velocidade da batata aumentada em 15%. Manobras repentinas geram pulso de empurrão.",
+      "contexto": "Texto de benefício da opção 'arrow_keys' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "keybinds__opt_arrow_keys__nerf": {
+      "texto": "Movimento transferido exclusivamente para as setas direcionais.",
+      "contexto": "Texto de sacrifício da opção 'arrow_keys' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "keybinds__opt_arrow_keys__flavor": {
+      "texto": "Player 2 em jogos Flash.",
+      "contexto": "Flavor text da opção 'arrow_keys' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "keybinds__opt_uma_mao__label": {
+      "texto": "Uma Mão Só",
+      "contexto": "Rótulo da opção 'uma_mao' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "keybinds__opt_uma_mao__buff": {
+      "texto": "Ganho de XP aumentado em 20%. Manobras repentinas geram pulso de empurrão",
+      "contexto": "Texto de benefício da opção 'uma_mao' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "keybinds__opt_uma_mao__nerf": {
+      "texto": "Movimentação em QWER. Ações 100% no teclado.",
+      "contexto": "Texto de sacrifício da opção 'uma_mao' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "keybinds__opt_uma_mao__flavor": {
+      "texto": "Uma mão no volante e a outra no carinho.",
+      "contexto": "Flavor text da opção 'uma_mao' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "keybinds__opt_pesadelo__label": {
+      "texto": "Pesadelo",
+      "contexto": "Rótulo da opção 'pesadelo' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "keybinds__opt_pesadelo__buff": {
+      "texto": "Dano de armas aumentado em 30%. Pulso forte de empurrão ao desviar.",
+      "contexto": "Texto de benefício da opção 'pesadelo' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "keybinds__opt_pesadelo__nerf": {
+      "texto": "Movimento em IJKL com eixo Y do mouse invertido.",
+      "contexto": "Texto de sacrifício da opção 'pesadelo' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "keybinds__opt_pesadelo__flavor": {
+      "texto": "Por favor não faça isso consigo mesmo.",
+      "contexto": "Flavor text da opção 'pesadelo' da config 'keybinds'.",
+      "placeholders": {}
+    },
+    "suavizacao_camera__nome": {
+      "texto": "Suavização de Câmera",
+      "contexto": "Nome da configuração 'suavizacao_camera' (categoria Controles) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "suavizacao_camera__opt_ligado__label": {
+      "texto": "Ligado",
+      "contexto": "Rótulo da opção 'ligado' da config 'suavizacao_camera'.",
+      "placeholders": {}
+    },
+    "suavizacao_camera__opt_ligado__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'ligado' da config 'suavizacao_camera'.",
+      "placeholders": {}
+    },
+    "suavizacao_camera__opt_ligado__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'ligado' da config 'suavizacao_camera'.",
+      "placeholders": {}
+    },
+    "suavizacao_camera__opt_ligado__flavor": {
+      "texto": "Suave como cetim.",
+      "contexto": "Flavor text da opção 'ligado' da config 'suavizacao_camera'.",
+      "placeholders": {}
+    },
+    "suavizacao_camera__opt_desligado__label": {
+      "texto": "Desligado",
+      "contexto": "Rótulo da opção 'desligado' da config 'suavizacao_camera'.",
+      "placeholders": {}
+    },
+    "suavizacao_camera__opt_desligado__buff": {
+      "texto": "Habilita Flicks: Após um giro rápido (mais de 45º) ou parada, o próximo tiro sai com 2x de velocidade, perfura um inimigo, e tem +35% de dano.",
+      "contexto": "Texto de benefício da opção 'desligado' da config 'suavizacao_camera'.",
+      "placeholders": {}
+    },
+    "suavizacao_camera__opt_desligado__nerf": {
+      "texto": "Câmera sem amortecimento algum.",
+      "contexto": "Texto de sacrifício da opção 'desligado' da config 'suavizacao_camera'.",
+      "placeholders": {}
+    },
+    "suavizacao_camera__opt_desligado__flavor": {
+      "texto": "\"Literally unplayable 0/10\" - IGN",
+      "contexto": "Flavor text da opção 'desligado' da config 'suavizacao_camera'.",
+      "placeholders": {}
+    },
+    "auto_fire__nome": {
+      "texto": "Disparo Automático",
+      "contexto": "Nome da configuração 'auto_fire' (categoria Controles) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "auto_fire__opt_ligado__label": {
+      "texto": "Ligado",
+      "contexto": "Rótulo da opção 'ligado' da config 'auto_fire'.",
+      "placeholders": {}
+    },
+    "auto_fire__opt_ligado__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'ligado' da config 'auto_fire'.",
+      "placeholders": {}
+    },
+    "auto_fire__opt_ligado__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'ligado' da config 'auto_fire'.",
+      "placeholders": {}
+    },
+    "auto_fire__opt_ligado__flavor": {
+      "texto": "Spray n' Pray.",
+      "contexto": "Flavor text da opção 'ligado' da config 'auto_fire'.",
+      "placeholders": {}
+    },
+    "auto_fire__opt_desligado__label": {
+      "texto": "Desligado",
+      "contexto": "Rótulo da opção 'desligado' da config 'auto_fire'.",
+      "placeholders": {}
+    },
+    "auto_fire__opt_desligado__buff": {
+      "texto": "Dano aumentado em 15%. Cada clique dispara um projétil adicional.",
+      "contexto": "Texto de benefício da opção 'desligado' da config 'auto_fire'.",
+      "placeholders": {}
+    },
+    "auto_fire__opt_desligado__nerf": {
+      "texto": "Necessário clicar manualmente a cada disparo.",
+      "contexto": "Texto de sacrifício da opção 'desligado' da config 'auto_fire'.",
+      "placeholders": {}
+    },
+    "auto_fire__opt_desligado__flavor": {
+      "texto": "Nada de Ritmo Cruel.",
+      "contexto": "Flavor text da opção 'desligado' da config 'auto_fire'.",
+      "placeholders": {}
+    },
+    "inimigos_ranged__nome": {
+      "texto": "Inimigos à Distância",
+      "contexto": "Nome da configuração 'inimigos_ranged' (categoria Dificuldade) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "inimigos_ranged__opt_desligado__label": {
+      "texto": "Desligado",
+      "contexto": "Rótulo da opção 'desligado' da config 'inimigos_ranged'.",
+      "placeholders": {}
+    },
+    "inimigos_ranged__opt_desligado__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'desligado' da config 'inimigos_ranged'.",
+      "placeholders": {}
+    },
+    "inimigos_ranged__opt_desligado__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'desligado' da config 'inimigos_ranged'.",
+      "placeholders": {}
+    },
+    "inimigos_ranged__opt_desligado__flavor": {
+      "texto": "Por enquanto eles só sabem correr atrás de você.",
+      "contexto": "Flavor text da opção 'desligado' da config 'inimigos_ranged'.",
+      "placeholders": {}
+    },
+    "inimigos_ranged__opt_ligado__label": {
+      "texto": "Ligado",
+      "contexto": "Rótulo da opção 'ligado' da config 'inimigos_ranged'.",
+      "placeholders": {}
+    },
+    "inimigos_ranged__opt_ligado__buff": {
+      "texto": "Loot de inimigos ranged enriquecido. Parry e Just-Dodge reduzem seus respectivos cooldowns e sobrecarregam seu próximo tiro.",
+      "contexto": "Texto de benefício da opção 'ligado' da config 'inimigos_ranged'.",
+      "placeholders": {}
+    },
+    "inimigos_ranged__opt_ligado__nerf": {
+      "texto": "Dobro de Projetores Laser disparando projéteis teleguiados não-parriáveis",
+      "contexto": "Texto de sacrifício da opção 'ligado' da config 'inimigos_ranged'.",
+      "placeholders": {}
+    },
+    "inimigos_ranged__opt_ligado__flavor": {
+      "texto": "\"The missile knows where it is at all times. It knows this because it knows where it isn't. By subtracting where it is from where it isn't, or where it isn't from where it is - whichever is greater - it obtains a difference or deviation. The guidance subsystem uses deviations to generate corrective commands to drive the missile from a position where it is to a position where it isn't, and arriving at a position that it wasn't, it now is. Consequently, the position where it is is now the position that it wasn't, and if follows that the position that it was is now the position that it isn't. In the event that the position that it is in is not the position that it wasn't, the system has acquired a variation. The variation being the difference between where the missile is and where it wasn't. If variation is considered to be a significant factor, it too may be corrected by the GEA. However, the missile must also know where it was. The missile guidance computer scenario works as follows: Because a variation has modified some of the information that the missile has obtained, it is not sure just where it is. However, it is sure where it isn't, within reason, and it know where it was. It now subtracts where it should be from where it wasn't, or vice versa. And by differentiating this from the algebraic sum of where it shouldn't be and where it was, it is able to obtain the deviation and its variation, which is called error. \"",
+      "contexto": "Flavor text da opção 'ligado' da config 'inimigos_ranged'.",
+      "placeholders": {}
+    },
+    "coleta_inimiga__nome": {
+      "texto": "Captura de Drops por Inimigos",
+      "contexto": "Nome da configuração 'coleta_inimiga' (categoria Dificuldade) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "coleta_inimiga__opt_desligado__label": {
+      "texto": "Desligado",
+      "contexto": "Rótulo da opção 'desligado' da config 'coleta_inimiga'.",
+      "placeholders": {}
+    },
+    "coleta_inimiga__opt_desligado__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'desligado' da config 'coleta_inimiga'.",
+      "placeholders": {}
+    },
+    "coleta_inimiga__opt_desligado__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'desligado' da config 'coleta_inimiga'.",
+      "placeholders": {}
+    },
+    "coleta_inimiga__opt_desligado__flavor": {
+      "texto": "Raposo, não pegue.",
+      "contexto": "Flavor text da opção 'desligado' da config 'coleta_inimiga'.",
+      "placeholders": {}
+    },
+    "coleta_inimiga__opt_ligado__label": {
+      "texto": "Ligado",
+      "contexto": "Rótulo da opção 'ligado' da config 'coleta_inimiga'.",
+      "placeholders": {}
+    },
+    "coleta_inimiga__opt_ligado__buff": {
+      "texto": "Todos os drops coletados por você valem o dobro (XP e Cura).",
+      "contexto": "Texto de benefício da opção 'ligado' da config 'coleta_inimiga'.",
+      "placeholders": {}
+    },
+    "coleta_inimiga__opt_ligado__nerf": {
+      "texto": "Inimigos roubam itens que ficarem mais de 10s no chão.",
+      "contexto": "Texto de sacrifício da opção 'ligado' da config 'coleta_inimiga'.",
+      "placeholders": {}
+    },
+    "coleta_inimiga__opt_ligado__flavor": {
+      "texto": "Achado não é roubado.",
+      "contexto": "Flavor text da opção 'ligado' da config 'coleta_inimiga'.",
+      "placeholders": {}
+    },
+    "velocidade_inimigos__nome": {
+      "texto": "Velocidade dos Inimigos",
+      "contexto": "Nome da configuração 'velocidade_inimigos' (categoria Dificuldade) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "velocidade_inimigos__opt_normal__label": {
+      "texto": "Normal",
+      "contexto": "Rótulo da opção 'normal' da config 'velocidade_inimigos'.",
+      "placeholders": {}
+    },
+    "velocidade_inimigos__opt_normal__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'normal' da config 'velocidade_inimigos'.",
+      "placeholders": {}
+    },
+    "velocidade_inimigos__opt_normal__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'normal' da config 'velocidade_inimigos'.",
+      "placeholders": {}
+    },
+    "velocidade_inimigos__opt_normal__flavor": {
+      "texto": "RPM baixo.",
+      "contexto": "Flavor text da opção 'normal' da config 'velocidade_inimigos'.",
+      "placeholders": {}
+    },
+    "velocidade_inimigos__opt_+25%__label": {
+      "texto": "+25%",
+      "contexto": "Rótulo da opção '+25%' da config 'velocidade_inimigos'.",
+      "placeholders": {}
+    },
+    "velocidade_inimigos__opt_+25%__buff": {
+      "texto": "Inimigos derrotados dão +15% XP. Dar dash em um inimigo o empurra, fazendo com que ele derrape e colida em outros.",
+      "contexto": "Texto de benefício da opção '+25%' da config 'velocidade_inimigos'.",
+      "placeholders": {}
+    },
+    "velocidade_inimigos__opt_+25%__nerf": {
+      "texto": "Inimigos +25% mais rápidos.",
+      "contexto": "Texto de sacrifício da opção '+25%' da config 'velocidade_inimigos'.",
+      "placeholders": {}
+    },
+    "velocidade_inimigos__opt_+25%__flavor": {
+      "texto": "Mais rápidos para correr, mais pesados para bater nos colegas.",
+      "contexto": "Flavor text da opção '+25%' da config 'velocidade_inimigos'.",
+      "placeholders": {}
+    },
+    "velocidade_inimigos__opt_+50%__label": {
+      "texto": "+50%",
+      "contexto": "Rótulo da opção '+50%' da config 'velocidade_inimigos'.",
+      "placeholders": {}
+    },
+    "velocidade_inimigos__opt_+50%__buff": {
+      "texto": "Inércia Cinética V2: Inimigos abatidos dão +30% XP. Empurrar inimigos causa colisões em cadeia com maior alcance e impacto.",
+      "contexto": "Texto de benefício da opção '+50%' da config 'velocidade_inimigos'.",
+      "placeholders": {}
+    },
+    "velocidade_inimigos__opt_+50%__nerf": {
+      "texto": "Inimigos +50% mais rápidos.",
+      "contexto": "Texto de sacrifício da opção '+50%' da config 'velocidade_inimigos'.",
+      "placeholders": {}
+    },
+    "velocidade_inimigos__opt_+50%__flavor": {
+      "texto": "\"Eu sou a velocidade.\" - Relâmpago Marquinhos",
+      "contexto": "Flavor text da opção '+50%' da config 'velocidade_inimigos'.",
+      "placeholders": {}
+    },
+    "vida_inimigos__nome": {
+      "texto": "Vida dos Inimigos",
+      "contexto": "Nome da configuração 'vida_inimigos' (categoria Dificuldade) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "vida_inimigos__opt_normal__label": {
+      "texto": "Normal",
+      "contexto": "Rótulo da opção 'normal' da config 'vida_inimigos'.",
+      "placeholders": {}
+    },
+    "vida_inimigos__opt_normal__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'normal' da config 'vida_inimigos'.",
+      "placeholders": {}
+    },
+    "vida_inimigos__opt_normal__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'normal' da config 'vida_inimigos'.",
+      "placeholders": {}
+    },
+    "vida_inimigos__opt_normal__flavor": {
+      "texto": "Carcaça padrão de plástico e acrílico.",
+      "contexto": "Flavor text da opção 'normal' da config 'vida_inimigos'.",
+      "placeholders": {}
+    },
+    "vida_inimigos__opt_+50%__label": {
+      "texto": "+50%",
+      "contexto": "Rótulo da opção '+50%' da config 'vida_inimigos'.",
+      "placeholders": {}
+    },
+    "vida_inimigos__opt_+50%__buff": {
+      "texto": "Pinhata de Hardware: a cada 33% de HP perdido, o inimigo libera micro-sucata (munição ou XP).",
+      "contexto": "Texto de benefício da opção '+50%' da config 'vida_inimigos'.",
+      "placeholders": {}
+    },
+    "vida_inimigos__opt_+50%__nerf": {
+      "texto": "Inimigos com +50% de vida.",
+      "contexto": "Texto de sacrifício da opção '+50%' da config 'vida_inimigos'.",
+      "placeholders": {}
+    },
+    "vida_inimigos__opt_+50%__flavor": {
+      "texto": "Gabinetes reforçados.",
+      "contexto": "Flavor text da opção '+50%' da config 'vida_inimigos'.",
+      "placeholders": {}
+    },
+    "vida_inimigos__opt_+100%__label": {
+      "texto": "+100%",
+      "contexto": "Rótulo da opção '+100%' da config 'vida_inimigos'.",
+      "placeholders": {}
+    },
+    "vida_inimigos__opt_+100%__buff": {
+      "texto": "Pinhata de Hardware V2: micro-sucata dobrada. +15% bônus de drop.",
+      "contexto": "Texto de benefício da opção '+100%' da config 'vida_inimigos'.",
+      "placeholders": {}
+    },
+    "vida_inimigos__opt_+100%__nerf": {
+      "texto": "Inimigos com o dobro de vida.",
+      "contexto": "Texto de sacrifício da opção '+100%' da config 'vida_inimigos'.",
+      "placeholders": {}
+    },
+    "vida_inimigos__opt_+100%__flavor": {
+      "texto": "Eletrônicos retirados da casa do ET.",
+      "contexto": "Flavor text da opção '+100%' da config 'vida_inimigos'.",
+      "placeholders": {}
+    },
+    "iluminacao__nome": {
+      "texto": "Iluminação Dinâmica",
+      "contexto": "Nome da configuração 'iluminacao' (categoria Experimental) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "iluminacao__opt_desligado__label": {
+      "texto": "Desligado",
+      "contexto": "Rótulo da opção 'desligado' da config 'iluminacao'.",
+      "placeholders": {}
+    },
+    "iluminacao__opt_desligado__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'desligado' da config 'iluminacao'.",
+      "placeholders": {}
+    },
+    "iluminacao__opt_desligado__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'desligado' da config 'iluminacao'.",
+      "placeholders": {}
+    },
+    "iluminacao__opt_desligado__flavor": {
+      "texto": "Luz acesa o tempo todo.",
+      "contexto": "Flavor text da opção 'desligado' da config 'iluminacao'.",
+      "placeholders": {}
+    },
+    "iluminacao__opt_ligado__label": {
+      "texto": "Ligado",
+      "contexto": "Rótulo da opção 'ligado' da config 'iluminacao'.",
+      "placeholders": {}
+    },
+    "iluminacao__opt_ligado__buff": {
+      "texto": "Inimigos revelados na escuridão sofrem Crítico Garantido + micro-atordoamento.",
+      "contexto": "Texto de benefício da opção 'ligado' da config 'iluminacao'.",
+      "placeholders": {}
+    },
+    "iluminacao__opt_ligado__nerf": {
+      "texto": "Escuridão densa fora do alcance de visão da batata.",
+      "contexto": "Texto de sacrifício da opção 'ligado' da config 'iluminacao'.",
+      "placeholders": {}
+    },
+    "iluminacao__opt_ligado__flavor": {
+      "texto": "O escritório não pode pagar as contas de luz esse mês.",
+      "contexto": "Flavor text da opção 'ligado' da config 'iluminacao'.",
+      "placeholders": {}
+    },
+    "cores_invertidas__nome": {
+      "texto": "Cores Invertidas",
+      "contexto": "Nome da configuração 'cores_invertidas' (categoria Experimental) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "cores_invertidas__opt_desligado__label": {
+      "texto": "Desligado",
+      "contexto": "Rótulo da opção 'desligado' da config 'cores_invertidas'.",
+      "placeholders": {}
+    },
+    "cores_invertidas__opt_desligado__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'desligado' da config 'cores_invertidas'.",
+      "placeholders": {}
+    },
+    "cores_invertidas__opt_desligado__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'desligado' da config 'cores_invertidas'.",
+      "placeholders": {}
+    },
+    "cores_invertidas__opt_desligado__flavor": {
+      "texto": "Cores normais.",
+      "contexto": "Flavor text da opção 'desligado' da config 'cores_invertidas'.",
+      "placeholders": {}
+    },
+    "cores_invertidas__opt_ligado__label": {
+      "texto": "Ligado",
+      "contexto": "Rótulo da opção 'ligado' da config 'cores_invertidas'.",
+      "placeholders": {}
+    },
+    "cores_invertidas__opt_ligado__buff": {
+      "texto": "+40% de dano em inimigos blindados. Surto de velocidade e dano por 2s ao sofrer lentidão ou levar tiro de raspão.",
+      "contexto": "Texto de benefício da opção 'ligado' da config 'cores_invertidas'.",
+      "placeholders": {}
+    },
+    "cores_invertidas__opt_ligado__nerf": {
+      "texto": "Inversão total de RGB da tela.",
+      "contexto": "Texto de sacrifício da opção 'ligado' da config 'cores_invertidas'.",
+      "placeholders": {}
+    },
+    "cores_invertidas__opt_ligado__flavor": {
+      "texto": "POV: Modo Claro",
+      "contexto": "Flavor text da opção 'ligado' da config 'cores_invertidas'.",
+      "placeholders": {}
+    },
+    "fogo_amigo__nome": {
+      "texto": "Fogo Amigo",
+      "contexto": "Nome da configuração 'fogo_amigo' (categoria Experimental) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "fogo_amigo__opt_desligado__label": {
+      "texto": "Desligado",
+      "contexto": "Rótulo da opção 'desligado' da config 'fogo_amigo'.",
+      "placeholders": {}
+    },
+    "fogo_amigo__opt_desligado__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'desligado' da config 'fogo_amigo'.",
+      "placeholders": {}
+    },
+    "fogo_amigo__opt_desligado__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'desligado' da config 'fogo_amigo'.",
+      "placeholders": {}
+    },
+    "fogo_amigo__opt_desligado__flavor": {
+      "texto": "A opção que sempre é ativada primeiro em jogos co-op.",
+      "contexto": "Flavor text da opção 'desligado' da config 'fogo_amigo'.",
+      "placeholders": {}
+    },
+    "fogo_amigo__opt_ligado__label": {
+      "texto": "Ligado",
+      "contexto": "Rótulo da opção 'ligado' da config 'fogo_amigo'.",
+      "placeholders": {}
+    },
+    "fogo_amigo__opt_ligado__buff": {
+      "texto": "+25% de dano. Explosões impulsionam a batata (como um rocket-jump)",
+      "contexto": "Texto de benefício da opção 'ligado' da config 'fogo_amigo'.",
+      "placeholders": {}
+    },
+    "fogo_amigo__opt_ligado__nerf": {
+      "texto": "Seus tiros e explosões causam dano a você e aos seus drones.\nNota: Seus drones tem 1 de vida.",
+      "contexto": "Texto de sacrifício da opção 'ligado' da config 'fogo_amigo'.",
+      "placeholders": {}
+    },
+    "fogo_amigo__opt_ligado__flavor": {
+      "texto": "A boa notícia é que você vai bater mais.\nA má notícia é que você vai levar suas porradas.",
+      "contexto": "Flavor text da opção 'ligado' da config 'fogo_amigo'.",
+      "placeholders": {}
+    },
+    "precisao_parry__nome": {
+      "texto": "Janela de Parry",
+      "contexto": "Nome da configuração 'precisao_parry' (categoria Controles) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "precisao_parry__opt_padrao__label": {
+      "texto": "Padrão",
+      "contexto": "Rótulo da opção 'padrao' da config 'precisao_parry'.",
+      "placeholders": {}
+    },
+    "precisao_parry__opt_padrao__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'padrao' da config 'precisao_parry'.",
+      "placeholders": {}
+    },
+    "precisao_parry__opt_padrao__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'padrao' da config 'precisao_parry'.",
+      "placeholders": {}
+    },
+    "precisao_parry__opt_padrao__flavor": {
+      "texto": "Parry em um bullet-heaven. Por que não?",
+      "contexto": "Flavor text da opção 'padrao' da config 'precisao_parry'.",
+      "placeholders": {}
+    },
+    "precisao_parry__opt_cirurgico__label": {
+      "texto": "Cirúrgico",
+      "contexto": "Rótulo da opção 'cirurgico' da config 'precisao_parry'.",
+      "placeholders": {}
+    },
+    "precisao_parry__opt_cirurgico__buff": {
+      "texto": "Projéteis refletidos causam 75% de dano adicional e causam uma explosão de 140px.",
+      "contexto": "Texto de benefício da opção 'cirurgico' da config 'precisao_parry'.",
+      "placeholders": {}
+    },
+    "precisao_parry__opt_cirurgico__nerf": {
+      "texto": "Arco reduzido para 65°, janela para 0.09s e alcance em 0.85x.",
+      "contexto": "Texto de sacrifício da opção 'cirurgico' da config 'precisao_parry'.",
+      "placeholders": {}
+    },
+    "precisao_parry__opt_cirurgico__flavor": {
+      "texto": "Recomendado apenas para jogadores de Sekiro.",
+      "contexto": "Flavor text da opção 'cirurgico' da config 'precisao_parry'.",
+      "placeholders": {}
+    },
+    "precisao_parry__opt_amplificado__label": {
+      "texto": "Amplificado",
+      "contexto": "Rótulo da opção 'amplificado' da config 'precisao_parry'.",
+      "placeholders": {}
+    },
+    "precisao_parry__opt_amplificado__buff": {
+      "texto": "Arco aumentado para 135°, janela para 0.17s e alcance em 1.25x.",
+      "contexto": "Texto de benefício da opção 'amplificado' da config 'precisao_parry'.",
+      "placeholders": {}
+    },
+    "precisao_parry__opt_amplificado__nerf": {
+      "texto": "Dano refletido é reduzido em 30% e o cooldown é aumentado em 0.25s.",
+      "contexto": "Texto de sacrifício da opção 'amplificado' da config 'precisao_parry'.",
+      "placeholders": {}
+    },
+    "precisao_parry__opt_amplificado__flavor": {
+      "texto": "Equivalente a usar o buckler no Elden Ring.",
+      "contexto": "Flavor text da opção 'amplificado' da config 'precisao_parry'.",
+      "placeholders": {}
+    },
+    "precisao_parry__opt_postura_riposte__label": {
+      "texto": "Ripostar",
+      "contexto": "Rótulo da opção 'postura_riposte' da config 'precisao_parry'.",
+      "placeholders": {}
+    },
+    "precisao_parry__opt_postura_riposte__buff": {
+      "texto": "Invulnerabilidade total por 0,45s. Causa uma estocada na direção do parry (que é ativado de qualquer direção) que atordoa inimigos atingidos por 1,5s.",
+      "contexto": "Texto de benefício da opção 'postura_riposte' da config 'precisao_parry'.",
+      "placeholders": {}
+    },
+    "precisao_parry__opt_postura_riposte__nerf": {
+      "texto": "Te enraíza no lugar por 0,45s.",
+      "contexto": "Texto de sacrifício da opção 'postura_riposte' da config 'precisao_parry'.",
+      "placeholders": {}
+    },
+    "precisao_parry__opt_postura_riposte__flavor": {
+      "texto": "Técnica milenar descendida de uma Liga, ensinada por uma Lenda.",
+      "contexto": "Flavor text da opção 'postura_riposte' da config 'precisao_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__nome": {
+      "texto": "Efeito de Parry",
+      "contexto": "Nome da configuração 'efeito_parry' (categoria Experimental) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_padrao__label": {
+      "texto": "Padrão",
+      "contexto": "Rótulo da opção 'padrao' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_padrao__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'padrao' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_padrao__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'padrao' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_padrao__flavor": {
+      "texto": "\"Que chato!\"",
+      "contexto": "Flavor text da opção 'padrao' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_estilhaco__label": {
+      "texto": "Estilhaço",
+      "contexto": "Rótulo da opção 'estilhaco' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_estilhaco__buff": {
+      "texto": "Projéteis refletidos dividem-se em 3 tiros perfurantes.",
+      "contexto": "Texto de benefício da opção 'estilhaco' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_estilhaco__nerf": {
+      "texto": "-25% dano por fragmento. Sem explosão AoE.",
+      "contexto": "Texto de sacrifício da opção 'estilhaco' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_estilhaco__flavor": {
+      "texto": "\"Um é bom. Três é foda.\"",
+      "contexto": "Flavor text da opção 'estilhaco' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_pulso_emp__label": {
+      "texto": "Pulso EMP",
+      "contexto": "Rótulo da opção 'pulso_emp' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_pulso_emp__buff": {
+      "texto": "Parries bem-sucedidos atordoam inimigos próximos por 1.2s.",
+      "contexto": "Texto de benefício da opção 'pulso_emp' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_pulso_emp__nerf": {
+      "texto": "Errar o parry aumenta Exposto para +45% de dano recebido.",
+      "contexto": "Texto de sacrifício da opção 'pulso_emp' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_pulso_emp__flavor": {
+      "texto": "Não recomendado para aqueles com skill issue.",
+      "contexto": "Flavor text da opção 'pulso_emp' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_firewall_estatico__label": {
+      "texto": "Firewall",
+      "contexto": "Rótulo da opção 'firewall_estatico' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_firewall_estatico__buff": {
+      "texto": "Ergue uma parede fixa por 2,5s que destrói todos os projéteis inimigos.",
+      "contexto": "Texto de benefício da opção 'firewall_estatico' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_firewall_estatico__nerf": {
+      "texto": "Não reflete projéteis e tem cooldown muito alto.",
+      "contexto": "Texto de sacrifício da opção 'firewall_estatico' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_firewall_estatico__flavor": {
+      "texto": "\"Enfrente o vento!\"",
+      "contexto": "Flavor text da opção 'firewall_estatico' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_ventoinha_360__label": {
+      "texto": "Ventoinha 360°",
+      "contexto": "Rótulo da opção 'ventoinha_360' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_ventoinha_360__buff": {
+      "texto": "Giro 360° que pulveriza projéteis próximos a você.",
+      "contexto": "Texto de benefício da opção 'ventoinha_360' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_ventoinha_360__nerf": {
+      "texto": "Alcance reduzido em 25% e cooldown bem alto.",
+      "contexto": "Texto de sacrifício da opção 'ventoinha_360' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "efeito_parry__opt_ventoinha_360__flavor": {
+      "texto": "\"Bela tentativa!\"",
+      "contexto": "Flavor text da opção 'ventoinha_360' da config 'efeito_parry'.",
+      "placeholders": {}
+    },
+    "controles_tanque__nome": {
+      "texto": "Controles de Tanque",
+      "contexto": "Nome da configuração 'controles_tanque' (categoria Controles) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "controles_tanque__opt_desligado__label": {
+      "texto": "Desligado",
+      "contexto": "Rótulo da opção 'desligado' da config 'controles_tanque'.",
+      "placeholders": {}
+    },
+    "controles_tanque__opt_desligado__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'desligado' da config 'controles_tanque'.",
+      "placeholders": {}
+    },
+    "controles_tanque__opt_desligado__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'desligado' da config 'controles_tanque'.",
+      "placeholders": {}
+    },
+    "controles_tanque__opt_desligado__flavor": {
+      "texto": "Movimentação padrão.",
+      "contexto": "Flavor text da opção 'desligado' da config 'controles_tanque'.",
+      "placeholders": {}
+    },
+    "controles_tanque__opt_ligado__label": {
+      "texto": "Ligado",
+      "contexto": "Rótulo da opção 'ligado' da config 'controles_tanque'.",
+      "placeholders": {}
+    },
+    "controles_tanque__opt_ligado__buff": {
+      "texto": "250 HP máximo, -20% dano de recebido, +35% de dano causado, disparos tem +1 de perfuração, +20% cadência parado e você atropela inimigos no caminho.",
+      "contexto": "Texto de benefício da opção 'ligado' da config 'controles_tanque'.",
+      "placeholders": {}
+    },
+    "controles_tanque__opt_ligado__nerf": {
+      "texto": "Sem strafe pros lados.",
+      "contexto": "Texto de sacrifício da opção 'ligado' da config 'controles_tanque'.",
+      "placeholders": {}
+    },
+    "controles_tanque__opt_ligado__flavor": {
+      "texto": "Cleiton passou a se identificar como um EE-T1 Osório.",
+      "contexto": "Flavor text da opção 'ligado' da config 'controles_tanque'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__nome": {
+      "texto": "Efeito de Dash",
+      "contexto": "Nome da configuração 'dash_protocolo' (categoria Controles) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_padrao__label": {
+      "texto": "Padrão",
+      "contexto": "Rótulo da opção 'padrao' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_padrao__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'padrao' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_padrao__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'padrao' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_padrao__flavor": {
+      "texto": "Sabia que você fica invulnerável durante o dash?",
+      "contexto": "Flavor text da opção 'padrao' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_teleporte_buffer__label": {
+      "texto": "Blink Laser",
+      "contexto": "Rótulo da opção 'teleporte_buffer' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_teleporte_buffer__buff": {
+      "texto": "Teleporte instantâneo e longo que deixa uma linha elétrica no caminho, causando dano a inimigos.",
+      "contexto": "Texto de benefício da opção 'teleporte_buffer' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_teleporte_buffer__nerf": {
+      "texto": "+0,6s cooldown, sem controle fino do trajeto.",
+      "contexto": "Texto de sacrifício da opção 'teleporte_buffer' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_teleporte_buffer__flavor": {
+      "texto": "Tramontina: Corte Rápido.",
+      "contexto": "Flavor text da opção 'teleporte_buffer' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_propulsor_instavel__label": {
+      "texto": "Propulsor Modificado",
+      "contexto": "Rótulo da opção 'propulsor_instavel' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_propulsor_instavel__buff": {
+      "texto": "2 cargas de Dash. Recarga 35% mais rápida.",
+      "contexto": "Texto de benefício da opção 'propulsor_instavel' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_propulsor_instavel__nerf": {
+      "texto": "Remove totalmente os i-frames de invulnerabilidade do Dash.",
+      "contexto": "Texto de sacrifício da opção 'propulsor_instavel' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_propulsor_instavel__flavor": {
+      "texto": "\"Isso é uma batata ou é um sapo?\"",
+      "contexto": "Flavor text da opção 'propulsor_instavel' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_sombra_espelho__label": {
+      "texto": "Symlink",
+      "contexto": "Rótulo da opção 'sombra_espelho' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_sombra_espelho__buff": {
+      "texto": "Sombra replica disparos e parries (causando apenas 55% dano) na direção da mira.",
+      "contexto": "Texto de benefício da opção 'sombra_espelho' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_sombra_espelho__nerf": {
+      "texto": "Nenhum movimento no primeiro toque. O segundo toque troca pra sombra. Ela dura 3,5s.",
+      "contexto": "Texto de sacrifício da opção 'sombra_espelho' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_sombra_espelho__flavor": {
+      "texto": "\"Nós. Somos. Cleiton.\"",
+      "contexto": "Flavor text da opção 'sombra_espelho' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_rollback_estado__label": {
+      "texto": "Rollback",
+      "contexto": "Rótulo da opção 'rollback_estado' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_rollback_estado__buff": {
+      "texto": "Teleporta ao seu snapshot de 3s atrás. Recupera parte do HP perdido e detona uma área ao seu redor.",
+      "contexto": "Texto de benefício da opção 'rollback_estado' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_rollback_estado__nerf": {
+      "texto": "Direção fixa e cooldown alto.",
+      "contexto": "Texto de sacrifício da opção 'rollback_estado' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_protocolo__opt_rollback_estado__flavor": {
+      "texto": "\"Não é quanto tempo você tem, mas como você o usa.\"",
+      "contexto": "Flavor text da opção 'rollback_estado' da config 'dash_protocolo'.",
+      "placeholders": {}
+    },
+    "dash_rastro__nome": {
+      "texto": "Rastro de Dash",
+      "contexto": "Nome da configuração 'dash_rastro' (categoria Experimental) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_padrao__label": {
+      "texto": "Padrão",
+      "contexto": "Rótulo da opção 'padrao' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_padrao__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'padrao' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_padrao__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'padrao' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_padrao__flavor": {
+      "texto": "Rastro padrão.",
+      "contexto": "Flavor text da opção 'padrao' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_exaustao_termica__label": {
+      "texto": "Exaustão Térmica",
+      "contexto": "Rótulo da opção 'exaustao_termica' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_exaustao_termica__buff": {
+      "texto": "Deixa trilha incandescente por 3,5s que queima e aplica +25% de vulnerabilidade nos inimigos.",
+      "contexto": "Texto de benefício da opção 'exaustao_termica' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_exaustao_termica__nerf": {
+      "texto": "Arma superaquece após o Dash (-25% cadência por 1,2s).",
+      "contexto": "Texto de sacrifício da opção 'exaustao_termica' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_exaustao_termica__flavor": {
+      "texto": "Já brincou de Batata Quente?",
+      "contexto": "Flavor text da opção 'exaustao_termica' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_vacuo_io__label": {
+      "texto": "Vácuo de I/O",
+      "contexto": "Rótulo da opção 'vacuo_io' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_vacuo_io__buff": {
+      "texto": "Cria vórtice no ponto inicial que puxa drops e agrupa inimigos.",
+      "contexto": "Texto de benefício da opção 'vacuo_io' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_vacuo_io__nerf": {
+      "texto": "Alcance do Dash reduzido em -25%.",
+      "contexto": "Texto de sacrifício da opção 'vacuo_io' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_vacuo_io__flavor": {
+      "texto": "Chup-Chup de dados.",
+      "contexto": "Flavor text da opção 'vacuo_io' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_subprocesso_atrasado__label": {
+      "texto": "Chamada Assíncrona",
+      "contexto": "Rótulo da opção 'subprocesso_atrasado' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_subprocesso_atrasado__buff": {
+      "texto": "Deixa um fantasma no ponto inicial que retorna a você após 0,75s, causando 1,1s de atordoamento a todos os inimigos atingidos.",
+      "contexto": "Texto de benefício da opção 'subprocesso_atrasado' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_subprocesso_atrasado__nerf": {
+      "texto": "Diminui o alcance do dash em 15% e aumenta o cooldown em 0,4s.",
+      "contexto": "Texto de sacrifício da opção 'subprocesso_atrasado' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_subprocesso_atrasado__flavor": {
+      "texto": "\"Apenas durma com os dados...\"",
+      "contexto": "Flavor text da opção 'subprocesso_atrasado' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_thread_fantasma__label": {
+      "texto": "Thread Prioritária",
+      "contexto": "Rótulo da opção 'thread_fantasma' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_thread_fantasma__buff": {
+      "texto": "Deixa um Clone holográfico por 2,5s que atrai agro e explode ao ser destruído.",
+      "contexto": "Texto de benefício da opção 'thread_fantasma' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_thread_fantasma__nerf": {
+      "texto": "Aumenta o dooldown do Dash em 40%.",
+      "contexto": "Texto de sacrifício da opção 'thread_fantasma' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "dash_rastro__opt_thread_fantasma__flavor": {
+      "texto": "\"Você é a piada aqui!\"",
+      "contexto": "Flavor text da opção 'thread_fantasma' da config 'dash_rastro'.",
+      "placeholders": {}
+    },
+    "garbage_collector__nome": {
+      "texto": "Garbage Collector",
+      "contexto": "Nome da configuração 'garbage_collector' (categoria Performance) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "garbage_collector__opt_desligado__label": {
+      "texto": "Desligado",
+      "contexto": "Rótulo da opção 'desligado' da config 'garbage_collector'.",
+      "placeholders": {}
+    },
+    "garbage_collector__opt_desligado__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'desligado' da config 'garbage_collector'.",
+      "placeholders": {}
+    },
+    "garbage_collector__opt_desligado__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'desligado' da config 'garbage_collector'.",
+      "placeholders": {}
+    },
+    "garbage_collector__opt_desligado__flavor": {
+      "texto": "Mais seguro que Rust.",
+      "contexto": "Flavor text da opção 'desligado' da config 'garbage_collector'.",
+      "placeholders": {}
+    },
+    "garbage_collector__opt_ligado__label": {
+      "texto": "Ligado",
+      "contexto": "Rótulo da opção 'ligado' da config 'garbage_collector'.",
+      "placeholders": {}
+    },
+    "garbage_collector__opt_ligado__buff": {
+      "texto": "Apaga projéteis inimigos próximos e concede 40% a mais de cadência por 4s, além de munição.",
+      "contexto": "Texto de benefício da opção 'ligado' da config 'garbage_collector'.",
+      "placeholders": {}
+    },
+    "garbage_collector__opt_ligado__nerf": {
+      "texto": "Barra de RAM enche em ~12s e trava disparos por 0,8s.",
+      "contexto": "Texto de sacrifício da opção 'ligado' da config 'garbage_collector'.",
+      "placeholders": {}
+    },
+    "garbage_collector__opt_ligado__flavor": {
+      "texto": "POV: Java",
+      "contexto": "Flavor text da opção 'ligado' da config 'garbage_collector'.",
+      "placeholders": {}
+    },
+    "latencia_ping__nome": {
+      "texto": "Latência Induzida",
+      "contexto": "Nome da configuração 'latencia_ping' (categoria Experimental) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "latencia_ping__opt_desligado__label": {
+      "texto": "Desligado",
+      "contexto": "Rótulo da opção 'desligado' da config 'latencia_ping'.",
+      "placeholders": {}
+    },
+    "latencia_ping__opt_desligado__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'desligado' da config 'latencia_ping'.",
+      "placeholders": {}
+    },
+    "latencia_ping__opt_desligado__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'desligado' da config 'latencia_ping'.",
+      "placeholders": {}
+    },
+    "latencia_ping__opt_desligado__flavor": {
+      "texto": "localhost:8000",
+      "contexto": "Flavor text da opção 'desligado' da config 'latencia_ping'.",
+      "placeholders": {}
+    },
+    "latencia_ping__opt_ligado__label": {
+      "texto": "Ligado",
+      "contexto": "Rótulo da opção 'ligado' da config 'latencia_ping'.",
+      "placeholders": {}
+    },
+    "latencia_ping__opt_ligado__buff": {
+      "texto": "Desincroniza sua hitbox e causa efeito de eco nos seus disparos, causando 30% de dano adicional (que ignora armadura) após um delay.",
+      "contexto": "Texto de benefício da opção 'ligado' da config 'latencia_ping'.",
+      "placeholders": {}
+    },
+    "latencia_ping__opt_ligado__nerf": {
+      "texto": "Atraso real de input de ~80ms aplicado a ações de disparo, melee, Parry e Dash.",
+      "contexto": "Texto de sacrifício da opção 'ligado' da config 'latencia_ping'.",
+      "placeholders": {}
+    },
+    "latencia_ping__opt_ligado__flavor": {
+      "texto": "O delay do Parsec é menor.",
+      "contexto": "Flavor text da opção 'ligado' da config 'latencia_ping'.",
+      "placeholders": {}
+    },
+    "modo_wireframe__nome": {
+      "texto": "Wireframes",
+      "contexto": "Nome da configuração 'modo_wireframe' (categoria Performance) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "modo_wireframe__opt_desligado__label": {
+      "texto": "Desligado",
+      "contexto": "Rótulo da opção 'desligado' da config 'modo_wireframe'.",
+      "placeholders": {}
+    },
+    "modo_wireframe__opt_desligado__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'desligado' da config 'modo_wireframe'.",
+      "placeholders": {}
+    },
+    "modo_wireframe__opt_desligado__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'desligado' da config 'modo_wireframe'.",
+      "placeholders": {}
+    },
+    "modo_wireframe__opt_desligado__flavor": {
+      "texto": "Renderização completa com sprites.",
+      "contexto": "Flavor text da opção 'desligado' da config 'modo_wireframe'.",
+      "placeholders": {}
+    },
+    "modo_wireframe__opt_ligado__label": {
+      "texto": "Ligado",
+      "contexto": "Rótulo da opção 'ligado' da config 'modo_wireframe'.",
+      "placeholders": {}
+    },
+    "modo_wireframe__opt_ligado__buff": {
+      "texto": "Seus disparos e as hitboxes de Inimigos ficam maiores.",
+      "contexto": "Texto de benefício da opção 'ligado' da config 'modo_wireframe'.",
+      "placeholders": {}
+    },
+    "modo_wireframe__opt_ligado__nerf": {
+      "texto": "Renderiza contornos nos inimigos ao invés de suas texturas, além de adicionar uma grade de debug no mapa.\nOs disparos dos inimigos também ficam maiores.",
+      "contexto": "Texto de sacrifício da opção 'ligado' da config 'modo_wireframe'.",
+      "placeholders": {}
+    },
+    "modo_wireframe__opt_ligado__flavor": {
+      "texto": "Se lembra das aulas de FCG?",
+      "contexto": "Flavor text da opção 'ligado' da config 'modo_wireframe'.",
+      "placeholders": {}
+    },
+    "mira_oculta__nome": {
+      "texto": "Cursor Desabilitado",
+      "contexto": "Nome da configuração 'mira_oculta' (categoria Interface) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "mira_oculta__opt_desligado__label": {
+      "texto": "Desligado",
+      "contexto": "Rótulo da opção 'desligado' da config 'mira_oculta'.",
+      "placeholders": {}
+    },
+    "mira_oculta__opt_desligado__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção 'desligado' da config 'mira_oculta'.",
+      "placeholders": {}
+    },
+    "mira_oculta__opt_desligado__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção 'desligado' da config 'mira_oculta'.",
+      "placeholders": {}
+    },
+    "mira_oculta__opt_desligado__flavor": {
+      "texto": "Cursor e retícula padrão.",
+      "contexto": "Flavor text da opção 'desligado' da config 'mira_oculta'.",
+      "placeholders": {}
+    },
+    "mira_oculta__opt_ligado__label": {
+      "texto": "Ligado",
+      "contexto": "Rótulo da opção 'ligado' da config 'mira_oculta'.",
+      "placeholders": {}
+    },
+    "mira_oculta__opt_ligado__buff": {
+      "texto": "Todos os seus disparos tornam-se levemente teleguiados em direção à posição do ponteiro.",
+      "contexto": "Texto de benefício da opção 'ligado' da config 'mira_oculta'.",
+      "placeholders": {}
+    },
+    "mira_oculta__opt_ligado__nerf": {
+      "texto": "Remove a mira da tela e oculta o cursor fora de menus.",
+      "contexto": "Texto de sacrifício da opção 'ligado' da config 'mira_oculta'.",
+      "placeholders": {}
+    },
+    "mira_oculta__opt_ligado__flavor": {
+      "texto": "Não dá pra errar se você não tem onde mirar.",
+      "contexto": "Flavor text da opção 'ligado' da config 'mira_oculta'.",
+      "placeholders": {}
+    },
+    "volume_master__nome": {
+      "texto": "Volume Geral",
+      "contexto": "Nome da configuração 'volume_master' (categoria Sistema) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "volume_master__descricao_sistema": {
+      "texto": "Controla o volume geral de todo o jogo.",
+      "contexto": "Descrição da configuração de sistema 'volume_master'.",
+      "placeholders": {}
+    },
+    "volume_musica__nome": {
+      "texto": "Volume da Música",
+      "contexto": "Nome da configuração 'volume_musica' (categoria Sistema) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "volume_musica__descricao_sistema": {
+      "texto": "Controla o volume da Trilha Sonora.",
+      "contexto": "Descrição da configuração de sistema 'volume_musica'.",
+      "placeholders": {}
+    },
+    "volume_sfx__nome": {
+      "texto": "Volume dos Efeitos",
+      "contexto": "Nome da configuração 'volume_sfx' (categoria Sistema) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "volume_sfx__descricao_sistema": {
+      "texto": "Controla o volume de tiros, explosões, pickups, menus, etc.",
+      "contexto": "Descrição da configuração de sistema 'volume_sfx'.",
+      "placeholders": {}
+    }
+  }
+}

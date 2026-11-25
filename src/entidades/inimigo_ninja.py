@@ -15,10 +15,28 @@ from src.utils.constantes import (
     INIMIGO_NINJA_XP,
 )
 from src.utils.math_utils import distancia, vetor_direcao, lerp
+from src.utils.traducao import t
+
+
+FONTES_DANO_VALIDAS_NINJA = frozenset({
+    "projetil_jogador",
+    "parry_ninja_proprio",
+    "railgun",
+    "rifle_arco_direto",
+    "lanca_chamas",
+})
+
+# Parâmetros de homing por estágio do duelo (taxa_rad/s, radar_dot):
+# progressivamente mais fechados para que o dash básico (0.22s / 2.6x) não quebre o lock facilmente.
+NINJA_HOMING_POR_ESTAGIO: dict[int, tuple[float, float]] = {
+    1: (3.4, -0.35),
+    2: (4.6, -0.65),
+    3: (6.0, -0.85),
+}
 
 
 class InimigoNinja(InimigoBase):
-    nome_exibicao = "Ninja Corporativo"
+    nome_exibicao = t("combate_entidades", "inim_ninja")
 
     def __init__(
         self,
@@ -48,10 +66,12 @@ class InimigoNinja(InimigoBase):
         )
         self.is_ninja = True
         self.dano_projetil = 18
-        self.vel_projetil = 255.0  # 25% mais lento em todos os estágios (340 * 0.75)
+        self.vel_projetil = 380.0
         self.cooldown_tiro = 2.0
         self.timer_tiro = 0.6
         self.projeteis_pendentes: list[Projetil] = []
+        self._duelo_windups_pendentes: list[dict] = []
+        self.duelo_windup_duracao: float = 0.25
 
         # Dash com telegrafo de 0.55s (mais frequente) e rastro visual
         self.estado_dash = "stalk"  # stalk | telegraph | dash
@@ -67,9 +87,9 @@ class InimigoNinja(InimigoBase):
         self.parry_telegraph_timer = 0.0
 
     def receber_dano(self, quantidade: int, *args, **kwargs):
-        """Ninjas só sofrem dano de projéteis diretos do jogador ou de seu próprio projétil aparado."""
+        """Ninjas só sofrem dano de projéteis diretos do jogador, Railgun, Rifle de Arco (direto), Lança-Chamas ou próprio shuriken aparado."""
         fonte = kwargs.pop("fonte", "")
-        if fonte not in ("projetil_jogador", "parry_ninja_proprio"):
+        if fonte not in FONTES_DANO_VALIDAS_NINJA:
             return 0
         return super().receber_dano(quantidade, *args, **kwargs)
 
@@ -90,14 +110,20 @@ class InimigoNinja(InimigoBase):
         proj.dono = "inimigo"
         proj.dir_x = dx
         proj.dir_y = dy
-        proj.velocidade = max(270.0, float(getattr(proj, "velocidade", 340.0)) * 0.95 * 0.75)
+        proj.velocidade = max(self.vel_projetil, float(getattr(proj, "velocidade", self.vel_projetil)) * 0.95)
         proj.dano = self.dano_projetil
-        proj.largura = max(24, int(round(max(16, int(getattr(proj, "largura", 12))) * 1.5)))
-        proj.altura = max(24, int(round(max(16, int(getattr(proj, "altura", 12))) * 1.5)))
+        proj.largura = 20
+        proj.altura = 20
         proj.width = proj.largura
         proj.height = proj.altura
         proj.duel_stage = 1
         proj.duel_owner = self
+        proj.nao_desviavel = True
+        taxa_h, dot_h = NINJA_HOMING_POR_ESTAGIO[1]
+        proj.homing_ativo = True
+        proj.homing_taxa_rad = taxa_h
+        proj.homing_radar_dot = dot_h
+        proj.homing_alvo_cursor = False
         proj.cor = (168, 85, 247)
         proj.tempo_vida = max(float(getattr(proj, "tempo_vida", 2.5)), 3.0)
         proj.tempo_vida_restante = proj.tempo_vida
@@ -105,29 +131,44 @@ class InimigoNinja(InimigoBase):
             proj.alvos_atingidos.clear()
         return proj
 
-    def disparar_contra_ataque_duelo(self, proximo_stage: int, pos_alvo: tuple[float, float]) -> Projetil:
-        """Dispara imediatamente a devolução do Duelo de Parry (Stage 2 = 1.35x, Stage 3 = 1.75x)."""
+    def disparar_contra_ataque_duelo(self, proximo_stage: int, pos_alvo: tuple[float, float]) -> Projetil | None:
+        """Agenda o contra-ataque de Duelo de Parry com wind-up telegrafado (~0.25s) antes do disparo."""
+        self.parry_telegraph_timer = max(self.parry_telegraph_timer, self.duelo_windup_duracao)
+        self._duelo_windups_pendentes.append({
+            "stage": int(proximo_stage),
+            "pos_alvo": (float(pos_alvo[0]), float(pos_alvo[1])),
+            "tempo": float(self.duelo_windup_duracao),
+        })
+        return None
+
+    def _emitir_projetil_duelo(self, proximo_stage: int, pos_alvo: tuple[float, float]) -> Projetil:
         cx = self.x + self.largura / 2.0
         cy = self.y + self.altura / 2.0
         dx, dy = vetor_direcao(cx, cy, pos_alvo[0], pos_alvo[1])
         if dx == 0.0 and dy == 0.0:
             dx = 1.0
-        mult_vel = 1.35 if int(proximo_stage) == 2 else 1.75
+        estagio = int(proximo_stage)
+        vel = 470.0 if estagio == 2 else 560.0
+        taxa_h, dot_h = NINJA_HOMING_POR_ESTAGIO.get(estagio, NINJA_HOMING_POR_ESTAGIO[3])
         proj = Projetil(
-            x=cx - 10.5,
-            y=cy - 10.5,
+            x=cx - 10.0,
+            y=cy - 10.0,
             dir_x=dx,
             dir_y=dy,
-            velocidade=self.vel_projetil * mult_vel,
+            velocidade=vel,
             dano=self.dano_projetil,
             tempo_vida=3.2,
             dono="inimigo",
-            largura=21,
-            altura=21,
+            largura=20,
+            altura=20,
             sprite_key="projetil_inimigo",
             cor=(168, 85, 247),
-            duel_stage=int(proximo_stage),
+            duel_stage=estagio,
             duel_owner=self,
+            nao_desviavel=True,
+            homing_ativo=True,
+            homing_taxa_rad=taxa_h,
+            homing_radar_dot=dot_h,
         )
         self.projeteis_pendentes.append(proj)
         return proj
@@ -145,6 +186,16 @@ class InimigoNinja(InimigoBase):
             self.parry_cooldown = max(0.0, self.parry_cooldown - dt)
         if self.parry_telegraph_timer > 0.0:
             self.parry_telegraph_timer = max(0.0, self.parry_telegraph_timer - dt)
+
+        if self._duelo_windups_pendentes:
+            restantes_duelo: list[dict] = []
+            for item in self._duelo_windups_pendentes:
+                item["tempo"] -= dt
+                if item["tempo"] <= 0.0:
+                    self._emitir_projetil_duelo(item["stage"], pos_alvo)
+                else:
+                    restantes_duelo.append(item)
+            self._duelo_windups_pendentes = restantes_duelo
 
         if self.estado_dash == "stalk":
             self.x += (ux * self.velocidade + self.vx_knockback) * dt
@@ -185,21 +236,26 @@ class InimigoNinja(InimigoBase):
         self.timer_tiro += dt
         if self.timer_tiro >= self.cooldown_tiro and dist <= 480.0:
             self.timer_tiro = 0.0
+            taxa_h, dot_h = NINJA_HOMING_POR_ESTAGIO[1]
             proj = Projetil(
-                x=cx - 12.0,
-                y=cy - 12.0,
+                x=cx - 10.0,
+                y=cy - 10.0,
                 dir_x=ux,
                 dir_y=uy,
                 velocidade=self.vel_projetil,
                 dano=self.dano_projetil,
                 tempo_vida=3.0,
                 dono="inimigo",
-                largura=24,
-                altura=24,
+                largura=20,
+                altura=20,
                 sprite_key="projetil_inimigo",
                 cor=(168, 85, 247),
                 duel_stage=1,
                 duel_owner=self,
+                nao_desviavel=True,
+                homing_ativo=True,
+                homing_taxa_rad=taxa_h,
+                homing_radar_dot=dot_h,
             )
             self.projeteis_pendentes.append(proj)
 

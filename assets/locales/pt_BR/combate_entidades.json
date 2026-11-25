@@ -1,0 +1,283 @@
+{
+  "_meta": {
+    "categoria": "combate_entidades",
+    "descricao": "Nomes de armas, drones, inimigos, Mini-Bosses, Chefe Final, buffs do jogador na HUD e rótulos de drops.",
+    "placeholders_disponiveis": {
+      "segundos": "int/float — segundos restantes em buffs ou recargas na HUD",
+      "pct": "int — porcentagem de carga da onda fria (0..100)",
+      "nivel": "int — número MK da Auditoria Interminável (Mini-Boss infinito)"
+    }
+  },
+  "entradas": {
+    "arma_melee": {
+      "texto": "Chave de Cano",
+      "contexto": "Nome da arma inicial do Slot 1.",
+      "placeholders": {}
+    },
+    "arma_bastao_choque": {
+      "texto": "Bastão de Choque",
+      "contexto": "Nome da arma alternativa do Slot 1.",
+      "placeholders": {}
+    },
+    "arma_pistola": {
+      "texto": "Pistola Fajuta",
+      "contexto": "Nome da arma inicial do Slot 2 (Pistola).",
+      "placeholders": {}
+    },
+    "arma_smg_compacta": {
+      "texto": "SMG Compacta",
+      "contexto": "Nome da arma alternativa do Slot 2.",
+      "placeholders": {}
+    },
+    "arma_minigun": {
+      "texto": "Minigun",
+      "contexto": "Nome da arma especial Minigun (Slot 3).",
+      "placeholders": {}
+    },
+    "arma_shotgun": {
+      "texto": "Escopeta",
+      "contexto": "Nome da arma especial Escopeta (Slot 3).",
+      "placeholders": {}
+    },
+    "arma_rifle_assalto": {
+      "texto": "Fuzil de Assalto",
+      "contexto": "Nome da arma especial Rifle de Assalto (Slot 3).",
+      "placeholders": {}
+    },
+    "arma_lanca_foguetes": {
+      "texto": "Lança-Foguetes",
+      "contexto": "Nome da arma especial Lança-Foguetes (Slot 3).",
+      "placeholders": {}
+    },
+    "arma_lanca_granadas": {
+      "texto": "Lança-Granadas",
+      "contexto": "Nome da arma especial Lança-Granadas (Slot 3).",
+      "placeholders": {}
+    },
+    "arma_railgun": {
+      "texto": "Railgun",
+      "contexto": "Nome da arma especial Railgun (Slot 3).",
+      "placeholders": {}
+    },
+    "arma_rifle_arco": {
+      "texto": "Rifle de Arco",
+      "contexto": "Nome da arma especial Rifle de Arco (Slot 3).",
+      "placeholders": {}
+    },
+    "arma_lanca_chamas": {
+      "texto": "Lança-Chamas",
+      "contexto": "Nome da arma especial Lança-Chamas (Slot 3).",
+      "placeholders": {}
+    },
+    "drone_base": {
+      "texto": "Drone Base",
+      "contexto": "Nome base da classe DroneBase.",
+      "placeholders": {}
+    },
+    "drone_cura": {
+      "texto": "Drone de Cura",
+      "contexto": "Nome do Drone de Cura (Slot 4).",
+      "placeholders": {}
+    },
+    "drone_combate": {
+      "texto": "Drone de Combate",
+      "contexto": "Nome do Drone de Combate (Slot 4).",
+      "placeholders": {}
+    },
+    "drone_suporte": {
+      "texto": "Drone de Suporte",
+      "contexto": "Nome do Drone de Suporte (Slot 4).",
+      "placeholders": {}
+    },
+    "inim_padrao": {
+      "texto": "Gabinete de Firma",
+      "contexto": "Nome de exibição do InimigoPadrao.",
+      "placeholders": {}
+    },
+    "inim_rapido": {
+      "texto": "Mouse Óptico",
+      "contexto": "Nome de exibição do InimigoRapido.",
+      "placeholders": {}
+    },
+    "inim_phasing": {
+      "texto": "Monitor CRT",
+      "contexto": "Nome de exibição do InimigoPhasing.",
+      "placeholders": {}
+    },
+    "inim_blindado": {
+      "texto": "Triturador Blindado",
+      "contexto": "Nome de exibição do InimigoBlindado.",
+      "placeholders": {}
+    },
+    "inim_ranged": {
+      "texto": "Projetor Laser",
+      "contexto": "Nome de exibição do InimigoRanged.",
+      "placeholders": {}
+    },
+    "inim_tank": {
+      "texto": "Copiadora Xerox",
+      "contexto": "Nome de exibição do InimigoTank.",
+      "placeholders": {}
+    },
+    "inim_impressora": {
+      "texto": "Impressora Térmica",
+      "contexto": "Nome de exibição da InimigoImpressoraTermica.",
+      "placeholders": {}
+    },
+    "inim_ninja": {
+      "texto": "Ninja Corporativo",
+      "contexto": "Nome de exibição do InimigoNinja.",
+      "placeholders": {}
+    },
+    "inim_cubo_criogenico": {
+      "texto": "Cubo Criogênico",
+      "contexto": "Nome de exibição do CuboCriogenico invocado pelo Chefe.",
+      "placeholders": {}
+    },
+    "boss_caixa_som": {
+      "texto": "CAIXA DE SOM",
+      "contexto": "Nome de exibição dos totens CaixaDeSomBoss.",
+      "placeholders": {}
+    },
+    "boss_nome": {
+      "texto": "GELADEIRA TSUNAMI",
+      "contexto": "Nome oficial do Chefe Final exibido na barra de vida do Boss.",
+      "placeholders": {}
+    },
+    "boss_flavor": {
+      "texto": "The Perfect Sound™",
+      "contexto": "Subtítulo / flavor do Chefe Final.",
+      "placeholders": {}
+    },
+    "boss_geladeira_fala": {
+      "texto": "Você já passou da validade.\nSente a pressão, neném.",
+      "contexto": "Balão de fala da Geladeira Tsunami durante a cutscene de introdução.",
+      "placeholders": {}
+    },
+    "miniboss_impressora_matricial": {
+      "texto": "MINI-BOSS: IMPRESSORA MATRICIAL",
+      "contexto": "Nome do Mini-Boss Tier 1.",
+      "placeholders": {}
+    },
+    "miniboss_fonte_500w": {
+      "texto": "MINI-BOSS: FONTE GENÉRICA 500W",
+      "contexto": "Nome do Mini-Boss Tier 2.",
+      "placeholders": {}
+    },
+    "miniboss_roteador": {
+      "texto": "MINI-BOSS: ROTEADOR CORPORATIVO",
+      "contexto": "Nome do Mini-Boss Tier 3.",
+      "placeholders": {}
+    },
+    "miniboss_nobreak": {
+      "texto": "MINI-BOSS: NO-BREAK CHUMBADO",
+      "contexto": "Nome do Mini-Boss Tier 4.",
+      "placeholders": {}
+    },
+    "miniboss_projetor": {
+      "texto": "MINI-BOSS: PROJETOR CORPORATIVO",
+      "contexto": "Nome do Mini-Boss Tier 5.",
+      "placeholders": {}
+    },
+    "miniboss_servidor_rack": {
+      "texto": "MINI-BOSS: RACK DE SERVIDOR",
+      "contexto": "Nome do Mini-Boss Tier 6.",
+      "placeholders": {}
+    },
+    "miniboss_switch_fantasma": {
+      "texto": "MINI-BOSS: LAGSWITCH",
+      "contexto": "Nome do Mini-Boss Tier 7.",
+      "placeholders": {}
+    },
+    "miniboss_cofre_digital": {
+      "texto": "MINI-BOSS: COFRE DIGITAL",
+      "contexto": "Nome do Mini-Boss Tier 8.",
+      "placeholders": {}
+    },
+    "miniboss_scanner_laser": {
+      "texto": "MINI-BOSS: SCANNER LASER INDUSTRIAL",
+      "contexto": "Nome do Mini-Boss Tier 9.",
+      "placeholders": {}
+    },
+    "miniboss_auditoria_mk": {
+      "texto": "MINI-BOSS: AUDITORIA INTERMINÁVEL MK-{nivel}",
+      "contexto": "Nome procedural de Mini-Boss além do Tier 9.",
+      "placeholders": {
+        "nivel": "int — número incremental MK"
+      }
+    },
+    "buff_dano": {
+      "texto": "DANO +5%",
+      "contexto": "Badge na HUD quando buff temporário de dano está ativo.",
+      "placeholders": {}
+    },
+    "buff_cadencia": {
+      "texto": "CADÊNCIA +8%",
+      "contexto": "Badge na HUD quando buff temporário de cadência está ativo.",
+      "placeholders": {}
+    },
+    "buff_vel": {
+      "texto": "VEL +8%",
+      "contexto": "Badge na HUD quando buff temporário de velocidade está ativo.",
+      "placeholders": {}
+    },
+    "buff_defesa": {
+      "texto": "DEFESA -8%",
+      "contexto": "Badge na HUD quando buff temporário de resistência está ativo.",
+      "placeholders": {}
+    },
+    "buff_escudo_ativo": {
+      "texto": "ESCUDO ATIVO",
+      "contexto": "Badge na HUD quando o Escudo de Emergência está armado.",
+      "placeholders": {}
+    },
+    "buff_invuln": {
+      "texto": "INVULN. {segundos:.1f}s",
+      "contexto": "Badge na HUD durante invulnerabilidade pós-escudo.",
+      "placeholders": {
+        "segundos": "float — segundos restantes"
+      }
+    },
+    "buff_disjuntor_pronto": {
+      "texto": "DISJUNTOR PRONTO",
+      "contexto": "Badge na HUD quando Proteção contra Surtos está pronta.",
+      "placeholders": {}
+    },
+    "buff_surto_invuln": {
+      "texto": "INVULN. {segundos:.1f}s",
+      "contexto": "Badge na HUD durante invulnerabilidade do Disjuntor.",
+      "placeholders": {
+        "segundos": "float — segundos restantes"
+      }
+    },
+    "buff_surto_cd": {
+      "texto": "CD do DISJUNTOR. {segundos}s",
+      "contexto": "Badge na HUD durante recarga do Disjuntor.",
+      "placeholders": {
+        "segundos": "int — segundos restantes"
+      }
+    },
+    "buff_onda_fria": {
+      "texto": "CARGA DE FRIO {pct}%",
+      "contexto": "Badge na HUD durante carregamento de Refrigeração a Nitrogênio.",
+      "placeholders": {
+        "pct": "int — porcentagem de carga"
+      }
+    },
+    "causa_fogo_amigo_explosao": {
+      "texto": "Fogo Amigo (Explosão própria)",
+      "contexto": "Causa de morte por explosão própria com Fogo Amigo.",
+      "placeholders": {}
+    },
+    "drop_suprimento": {
+      "texto": "Suprimento",
+      "contexto": "Rótulo fallback de cápsula de suprimento.",
+      "placeholders": {}
+    },
+    "drop_micro_sucata": {
+      "texto": "Micro-Sucata",
+      "contexto": "Rótulo do drop Micro-Sucata.",
+      "placeholders": {}
+    }
+  }
+}

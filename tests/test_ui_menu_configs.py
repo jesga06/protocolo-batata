@@ -137,6 +137,7 @@ class TestMenuConfigsIntegrationAndPersistence(unittest.TestCase):
     def test_menu_principal_scene_integration(self):
         """Valida que MenuPrincipalScene suporta abrir o Menu de Configurações."""
         menu_scene = MenuPrincipalScene()
+        menu_scene.mostrar_popup_tutorial = False
         self.assertFalse(menu_scene.menu_configs.ativo)
 
         # Simula seleção de Configurações (opção índice 1) com ENTER

@@ -8,11 +8,13 @@ venv/
 build/
 
 # Game data / saves
+data/
 data/save.json
 data/*.save
 
 # Local agent artifacts
-.agents/
+.agents/architecture_cache.md
+.agents/function-index/
 
 # IDE / OS
 .vscode/
@@ -21,3 +23,4 @@ Thumbs.db
 Desktop.ini
 .VSCodeCounter/
 *.md
+!docs/GDD - Protocolo: Batata.md

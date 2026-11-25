@@ -48,7 +48,7 @@ class TestGeladeiraTsunamiMilestone3(unittest.TestCase):
         self.assertEqual(GELADEIRA_TSUNAMI_ALTURA, 156)
         self.assertEqual(BOSS_GELADEIRA_LARGURA, 112)
         self.assertEqual(BOSS_GELADEIRA_ALTURA, 156)
-        self.assertEqual(GELADEIRA_TSUNAMI_HP, 50000)
+        self.assertEqual(GELADEIRA_TSUNAMI_HP, 48000)
         self.assertEqual(GELADEIRA_TSUNAMI_NOME, "GELADEIRA TSUNAMI")
         self.assertEqual(GELADEIRA_TSUNAMI_FLAVOR, "The Perfect Sound™")
 

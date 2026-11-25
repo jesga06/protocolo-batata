@@ -43,11 +43,11 @@ class TestMeleeDirectionalCone(unittest.TestCase):
     def test_melee_defaults_match_constants(self):
         """Verifica se os valores padrão do Melee batem com as constantes atualizadas."""
         melee_padrao = Melee()
-        self.assertEqual(melee_padrao.dano, 10)
+        self.assertEqual(melee_padrao.dano, 20)
         self.assertEqual(melee_padrao.alcance, 109.0)
         self.assertEqual(melee_padrao.knockback_forca, 360.0)
-        self.assertEqual(melee_padrao.max_alvos_knockback, 2)
-        self.assertEqual(melee_padrao.arco_graus, 90.0)
+        self.assertEqual(melee_padrao.max_alvos_knockback, 6)
+        self.assertEqual(melee_padrao.arco_graus, 120.0)
 
     def test_directional_filtering_in_cone(self):
         """
@@ -122,24 +122,24 @@ class TestMeleeDirectionalCone(unittest.TestCase):
 
     def test_four_hits_kill_standard_40hp_enemy(self):
         """
-        Valida que um inimigo padrão com 40 HP é destruído com exatamente 4 golpes de 10 de dano.
+        Valida que um inimigo padrão com 18 HP (v2.0 SSOT) é destruído com exatamente 2 golpes de 10 de dano.
         """
         inimigo = InimigoPadrao(x=self.origem_x + 40 - 14, y=self.origem_y - 14)
-        self.assertEqual(inimigo.hp, 40)
+        self.assertEqual(inimigo.hp, 18)
         self.assertTrue(inimigo.vivo)
 
         mira_x = self.origem_x + 100.0
         mira_y = self.origem_y
 
-        for hit in range(1, 5):
+        for hit in range(1, 3):
             self.melee.tempo_recarga_restante = 0.0  # Reset cooldown para teste sequencial
             afetados = self.melee.executar_ataque(
                 self.origem_x, self.origem_y, [inimigo],
                 mira_x=mira_x, mira_y=mira_y
             )
             self.assertEqual(len(afetados), 1)
-            self.assertEqual(inimigo.hp, 40 - (hit * 10))
-            if hit < 4:
+            self.assertEqual(inimigo.hp, 18 - (hit * 10))
+            if hit < 2:
                 self.assertTrue(inimigo.vivo)
             else:
                 self.assertFalse(inimigo.vivo)

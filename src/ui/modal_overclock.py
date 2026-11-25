@@ -13,6 +13,7 @@ from src.utils.constantes import (
     obter_caminho_asset
 )
 from src.utils.math_utils import clamp
+from src.utils.traducao import t
 
 # Paleta Cyber-Office (Spec §8 aprovada)
 _C_BACKDROP = (7, 9, 14)
@@ -31,91 +32,35 @@ _C_GREEN_SOFT = (110, 231, 183)
 _C_GOLD = (251, 191, 36)
 
 
-_FONT_CACHE: dict[tuple[str, int, bool, bool], pygame.font.Font] = {}
-
-
-def _carregar_fonte_sans(tamanho: int, bold: bool = False, italic: bool = False) -> pygame.font.Font:
-    px_sz = max(8, int(tamanho))
-    chave = ("sans", px_sz, bold, italic)
-    if chave in _FONT_CACHE:
-        return _FONT_CACHE[chave]
-    for nome in ("notosans", "dejavusans", "liberationsans", "arial"):
-        f = pygame.font.SysFont(nome, px_sz, bold=bold, italic=italic)
-        if f is not None:
-            _FONT_CACHE[chave] = f
-            return f
-    f = pygame.font.SysFont("Arial", px_sz, bold=bold, italic=italic)
-    _FONT_CACHE[chave] = f
-    return f
-
-
-def _carregar_fonte_mono(tamanho: int, bold: bool = False) -> pygame.font.Font:
-    px_sz = max(8, int(tamanho))
-    chave = ("mono", px_sz, bold, False)
-    if chave in _FONT_CACHE:
-        return _FONT_CACHE[chave]
-    for nome in ("jetbrainsmono", "firacode", "consolas", "dejavusansmono"):
-        f = pygame.font.SysFont(nome, px_sz, bold=bold)
-        if f is not None:
-            _FONT_CACHE[chave] = f
-            return f
-    f = pygame.font.SysFont("Consolas", px_sz, bold=bold)
-    _FONT_CACHE[chave] = f
-    return f
+from src.utils.fontes import (
+    carregar_fonte_sans as _carregar_fonte_sans,
+    carregar_fonte_mono as _carregar_fonte_mono,
+)
 
 
 CATALOGO_OVERCLOCKS = [
     {
-        "id": "multithreading",
-        "nome": "Multithreading",
-        "subtitulo": "NÚCLEOS DE ESCOLTA",
-        "buff": "Gera 2 núcleos orbitais que disparam cópias leves e bloqueiam 1 projétil inimigo a cada 4s.",
-        "flavor": "Dois núcleos trabalhando para você não levar tiro de graça."
-    },
-    {
-        "id": "refrigeracao",
-        "nome": "Refrigeração a Nitrogênio",
-        "subtitulo": "CONTROLE TÉRMICO",
-        "buff": "+20% de cadência base. Parar de atirar por 1.5s libera uma onda de frio que reduz a velocidade dos inimigos em 50%.",
-        "flavor": "Aproveita o resfriamento do cano para congelar quem estiver perto."
-    },
-    {
-        "id": "overvolt",
-        "nome": "Overvolt",
-        "subtitulo": "DESCARGA ACUMULADA",
-        "buff": "+15% de chance de crítico. A cada 25 abates (ou acerto crítico), dispara um arco elétrico em até 4 inimigos.",
-        "flavor": "Sobe a tensão na marra até sair faísca nos alvos próximos."
-    },
-    {
-        "id": "bios_modding",
-        "nome": "BIOS Modding",
-        "subtitulo": "SLOT DUPLO",
-        "buff": "Permite equipar duas armas especiais (Botão Esquerdo / Direito) e recupera 15% de munição ao derrotar Mini-Bosses.",
-        "flavor": "Destrava o segundo barramento de armas da placa."
-    },
-    {
-        "id": "protecao_surtos",
-        "nome": "Proteção contra Surtos",
-        "subtitulo": "DISJUNTOR DE EMERGÊNCIA",
-        "buff": "+50 de vida máxima. Dano fatal desarma o disjuntor: congela a arena por 4s e recupera 50% da vida (60s de recarga).",
-        "flavor": "Quando tudo dá errado, o disjuntor desarma antes de você queimar."
-    },
-    {
-        "id": "upgrade_barramento",
-        "nome": "Upgrade de Barramento",
-        "subtitulo": "COLETA DE CAMPO",
-        "buff": "+15% de velocidade de movimento fixa e puxa automaticamente itens e gemas de XP na arena.",
-        "flavor": "Trilhas de cobre limpas para puxar tudo o que cai no chão."
+        "id": oid,
+        "nome": t("modal_overclock", f"{oid}_nome"),
+        "subtitulo": t("modal_overclock", f"{oid}_subtitulo"),
+        "buff": t("modal_overclock", f"{oid}_buff"),
+        "flavor": t("modal_overclock", f"{oid}_flavor"),
     }
+    for oid in (
+        "multithreading",
+        "refrigeracao",
+        "overvolt",
+        "bios_modding",
+        "protecao_surtos",
+        "upgrade_barramento",
+    )
 ]
-
-MODULOS_OVERCLOCK = CATALOGO_OVERCLOCKS
 
 
 
 class ModalOverclock:
     """
-    Modal de interface para escolha de módulos de Overclock BIOS.
+    Modal de interface para escolha de módulos de Upgrade de BIOS.
     """
 
     def __init__(self, jogador=None, cena=None):
@@ -229,13 +174,6 @@ class ModalOverclock:
         if self.cena and hasattr(self.cena, "pausado"):
             self.cena.pausado = False
 
-    @property
-    def opcoes_sorteadas(self) -> list[dict]:
-        return self.cards_sorteados
-
-    def selecionar_opcao(self, index: int):
-        return self.selecionar_card(index)
-
     def update(self, dt: float, teclado=None, mouse=None):
         if self.tempo_transicao_saida > 0.0:
             self.tempo_transicao_saida = max(0.0, self.tempo_transicao_saida - dt)
@@ -280,7 +218,7 @@ class ModalOverclock:
             return
 
         # Mouse
-        mx, my = (400, 300)
+        mx, my = (LARGURA_TELA // 2, ALTURA_TELA // 2)
         mouse_clicado = False
         if mouse is not None:
             try:
@@ -383,14 +321,15 @@ class ModalOverclock:
 
         # Título
         sh_off = max(1, ps(2))
-        tit_sombra = fonte_titulo.render("NÚCLEO DE OVERCLOCK OBTIDO!", True, (0, 0, 0))
-        tit_surf = fonte_titulo.render("NÚCLEO DE OVERCLOCK OBTIDO!", True, _C_GOLD)
+        titulo_txt = t("modal_overclock", "titulo")
+        tit_sombra = fonte_titulo.render(titulo_txt, True, (0, 0, 0))
+        tit_surf = fonte_titulo.render(titulo_txt, True, _C_GOLD)
         tit_rect = tit_surf.get_rect(centerx=centro_x, top=py(42 + slide_offset_y))
         layer_surf.blit(tit_sombra, (tit_rect.x + sh_off, tit_rect.y + sh_off))
         layer_surf.blit(tit_surf, tit_rect)
 
         # Subtítulo
-        sub_surf = fonte_sub.render("Selecione um protocolo BIOS para instalar na Batata com [1] [2] [3] ou clique", True, _C_PURPLE_SOFT)
+        sub_surf = fonte_sub.render(t("modal_overclock", "subtitulo"), True, _C_PURPLE_SOFT)
         layer_surf.blit(sub_surf, sub_surf.get_rect(centerx=centro_x, top=py(86 + slide_offset_y)))
 
         # Cards (Cyber-Office + Hover -4 px + Glow em DPI nativo)
@@ -432,7 +371,7 @@ class ModalOverclock:
             pygame.draw.rect(layer_surf, accent, (rect.x + ps(14), rect.y + 1, rect.width - ps(28), max(2, ps(3))), border_radius=max(1, ps(2)))
 
             # Subtítulo da categoria (pill top-left)
-            cat_txt = card.get("subtitulo", "BIOS OVERCLOCK")
+            cat_txt = card.get("subtitulo", t("modal_overclock", "tag_padrao"))
             cat_surf = fonte_card_sub.render(cat_txt, True, _C_PURPLE_SOFT)
             cat_pill = pygame.Rect(rect.x + ps(12), rect.y + ps(12), min(rect.width - ps(74), cat_surf.get_width() + ps(14)), cat_surf.get_height() + ps(6))
             pygame.draw.rect(layer_surf, (*_C_PURPLE, 30), cat_pill, border_radius=ps(5))
@@ -478,7 +417,7 @@ class ModalOverclock:
             pygame.draw.rect(layer_surf, _C_GREEN, ben_rect, width=max(1, ps(1)), border_radius=ps(8))
             pygame.draw.rect(layer_surf, _C_GREEN, (ben_rect.x, ben_rect.y + ps(6), max(2, ps(3)), ben_rect.height - ps(12)), border_radius=max(1, ps(2)))
 
-            hdr_surf = fonte_card_sec.render("+ EFEITO BIOS", True, _C_GREEN_SOFT)
+            hdr_surf = fonte_card_sec.render(t("modal_overclock", "header_efeito_bios"), True, _C_GREEN_SOFT)
             hdr_pill = pygame.Rect(ben_rect.x + ps(10), ben_rect.y + ps(8), hdr_surf.get_width() + ps(12), hdr_surf.get_height() + ps(4))
             pygame.draw.rect(layer_surf, (16, 185, 129, 40), hdr_pill, border_radius=ps(4))
             layer_surf.blit(hdr_surf, hdr_surf.get_rect(center=hdr_pill.center))
@@ -531,11 +470,11 @@ class ModalOverclock:
             cta_rect = pygame.Rect(rect.x + ps(12), rect.bottom - ps(42), rect.width - ps(24), ps(30))
             pygame.draw.rect(layer_surf, (*cor_borda, 42) if is_hovered else _C_ELEVATED, cta_rect, border_radius=ps(7))
             pygame.draw.rect(layer_surf, cor_borda if is_hovered else _C_BORDER, cta_rect, width=max(1, ps(1)), border_radius=ps(7))
-            cta_surf = fonte_card_badge.render(f"INSTALAR [{i + 1}]", True, _C_GOLD if is_hovered else _C_PURPLE_SOFT)
+            cta_surf = fonte_card_badge.render(t("modal_overclock", "cta_instalar", indice=i + 1), True, _C_GOLD if is_hovered else _C_PURPLE_SOFT)
             layer_surf.blit(cta_surf, cta_surf.get_rect(center=cta_rect.center))
 
         # Rodapé
-        rodape_surf = fonte_rodape.render("[1] [2] [3] Instalar pelo teclado   •   [Mouse] Clique no módulo", True, _C_TEXT_MUTED)
+        rodape_surf = fonte_rodape.render(t("modal_overclock", "rodape"), True, _C_TEXT_MUTED)
         layer_surf.blit(rodape_surf, rodape_surf.get_rect(centerx=centro_x, bottom=py(ALTURA_TELA - 32)))
 
         # Blit com alpha global

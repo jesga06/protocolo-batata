@@ -10,17 +10,20 @@ from src.entidades.projetil import Projetil
 from src.utils.constantes import (
     INIMIGO_RANGED_HP, INIMIGO_RANGED_VELOCIDADE,
     INIMIGO_RANGED_DANO, INIMIGO_RANGED_COOLDOWN_ATAQUE,
-    INIMIGO_RANGED_XP, INIMIGO_RANGED_DISTANCIA_TIRO
+    INIMIGO_RANGED_COOLDOWN_TIRO, INIMIGO_RANGED_XP,
+    INIMIGO_RANGED_DISTANCIA_STANDOFF, INIMIGO_RANGED_DISTANCIA_TIRO,
+    INIMIGO_RANGED_CHANCE_DROP_ARMA,
 )
 from src.utils.math_utils import distancia, vetor_direcao, lerp
+from src.utils.traducao import t
 
 
 class InimigoRanged(InimigoBase):
-    nome_exibicao = "Projetor Laser"
+    nome_exibicao = t("combate_entidades", "inim_ranged")
     """
-    Inimigo armado com canhão balístico que mantém distância de tiro (stand-off de 280px)
-    e dispara periodicamente projéteis vermelhos no jogador a cada 1.2s em alcance <= 350px.
-    Possui tabela de loot enriquecida (15% drop de arma, 15% drop de equipamento).
+    Inimigo armado com canhão balístico que mantém distância de tiro (stand-off de 300px)
+    e dispara periodicamente projéteis vermelhos no jogador a cada 0.95s em alcance <= 480px.
+    Possui tabela de loot enriquecida (30% drop de arma, 15% drop de equipamento).
     """
 
     def __init__(
@@ -32,13 +35,14 @@ class InimigoRanged(InimigoBase):
         dano_contato: int = INIMIGO_RANGED_DANO,
         cooldown_contato: float = INIMIGO_RANGED_COOLDOWN_ATAQUE,
         xp_valor: int = INIMIGO_RANGED_XP,
-        distancia_standoff: float = 300.0,
-        distancia_tiro_max: float = 480.0,
-        cooldown_tiro: float = 0.95,
+        distancia_standoff: float = INIMIGO_RANGED_DISTANCIA_STANDOFF,
+        distancia_tiro_max: float = INIMIGO_RANGED_DISTANCIA_TIRO,
+        cooldown_tiro: float = INIMIGO_RANGED_COOLDOWN_TIRO,
         dano_projetil: int = 10,
         vel_projetil: float = 390.0,
         is_elite: bool = False,
-        nome_elite: str = ""
+        nome_elite: str = "",
+        modo_homing: bool = False,
     ):
         super().__init__(
             x=x,
@@ -63,13 +67,14 @@ class InimigoRanged(InimigoBase):
         self.dano_projetil = int(dano_projetil)
         self.vel_projetil = float(vel_projetil)
         self.rajada_tripla: bool = False
+        self.modo_homing: bool = bool(modo_homing)
         self.projeteis_pendentes: list[Projetil] = []
         self._ultima_pos_alvo: tuple[float, float] = None
         self._vel_alvo_estimada: tuple[float, float] = (0.0, 0.0)
 
         # Tabela de loot enriquecida
         self.loot_enriquecido = True
-        self.chance_drop_arma = 0.3
+        self.chance_drop_arma = float(INIMIGO_RANGED_CHANCE_DROP_ARMA)
         self.chance_drop_equipamento = 0.15
 
     def update(self, dt: float, pos_alvo: tuple[float, float], vel_alvo: tuple[float, float] = None):
@@ -137,10 +142,10 @@ class InimigoRanged(InimigoBase):
         t_voo = dist / max(1.0, self.vel_projetil)
         vx_alvo, vy_alvo = vel_alvo if vel_alvo is not None else self._vel_alvo_estimada
 
-        # Se o alvo está em movimento, compensa o vetor de deslocamento com previsão precisa
+        # Se o alvo está em movimento, compensa parcialmente o vetor de deslocamento (~0.50x)
         if abs(vx_alvo) > 1.0 or abs(vy_alvo) > 1.0:
-            pred_x = tx + vx_alvo * t_voo * 0.95
-            pred_y = ty + vy_alvo * t_voo * 0.95
+            pred_x = tx + vx_alvo * t_voo * 0.50
+            pred_y = ty + vy_alvo * t_voo * 0.50
             base_dir_x, base_dir_y = vetor_direcao(cx, cy, pred_x, pred_y)
             if base_dir_x == 0.0 and base_dir_y == 0.0:
                 base_dir_x = 1.0
@@ -155,6 +160,9 @@ class InimigoRanged(InimigoBase):
             dir_x, dir_y = base_dir_x, base_dir_y
 
         ang_central = math.atan2(dir_y, dir_x)
+        homing = bool(getattr(self, "modo_homing", False))
+        tam = 20 if homing else 10
+        offset_centro = tam / 2.0
 
         if getattr(self, "rajada_tripla", False):
             offsets = [-0.28, 0.0, 0.28]
@@ -164,17 +172,20 @@ class InimigoRanged(InimigoBase):
                 p_dir_x = math.cos(ang_tiro)
                 p_dir_y = math.sin(ang_tiro)
                 proj = Projetil(
-                    x=cx - 5.0,
-                    y=cy - 5.0,
+                    x=cx - offset_centro,
+                    y=cy - offset_centro,
                     dir_x=p_dir_x,
                     dir_y=p_dir_y,
                     velocidade=float(getattr(self, "vel_projetil", 390.0)),
                     dano=self.dano_projetil,
                     tempo_vida=3.5,
                     dono="inimigo",
-                    largura=10,
-                    altura=10,
-                    sprite_key="projetil_inimigo"
+                    largura=tam,
+                    altura=tam,
+                    sprite_key="projetil_inimigo",
+                    nao_parriavel=homing,
+                    homing_ativo=homing,
+                    nao_desviavel=False,
                 )
                 self.projeteis_pendentes.append(proj)
                 if primeiro_proj is None:
@@ -183,17 +194,20 @@ class InimigoRanged(InimigoBase):
         else:
             vel_tiro = float(getattr(self, "vel_projetil", 287.5))
             proj = Projetil(
-                x=cx - 5.0,
-                y=cy - 5.0,
+                x=cx - offset_centro,
+                y=cy - offset_centro,
                 dir_x=dir_x,
                 dir_y=dir_y,
                 velocidade=vel_tiro,
                 dano=self.dano_projetil,
                 tempo_vida=3.5,
                 dono="inimigo",
-                largura=10,
-                altura=10,
-                sprite_key="projetil_inimigo"
+                largura=tam,
+                altura=tam,
+                sprite_key="projetil_inimigo",
+                nao_parriavel=homing,
+                homing_ativo=homing,
+                nao_desviavel=False,
             )
             self.projeteis_pendentes.append(proj)
             return proj

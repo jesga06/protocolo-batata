@@ -62,6 +62,12 @@ class SistemaMusica:
 
     _CANAIS_MINIMOS = 16
     _CANAIS_RESERVADOS = 2
+    _DURACOES_FALLBACK_HEADLESS: dict[str, float] = {
+        ESTADO_ANTICIPATION: 8.0,
+        ESTADO_HOLD: 16.0,
+        ESTADO_ASSAULT_INTRO: 6.0,
+        ESTADO_ASSAULT: 20.0,
+    }
 
     def __init__(
         self,
@@ -70,7 +76,7 @@ class SistemaMusica:
         canal_abafado=None,
         sons_injetados: Optional[dict[str, object]] = None,
         tempo_assault: float = MUSICA_TEMPO_ASSAULT,
-        lookahead_segundos: float = MUSICA_LOOKAHEAD_SEGUNDOS,
+        lookahead_segundos: Optional[float] = None,
         transicao_abafado_segundos: float = MUSICA_TRANSICAO_ABAFADO_SEGUNDOS,
     ):
         self._clock = clock
@@ -81,7 +87,10 @@ class SistemaMusica:
         self._injetado = sons_injetados is not None or canal_normal is not None
 
         self._tempo_assault = float(tempo_assault)
-        self._lookahead_segundos = float(lookahead_segundos)
+        if lookahead_segundos is None:
+            self._lookahead_segundos = max(float(MUSICA_LOOKAHEAD_SEGUNDOS), 0.50)
+        else:
+            self._lookahead_segundos = float(lookahead_segundos)
         self._transicao_abafado_segundos = float(transicao_abafado_segundos)
 
         self._inicializado = False
@@ -92,6 +101,9 @@ class SistemaMusica:
         self._ultimo_tick: float = 0.0
         self._ciclo_assault_iniciado: bool = False
         self._hold_restantes: int = 0
+        self._evento_assault_intro_pendente: bool = False
+        self.ciclos_assault_concluidos: int = 0
+        self._relogio_headless: float = 0.0
 
         self._volume_master: float = 100.0
         self._volume_musica: float = 100.0
@@ -231,16 +243,34 @@ class SistemaMusica:
         chave_normal, _ = self._MAPA_FAIXAS.get(estado, ("", None))
         return float(self._duracoes.get(chave_normal, 0.0))
 
+    @property
+    def fase_onda_atual(self) -> str:
+        """Retorna a fase macro de onda sincronizada com a trilha ('assault' ou 'calm')."""
+        if self.estado in (self.ESTADO_ASSAULT_INTRO, self.ESTADO_ASSAULT):
+            return "assault"
+        return "calm"
+
+    def consumir_evento_assault_intro(self) -> bool:
+        """Consome o gatilho de borda gerado na entrada de ESTADO_ASSAULT_INTRO."""
+        if self._evento_assault_intro_pendente:
+            self._evento_assault_intro_pendente = False
+            return True
+        return False
+
     def _ao_entrar_estado(self, estado_anterior: str, novo_estado: str) -> None:
         if novo_estado == self.ESTADO_ASSAULT_INTRO:
             self._ciclo_assault_iniciado = True
             self._hold_restantes = 0
+            if estado_anterior != self.ESTADO_ASSAULT_INTRO:
+                self._evento_assault_intro_pendente = True
         elif novo_estado == self.ESTADO_HOLD and self._ciclo_assault_iniciado:
             if estado_anterior == self.ESTADO_ANTICIPATION:
                 # 1ª passagem de hold no ciclo: resta mais 1 repetição (total 2x)
                 self._hold_restantes = 1
             elif estado_anterior == self.ESTADO_HOLD:
                 self._hold_restantes = max(0, self._hold_restantes - 1)
+        if estado_anterior == self.ESTADO_ASSAULT and novo_estado == self.ESTADO_ANTICIPATION:
+            self.ciclos_assault_concluidos += 1
 
     def _tocar_par_estado(self, estado: str, loops: int = 0) -> None:
         som_normal, som_abafado = self._obter_par_sons(estado)
@@ -288,6 +318,9 @@ class SistemaMusica:
         self._abafado_alvo = False
         self._ciclo_assault_iniciado = False
         self._hold_restantes = 0
+        self._evento_assault_intro_pendente = False
+        self.ciclos_assault_concluidos = 0
+        self._relogio_headless = 0.0
         self._tocar_par_estado(self.ESTADO_MENU, loops=-1)
 
     def iniciar_partida(self) -> None:
@@ -303,9 +336,19 @@ class SistemaMusica:
         self._abafado_alvo = False
         self._ciclo_assault_iniciado = False
         self._hold_restantes = 0
+        self._evento_assault_intro_pendente = False
+        self.ciclos_assault_concluidos = 0
+        self._relogio_headless = 0.0
         self._tocar_par_estado(self.ESTADO_ANTICIPATION, loops=0)
 
-    def _decidir_proximo_estado(self, tempo_sobrevivencia: float) -> str:
+    def _decidir_proximo_estado(
+        self,
+        tempo_sobrevivencia: float,
+        trava_assault: bool = False,
+        pausar_transicao: bool = False,
+    ) -> str:
+        if pausar_transicao:
+            return self.estado
         if self.estado == self.ESTADO_ANTICIPATION:
             return self.ESTADO_HOLD
         if self.estado == self.ESTADO_HOLD:
@@ -317,6 +360,8 @@ class SistemaMusica:
         if self.estado == self.ESTADO_ASSAULT_INTRO:
             return self.ESTADO_ASSAULT
         if self.estado == self.ESTADO_ASSAULT:
+            if trava_assault:
+                return self.ESTADO_ASSAULT
             return self.ESTADO_ANTICIPATION
         return self.estado
 
@@ -336,6 +381,8 @@ class SistemaMusica:
         tempo_sobrevivencia: float,
         abafado: bool = False,
         dt: Optional[float] = None,
+        trava_assault: bool = False,
+        pausar_transicao: bool = False,
     ) -> None:
         """
         Atualiza o cross-blend normal/abafado e gerencia o enfileiramento gapless
@@ -363,6 +410,24 @@ class SistemaMusica:
         if self._fator_abafado != fator_anterior:
             self._aplicar_volumes_canais()
 
+        # Fallback determinístico headless (sem sons carregados no mixer)
+        if not self._injetado and self._duracao_atual <= 0.0:
+            if not pausar_transicao:
+                self._relogio_headless += passo_dt
+                duracao_fallback = self._DURACOES_FALLBACK_HEADLESS.get(self.estado, 10.0)
+                if self._relogio_headless >= duracao_fallback:
+                    self._relogio_headless = 0.0
+                    proximo = self._decidir_proximo_estado(
+                        tempo_sobrevivencia,
+                        trava_assault=trava_assault,
+                        pausar_transicao=pausar_transicao,
+                    )
+                    estado_anterior = self.estado
+                    self.estado = proximo
+                    self._ao_entrar_estado(estado_anterior, self.estado)
+                    self._aplicar_volumes_canais()
+            return
+
         # 2. Detecta conclusão do handoff gapless no mixer
         if self._proximo_enfileirado is not None and self._canal_normal is not None:
             try:
@@ -374,36 +439,57 @@ class SistemaMusica:
                 # Se houve stall extremo maior que uma frase inteira, realinha ao relógio atual
                 if abs(agora - novo_inicio) > max(1.0, self._duracao_atual):
                     novo_inicio = agora
-                estado_anterior = self.estado
-                self.estado = self._proximo_enfileirado
-                self._ao_entrar_estado(estado_anterior, self.estado)
-                self._inicio_faixa = novo_inicio
-                self._duracao_atual = self._obter_duracao_estado(self.estado)
-                self._proximo_enfileirado = None
-                self._aplicar_volumes_canais()
+                if pausar_transicao:
+                    # Em pausa, mantém estado atual e realinha _inicio_faixa para evitar transição falsa ao despausar
+                    self._inicio_faixa = novo_inicio
+                    self._duracao_atual = self._obter_duracao_estado(self.estado)
+                    self._proximo_enfileirado = None
+                    self._aplicar_volumes_canais()
+                else:
+                    estado_anterior = self.estado
+                    self.estado = self._proximo_enfileirado
+                    self._ao_entrar_estado(estado_anterior, self.estado)
+                    self._inicio_faixa = novo_inicio
+                    self._duracao_atual = self._obter_duracao_estado(self.estado)
+                    self._proximo_enfileirado = None
+                    self._aplicar_volumes_canais()
 
-        # 3. Recuperação caso o canal tenha parado após o fim da frase (ex.: suspensão do SO)
+        # 3. Recuperação caso o canal tenha parado (ex.: suspensão do SO em Pause + Alt-Tab ou fim da frase)
         decorrido = agora - self._inicio_faixa
-        if (
-            self._proximo_enfileirado is None
-            and self._canal_normal is not None
-            and self._duracao_atual > 0.0
-            and decorrido >= self._duracao_atual
-        ):
+        if self._canal_normal is not None and (self._duracao_atual > 0.0 or self._injetado):
             try:
                 ocupado = self._canal_normal.get_busy()
             except Exception:
                 ocupado = True
             if not ocupado:
-                proximo = self._decidir_proximo_estado(tempo_sobrevivencia)
+                self._proximo_enfileirado = None
+                proximo = (
+                    self.estado
+                    if pausar_transicao
+                    else self._decidir_proximo_estado(
+                        tempo_sobrevivencia,
+                        trava_assault=trava_assault,
+                        pausar_transicao=pausar_transicao,
+                    )
+                )
                 self._tocar_par_estado(proximo, loops=0)
                 return
 
-        # 4. Janela de lookahead: enfileira a próxima frase exatamente antes do fim
-        if self._proximo_enfileirado is None and self._duracao_atual > 0.0:
+        # 4. Janela de lookahead: enfileira a próxima frase (ou re-enfileira se get_queue() is None)
+        fila_vazia = False
+        if self._canal_normal is not None:
+            try:
+                fila_vazia = self._canal_normal.get_queue() is None
+            except Exception:
+                fila_vazia = True
+        if self._duracao_atual > 0.0 and (self._proximo_enfileirado is None or fila_vazia):
             restante = self._duracao_atual - decorrido
             if restante <= self._lookahead_segundos:
-                proximo = self._decidir_proximo_estado(tempo_sobrevivencia)
+                proximo = self._decidir_proximo_estado(
+                    tempo_sobrevivencia,
+                    trava_assault=trava_assault,
+                    pausar_transicao=pausar_transicao,
+                )
                 self._enfileirar_estado(proximo)
 
     def fadeout_para_boss(self, fade_ms: int = 1600) -> None:
@@ -413,6 +499,8 @@ class SistemaMusica:
         """
         self.estado = self.ESTADO_BOSS
         self._proximo_enfileirado = None
+        self._evento_assault_intro_pendente = False
+        self._relogio_headless = 0.0
         try:
             if self._canal_normal is not None:
                 self._canal_normal.fadeout(int(fade_ms))
@@ -424,6 +512,8 @@ class SistemaMusica:
     def parar_dinamica(self, entrar_estado_boss: bool = False) -> None:
         """Interrompe imediatamente os canais dinâmicos."""
         self._proximo_enfileirado = None
+        self._evento_assault_intro_pendente = False
+        self._relogio_headless = 0.0
         self._parar_canais()
         self.estado = self.ESTADO_BOSS if entrar_estado_boss else self.ESTADO_PARADO
 

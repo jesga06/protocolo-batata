@@ -66,9 +66,11 @@ class TestEmpiricalChallengerMultipliers(unittest.TestCase):
         self.mgr.definir_valor("fogo_amigo", "ligado")
 
         mods = self.mgr.obter_modificadores()
-        esperado_mult = 1.20 * 1.30 * 1.15 * 1.20 * 1.25
+        # v2.0: keybinds(1.30) * auto_fire(1.15) * fogo_amigo(1.25) = 1.86875
+        esperado_mult = 1.30 * 1.15 * 1.25
         self.assertAlmostEqual(mods.dano_armas_mult, esperado_mult, places=5)
         self.assertTrue(mods.auto_dano)
+        self.assertTrue(mods.polaridade_invertida)
 
         # Testa aplicação nas armas do jogador
         jogador = Jogador(x=100, y=100)
@@ -78,13 +80,13 @@ class TestEmpiricalChallengerMultipliers(unittest.TestCase):
 
         # Aplica modificadores como na cena gameplay
         pistola.dano = int(round(base_dano * mods.dano_armas_mult))
-        self.assertEqual(pistola.dano, int(round(10 * 2.691)))  # 27 dano
+        self.assertEqual(pistola.dano, int(round(base_dano * esperado_mult)))  # 22 dano
 
         # Adiciona buff temporário (+5%)
         jogador.buff_dano_timer = 15.0
         mult_buff = 1.05 if jogador.buff_dano_timer > 0.0 else 1.0
         dano_com_buff = max(1, int(round(pistola.dano * mult_buff)))
-        self.assertEqual(dano_com_buff, int(round(27 * 1.05)))  # 28 dano
+        self.assertEqual(dano_com_buff, int(round(pistola.dano * 1.05)))  # 23 dano
 
     def test_extreme_speed_multiplier_stacking(self):
         """
@@ -107,7 +109,8 @@ class TestEmpiricalChallengerMultipliers(unittest.TestCase):
         self.mgr.definir_valor("suavizacao_camera", "desligado")
 
         mods = self.mgr.obter_modificadores()
-        esperado_config = 1.10 * 1.15 * 1.15 * 1.08
+        # v2.0: motion_blur(1.15) * keybinds(1.15) = 1.3225
+        esperado_config = 1.15 * 1.15
         self.assertAlmostEqual(mods.vel_jogador_mult, esperado_config, places=5)
 
         jogador = Jogador(x=500, y=500)
@@ -161,12 +164,12 @@ class TestEmpiricalChallengerMultipliers(unittest.TestCase):
         self.assertAlmostEqual(mods.vel_inimigos_mult, 1.215, places=5)
         # Dano inimigos: 0.7225
         self.assertAlmostEqual(mods.dano_inimigos_mult, 0.7225, places=5)
-        # XP Ganho: 1.40 * 1.25 * 1.20 = 2.10
-        self.assertAlmostEqual(mods.xp_ganho_mult, 2.10, places=5)
-        # Drop chance bonus: 0.40 + 0.50 = 0.90
-        self.assertAlmostEqual(mods.drop_chance_bonus, 0.90, places=5)
-        # Drop chance mult: 1.40
-        self.assertAlmostEqual(mods.drop_chance_mult, 1.40, places=5)
+        # XP Ganho (v2.0): 1.30 * 1.25 * 1.20 = 1.95
+        self.assertAlmostEqual(mods.xp_ganho_mult, 1.95, places=5)
+        # Drop chance bonus (v2.0): 0.15 + 0.50 = 0.65
+        self.assertAlmostEqual(mods.drop_chance_bonus, 0.65, places=5)
+        # Drop chance mult: 1.0 (keybinds='uma_mao' conflita com movimento_mouse='ligado' no v2.0)
+        self.assertAlmostEqual(mods.drop_chance_mult, 1.0, places=5)
 
     def test_locked_configs_strictly_neutral_under_adversarial_tampering(self):
         """
@@ -386,7 +389,9 @@ class TestDarkIlluminationAndScavengerBoundaryStress(unittest.TestCase):
         cena.config_sistema.definir_valor("iluminacao", "ligado")
         cena.aplicar_modificadores()
         mods = cena.config_sistema.obter_modificadores()
-        self.assertEqual(mods.dano_fora_visao_mult, 0.50)
+        # v2.0: iluminacao ligada ativa clarao_fotossensivel (sem redução de dano por distância)
+        self.assertTrue(mods.clarao_fotossensivel)
+        self.assertEqual(mods.dano_fora_visao_mult, 1.0)
 
         cx = cena.jogador.x + cena.jogador.largura / 2.0
         cy = cena.jogador.y + cena.jogador.altura / 2.0
@@ -409,7 +414,7 @@ class TestDarkIlluminationAndScavengerBoundaryStress(unittest.TestCase):
         p_fora.y_origem = cy
         cena.projeteis = [p_fora]
         cena.loop(dt=0.016)
-        self.assertEqual(cena.jogador.hp, 90, "Projétil originado fora de 195px deve causar 50% do dano (10).")
+        self.assertEqual(cena.jogador.hp, 80, "Em v2.0 iluminacao não reduz dano por distância (20).")
 
     def test_scavenger_10_second_delay_boundary_precision(self):
         """

@@ -14,6 +14,7 @@ from src.utils.constantes import (
     DROP_LARGURA, DROP_ALTURA,
     obter_caminho_asset
 )
+from src.utils.traducao import t
 
 
 class SistemaDrops:
@@ -283,13 +284,62 @@ class SistemaDrops:
                 largura=26,
                 altura=26,
                 subtipo=str(op.get("subtipo", op.get("tipo", "buff_dano_temp"))),
-                rotulo=str(op.get("nome", "Suprimento")),
+                rotulo=str(op.get("nome", t("combate_entidades", "drop_suprimento"))),
                 par_id=par_id
             )
             cap.pickup_cooldown = 0.65
             criadas.append(cap)
             self._adicionar_drop(cap)
         return criadas
+
+    def obter_pool_armas_especiais(self, sistema_conquistas=None) -> list[type]:
+        """Retorna o pool de classes de armas especiais disponiveis para drop/capsula."""
+        from src.armas import (
+            Minigun,
+            Shotgun,
+            RifleAssalto,
+            LancaFoguetes,
+            LancaGranadas,
+            Railgun,
+            RifleArco,
+            LancaChamas,
+        )
+
+        pool: list[type] = [
+            Minigun,
+            Shotgun,
+            RifleAssalto,
+            LancaFoguetes,
+            LancaGranadas,
+            Railgun,
+        ]
+        if sistema_conquistas is not None and hasattr(sistema_conquistas, "possui_recompensa"):
+            if sistema_conquistas.possui_recompensa("arma", "rifle_arco"):
+                pool.append(RifleArco)
+            if sistema_conquistas.possui_recompensa("arma", "lanca_chamas"):
+                pool.append(LancaChamas)
+        return pool
+
+    def gerar_micro_sucata(self, x: float, y: float, quantidade: int = 1) -> list[ItemDrop]:
+        """Gera pequenos drops de micro-sucata (Pinhata de Hardware / vida_inimigos)."""
+        criados: list[ItemDrop] = []
+        for _ in range(max(1, int(quantidade))):
+            ox = random.uniform(-22.0, 22.0)
+            oy = random.uniform(-22.0, 22.0)
+            drop = ItemDrop(
+                x=x + ox - 9.0,
+                y=y + oy - 9.0,
+                tipo="micro_sucata",
+                valor=1,
+                tempo_vida=15.0,
+                tempo_scavenger=999.0,
+                largura=18,
+                altura=18,
+                rotulo=t("combate_entidades", "drop_micro_sucata"),
+            )
+            criados.append(drop)
+            self._adicionar_drop(drop)
+        return criados
 
     def update(self, dt: float, pausar_despawn: bool = False):
         """Atualiza timers de todos os drops e remove expirados."""
@@ -299,7 +349,13 @@ class SistemaDrops:
 
         self.drops = [d for d in self.drops if d.ativo and not d.coletado]
 
-    def coletar_jogador(self, jogador, mult_valor_drop: float = 1.0, mult_xp: float = 1.0) -> list[dict]:
+    def coletar_jogador(
+        self,
+        jogador,
+        mult_valor_drop: float = 1.0,
+        mult_xp: float = 1.0,
+        sistema_conquistas=None,
+    ) -> list[dict]:
         """
         Testa colisão do jogador com drops ativos.
         Aplica efeitos imediatos e retorna lista de eventos de coleta ocorridos.
@@ -345,10 +401,34 @@ class SistemaDrops:
                 elif drop.tipo == "overclock":
                     sfx_nome = "sfx_pickup_arma"
 
+                elif drop.tipo == "micro_sucata":
+                    sfx_nome = "sfx_pickup_xp"
+                    arma_esp = getattr(jogador, "arma_especial", None)
+                    recarregou = False
+                    if (
+                        arma_esp is not None
+                        and getattr(arma_esp, "municao_max", 0) > 0
+                        and getattr(arma_esp, "municao_atual", 0) < arma_esp.municao_max
+                    ):
+                        ganho = max(1, int(round(arma_esp.municao_max * 0.10)))
+                        arma_esp.municao_atual = min(arma_esp.municao_max, arma_esp.municao_atual + ganho)
+                        recarregou = True
+                    if not recarregou:
+                        armas_j = getattr(jogador, "armas", []) or []
+                        resfriou = False
+                        for a in armas_j:
+                            if getattr(a, "usa_calor", False) and getattr(a, "calor_atual", 0.0) > 0.0:
+                                a.calor_atual = max(0.0, float(a.calor_atual) - 25.0)
+                                if a.calor_atual <= 0.0:
+                                    a.superaquecida = False
+                                resfriou = True
+                                break
+                        if not resfriou and hasattr(jogador, "ganhar_xp"):
+                            jogador.ganhar_xp(3, mult_xp=mult_xp)
+
                 elif drop.tipo == "arma":
                     sfx_nome = "sfx_pickup_arma"
-                    from src.armas import Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas, Railgun
-                    armas_especiais = [Minigun, Shotgun, RifleAssalto, LancaFoguetes, LancaGranadas, Railgun]
+                    armas_especiais = self.obter_pool_armas_especiais(sistema_conquistas=sistema_conquistas)
                     classe_arma = random.choice(armas_especiais)
                     nova_arma = classe_arma()
 
@@ -357,7 +437,7 @@ class SistemaDrops:
                         nova_arma.municao_max = int(round(nova_arma.municao_max * mult_valor_drop))
                         nova_arma.municao_atual = nova_arma.municao_max
 
-                    bonus_mun = float(getattr(drop, "bonus_municao_mult", 3.0))
+                    bonus_mun = float(getattr(drop, "bonus_municao_mult", 1.0))
                     if bonus_mun > 1.0:
                         nova_arma.municao_max = int(round(nova_arma.municao_max * bonus_mun))
                         nova_arma.municao_atual = nova_arma.municao_max
@@ -398,13 +478,6 @@ class SistemaDrops:
                     elif hasattr(jogador, "drone"):
                         jogador.drone = novo_drone
 
-                try:
-                    from PPlay.sound import Sound
-                    sfx = Sound(obter_caminho_asset(sfx_nome))
-                    sfx.play()
-                except Exception:
-                    pass
-
                 evento = {
                     "tipo": drop.tipo,
                     "valor": valor_efetivo,
@@ -413,6 +486,10 @@ class SistemaDrops:
                     "x": drop.x,
                     "y": drop.y
                 }
+                if drop.tipo == "xp":
+                    sx_p = getattr(jogador, "sistema_xp", None)
+                    if sx_p is not None and hasattr(sx_p, "ultimo_xp_ganho"):
+                        evento["xp_ganho"] = int(sx_p.ultimo_xp_ganho)
                 if drop.tipo == "arma":
                     evento["arma"] = nova_arma
                 coletados.append(evento)

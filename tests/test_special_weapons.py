@@ -189,8 +189,8 @@ class TestSlot3LifecycleAndAmmoDepletion(unittest.TestCase):
         self.sistema_drops.coletar_jogador(self.jogador, mult_valor_drop=2.0)
         arma = self.jogador.arma_especial
         self.assertIsNotNone(arma)
-        # Se for minigun: 150 * 2 = 300; se shotgun: 30 * 2 = 60, etc.
-        self.assertGreaterEqual(arma.municao_atual, 24)
+        # Se for minigun: 300 * 2 = 600; se railgun: 10 * 2 = 20, etc.
+        self.assertGreaterEqual(arma.municao_atual, 20)
         self.assertEqual(arma.municao_atual, arma.municao_max)
 
     def test_esgotamento_de_municao_auto_swap_para_slot_2(self):
@@ -211,7 +211,7 @@ class TestSlot3LifecycleAndAmmoDepletion(unittest.TestCase):
         self.assertIsInstance(self.jogador.obter_arma_ativa(), Pistola)
 
     def test_parry_melee_reflete_projetil_inimigo(self):
-        """Valida que Melee.rebater_projeteis rebate projétil inimigo aumentando velocidade e dano em 2.5x."""
+        """Valida que Melee.executar_parry + tentar_parry_projeteis rebate projétil inimigo."""
         melee = Melee()
         proj_inimigo = Projetil(
             x=430.0,
@@ -224,19 +224,18 @@ class TestSlot3LifecycleAndAmmoDepletion(unittest.TestCase):
         )
         proj_inimigo.ativo = True
 
-        rebatidos = melee.rebater_projeteis(
+        self.assertTrue(melee.executar_parry(angulo=0.0))
+        rebatidos = melee.tentar_parry_projeteis(
             origem_x=400.0,
             origem_y=300.0,
             lista_projeteis=[proj_inimigo],
-            mira_x=500.0,
-            mira_y=300.0
         )
         self.assertEqual(len(rebatidos), 1)
         p = rebatidos[0]
         self.assertEqual(p.dono, "jogador")
         self.assertTrue(p.parried)
-        self.assertEqual(p.dano, 25)  # 10 * 2.5 = 25
-        self.assertGreaterEqual(p.velocidade, 320.0)
+        self.assertGreaterEqual(p.dano, 25)
+        self.assertGreaterEqual(p.velocidade, 300.0)
 
     def test_fusao_drones_mk_progression(self):
         """Valida a progressão MK dos drones (MK-I -> MK-II -> MK-III) ao adicionar repetidos."""

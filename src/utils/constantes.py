@@ -57,7 +57,9 @@ LARGURA_TELA = 1280
 ALTURA_TELA = 720
 LARGURA_ARENA = 2240
 ALTURA_ARENA = 1560
-TITULO_JOGO = "Protocolo: Batata"
+from src.utils.traducao import t
+
+TITULO_JOGO = t("ui_geral", "titulo_jogo")
 FPS_PADRAO = 0  # 0 = Ilimitado (sem cap de FPS)
 CAMERA_DAMPING_K = 0.115
 DT_CLAMP_MAX = 0.05
@@ -94,21 +96,30 @@ JOGADOR_VELOCIDADE_PADRAO = 260.0  # pixels por segundo (+30%)
 JOGADOR_LARGURA = 32
 JOGADOR_ALTURA = 32
 JOGADOR_COOLDOWN_DANO_FLASH = 0.15  # segundos de flash vermelho
-JOGADOR_INVULNERABILIDADE_TEMPO = 0.2  # segundos mínimos entre frames de dano
+JOGADOR_INVULNERABILIDADE_TEMPO = 0.07  # segundos mínimos entre frames de dano
 
 # Dash Direcional (Desbloqueável Permanente)
 DASH_DURACAO = 0.22
 DASH_MULT_VEL = 2.6
-DASH_IFRAMES_BASE = 0.35
+DASH_IFRAMES_BASE = 0.26
 DASH_COOLDOWN = 1.8
-DASH_PARRY_META = 50
+DASH_PARRY_META = 15
+
+# Física Suave (Dampened) de Horda & Minion Block
+SEPARACAO_INIMIGOS_FATOR_RAIO = 0.62
+SEPARACAO_INIMIGOS_RIGIDEZ = 220.0
+SEPARACAO_INIMIGOS_VEL_MAX = 125.0
+MINION_BLOCK_FATOR_RAIO = 0.78
+MINION_BLOCK_FORCA_JOGADOR = 340.0
+MINION_BLOCK_VEL_MAX = 380.0
+MINION_BLOCK_EMPURRAO_INIMIGO = 75.0
 
 # =============================================================================
 # 5. INIMIGOS — BASELINES
 # =============================================================================
 
-# Inimigo Padrão (Estagiário - 40 HP, 4 tiros de pistola ou 4 golpes melee)
-INIMIGO_PADRAO_HP = 40
+# Inimigo Padrão (Estagiário - 18 HP)
+INIMIGO_PADRAO_HP = 18
 INIMIGO_PADRAO_VELOCIDADE = 130.0
 INIMIGO_PADRAO_DANO = 10
 INIMIGO_PADRAO_COOLDOWN_ATAQUE = 0.4
@@ -121,8 +132,8 @@ INIMIGO_TANK_DANO = 20
 INIMIGO_TANK_COOLDOWN_ATAQUE = 0.7
 INIMIGO_TANK_XP = 25
 
-# Inimigo Rápido (Viciado em Cafeína - 20 HP, 2 tiros de pistola ou 2 golpes melee)
-INIMIGO_RAPIDO_HP = 20
+# Inimigo Rápido (Viciado em Cafeína - 10 HP)
+INIMIGO_RAPIDO_HP = 10
 INIMIGO_RAPIDO_VELOCIDADE = 234.0
 INIMIGO_RAPIDO_DANO = 8
 INIMIGO_RAPIDO_COOLDOWN_ATAQUE = 0.25
@@ -142,14 +153,20 @@ INIMIGO_BLINDADO_VELOCIDADE = 97.5
 INIMIGO_BLINDADO_DANO = 15
 INIMIGO_BLINDADO_COOLDOWN_ATAQUE = 0.5
 INIMIGO_BLINDADO_XP = 15
+INIMIGO_BLINDADO_VEL_GIRO = 1.2
+INIMIGO_BLINDADO_CARGAS = 2
+INIMIGO_BLINDADO_REGEN_MINIBOSS = 10.0
 
 # Inimigo Ranged (Atirador Blaster - 30 HP)
 INIMIGO_RANGED_HP = 30
 INIMIGO_RANGED_VELOCIDADE = 104.0
 INIMIGO_RANGED_DANO = 10
 INIMIGO_RANGED_COOLDOWN_ATAQUE = 1.2
+INIMIGO_RANGED_COOLDOWN_TIRO = 0.95
 INIMIGO_RANGED_XP = 15
-INIMIGO_RANGED_DISTANCIA_TIRO = 280.0
+INIMIGO_RANGED_DISTANCIA_STANDOFF = 300.0
+INIMIGO_RANGED_DISTANCIA_TIRO = 480.0
+INIMIGO_RANGED_CHANCE_DROP_ARMA = 0.30
 
 # Inimigo Impressora Térmica (Artilharia Pesada - 75 HP)
 INIMIGO_IMPRESSORA_HP = 75
@@ -173,30 +190,38 @@ INIMIGO_CUBO_CRIOGENICO_XP = 10
 
 # Mini-Boss e Chefe Final (Geladeira Tsunami)
 MINIBOSS_TEMPO_SOBREAQUECIMENTO = 60.0
+MINIBOSS_CICLOS_RUN = 2
+MINIBOSS_ESCALA_HP_CICLOS = (1.0, 1.35, 1.50)
 BOSS_GELADEIRA_LARGURA = 112
 BOSS_GELADEIRA_ALTURA = 156
-BOSS_GELADEIRA_HP_BASE = 50000
+BOSS_GELADEIRA_HP_BASE = 48000
 BOSS_GELADEIRA_DANO_CONTATO = 30
 BOSS_GELADEIRA_VELOCIDADE = 268.0
-BOSS_GELADEIRA_NOME = "GELADEIRA TSUNAMI"
-BOSS_GELADEIRA_FLAVOR = "The Perfect Sound™"
+BOSS_GELADEIRA_NOME = t("combate_entidades", "boss_nome")
+BOSS_GELADEIRA_FLAVOR = t("combate_entidades", "boss_flavor")
 
 GELADEIRA_TSUNAMI_LARGURA = 112
 GELADEIRA_TSUNAMI_ALTURA = 156
-GELADEIRA_TSUNAMI_HP = 50000
+GELADEIRA_TSUNAMI_HP = 48000
 GELADEIRA_TSUNAMI_DANO = 30
 GELADEIRA_TSUNAMI_VELOCIDADE = 268.0
-GELADEIRA_TSUNAMI_NOME = "GELADEIRA TSUNAMI"
-GELADEIRA_TSUNAMI_FLAVOR = "The Perfect Sound™"
+GELADEIRA_TSUNAMI_NOME = t("combate_entidades", "boss_nome")
+GELADEIRA_TSUNAMI_FLAVOR = t("combate_entidades", "boss_flavor")
 
 # =============================================================================
 # 6. SPAWN DE INIMIGOS — CONFIGURAÇÃO (+50% INTERVALO ENTRE WAVES)
 # =============================================================================
 
-SPAWN_INTERVALO_INICIAL = 2.50
+SPAWN_INTERVALO_INICIAL = 1.55
 SPAWN_INTERVALO_MINIMO = 0.65
 SPAWN_DISTANCIA_OFFSET = 80.0
-SPAWN_MAX_ATIVOS = 400
+SPAWN_MAX_ATIVOS = 95
+SPAWN_MAX_RANGED = 4
+SPAWN_MAX_IMPRESSORA = 2
+SPAWN_MAX_TANK = 3
+SPAWN_MULT_FASE_CALM = 0.60
+SPAWN_MULT_FASE_ASSAULT = 1.30
+SPAWN_TEMPO_RANGED_RAJADA = 75.0
 TEMPO_VITORIA = 600.0  # Constante legada mantida para compatibilidade de testes (vitória agora requer derrotar Geladeira Tsunami)
 
 
@@ -205,18 +230,40 @@ TEMPO_VITORIA = 600.0  # Constante legada mantida para compatibilidade de testes
 # =============================================================================
 
 # Slot 1: Melee (Chave de Manutenção)
-MELEE_DANO = 10
+MELEE_DANO = 20
 MELEE_COOLDOWN = 0.6
 MELEE_ALCANCE = 109.0  # +25px de alcance base
 MELEE_KNOCKBACK = 360.0
-MELEE_ALVOS_MAX = 2
-MELEE_ARCO_GRAUS = 90.0  # Abertura de cone exigindo precisão no parry (90º)
+MELEE_ALVOS_MAX = 6
+MELEE_ARCO_GRAUS = 120.0
 
-# Slot 2: Pistola (Padrão de Fábrica - 10 Dano)
-PISTOLA_DANO = 10
+# Onda de Choque Defensiva do Parry
+PARRY_ALCANCE_BASE = 64.0
+PARRY_ONDA_RAIO = 135.0
+PARRY_ONDA_DANO = 20
+PARRY_ONDA_KNOCKBACK = 380.0
+
+# Slot 1 Alternativo: Bastão de Choque
+BASTAO_CHOQUE_DANO = 18
+BASTAO_CHOQUE_COOLDOWN = 0.42
+BASTAO_CHOQUE_ARCO_GRAUS = 95.0
+
+# Slot 2: Pistola (Padrão de Fábrica - 12 Dano)
+PISTOLA_DANO = 12
 PISTOLA_COOLDOWN = 0.33
 PISTOLA_VELOCIDADE_PROJETIL = 420.0
 PISTOLA_ALCANCE_MAX = 800.0
+
+# Slot 2 Alternativo: SMG Compacta
+SMG_DANO = 9
+SMG_COOLDOWN = 0.11
+SMG_VELOCIDADE_PROJETIL = 520.0
+SMG_DESACELERACAO = 360.0
+SMG_CALOR_POR_TIRO = 2.0
+SMG_RESFRIAMENTO_POR_SEG = 50.0
+SMG_ZONA_IDEAL_MIN = 60.0
+SMG_ZONA_IDEAL_MAX = 92.0
+SMG_TRAVA_SUPERAQUECIMENTO = 1.0
 
 # Slot 3: Armas Especiais Temporárias (+50% de Munição)
 MINIGUN_DANO = 6
@@ -250,9 +297,21 @@ GRANADAS_MUNICIAO_MAX = 32
 
 RAILGUN_DANO = 165
 RAILGUN_COOLDOWN = 0.95
-RAILGUN_CHARGE_TIME = 0.0
 RAILGUN_VELOCIDADE_PROJETIL = 1400.0
 RAILGUN_MUNICIAO_MAX = 10
+
+RIFLE_ARCO_DANO_TICK = 14
+RIFLE_ARCO_INTERVALO_TICK = 0.10
+RIFLE_ARCO_ALCANCE = 380.0
+RIFLE_ARCO_MUNICIAO_MAX = 120
+RIFLE_ARCO_DRENO_POR_SEG = 12.0
+
+LANCA_CHAMAS_DANO_TICK = 10
+LANCA_CHAMAS_INTERVALO_TICK = 0.14
+LANCA_CHAMAS_ALCANCE = 195.0
+LANCA_CHAMAS_ARCO_GRAUS = 55.0
+LANCA_CHAMAS_MUNICIAO_MAX = 140
+LANCA_CHAMAS_DRENO_POR_SEG = 14.0
 
 # =============================================================================
 # 8. EQUIPAMENTOS (DRONES) — BASELINES
@@ -282,7 +341,10 @@ DROP_ALTURA = 42
 # 10. CATÁLOGO COMPLETO DE CONFIGURAÇÕES (SSOT: src.sistemas.config_dados)
 # =============================================================================
 
-TOTAL_CONFIGS_GAMEPLAY = 23
+TOTAL_CONFIGS_GAMEPLAY = 29
+LATENCIA_PING_ATRASO_SEGUNDOS = 0.080
+LATENCIA_PING_ATRASO_S = LATENCIA_PING_ATRASO_SEGUNDOS
+SAVE_SCHEMA_VERSION = 2
 
 # Re-export de CONFIGURACOES_GAMEPLAY, CONFIGURACOES_CATALOGO e CONFIGURACOES_SISTEMA
 # localizado ao final do módulo para evitar importação circular de pacotes.
@@ -303,6 +365,7 @@ ASSET_PATHS = {
     "inimigo_rapido": "sprites/inimigos/inimigo_rapido.png",
     "inimigo_phasing": "sprites/inimigos/inimigo_phasing.png",
     "inimigo_blindado": "sprites/inimigos/inimigo_blindado.png",
+    "inimigo_blindado_sem_escudo": "sprites/inimigos/inimigo_blindado_sem_escudo.png",
     "inimigo_ranged": "sprites/inimigos/inimigo_ranged.png",
     "inimigo_impressora": "sprites/inimigos/inimigo_impressora.png",
     "inimigo_ninja": "sprites/inimigos/inimigo_ninja.png",
@@ -318,6 +381,10 @@ ASSET_PATHS = {
     "arma_foguetes": "sprites/armas/arma_foguetes.png",
     "arma_granadas": "sprites/armas/arma_granadas.png",
     "arma_railgun": "sprites/armas/arma_railgun.png",
+    "arma_bastao_choque": "sprites/armas/arma_bastao_choque.png",
+    "arma_smg_compacta": "sprites/armas/arma_smg_compacta.png",
+    "arma_rifle_arco": "sprites/armas/arma_rifle_arco.png",
+    "arma_lanca_chamas": "sprites/armas/arma_lanca_chamas.png",
 
     # Projéteis
     "projetil_pistola": "sprites/projeteis/projetil_pistola.png",
@@ -361,14 +428,20 @@ ASSET_PATHS = {
     "icon_controles_tanque": "ui/icones_configs/icon_controles_tanque.png",
     "icon_cores_invertidas": "ui/icones_configs/icon_cores_invertidas.png",
     "icon_damage_numbers": "ui/icones_configs/icon_damage_numbers.png",
+    "icon_dash_protocolo": "ui/icones_configs/icon_dash_protocolo.png",
+    "icon_dash_rastro": "ui/icones_configs/icon_dash_rastro.png",
     "icon_efeito_parry": "ui/icones_configs/icon_efeito_parry.png",
     "icon_fogo_amigo": "ui/icones_configs/icon_fogo_amigo.png",
     "icon_fps_cap": "ui/icones_configs/icon_fps_cap.png",
+    "icon_garbage_collector": "ui/icones_configs/icon_garbage_collector.png",
     "icon_graficos_qualidade": "ui/icones_configs/icon_graficos_qualidade.png",
     "icon_hud": "ui/icones_configs/icon_hud.png",
     "icon_iluminacao": "ui/icones_configs/icon_iluminacao.png",
     "icon_inimigos_ranged": "ui/icones_configs/icon_inimigos_ranged.png",
     "icon_keybinds": "ui/icones_configs/icon_keybinds.png",
+    "icon_latencia_ping": "ui/icones_configs/icon_latencia_ping.png",
+    "icon_modo_wireframe": "ui/icones_configs/icon_modo_wireframe.png",
+    "icon_mira_oculta": "ui/icones_configs/icon_mira_oculta.png",
     "icon_motion_blur": "ui/icones_configs/icon_motion_blur.png",
     "icon_movimento_mouse": "ui/icones_configs/icon_movimento_mouse.png",
     "icon_precisao_parry": "ui/icones_configs/icon_precisao_parry.png",
@@ -423,7 +496,7 @@ ASSET_PATHS = {
 # =============================================================================
 MUSICA_VOLUME_BASE = 0.4
 MUSICA_TEMPO_ASSAULT = 50.0
-MUSICA_LOOKAHEAD_SEGUNDOS = 0.35
+MUSICA_LOOKAHEAD_SEGUNDOS = 0.50
 MUSICA_TRANSICAO_ABAFADO_SEGUNDOS = 0.06
 
 

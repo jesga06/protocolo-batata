@@ -9,13 +9,14 @@ from src.utils.constantes import (
     INIMIGO_TANK_DANO, INIMIGO_TANK_COOLDOWN_ATAQUE,
     INIMIGO_TANK_XP
 )
+from src.utils.traducao import t
 
 
 class InimigoTank(InimigoBase):
     """
     Inimigo tanque (Copiadora Xerox) com carcaça de 62x62px e alta barra de vida.
     """
-    nome_exibicao = "Copiadora Xerox"
+    nome_exibicao = t("combate_entidades", "inim_tank")
 
     def __init__(
         self,

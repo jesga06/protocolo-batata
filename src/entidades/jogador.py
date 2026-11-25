@@ -15,6 +15,7 @@ from src.utils.constantes import (
     obter_caminho_asset, VERDE_CURA, VERMELHO_HP
 )
 from src.utils.math_utils import normalizar_vetor, clamp
+from src.utils.traducao import t
 
 
 class Jogador:
@@ -90,7 +91,7 @@ class Jogador:
         self.slot_ativo = 2  # Padrão: Slot 2 (Pistola)
         self.sistema_xp = SistemaXP()
 
-        # Módulos de Overclock BIOS
+        # Módulos de Upgrade de BIOS
         self.overclocks_adquiridos = set()
         self.multithreading = False
         self.coprocessadores_angulos = [0.0, 3.14159]
@@ -129,6 +130,18 @@ class Jogador:
         self.dash_cooldown_restante: float = 0.0
         self.dash_dir: tuple[float, float] = (1.0, 0.0)
         self.dash_stutter_trigger: bool = False
+        self.dash_iframes_timer: float = 0.0
+        self.dash_evasao_disponivel: bool = False
+        self.dash_id_atual: int = 0
+        self.dash_cargas_max: int = 1
+        self.dash_cargas_atuais: int = 1
+        self.dash_recarga_mult: float = 1.0
+        self.dash_sem_iframes: bool = False
+        self.dash_alcance_mult: float = 1.0
+        self.enraizado_timer: float = 0.0
+        self.riposte_invuln_timer: float = 0.0
+        self.slot1_id: str = "chave_manutencao"
+        self.slot2_id: str = "pistola"
 
         # Estado Exposto (punição de whiff no parry / duelo) e Controles de Tanque
         self.exposed_timer: float = 0.0
@@ -154,6 +167,16 @@ class Jogador:
             self.hp = max(1, min(new_max, int(round(self.hp * (new_max / float(old_max))))))
         self._tanque_ativo_anterior = ativo_bool
 
+    @property
+    def em_dash_iframes(self) -> bool:
+        return self.dash_iframes_timer > 0.0
+
+    def consumir_just_dodge(self) -> bool:
+        if self.em_dash_iframes and self.dash_evasao_disponivel:
+            self.dash_evasao_disponivel = False
+            return True
+        return False
+
     def iniciar_dash(self, dx: float, dy: float, mods=None) -> bool:
         """
         Aciona o Dash direcional permanente se desbloqueado e fora de cooldown.
@@ -162,8 +185,19 @@ class Jogador:
         """
         if not self.vivo or not self.dash_desbloqueado:
             return False
-        if self.dash_cooldown_restante > 0.0 or self.dash_ativo_timer > 0.0:
+        if self.dash_ativo_timer > 0.0:
             return False
+        if self.dash_cargas_max > 1:
+            if self.dash_cargas_atuais <= 0:
+                return False
+            self.dash_cargas_atuais -= 1
+            if self.dash_cooldown_restante <= 0.0:
+                self.dash_cooldown_restante = float(DASH_COOLDOWN) / max(0.1, float(getattr(self, "dash_recarga_mult", 1.0)))
+        else:
+            if self.dash_cooldown_restante > 0.0:
+                return False
+            self.dash_cargas_atuais = 0
+            self.dash_cooldown_restante = float(DASH_COOLDOWN) / max(0.1, float(getattr(self, "dash_recarga_mult", 1.0)))
 
         ndx, ndy = normalizar_vetor(float(dx), float(dy))
         if ndx == 0.0 and ndy == 0.0:
@@ -175,7 +209,7 @@ class Jogador:
 
         self.dash_dir = (ndx, ndy)
         self.dash_ativo_timer = float(DASH_DURACAO)
-        self.dash_cooldown_restante = float(DASH_COOLDOWN)
+        self.dash_id_atual += 1
 
         iframes = float(DASH_IFRAMES_BASE)
 
@@ -190,12 +224,18 @@ class Jogador:
                 tem_fps_stutter = tem_fps_stutter or bool(getattr(mods, "fps_stutter_dodge", False))
 
         if tem_motion_blur:
-            iframes += 0.20
+            iframes += 0.08
         if tem_fps_stutter:
-            iframes += 0.15
+            iframes += 0.06
             self.dash_stutter_trigger = True
 
-        self.invulnerabilidade_timer = max(self.invulnerabilidade_timer, iframes)
+        if getattr(self, "dash_sem_iframes", False):
+            self.dash_iframes_timer = 0.0
+            self.dash_evasao_disponivel = False
+        else:
+            self.dash_iframes_timer = max(self.dash_iframes_timer, iframes)
+            self.dash_evasao_disponivel = True
+            self.invulnerabilidade_timer = max(self.invulnerabilidade_timer, iframes)
         return True
 
     def aplicar_knockback(self, dir_x: float, dir_y: float, forca: float):
@@ -333,15 +373,41 @@ class Jogador:
             self.slot_ativo = 2
             self.slot_especial_secundario_ativo = False
 
+    def _criar_arma_slot2(self):
+        """Instancia a arma configurada para o Slot 2 (Pistola ou SMGCompacta)."""
+        if getattr(self, "slot2_id", "pistola") == "smg_compacta":
+            from src.armas.smg_compacta import SMGCompacta
+            arma = SMGCompacta()
+        else:
+            from src.armas.pistola import Pistola
+            arma = Pistola()
+        arma._dano_original = arma.dano
+        arma.dano = int(round(arma._dano_original * getattr(self, "mult_dano_config", 1.0)))
+        return arma
+
+    def aplicar_loadout(self, slot1_id: str = "chave_manutencao", slot2_id: str = "pistola") -> None:
+        """Aplica o loadout inicial nos Slots 1 e 2 preservando multiplicadores."""
+        self.slot1_id = str(slot1_id or "chave_manutencao")
+        self.slot2_id = str(slot2_id or "pistola")
+        if self.slot1_id == "bastao_choque":
+            from src.armas.bastao_choque import BastaoChoque
+            arma1 = BastaoChoque()
+        else:
+            from src.armas.melee import Melee
+            arma1 = Melee()
+        arma1._dano_original = arma1.dano
+        arma1.dano = int(round(arma1._dano_original * getattr(self, "mult_dano_config", 1.0)))
+        arma2 = self._criar_arma_slot2()
+        self.armas = [arma1, arma2]
+
     def selecionar_slot(self, slot: int):
         """Alterna a arma ativa para o slot 1, 2 ou 3. Se BIOS Modding ativo e já no Slot 3, alterna entre 3A e 3B."""
         if slot == 3:
-            from src.armas.pistola import Pistola
             if (
                 getattr(self, "bios_modding", False)
                 and self.arma_especial_secundaria is not None
                 and len(self.armas) > 1
-                and not isinstance(self.armas[1], Pistola)
+                and not getattr(self.armas[1], "municao_infinita", False)
                 and self.arma_especial is not None
             ):
                 self.arma_especial, self.armas[1] = self.armas[1], self.arma_especial
@@ -539,7 +605,7 @@ class Jogador:
                     self.overdrive_dash_cooldown = 2.5
                     self.overdrive_pulse_trigger = True
                     if getattr(self, "motion_blur_ghosting", False):
-                        self.invulnerabilidade_timer = max(self.invulnerabilidade_timer, 0.40)
+                        self.invulnerabilidade_timer = max(self.invulnerabilidade_timer, 0.15)
             self._ult_dir_x, self._ult_dir_y = dx, dy
         else:
             # No modo uma_mao (100% teclado), dispara para cima (0.0, -1.0) quando parado
@@ -547,12 +613,18 @@ class Jogador:
 
         # Atualiza posição com velocidade por segundo (ou impulso de Dash direcional ativo)
         dt_pos = max(0.0, float(dt))
-        if self.dash_ativo_timer > 0.0:
+        if getattr(self, "enraizado_timer", 0.0) > 0.0:
+            dx = 0.0
+            dy = 0.0
+            move_x, move_y = 0.0, 0.0
+            self.andando_frame = False
+        elif self.dash_ativo_timer > 0.0:
             move_x, move_y = self.dash_dir
             self.andando_frame = True
             self.anim_timer += dt_pos
-            self.x += move_x * self.velocidade_atual * float(DASH_MULT_VEL) * dt_pos
-            self.y += move_y * self.velocidade_atual * float(DASH_MULT_VEL) * dt_pos
+            alcance_mult = float(getattr(self, "dash_alcance_mult", 1.0))
+            self.x += move_x * self.velocidade_atual * float(DASH_MULT_VEL) * alcance_mult * dt_pos
+            self.y += move_y * self.velocidade_atual * float(DASH_MULT_VEL) * alcance_mult * dt_pos
         else:
             move_x, move_y = dx, dy
             self.andando_frame = (dx != 0.0 or dy != 0.0)
@@ -619,9 +691,12 @@ class Jogador:
             if move_x != 0.0 or move_y != 0.0:
                 self.aim_angle_alvo = math.atan2(move_y, move_x)
 
-        diff_ang = (self.aim_angle_alvo - self.aim_angle + math.pi) % (2.0 * math.pi) - math.pi
-        fator_aim = 1.0 - math.exp(-22.0 * dt_pos)
-        self.aim_angle += diff_ang * fator_aim
+        if preset_teclas != "uma_mao" and mouse is not None:
+            self.aim_angle = self.aim_angle_alvo
+        else:
+            diff_ang = (self.aim_angle_alvo - self.aim_angle + math.pi) % (2.0 * math.pi) - math.pi
+            fator_aim = 1.0 - math.exp(-22.0 * dt_pos)
+            self.aim_angle += diff_ang * fator_aim
 
     def receber_dano(self, quantidade: int, causa_morte: str = ""):
         """Aplica dano ao jogador, aciona flash visual, registra causa da morte e testa condição de morte."""
@@ -631,7 +706,7 @@ class Jogador:
         if int(quantidade) <= 0:
             return
 
-        if self.invulnerabilidade_timer > 0.0:
+        if self.invulnerabilidade_timer > 0.0 or getattr(self, "riposte_invuln_timer", 0.0) > 0.0:
             return
 
         if self.escudo_ativo:
@@ -653,6 +728,9 @@ class Jogador:
             dano_a_aplicar = max(1, int(round(dano_a_aplicar * float(getattr(self, "exposed_mult", 1.25)))))
         if self.buff_resistencia_timer > 0.0:
             dano_a_aplicar = max(1, int(round(dano_a_aplicar * 0.92)))
+        mult_def_ef = float(getattr(self, "mult_dano_recebido_efeitos", 1.0))
+        if mult_def_ef != 1.0:
+            dano_a_aplicar = max(1, int(round(dano_a_aplicar * mult_def_ef)))
 
         # Barreira de Sobrevida (Drone de Cura quando vida cheia)
         if getattr(self, "escudo_sobrevida", 0) > 0:
@@ -685,7 +763,7 @@ class Jogador:
 
         if self.hp <= 0:
             self.vivo = False
-            self.ultima_causa_morte = causa_morte or "Dano fatal no escritório"
+            self.ultima_causa_morte = causa_morte or t("ui_geral", "causa_padrao")
             try:
                 from PPlay.sound import Sound
                 sfx = Sound(obter_caminho_asset("sfx_morte_jogador"))
@@ -695,10 +773,10 @@ class Jogador:
         else:
             invuln_base = float(JOGADOR_INVULNERABILIDADE_TEMPO)
             if getattr(self, "fps_stutter_dodge", False):
-                self.stutter_freeze_timer = 0.12
-                invuln_base += 0.35
+                self.stutter_freeze_timer = 0.15
+                invuln_base += 0.08
             if getattr(self, "motion_blur_ghosting", False):
-                invuln_base += 0.40
+                invuln_base += 0.10
             self.invulnerabilidade_timer = max(self.invulnerabilidade_timer, invuln_base)
             try:
                 from PPlay.sound import Sound
@@ -719,7 +797,7 @@ class Jogador:
         if self.buff_dano_timer > 0.0:
             ativos.append({
                 "id": "dano",
-                "nome": "DANO +5%",
+                "nome": t("combate_entidades", "buff_dano"),
                 "timer": self.buff_dano_timer,
                 "duracao": 15.0,
                 "cor": (255, 90, 90),
@@ -728,7 +806,7 @@ class Jogador:
         if self.buff_cadencia_timer > 0.0:
             ativos.append({
                 "id": "cadencia",
-                "nome": "CADÊNCIA +8%",
+                "nome": t("combate_entidades", "buff_cadencia"),
                 "timer": self.buff_cadencia_timer,
                 "duracao": 15.0,
                 "cor": (220, 110, 255),
@@ -737,7 +815,7 @@ class Jogador:
         if self.buff_vel_timer > 0.0:
             ativos.append({
                 "id": "velocidade",
-                "nome": "VEL +8%",
+                "nome": t("combate_entidades", "buff_vel"),
                 "timer": self.buff_vel_timer,
                 "duracao": 15.0,
                 "cor": (255, 220, 70),
@@ -746,7 +824,7 @@ class Jogador:
         if self.buff_resistencia_timer > 0.0:
             ativos.append({
                 "id": "resistencia",
-                "nome": "DEFESA -8%",
+                "nome": t("combate_entidades", "buff_defesa"),
                 "timer": self.buff_resistencia_timer,
                 "duracao": 15.0,
                 "cor": (80, 220, 120),
@@ -755,7 +833,7 @@ class Jogador:
         if getattr(self, "escudo_ativo", False):
             ativos.append({
                 "id": "escudo",
-                "nome": "ESCUDO ATIVO",
+                "nome": t("combate_entidades", "buff_escudo_ativo"),
                 "timer": 999.0,
                 "duracao": 999.0,
                 "cor": (100, 220, 255),
@@ -764,7 +842,7 @@ class Jogador:
         if self.invulnerabilidade_timer > 0.0:
             ativos.append({
                 "id": "invulnerabilidade",
-                "nome": f"INVULN {self.invulnerabilidade_timer:.1f}s",
+                "nome": t("combate_entidades", "buff_invuln", segundos=self.invulnerabilidade_timer),
                 "timer": self.invulnerabilidade_timer,
                 "duracao": 4.0,
                 "cor": (100, 220, 255),
@@ -774,7 +852,7 @@ class Jogador:
             if getattr(self, "escudo_fatal_pronto", False):
                 ativos.append({
                     "id": "surto",
-                    "nome": "DISJUNTOR PRONTO",
+                    "nome": t("combate_entidades", "buff_disjuntor_pronto"),
                     "timer": 999.0,
                     "duracao": 999.0,
                     "cor": (140, 255, 160),
@@ -783,7 +861,7 @@ class Jogador:
             elif getattr(self, "escudo_fatal_invuln_timer", 0.0) > 0.0:
                 ativos.append({
                     "id": "surto",
-                    "nome": f"SURTO INVULN {self.escudo_fatal_invuln_timer:.1f}s",
+                    "nome": t("combate_entidades", "buff_surto_invuln", segundos=self.escudo_fatal_invuln_timer),
                     "timer": self.escudo_fatal_invuln_timer,
                     "duracao": 4.0,
                     "cor": (255, 215, 0),
@@ -792,7 +870,7 @@ class Jogador:
             else:
                 ativos.append({
                     "id": "surto",
-                    "nome": f"SURTO {self.escudo_fatal_cooldown:.0f}s",
+                    "nome": t("combate_entidades", "buff_surto_cd", segundos=int(round(self.escudo_fatal_cooldown))),
                     "timer": self.escudo_fatal_cooldown,
                     "duracao": 60.0,
                     "cor": (180, 180, 200),
@@ -803,7 +881,7 @@ class Jogador:
             carga_pct = min(100, int(round((timer_frio / 1.5) * 100)))
             ativos.append({
                 "id": "refrigeracao",
-                "nome": f"ONDA FRIA {carga_pct}%",
+                "nome": t("combate_entidades", "buff_onda_fria", pct=carga_pct),
                 "timer": timer_frio,
                 "duracao": 1.5,
                 "cor": (140, 220, 255),
@@ -841,8 +919,29 @@ class Jogador:
         if getattr(self, "dash_ativo_timer", 0.0) > 0.0:
             self.dash_ativo_timer = max(0.0, self.dash_ativo_timer - dt)
 
+        if getattr(self, "dash_iframes_timer", 0.0) > 0.0:
+            self.dash_iframes_timer = max(0.0, self.dash_iframes_timer - dt)
+            if self.dash_iframes_timer <= 0.0:
+                self.dash_evasao_disponivel = False
+        else:
+            self.dash_evasao_disponivel = False
+
+        if getattr(self, "enraizado_timer", 0.0) > 0.0:
+            self.enraizado_timer = max(0.0, self.enraizado_timer - dt)
+
+        if getattr(self, "riposte_invuln_timer", 0.0) > 0.0:
+            self.riposte_invuln_timer = max(0.0, self.riposte_invuln_timer - dt)
+
         if getattr(self, "dash_cooldown_restante", 0.0) > 0.0:
             self.dash_cooldown_restante = max(0.0, self.dash_cooldown_restante - dt)
+            if self.dash_cooldown_restante <= 0.0 and self.dash_cargas_atuais < self.dash_cargas_max:
+                self.dash_cargas_atuais += 1
+                if self.dash_cargas_atuais < self.dash_cargas_max:
+                    self.dash_cooldown_restante = float(DASH_COOLDOWN) / max(0.1, float(getattr(self, "dash_recarga_mult", 1.0)))
+        elif getattr(self, "dash_cargas_atuais", 1) < getattr(self, "dash_cargas_max", 1):
+            self.dash_cargas_atuais += 1
+            if self.dash_cargas_atuais < self.dash_cargas_max:
+                self.dash_cooldown_restante = float(DASH_COOLDOWN) / max(0.1, float(getattr(self, "dash_recarga_mult", 1.0)))
 
         if getattr(self, "motion_blur_ghosting", False):
             self._rastro_timer = getattr(self, "_rastro_timer", 0.0) + dt
@@ -898,21 +997,22 @@ class Jogador:
                 self.timer_sem_atirar_refrig = 0.0
                 self.pulso_frio_pronto = True
 
-        mult_cadencia = mult_refrigeracao * (1.08 if self.buff_cadencia_timer > 0.0 else 1.0)
+        mult_cadencia = (
+            mult_refrigeracao
+            * (1.08 if self.buff_cadencia_timer > 0.0 else 1.0)
+            * float(getattr(self, "mult_cadencia_efeitos", 1.0))
+            * float(getattr(self, "mult_cadencia_vsync", 1.0))
+        )
         dt_armas = dt * mult_cadencia
 
         for arma in self.armas:
             arma.update(dt_armas)
 
-        # Fallback de Munição no Slot 2 para Pistola padrão
+        # Fallback de Munição no Slot 2 para arma configurada no Slot 2
         if len(self.armas) > 1:
             arma_slot_2 = self.armas[1]
-            from src.armas.pistola import Pistola
-            if not isinstance(arma_slot_2, Pistola) and getattr(arma_slot_2, "municao_atual", 1) <= 0:
-                p = Pistola()
-                p._dano_original = p.dano
-                p.dano = int(round(p._dano_original * getattr(self, "mult_dano_config", 1.0)))
-                self.armas[1] = p
+            if not getattr(arma_slot_2, "municao_infinita", False) and getattr(arma_slot_2, "municao_atual", 1) <= 0:
+                self.armas[1] = self._criar_arma_slot2()
                 self.arma_especial_secundaria = None
 
         if self.arma_especial is not None:
@@ -926,12 +1026,8 @@ class Jogador:
                 ):
                     self.arma_especial = self.arma_especial_secundaria
                     self.arma_especial.slot = 3
-                    from src.armas.pistola import Pistola
-                    if len(self.armas) > 1 and not isinstance(self.armas[1], Pistola):
-                        p = Pistola()
-                        p._dano_original = p.dano
-                        p.dano = int(round(p._dano_original * getattr(self, "mult_dano_config", 1.0)))
-                        self.armas[1] = p
+                    if len(self.armas) > 1 and not getattr(self.armas[1], "municao_infinita", False):
+                        self.armas[1] = self._criar_arma_slot2()
                     self.arma_especial_secundaria = None
                     self.slot_especial_secundario_ativo = False
                 else:
@@ -991,8 +1087,9 @@ class Jogador:
         mult_buff_vel = 1.08 if getattr(self, "buff_vel_timer", 0.0) > 0.0 else 1.0
         mult_barramento = 1.15 if getattr(self, "upgrade_barramento", False) else 1.0
         mult_config = getattr(self, "mult_vel_config", 1.0)
+        mult_efeitos = float(getattr(self, "mult_vel_efeitos", 1.0))
 
-        self.velocidade_atual = self.velocidade_base * mult_vel_suporte * mult_config * mult_buff_vel * mult_barramento
+        self.velocidade_atual = self.velocidade_base * mult_vel_suporte * mult_config * mult_buff_vel * mult_barramento * mult_efeitos
 
     def get_rect(self) -> tuple[float, float, int, int]:
         """Retorna caixa delimitadora (x, y, w, h)."""
@@ -1007,27 +1104,68 @@ class Jogador:
             nome_cls = type(arma).__name__.lower()
             mapa_cls = {
                 "melee": "arma_melee",
+                "bastaochoque": "arma_bastao_choque",
                 "pistola": "arma_pistola",
+                "smgcompacta": "arma_smg_compacta",
                 "minigun": "arma_minigun",
                 "shotgun": "arma_shotgun",
                 "rifleassalto": "arma_rifle",
                 "lancafoguetes": "arma_foguetes",
                 "lancagranadas": "arma_granadas",
                 "railgun": "arma_railgun",
+                "riflearco": "arma_rifle_arco",
+                "lancachamas": "arma_lanca_chamas",
             }
             chave = mapa_cls.get(nome_cls)
         if not chave:
             return None
         if chave not in cls._arma_sprite_cache:
+            surf = None
             try:
                 caminho = obter_caminho_asset(chave)
                 if os.path.isfile(caminho):
-                    cls._arma_sprite_cache[chave] = pygame.image.load(caminho).convert_alpha()
-                else:
-                    cls._arma_sprite_cache[chave] = None
+                    surf = pygame.image.load(caminho).convert_alpha()
             except Exception:
-                cls._arma_sprite_cache[chave] = None
+                surf = None
+            if surf is None:
+                try:
+                    from src.utils import pixel_art_sprites
+                    fn = getattr(pixel_art_sprites, "obter_sprite_arma", None)
+                    if callable(fn):
+                        surf = fn(chave)
+                except Exception:
+                    surf = None
+            if surf is not None:
+                cls._arma_sprite_cache[chave] = surf
+            return surf
         return cls._arma_sprite_cache[chave]
+
+    _rot_sprite_cache: dict = {}
+
+    @classmethod
+    def _obter_sprite_transformado(
+        cls,
+        surf: pygame.Surface,
+        flip_x: bool = False,
+        flip_y: bool = False,
+        ang_graus: float = 0.0,
+        flash_dano: bool = False,
+    ) -> pygame.Surface:
+        ang_q = round(float(ang_graus) * 2.0) / 2.0
+        chave = (id(surf), bool(flip_x), bool(flip_y), ang_q, bool(flash_dano))
+        cached = cls._rot_sprite_cache.get(chave)
+        if cached is not None:
+            return cached
+        if len(cls._rot_sprite_cache) >= 360:
+            cls._rot_sprite_cache.clear()
+        s_out = pygame.transform.flip(surf, flip_x, flip_y) if (flip_x or flip_y) else surf
+        if flash_dano:
+            s_out = s_out.copy()
+            s_out.fill((255, 90, 90, 0), special_flags=pygame.BLEND_RGBA_ADD)
+        if abs(ang_q) > 0.15:
+            s_out = pygame.transform.rotate(s_out, ang_q)
+        cls._rot_sprite_cache[chave] = s_out
+        return s_out
 
     def desenhar(self, janela, camera=None):
         """Renderiza o avatar da batata e seus drones ativos com suporte a câmera, efeito de dano e modo low_graphics."""
@@ -1106,19 +1244,19 @@ class Jogador:
             blit_x = int(draw_x + (self.largura - sw) // 2)
             blit_y = int(draw_y_bob + (self.altura - sh) // 2)
 
-            surface_to_draw = sprite_base if self.facing_right else pygame.transform.flip(sprite_base, True, False)
-            if self.flash_dano_timer > 0.0:
-                flash_s = surface_to_draw.copy()
-                flash_s.fill((255, 90, 90, 0), special_flags=pygame.BLEND_RGBA_ADD)
-                surface_to_draw = flash_s
-
             tilt = float(getattr(self, "tilt_graus", 0.0))
+            flash_ativo = self.flash_dano_timer > 0.0
+            surface_to_draw = self._obter_sprite_transformado(
+                sprite_base,
+                flip_x=(not self.facing_right),
+                ang_graus=(tilt if abs(tilt) > 0.15 else 0.0),
+                flash_dano=flash_ativo,
+            )
             if abs(tilt) > 0.15:
-                rot_surf = pygame.transform.rotate(surface_to_draw, tilt)
-                rot_rect = rot_surf.get_rect(
+                rot_rect = surface_to_draw.get_rect(
                     center=(int(round(draw_x + self.largura / 2.0)), int(round(draw_y_bob + self.altura / 2.0)))
                 )
-                screen.blit(rot_surf, rot_rect.topleft)
+                screen.blit(surface_to_draw, rot_rect.topleft)
             else:
                 screen.blit(surface_to_draw, (blit_x, blit_y))
 
@@ -1129,8 +1267,11 @@ class Jogador:
                 ang = float(getattr(self, "aim_angle", 0.0))
                 cos_a = math.cos(ang)
                 sin_a = math.sin(ang)
-                arma_img = pygame.transform.flip(arma_surf, False, True) if cos_a < 0.0 else arma_surf
-                arma_rot = pygame.transform.rotate(arma_img, -math.degrees(ang))
+                arma_rot = self._obter_sprite_transformado(
+                    arma_surf,
+                    flip_y=(cos_a < 0.0),
+                    ang_graus=-math.degrees(ang),
+                )
                 ancora_x = draw_x + self.largura / 2.0 + cos_a * 14.0
                 ancora_y = draw_y_bob + self.altura / 2.0 + sin_a * 14.0
                 arma_rect = arma_rot.get_rect(center=(int(round(ancora_x)), int(round(ancora_y))))

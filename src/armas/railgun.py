@@ -5,13 +5,12 @@ Arma especial de Slot 3 (port 1:1 da v2): disparo instantâneo em feixe hitscan 
 """
 
 from src.armas.arma_base import ArmaBase
-from src.entidades.projetil import Projetil
 from src.utils.math_utils import vetor_direcao
 from src.utils.constantes import (
-    RAILGUN_DANO, RAILGUN_COOLDOWN, RAILGUN_CHARGE_TIME,
+    RAILGUN_DANO, RAILGUN_COOLDOWN,
     RAILGUN_VELOCIDADE_PROJETIL, RAILGUN_MUNICIAO_MAX,
-    obter_caminho_asset
 )
+from src.utils.traducao import t
 
 
 class Railgun(ArmaBase):
@@ -23,12 +22,11 @@ class Railgun(ArmaBase):
         self,
         dano: int = RAILGUN_DANO,
         cooldown: float = RAILGUN_COOLDOWN,
-        tempo_carga: float = RAILGUN_CHARGE_TIME,
         velocidade_projetil: float = RAILGUN_VELOCIDADE_PROJETIL,
         municao_max: int = RAILGUN_MUNICIAO_MAX
     ):
         super().__init__(
-            nome="Railgun",
+            nome=t("combate_entidades", "arma_railgun"),
             dano=dano,
             cooldown=cooldown,
             municao_infinita=False,
@@ -36,33 +34,7 @@ class Railgun(ArmaBase):
             slot=3,
             icone_asset="arma_railgun"
         )
-        self.tempo_carga = float(tempo_carga)
-        self.carga_acumulada = 0.0
-        self.carregando = False
         self.velocidade_projetil = float(velocidade_projetil)
-
-    @property
-    def progresso_carga(self) -> float:
-        return 1.0 if self.tempo_carga <= 0.0 else 0.0
-
-    def iniciar_carga(self):
-        self.carregando = False
-        self.carga_acumulada = 0.0
-
-    def update_carga(self, dt: float) -> bool:
-        return True
-
-    def cancelar_carga(self):
-        self.carregando = False
-        self.carga_acumulada = 0.0
-
-    def _tocar_sfx_disparo(self):
-        try:
-            from PPlay.sound import Sound
-            sfx = Sound(obter_caminho_asset("sfx_tiro_railgun"))
-            sfx.play()
-        except Exception:
-            pass
 
     def disparar_feixe(
         self,
@@ -78,9 +50,6 @@ class Railgun(ArmaBase):
 
         self.tempo_recarga_restante = self.cooldown
         self.municao_atual -= 1
-        self.carregando = False
-        self.carga_acumulada = 0.0
-        self._tocar_sfx_disparo()
 
         dir_x, dir_y = vetor_direcao(origem_x, origem_y, destino_x, destino_y)
         if dir_x == 0.0 and dir_y == 0.0:
@@ -97,26 +66,6 @@ class Railgun(ArmaBase):
             "raio": 14.0,
         }
 
-    def disparar(self, origem_x: float, origem_y: float, destino_x: float, destino_y: float) -> list[Projetil]:
-        """Fallback de compatibilidade para retornos baseados em Projetil."""
-        feixe = self.disparar_feixe(origem_x, origem_y, destino_x, destino_y)
-        if not feixe:
-            return []
-
-        return [Projetil(
-            x=origem_x - 6,
-            y=origem_y - 6,
-            dir_x=feixe["dir_x"],
-            dir_y=feixe["dir_y"],
-            velocidade=self.velocidade_projetil,
-            dano=self.dano,
-            tempo_vida=2.0,
-            dono="jogador",
-            largura=12,
-            altura=12,
-            sprite_key="projetil_pistola",
-            explosivo=False,
-            perfurante=True,
-            trilha_plasma=True,
-            origem_trilha=(origem_x, origem_y)
-        )]
+    def disparar(self, origem_x: float, origem_y: float, destino_x: float, destino_y: float) -> list:
+        """Railgun usa exclusivamente disparar_feixe() no pipeline hitscan."""
+        return []

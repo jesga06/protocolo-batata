@@ -5,6 +5,7 @@ Equipamento de Slot 4: concede +15% de velocidade de movimento ao jogador e atra
 
 from src.equipamentos.drone_base import DroneBase
 from src.utils.math_utils import distancia
+from src.utils.traducao import t
 
 
 class DroneSuporte(DroneBase):
@@ -22,7 +23,7 @@ class DroneSuporte(DroneBase):
         velocidade_angular: float = 2.5
     ):
         super().__init__(
-            nome="Drone de Suporte",
+            nome=t("combate_entidades", "drone_suporte"),
             icone_asset="drone_suporte",
             sprite_key="drone_suporte",
             tempo_vida=tempo_vida,

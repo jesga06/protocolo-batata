@@ -50,6 +50,26 @@ class ModificadoresGameplay:
     controles_tanque: bool = False
     dano_recebido_mult: float = 1.0
 
+    # Novos modificadores v2.0 (8 reworks + 5 novas configs)
+    vsync_cadencia_contra_varredura: float = 1.0
+    zoom_balistica_longa: bool = False
+    zoom_queima_roupa_mult: float = 1.0
+    zoom_execucao_cd_red: float = 0.0
+    zoom_execucao_limiar_hp: float = 0.0
+    camera_hard_kick: bool = False
+    flick_shot_ativo: bool = False
+    inimigos_ranged_bullet_hell: bool = False
+    inercia_cinetica_nivel: int = 0
+    pinhata_hardware_nivel: int = 0
+    clarao_fotossensivel: bool = False
+    polaridade_invertida: bool = False
+    dash_protocolo: str = "padrao"
+    dash_rastro: str = "padrao"
+    garbage_collector: bool = False
+    latencia_ping: bool = False
+    modo_wireframe: bool = False
+    mira_oculta_homing: bool = False
+
 
 def calcular_modificadores(
     configs_desbloqueadas: Union[set, list, tuple],
@@ -162,5 +182,43 @@ def calcular_modificadores(
             mods.controles_tanque = mods.controles_tanque or bool(mod_dict["controles_tanque"])
         if "dano_recebido_mult" in mod_dict:
             mods.dano_recebido_mult *= float(mod_dict["dano_recebido_mult"])
+
+        # 8. Novos modificadores v2.0
+        if "vsync_cadencia_contra_varredura" in mod_dict:
+            mods.vsync_cadencia_contra_varredura *= float(mod_dict["vsync_cadencia_contra_varredura"])
+        if "zoom_balistica_longa" in mod_dict:
+            mods.zoom_balistica_longa = mods.zoom_balistica_longa or bool(mod_dict["zoom_balistica_longa"])
+        if "zoom_queima_roupa_mult" in mod_dict:
+            mods.zoom_queima_roupa_mult *= float(mod_dict["zoom_queima_roupa_mult"])
+        if "zoom_execucao_cd_red" in mod_dict:
+            mods.zoom_execucao_cd_red = max(mods.zoom_execucao_cd_red, float(mod_dict["zoom_execucao_cd_red"]))
+        if "zoom_execucao_limiar_hp" in mod_dict:
+            mods.zoom_execucao_limiar_hp = max(mods.zoom_execucao_limiar_hp, float(mod_dict["zoom_execucao_limiar_hp"]))
+        if "camera_hard_kick" in mod_dict:
+            mods.camera_hard_kick = mods.camera_hard_kick or bool(mod_dict["camera_hard_kick"])
+        if "flick_shot_ativo" in mod_dict:
+            mods.flick_shot_ativo = mods.flick_shot_ativo or bool(mod_dict["flick_shot_ativo"])
+        if "inimigos_ranged_bullet_hell" in mod_dict:
+            mods.inimigos_ranged_bullet_hell = mods.inimigos_ranged_bullet_hell or bool(mod_dict["inimigos_ranged_bullet_hell"])
+        if "inercia_cinetica_nivel" in mod_dict:
+            mods.inercia_cinetica_nivel = max(mods.inercia_cinetica_nivel, int(mod_dict["inercia_cinetica_nivel"]))
+        if "pinhata_hardware_nivel" in mod_dict:
+            mods.pinhata_hardware_nivel = max(mods.pinhata_hardware_nivel, int(mod_dict["pinhata_hardware_nivel"]))
+        if "clarao_fotossensivel" in mod_dict:
+            mods.clarao_fotossensivel = mods.clarao_fotossensivel or bool(mod_dict["clarao_fotossensivel"])
+        if "polaridade_invertida" in mod_dict:
+            mods.polaridade_invertida = mods.polaridade_invertida or bool(mod_dict["polaridade_invertida"])
+        if "dash_protocolo" in mod_dict:
+            mods.dash_protocolo = str(mod_dict["dash_protocolo"])
+        if "dash_rastro" in mod_dict:
+            mods.dash_rastro = str(mod_dict["dash_rastro"])
+        if "garbage_collector" in mod_dict:
+            mods.garbage_collector = mods.garbage_collector or bool(mod_dict["garbage_collector"])
+        if "latencia_ping" in mod_dict:
+            mods.latencia_ping = mods.latencia_ping or bool(mod_dict["latencia_ping"])
+        if "modo_wireframe" in mod_dict:
+            mods.modo_wireframe = mods.modo_wireframe or bool(mod_dict["modo_wireframe"])
+        if "mira_oculta_homing" in mod_dict:
+            mods.mira_oculta_homing = mods.mira_oculta_homing or bool(mod_dict["mira_oculta_homing"])
 
     return mods

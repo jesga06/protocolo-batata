@@ -1,0 +1,564 @@
+{
+  "_meta": {
+    "categoria": "dicas",
+    "descricao": "Banco de dicas rotativas condicionais exibidas no BannerDica (Menu Principal, Tutorial e Pausa).",
+    "placeholders_disponiveis": {},
+    "condicoes_disponiveis": {
+      "operadores_expressao": [
+        "and",
+        "or",
+        "not",
+        "( ... )",
+        "condicao(arg)",
+        "condicao:arg",
+        "metrica >= N"
+      ],
+      "campos_condicao_entrada": {
+        "quando": "Expressão/nome/tupla principal (padrão: 'sempre')",
+        "exceto": "Expressão/nome/tupla de exclusão opcional (padrão: null)",
+        "condicoes_todas": "Lista de condições que devem ser todas verdadeiras (AND)",
+        "condicoes_qualquer": "Lista de condições em que ao menos uma deve ser verdadeira (OR)",
+        "excluir_se": "Lista de condições que ocultam a dica se qualquer uma for verdadeira"
+      },
+      "condicoes_nomeadas": {
+        "sempre": "Sempre verdadeira.",
+        "tutorial_nao_visto": "Jogador ainda não visualizou o tutorial.",
+        "tutorial_visto": "Jogador já visualizou o tutorial.",
+        "dash_desbloqueado": "Dash direcional permanente desbloqueado.",
+        "dash_bloqueado": "Dash direcional permanente ainda bloqueado.",
+        "smg_desbloqueada": "Arma SMG Compacta desbloqueada.",
+        "bastao_desbloqueado": "Arma Bastão de Choque desbloqueada.",
+        "rifle_arco_desbloqueado": "Arma Rifle de Arco desbloqueada.",
+        "lanca_chamas_desbloqueado": "Arma Lança-Chamas desbloqueada.",
+        "loadout_desbloqueado": "SMG Compacta ou Bastão de Choque desbloqueado.",
+        "firmware_desbloqueado": "Ao menos 1 Chip de Firmware desbloqueado.",
+        "firmware_bloqueado": "Nenhum Chip de Firmware desbloqueado.",
+        "firmware_equipado": "Ao menos 1 Chip de Firmware equipado.",
+        "multiplos_slots_firmware": "Pelo menos 2 slots de Firmware desbloqueados.",
+        "todos_slots_firmware": "Todos os 3 slots de Firmware desbloqueados.",
+        "alguma_config_desbloqueada": "Pelo menos 1 configuração de gameplay desbloqueada.",
+        "cota_2_configs_possiveis": "Pelo menos 2 configurações desbloqueadas.",
+        "cota_4_configs_possiveis": "Pelo menos 4 configurações desbloqueadas.",
+        "cota_6_configs_possiveis": "Pelo menos 6 configurações desbloqueadas.",
+        "alguma_config_ativa": "Pelo menos 1 configuração não-neutra ativa.",
+        "cota_2_configs_ativas": "Pelo menos 2 configurações não-neutras ativas.",
+        "cota_4_configs_ativas": "Pelo menos 4 configurações não-neutras ativas.",
+        "cota_6_configs_ativas": "Pelo menos 6 configurações não-neutras ativas.",
+        "auto_fire_desbloqueado": "Configuração auto_fire desbloqueada.",
+        "garbage_collector_desbloqueado": "Configuração garbage_collector desbloqueada.",
+        "latencia_ping_desbloqueado": "Configuração latencia_ping desbloqueada.",
+        "modo_wireframe_desbloqueado": "Configuração modo_wireframe desbloqueada.",
+        "mira_oculta_desbloqueada": "Configuração mira_oculta desbloqueada.",
+        "postura_riposte_desbloqueada": "Opção precisao_parry:postura_riposte desbloqueada.",
+        "thread_fantasma_desbloqueada": "Opção dash_rastro:thread_fantasma desbloqueada.",
+        "sombra_espelho_desbloqueada": "Opção dash_protocolo:sombra_espelho desbloqueada.",
+        "rollback_estado_desbloqueado": "Opção dash_protocolo:rollback_estado desbloqueada.",
+        "ja_jogou_partida": "Jogador já jogou ao menos 1 partida.",
+        "ja_abateu_miniboss": "Jogador já abateu ao menos 1 Mini-Boss em < 60s.",
+        "primeiro_overclock_concluido": "Conquista primeiro_overclock_sujo concluída.",
+        "ja_venceu_run": "Jogador já venceu ao menos 1 partida."
+      },
+      "condicoes_parametrizadas": {
+        "arma(arma_id)": "Possui recompensa de arma específica.",
+        "habilidade(hab_id)": "Possui recompensa de habilidade específica (inclui 'dash').",
+        "firmware(chip_id)": "Possui chip de firmware específico.",
+        "config_desbloqueada(cid)": "Configuração de gameplay específica desbloqueada.",
+        "config_ativa(cid)": "Configuração de gameplay específica ativa (não-neutra).",
+        "config_valor(cid, val)": "Configuração específica possui o valor exato informado.",
+        "opcao_config(op)": "Opção especial de config desbloqueada (ex: 'precisao_parry:postura_riposte').",
+        "conquista_unica(cid)": "Conquista única concluída.",
+        "trofeu(tid)": "Troféu específico desbloqueado.",
+        "min_parries(n)": "Parries totais >= n.",
+        "min_just_dodges(n)": "Just-Dodges totais >= n.",
+        "min_abates(n)": "Abates totais >= n.",
+        "min_miniboss_rapidos(n)": "Mini-Bosses abatidos em < 60s >= n.",
+        "min_vitorias(n)": "Vitórias totais >= n.",
+        "min_partidas(n)": "Partidas jogadas >= n.",
+        "min_configs_desbloqueadas(n)": "Quantidade de configs desbloqueadas >= n.",
+        "min_configs_ativas(n)": "Quantidade de configs ativas >= n.",
+        "min_slots_firmware(n)": "Slots de firmware desbloqueados >= n."
+      },
+      "aliases_comparacao": {
+        "parries": "min_parries",
+        "just_dodges": "min_just_dodges",
+        "abates": "min_abates",
+        "miniboss_rapidos": "min_miniboss_rapidos",
+        "vitorias": "min_vitorias",
+        "partidas": "min_partidas",
+        "configs_desbloqueadas": "min_configs_desbloqueadas",
+        "configs_ativas": "min_configs_ativas",
+        "slots_firmware": "min_slots_firmware"
+      }
+    }
+  },
+  "entradas": {
+    "combate_lmb_rmb": {
+      "texto": "Botão Esquerdo (LMB) ataca com a arma equipada; Botão Direito (RMB) executa um Parry a qualquer momento.",
+      "contexto": "BannerDica — dica básica de ataque e parry.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "sempre",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "parry_desbloquear_recompensas": {
+      "texto": "Acumule 15 Parries bem-sucedidos para desbloquear suas primeiras recompensas permanentes de combate!",
+      "contexto": "BannerDica — exibida enquanto o Dash ainda não foi desbloqueado.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "not dash_desbloqueado",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "projeteis_sem_dash": {
+      "texto": "Projéteis Vermelhos são comuns; Shurikens Roxas exigem Parry; Setas Amarelas passam direto pelo Parry - desvie delas!",
+      "contexto": "BannerDica — explicação de tipos de projéteis antes de desbloquear o Dash.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "not dash_desbloqueado",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "projeteis_com_dash": {
+      "texto": "Projéteis Vermelhos são comuns; Shurikens Roxas exigem Parry (ignoram Dash); Setas Amarelas exigem Dash (ignoram Parry).",
+      "contexto": "BannerDica — explicação de tipos de projéteis após desbloquear o Dash.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "dash_desbloqueado",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "just_dodge_iframes": {
+      "texto": "Atravessar ataques com os i-frames do Dash ativa Just-Dodge, concede breve imunidade e acelera a recarga.",
+      "contexto": "BannerDica — mecânica de Just-Dodge com Dash desbloqueado.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "dash_desbloqueado",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "pistola_quarto_tiro": {
+      "texto": "Todo 4º disparo da Pistola Fajuta [2] sai sobrecarregado (2.2x de dano e perfura inimigos).",
+      "contexto": "BannerDica — dica da Pistola antes de desbloquear a SMG Compacta.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "not smg_desbloqueada",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "pistola_e_smg_calor": {
+      "texto": "Todo 4º disparo da Pistola Fajuta [2] sai sobrecarregado (2.2x de dano e perfura inimigos). Com a SMG Compacta, tente ficar na zona ideal de calor (60%-92%).",
+      "contexto": "BannerDica — dica combinada de Pistola e SMG Compacta após desbloquear SMG.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "smg_desbloqueada",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "ritmo_musica_onda": {
+      "texto": "O combate acompanha o Ritmo da Música - Bosses e ondas de inimigos vem ligeiramente antes do drop.",
+      "contexto": "BannerDica — explicação do ciclo musical de ondas.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "sempre",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "fixar_conquistas_hud": {
+      "texto": "Fixe até 3 Conquistas na HUD pelo Menu de Conquistas para acompanhar suas metas durante a run.",
+      "contexto": "BannerDica — dica de pin de conquistas antes de desbloquear Firmware.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "not firmware_desbloqueado",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "desbloquear_primeiro_firmware": {
+      "texto": "Derrote 1 Mini-Boss em menos de 60s com pelo menos 2 configurações ativas para desbloquear seu primeiro Chip de Firmware.",
+      "contexto": "BannerDica — instrução de desbloqueio do primeiro Firmware.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "dash_desbloqueado and cota_2_configs_possiveis and not firmware_desbloqueado",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "conquistas_e_slots_firmware": {
+      "texto": "Fixe até 3 Conquistas na HUD e equipe até 3 Chips de Firmware no Menu Principal; cada slot exige 2/4/6 configs ativas, respectivamente.",
+      "contexto": "BannerDica — dica de Firmware após desbloqueio.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "firmware_desbloqueado",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "configs_gameplay_beneficio_sacrificio": {
+      "texto": "São 29 Configurações de Gameplay combinando Benefícios e Sacrifícios; ative várias para desafios extras.",
+      "contexto": "BannerDica — dica sobre o sistema de Configurações após desbloquear ao menos uma.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "alguma_config_desbloqueada",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "miniboss_overclock_60s": {
+      "texto": "Mini-Bosses surgem duas vezes por run: derrote-os em menos de 60s para ganhar Overclock.",
+      "contexto": "BannerDica — cronograma de Mini-Bosses e recompensa Overclock.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "sempre",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "miniboss_superaquecimento": {
+      "texto": "Se um Mini-Boss ficar vivo por 60s, ele sobreaquece e explode sem deixar recompensas.",
+      "contexto": "BannerDica — aviso sobre limite de 60s do Mini-Boss.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "sempre",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "scavenger_drops_10s": {
+      "texto": "Drops no chão por 10s podem ser roubados pelo Scavenger, colete itens valiosos rápido.",
+      "contexto": "BannerDica — alerta sobre comportamento do Scavenger.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "sempre",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "atalho_auto_fire": {
+      "texto": "Pressione [F] durante a partida para alternar o disparo automático (Auto-Fire).",
+      "contexto": "BannerDica — atalho de Auto-Fire quando desbloqueado.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "auto_fire_desbloqueado",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "niveis_normais_capsulas": {
+      "texto": "Níveis normais curam +10 HP, empurram inimigos e soltam 2 Cápsulas de consumíveis.",
+      "contexto": "BannerDica — comportamento de subida de nível normal.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "sempre",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "inimigo_blindado_flancos": {
+      "texto": "Trituradores Blindados reduzem 30% do dano frontal.",
+      "contexto": "BannerDica — fraqueza direcional do inimigo Blindado.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "sempre",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "geladeira_tsunami_spawn": {
+      "texto": "A Geladeira Tsunami aparece no Nível 12 após ~3 min (185s) ou ao vencer os 2 Mini-Bosses.",
+      "contexto": "BannerDica — condição de entrada do chefe final.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "ja_jogou_partida or ja_abateu_miniboss or ja_venceu_run",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "loadout_menu_principal": {
+      "texto": "No Loadout do Menu Principal, troque suas armas dos Slots 1 e 2 antes de iniciar a partida.",
+      "contexto": "BannerDica — seletor de Loadout quando arma alternativa está desbloqueada.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "loadout_desbloqueado",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "bastao_choque_corrente": {
+      "texto": "O Bastão de Choque [1] troca o arco amplo por golpes mais rápidos.",
+      "contexto": "BannerDica — dica do Bastão de Choque quando desbloqueado.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "bastao_desbloqueado",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "mira_oculta_teleguiado": {
+      "texto": "Com Mira Oculta ligada, o cursor some em combate e todos os disparos ficam levemente teleguiados na direção da mira.",
+      "contexto": "BannerDica — dica da configuração Mira Oculta quando desbloqueada.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "mira_oculta_desbloqueada",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "postura_riposte_parry_360": {
+      "texto": "Ao Ripostar, qualquer projétil parriável ou inimigo que tocar a hitbox da batata ativa o Parry e causa a estocada perfurante.",
+      "contexto": "BannerDica — dica da opção especial Postura Riposte quando desbloqueada.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "postura_riposte_desbloqueada",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "duelo_parry_3_estagios": {
+      "texto": "Rebater 3 ataques seguidos em um Duelo de Parry contra o Ninja ou Chefe recupera +15 HP e causa dano massivo.",
+      "contexto": "BannerDica — mecânica de recompensa do Duelo de Parry de 3 estágios.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "sempre",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "miniboss_abate_rapido_30s": {
+      "texto": "Derrote um Mini-Boss em menos de 30s para ganhar uma arma com mais munição e cura instantânea!",
+      "contexto": "BannerDica — recompensa de Abate Rápido (<30s) em Mini-Bosses.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "sempre",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "drones_evolucao_slot4": {
+      "texto": "Pegar um Módulo de Drone com outro já ativo evolui o Slot 4 (até 2x) e renova os 30s de duração.",
+      "contexto": "BannerDica — evolução e renovação de drones no Slot 4.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "sempre",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "crt_phasing_intangivel": {
+      "texto": "Monitores CRT ficam intangíveis periodicamente. Guarde tiros pesados (Railgun/Foguetes) para quando estiverem sólidos.",
+      "contexto": "BannerDica — janela de vulnerabilidade do inimigo Monitor CRT.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "sempre",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "marcos_5_11_vs_niveis": {
+      "texto": "Os níveis 5 e 11 pausam a partida para desbloquear novas Configurações. Os demais apenas curam e soltam Cápsulas.",
+      "contexto": "BannerDica — diferença entre níveis de marco e níveis normais.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "sempre",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "bios_flashing_slot_duplo": {
+      "texto": "Com o Upgrade BIOS Flashing, o Slot 3 passa a comportar duas armas especiais.",
+      "contexto": "BannerDica — efeito de slot duplo do Overclock BIOS.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "sempre",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "rifle_arco_desbloqueado_dica": {
+      "texto": "O Rifle de Arco [3] dispara raios contínuos que travam nos alvos próximos.",
+      "contexto": "BannerDica — uso do Rifle de Arco após desbloqueio.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "rifle_arco_desbloqueado",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "lanca_chamas_desbloqueado_dica": {
+      "texto": "O Lança-Chamas [3] atravessa múltiplos inimigos em cone curto e aplica uma queimadura contínua.",
+      "contexto": "BannerDica — uso do Lança-Chamas após desbloqueio.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "lanca_chamas_desbloqueado",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "garbage_collector_ram_dica": {
+      "texto": "Com Garbage Collector ativo, fique de olho na barra de RAM abaixo da vida para não ser pego pela trava de disparos.",
+      "contexto": "BannerDica — dica da configuração Garbage Collector após desbloqueio.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "garbage_collector_desbloqueado",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "latencia_ping_antecipacao_dica": {
+      "texto": "A Latência atrasa seus comandos, mas recompensa com poder extra. Antecipe seus movimentos e Parries.",
+      "contexto": "BannerDica — dica da configuração Latência/Ping após desbloqueio.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "latencia_ping_desbloqueado",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "modo_wireframe_hitbox_dica": {
+      "texto": "O Modo Wireframe simplifica os visuais da arena e destaca os contornos de colisão das entidades.",
+      "contexto": "BannerDica — dica da configuração Modo Wireframe após desbloqueio.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "modo_wireframe_desbloqueado",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "thread_fantasma_rastro_dica": {
+      "texto": "Thread Prioritário deixa um rastro no Dash que causa dano e atordoa os inimigos atravessados.",
+      "contexto": "BannerDica — dica da opção Thread Fantasma após desbloqueio.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "thread_fantasma_desbloqueada",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "sombra_espelho_symlink_dica": {
+      "texto": "Com Symlink equipado no Protocolo de Dash, seu clone espelha ações após o avanço.",
+      "contexto": "BannerDica — dica da opção Sombra Espelho/Symlink após desbloqueio.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "sombra_espelho_desbloqueada",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "rollback_estado_dash_dica": {
+      "texto": "Rollback no Dash permite reverter posição e estado. Ótimo para escapar de situações ruins.",
+      "contexto": "BannerDica — dica da opção Rollback de Estado após desbloqueio.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "rollback_estado_desbloqueado",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "cotas_firmware_pausa_dica": {
+      "texto": "Fique atento ao trocar configs na pausa: cair abaixo de 2, 4 ou 6 configs ativas desativa Slots!",
+      "contexto": "BannerDica — alerta sobre cotas 2/4/6 de Firmware ao ter múltiplos slots.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "multiplos_slots_firmware",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    },
+    "pos_vitoria_multiplicador_dica": {
+      "texto": "Quer multiplicar sua pontuação final? Combine várias Configurações não-neutras e Chips de Firmware na mesma run!",
+      "contexto": "BannerDica — dica de alto desafio após vencer uma partida.",
+      "placeholders": {},
+      "condicoes": {
+        "quando": "ja_venceu_run",
+        "exceto": null,
+        "condicoes_todas": [],
+        "condicoes_qualquer": [],
+        "excluir_se": []
+      }
+    }
+  }
+}

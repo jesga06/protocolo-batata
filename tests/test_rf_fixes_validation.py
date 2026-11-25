@@ -142,8 +142,8 @@ class TestRFFixesValidation(unittest.TestCase):
     def test_rf4_5_inimigo_ranged_lead_targeting_on_moving_target(self):
         """RF4/5: Inimigo Ranged compensa a velocidade do alvo ao atirar em jogador em movimento."""
         inimigo = InimigoRanged(x=0.0, y=0.0)
-        # Alvo em (100, 0) movendo-se para cima vy = 150 px/s
-        proj = inimigo.disparar(pos_alvo=(100.0, 0.0), vel_alvo=(0.0, 150.0))
+        # Alvo em (100, 21) alinhado ao centro Y do inimigo, movendo-se com vy = 150 px/s
+        proj = inimigo.disparar(pos_alvo=(100.0, 21.0), vel_alvo=(0.0, 150.0))
         # O tiro deve ter componente Y positivo (mirando à frente da trajetória)
         self.assertGreater(proj.dir_y, 0.0)
 

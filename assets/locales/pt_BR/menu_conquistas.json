@@ -1,0 +1,229 @@
+{
+  "_meta": {
+    "categoria": "menu_conquistas",
+    "descricao": "Textos do Modal de Conquistas & Chips de Firmware (abas, filtros, status, feedbacks e cotas).",
+    "placeholders_disponiveis": {
+      "qtd": "int — quantidade atual de conquistas fixadas",
+      "atual": "int — progresso atual da conquista contínua",
+      "prox_meta": "int — próxima meta da conquista contínua",
+      "concluidos": "int — quantidade de marcos concluídos",
+      "total": "int — quantidade total de marcos",
+      "recompensa": "str — descrição formatada da recompensa",
+      "segundos": "int — segundos acumulados em 15 FPS (monge_tibetano)",
+      "equipados": "int — quantidade de chips equipados",
+      "slots_max": "int — total de slots de firmware desbloqueados",
+      "n_configs": "int — quantidade de configs ativas",
+      "slot": "int — número do slot do chip equipado",
+      "cota": "int — cota mínima de configs exigida pelo slot",
+      "categoria": "str — categoria do chip de firmware"
+    }
+  },
+  "entradas": {
+    "titulo_com_firmware": {
+      "texto": "SISTEMA DE CONQUISTAS & FIRMWARE",
+      "contexto": "Título do modal quando há pelo menos 1 Chip de Firmware desbloqueado.",
+      "placeholders": {}
+    },
+    "titulo_sem_firmware": {
+      "texto": "SISTEMA DE CONQUISTAS",
+      "contexto": "Título do modal antes de desbloquear o primeiro Chip de Firmware.",
+      "placeholders": {}
+    },
+    "aba_conquistas": {
+      "texto": "CONQUISTAS",
+      "contexto": "Rótulo da aba de Conquistas.",
+      "placeholders": {}
+    },
+    "aba_firmware": {
+      "texto": "CHIPS DE FIRMWARE",
+      "contexto": "Rótulo da aba de Chips de Firmware.",
+      "placeholders": {}
+    },
+    "btn_fechar": {
+      "texto": "FECHAR [ESC]",
+      "contexto": "Botão no canto superior direito para fechar o modal.",
+      "placeholders": {}
+    },
+    "rodape_com_firmware": {
+      "texto": "TAB: Trocar Aba  |  Mouse/Scroll: Navegar  |  ESC: Fechar",
+      "contexto": "Rodapé de atalhos quando a aba de Firmware está disponível.",
+      "placeholders": {}
+    },
+    "rodape_sem_firmware": {
+      "texto": "Mouse/Scroll: Navegar  |  ESC: Fechar",
+      "contexto": "Rodapé de atalhos quando apenas a aba de Conquistas está visível.",
+      "placeholders": {}
+    },
+    "feedback_pin_atualizado": {
+      "texto": "Pin atualizado!",
+      "contexto": "Mensagem temporária no rodapé ao fixar/desafixar conquista na HUD.",
+      "placeholders": {}
+    },
+    "feedback_max_pins": {
+      "texto": "Máximo de 3 conquistas fixadas.",
+      "contexto": "Aviso no rodapé ao tentar fixar uma 4ª conquista.",
+      "placeholders": {}
+    },
+    "feedback_firmware_somente_leitura": {
+      "texto": "Firmware somente leitura durante a partida!",
+      "contexto": "Aviso no rodapé ao tentar alterar Firmware no menu de pausa.",
+      "placeholders": {}
+    },
+    "feedback_chip_desequipado": {
+      "texto": "Chip desequipado.",
+      "contexto": "Feedback ao remover um Chip de Firmware.",
+      "placeholders": {}
+    },
+    "feedback_chip_equipado": {
+      "texto": "Chip equipado!",
+      "contexto": "Feedback ao equipar um Chip de Firmware.",
+      "placeholders": {}
+    },
+    "feedback_chip_bloqueado": {
+      "texto": "Chip bloqueado por conquista.",
+      "contexto": "Aviso ao clicar em um Chip de Firmware ainda não desbloqueado.",
+      "placeholders": {}
+    },
+    "feedback_slots_ocupados": {
+      "texto": "Todos os slots de Firmware ocupados.",
+      "contexto": "Aviso ao tentar equipar um Chip com todos os slots cheios.",
+      "placeholders": {}
+    },
+    "filtro_todas": {
+      "texto": "Todas",
+      "contexto": "Botão de filtro exibindo todas as conquistas.",
+      "placeholders": {}
+    },
+    "filtro_continuas": {
+      "texto": "Contínuas",
+      "contexto": "Botão de filtro exibindo apenas conquistas contínuas.",
+      "placeholders": {}
+    },
+    "filtro_unicas": {
+      "texto": "Únicas",
+      "contexto": "Botão de filtro exibindo apenas conquistas únicas.",
+      "placeholders": {}
+    },
+    "filtro_fixadas": {
+      "texto": "Fixadas",
+      "contexto": "Botão de filtro exibindo apenas conquistas fixadas na HUD.",
+      "placeholders": {}
+    },
+    "fixadas_hud_contador": {
+      "texto": "FIXADAS NA HUD: {qtd}/3",
+      "contexto": "Contador de conquistas fixadas no topo da aba Conquistas.",
+      "placeholders": {
+        "qtd": "int — quantidade de conquistas fixadas (0..3)"
+      }
+    },
+    "continua_status": {
+      "texto": "Milestone {concluidos}/{total}  ({atual}/{prox_meta})",
+      "contexto": "Linha de status de progresso de uma conquista contínua.",
+      "placeholders": {
+        "concluidos": "int — marcos concluídos",
+        "total": "int — total de marcos",
+        "atual": "int — progresso atual",
+        "prox_meta": "int — meta do próximo marco"
+      }
+    },
+    "continua_todos_marcos": {
+      "texto": "Todos os marcos concluídos!",
+      "contexto": "Texto exibido quando todos os marcos de uma conquista contínua foram concluídos.",
+      "placeholders": {}
+    },
+    "desbloqueia_recompensa": {
+      "texto": "Desbloqueia: {recompensa}",
+      "contexto": "Linha descrevendo a recompensa da conquista.",
+      "placeholders": {
+        "recompensa": "str — recompensa formatada"
+      }
+    },
+    "unica_monge_concluida": {
+      "texto": "CONCLUÍDA ({segundos}/120s)",
+      "contexto": "Status da conquista Monge Tibetano quando concluída.",
+      "placeholders": {
+        "segundos": "int — segundos acumulados (120)"
+      }
+    },
+    "unica_monge_progresso": {
+      "texto": "{segundos}/120",
+      "contexto": "Status da conquista Monge Tibetano em progresso.",
+      "placeholders": {
+        "segundos": "int — segundos acumulados"
+      }
+    },
+    "unica_concluida": {
+      "texto": "CONCLUÍDA",
+      "contexto": "Status de conquista única concluída.",
+      "placeholders": {}
+    },
+    "unica_pendente": {
+      "texto": "PENDENTE",
+      "contexto": "Status de conquista única pendente.",
+      "placeholders": {}
+    },
+    "btn_fixada": {
+      "texto": "FIXADA",
+      "contexto": "Rótulo do botão de pin quando a conquista já está fixada.",
+      "placeholders": {}
+    },
+    "btn_fixar": {
+      "texto": "FIXAR",
+      "contexto": "Rótulo do botão de pin quando a conquista não está fixada.",
+      "placeholders": {}
+    },
+    "firmware_slots_header": {
+      "texto": "SLOTS DE FIRMWARE: {equipados}/{slots_max}  |  CONFIGS ATIVAS: {n_configs}",
+      "contexto": "Cabeçalho da aba de Chips de Firmware mostrando slots e cota atual.",
+      "placeholders": {
+        "equipados": "int — chips equipados",
+        "slots_max": "int — máximo de slots liberados",
+        "n_configs": "int — configs não-neutras ativas"
+      }
+    },
+    "firmware_somente_leitura_badge": {
+      "texto": "SOMENTE LEITURA EM PARTIDA",
+      "contexto": "Badge vermelho exibido na aba Firmware quando aberto durante a pausa.",
+      "placeholders": {}
+    },
+    "firmware_status_ativo": {
+      "texto": "ATIVO (SLOT {slot})",
+      "contexto": "Badge de status quando o chip está equipado e sua cota é atendida.",
+      "placeholders": {
+        "slot": "int — número do slot (1..3)"
+      }
+    },
+    "firmware_status_inativo_cota": {
+      "texto": "INATIVO (requer {cota} configs ativas)",
+      "contexto": "Badge de status quando o chip está equipado mas faltam configs ativas.",
+      "placeholders": {
+        "cota": "int — cota necessária (2, 4 ou 6)"
+      }
+    },
+    "firmware_status_liberado": {
+      "texto": "LIBERADO",
+      "contexto": "Badge de status quando o chip está desbloqueado e disponível para equipar.",
+      "placeholders": {}
+    },
+    "firmware_status_bloqueado": {
+      "texto": "BLOQUEADO",
+      "contexto": "Badge de status quando o chip ainda não foi desbloqueado.",
+      "placeholders": {}
+    },
+    "firmware_categoria_tag": {
+      "texto": "[{categoria}]",
+      "contexto": "Tag de categoria exibida no rodapé do card de Chip de Firmware.",
+      "placeholders": {
+        "categoria": "str — nome da categoria do chip"
+      }
+    },
+    "firmware_cota_tag": {
+      "texto": "COTA {n_configs}/{cota}",
+      "contexto": "Indicador de cota no canto inferior direito do card de chip equipado.",
+      "placeholders": {
+        "n_configs": "int — configs ativas",
+        "cota": "int — cota exigida pelo slot"
+      }
+    }
+  }
+}
