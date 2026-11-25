@@ -65,7 +65,7 @@ class InimigoNinja(InimigoBase):
             nome_elite=nome_elite,
         )
         self.is_ninja = True
-        self.dano_projetil = 18
+        self.dano_projetil = 28
         self.vel_projetil = 380.0
         self.cooldown_tiro = 2.0
         self.timer_tiro = 0.6
@@ -125,7 +125,7 @@ class InimigoNinja(InimigoBase):
         proj.homing_radar_dot = dot_h
         proj.homing_alvo_cursor = False
         proj.cor = (168, 85, 247)
-        proj.tempo_vida = max(float(getattr(proj, "tempo_vida", 2.5)), 3.0)
+        proj.tempo_vida = max(float(getattr(proj, "tempo_vida", 2.5)), 5.5)
         proj.tempo_vida_restante = proj.tempo_vida
         if hasattr(proj, "alvos_atingidos"):
             proj.alvos_atingidos.clear()
@@ -157,7 +157,7 @@ class InimigoNinja(InimigoBase):
             dir_y=dy,
             velocidade=vel,
             dano=self.dano_projetil,
-            tempo_vida=3.2,
+            tempo_vida=6.0,
             dono="inimigo",
             largura=20,
             altura=20,
@@ -234,7 +234,7 @@ class InimigoNinja(InimigoBase):
             self.flash_timer = max(0.0, self.flash_timer - dt)
 
         self.timer_tiro += dt
-        if self.timer_tiro >= self.cooldown_tiro and dist <= 480.0:
+        if self.timer_tiro >= self.cooldown_tiro and dist <= 680.0:
             self.timer_tiro = 0.0
             taxa_h, dot_h = NINJA_HOMING_POR_ESTAGIO[1]
             proj = Projetil(
@@ -244,7 +244,7 @@ class InimigoNinja(InimigoBase):
                 dir_y=uy,
                 velocidade=self.vel_projetil,
                 dano=self.dano_projetil,
-                tempo_vida=3.0,
+                tempo_vida=5.5,
                 dono="inimigo",
                 largura=20,
                 altura=20,

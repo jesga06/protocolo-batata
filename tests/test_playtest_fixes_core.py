@@ -135,10 +135,12 @@ class TestPlaytestFixesCore(unittest.TestCase):
     def test_ninja_shuriken_homing_progressivo_e_velocidades_preservadas(self):
         ninja = InimigoNinja(0.0, 0.0)
         ninja.timer_tiro = ninja.cooldown_tiro
-        ninja.update(0.05, (200.0, 0.0))
+        ninja.update(0.05, (600.0, 0.0))
         p1 = ninja.obter_projeteis_pendentes()[0]
         self.assertEqual(p1.duel_stage, 1)
         self.assertAlmostEqual(p1.velocidade, 380.0, places=1)
+        self.assertGreaterEqual(p1.dano, 28)
+        self.assertGreaterEqual(p1.tempo_vida, 5.5)
         self.assertTrue(p1.homing_ativo)
         self.assertTrue(p1.nao_desviavel)
 
