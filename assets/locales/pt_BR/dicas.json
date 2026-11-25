@@ -117,7 +117,7 @@
       }
     },
     "projeteis_sem_dash": {
-      "texto": "Projéteis Vermelhos são comuns; Shurikens Roxas exigem Parry; Setas Amarelas passam direto pelo Parry - desvie delas!",
+      "texto": "Projéteis Vermelhos são comuns; Shurikens Roxas perseguem você e exigem Parry; Setas Amarelas passam direto pelo Parry, então desvie delas.",
       "contexto": "BannerDica — explicação de tipos de projéteis antes de desbloquear o Dash.",
       "placeholders": {},
       "condicoes": {
@@ -129,7 +129,7 @@
       }
     },
     "projeteis_com_dash": {
-      "texto": "Projéteis Vermelhos são comuns; Shurikens Roxas exigem Parry (ignoram Dash); Setas Amarelas exigem Dash (ignoram Parry).",
+      "texto": "Projéteis Vermelhos são comuns; Shurikens Roxas perseguem você, ignoram o Dash e exigem Parry; Setas Amarelas ignoram o Parry e exigem Dash.",
       "contexto": "BannerDica — explicação de tipos de projéteis após desbloquear o Dash.",
       "placeholders": {},
       "condicoes": {

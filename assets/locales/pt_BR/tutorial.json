@@ -143,7 +143,7 @@
       "placeholders": {}
     },
     "proj_shuriken_desc": {
-      "texto": "Ignora i-frames do Dash! Exige PARRY (RMB). Exclusivo do Ninja Corporativo.",
+      "texto": "Persegue você em curva fechada e ignora os i-frames do Dash. Rebata com Parry (RMB). Exclusivo do Ninja Corporativo.",
       "contexto": "Descrição do shuriken na aba 2.",
       "placeholders": {}
     },
@@ -293,7 +293,7 @@
       "placeholders": {}
     },
     "inim_ninja_desc": {
-      "texto": "Lança Shurikens Roxas (Não-Desviáveis) e inicia Duelos! Sofre dano só de tiros diretos, Railgun, Arco ou Lança-Chamas.",
+      "texto": "Lança Shurikens Roxas teleguiadas que ignoram o Dash e ficam mais fechadas a cada estágio do Duelo. Sofre dano só de tiros diretos, Railgun, Arco ou Lança-Chamas.",
       "contexto": "Descrição do Ninja Corporativo na aba 4.",
       "placeholders": {}
     },
