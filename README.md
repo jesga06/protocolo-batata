@@ -63,7 +63,6 @@ $env:SDL_VIDEODRIVER="dummy"; $env:SDL_AUDIODRIVER="dummy"; python -m unittest d
 
 - Código em Python seguindo PEP 8 (`snake_case` para funções e variáveis, `PascalCase` para classes, `SCREAMING_SNAKE_CASE` para constantes).
 - Textos exibidos ao jogador ficam centralizados em `assets/locales/pt_BR/*.json` (carregados via `src/utils/traducao.py`), evitando strings fixas dentro de `src/`.
-- Alterações em lógica de jogo devem manter a compatibilidade com `data/save.json` (schema v2) ou atualizar o schema de forma limpa.
 
 ## Possíveis problemas
 
@@ -80,5 +79,9 @@ Em `data/save.json`, na raiz do projeto (ou na pasta de dados do usuário, caso 
 **Como testo configurações, armas ou o chefe final sem jogar a run inteira?**
 Inicie uma partida e aperte `F1` ou `~` para abrir o menu de debug.
 
-**Por que existem `pygame` e `PPlay` no projeto?**
-O projeto usa a pasta local `PPlay/` adaptada sobre o `pygame-ce` para gerenciar cenas e sprites.
+
+## Créditos
+
+    "8-Bits Are Scary" composta por Carl Norén
+    Originalmente da Trilha Sonora Oficial do PAYDAY 2 (© Starbreeze AB / OVERKILL Software)
+    Usado nesse jogo não-comercial por motivos de gameplay e ambientação. Todos os direitos a música pertecem aos seus respectivos donos.
