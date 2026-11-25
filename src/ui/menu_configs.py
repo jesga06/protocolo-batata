@@ -14,7 +14,12 @@ from src.sistemas.config_dados import (
     CONFIGURACOES_GAMEPLAY, CONFIGURACOES_SISTEMA,
     ConfiguracaoDef, CategoriaConfig, TipoControleConfig
 )
-from src.sistemas.config_sistema import GerenciadorConfiguracoes
+from src.sistemas.config_sistema import (
+    GerenciadorConfiguracoes,
+    CORES_MIRA_VALIDAS,
+    ESCALAS_MIRA_VALIDAS,
+)
+from src.sistemas.conquistas_dados import CHIPS_FIRMWARE
 from src.ui.banner_dicas import BannerDica
 from src.utils.constantes import (
     LARGURA_TELA, ALTURA_TELA, BRANCO, PRETO, DOURADO,
@@ -22,6 +27,7 @@ from src.utils.constantes import (
     CINZA_BORDA, CINZA_PAINEL, CINZA_FUNDO, CINZA_TEXTO,
     obter_caminho_asset, SAVE_FILE_PATH
 )
+from src.utils.traducao import t
 
 # Paleta Cyber-Office (Spec §8 aprovada)
 _C_BACKDROP = (7, 9, 14)
@@ -43,38 +49,12 @@ _C_CRIMSON = (239, 68, 68)
 _C_CRIMSON_SOFT = (252, 165, 165)
 
 
-_FONT_CACHE: dict[tuple[str, int, bool, bool], pygame.font.Font] = {}
+from src.utils.fontes import (
+    carregar_fonte_sans as _carregar_fonte_sans,
+    carregar_fonte_mono as _carregar_fonte_mono,
+)
+
 _ICON_SCALE_CACHE: dict[tuple[str, bool, int, int], pygame.Surface] = {}
-
-
-def _carregar_fonte_sans(tamanho: int, bold: bool = False, italic: bool = False) -> pygame.font.Font:
-    px_sz = max(8, int(tamanho))
-    chave = ("sans", px_sz, bold, italic)
-    if chave in _FONT_CACHE:
-        return _FONT_CACHE[chave]
-    for nome in ("notosans", "dejavusans", "liberationsans", "arial"):
-        f = pygame.font.SysFont(nome, px_sz, bold=bold, italic=italic)
-        if f is not None:
-            _FONT_CACHE[chave] = f
-            return f
-    f = pygame.font.SysFont("Arial", px_sz, bold=bold, italic=italic)
-    _FONT_CACHE[chave] = f
-    return f
-
-
-def _carregar_fonte_mono(tamanho: int, bold: bool = False) -> pygame.font.Font:
-    px_sz = max(8, int(tamanho))
-    chave = ("mono", px_sz, bold, False)
-    if chave in _FONT_CACHE:
-        return _FONT_CACHE[chave]
-    for nome in ("jetbrainsmono", "firacode", "consolas", "dejavusansmono"):
-        f = pygame.font.SysFont(nome, px_sz, bold=bold)
-        if f is not None:
-            _FONT_CACHE[chave] = f
-            return f
-    f = pygame.font.SysFont("Consolas", px_sz, bold=bold)
-    _FONT_CACHE[chave] = f
-    return f
 
 
 def _formatar_texto_wrap(texto: str, max_chars_por_linha: int = 26) -> list[str]:
@@ -120,7 +100,7 @@ class MenuConfigs:
 
         self.ativo: bool = False
         self.aba_atual: int = 0  # 0 = Gameplay, 1 = Sistema
-        self.banner_dicas = BannerDica()
+        self.banner_dicas = BannerDica(gerenciador_config=self.gerenciador_config)
 
         # Filtro de categoria na Aba de Gameplay
         self.categoria_filtro: str = "Performance"
@@ -135,7 +115,8 @@ class MenuConfigs:
         # Controle de rolagem da lista de gameplay
         self.scroll_y: float = 0.0
         self.max_scroll_y: float = 0.0
-        self.config_selecionada_id: str = "fps_cap"
+        self.config_selecionada_id: Optional[str] = "fps_cap"
+        self._confirmacao_pendente: Optional[dict[str, Any]] = None
 
         # Dimensões da tela e painéis com offsets dinâmicos para centralização em 1280x720
         self.offset_x = (LARGURA_TELA - 800) // 2
@@ -281,6 +262,7 @@ class MenuConfigs:
         """Fecha o menu de configurações e persiste as alterações em disco."""
         self.ativo = False
         self._slider_arrastando = None
+        self._confirmacao_pendente = None
         self._tocar_som("sfx_btn_click")
 
         # Salva o estado atualizado em save.json
@@ -297,8 +279,8 @@ class MenuConfigs:
             self.scroll_y = 0.0
             self._tocar_som("sfx_btn_click")
 
-    def alterar_valor_gameplay(self, config_id: str, novo_valor: Any) -> bool:
-        """Altera o valor de uma configuração de gameplay desbloqueada, tratando conflitos mútuos."""
+    def _aplicar_mudanca_gameplay_efetiva(self, config_id: str, novo_valor: Any) -> bool:
+        """Aplica efetivamente a mudança de config após validação/confirmação."""
         if hasattr(self.gerenciador_config, "definir_valor_com_conflitos"):
             sucesso, conflitos = self.gerenciador_config.definir_valor_com_conflitos(config_id, novo_valor)
         else:
@@ -308,12 +290,51 @@ class MenuConfigs:
         if sucesso:
             if conflitos:
                 pares = ", ".join(f"{cid} -> {val}" for cid, val in conflitos)
-                self._toast_conflito = f"CONFLITO REVERTIDO: {pares}"
+                self._toast_conflito = t("menu_configs", "toast_conflito_revertido", pares=pares)
                 self._toast_conflito_timer = 3.2
             self._tocar_som("sfx_btn_click")
             if self.cena and hasattr(self.cena, "aplicar_modificadores"):
                 self.cena.aplicar_modificadores()
         return sucesso
+
+    def alterar_valor_gameplay(self, config_id: str, novo_valor: Any) -> bool:
+        """
+        Altera valor de config de gameplay desbloqueada.
+        Em partida, abre modal de confirmação antes de derrubar Firmware equipado abaixo da cota 2-4-6.
+        """
+        if self.em_jogo and hasattr(self.gerenciador_config, "simular_definir_valor_com_conflitos"):
+            sim = self.gerenciador_config.simular_definir_valor_com_conflitos(config_id, novo_valor)
+            if sim.get("valido") and sim.get("chips_desativados"):
+                self._confirmacao_pendente = {
+                    "config_id": config_id,
+                    "novo_valor": novo_valor,
+                    "chips": list(sim["chips_desativados"]),
+                    "n_antes": int(sim["n_antes"]),
+                    "n_depois": int(sim["n_depois"]),
+                    "conflitos": list(sim.get("conflitos", [])),
+                }
+                self._tocar_som("sfx_btn_click")
+                return False
+        return self._aplicar_mudanca_gameplay_efetiva(config_id, novo_valor)
+
+    def _obter_rects_modal_confirmacao(self, ox: int, oy: int) -> tuple[pygame.Rect, pygame.Rect, pygame.Rect]:
+        mw, mh = 520, 260
+        mx = ox + (800 - mw) // 2
+        my = oy + (600 - mh) // 2
+        modal = pygame.Rect(mx, my, mw, mh)
+        btn_conf = pygame.Rect(mx + mw - 270, my + mh - 52, 120, 34)
+        btn_canc = pygame.Rect(mx + mw - 138, my + mh - 52, 114, 34)
+        return modal, btn_conf, btn_canc
+
+    def _obter_rects_mira_sistema(self, ox: int, oy: int) -> tuple[list[tuple[str, pygame.Rect]], list[tuple[float, pygame.Rect]]]:
+        cores_rects: list[tuple[str, pygame.Rect]] = []
+        cx0 = ox + 240
+        for idx, cor_id in enumerate(CORES_MIRA_VALIDAS):
+            cores_rects.append((cor_id, pygame.Rect(cx0 + idx * 82, oy + 382, 76, 26)))
+        esc_rects: list[tuple[float, pygame.Rect]] = []
+        for idx, esc_val in enumerate(ESCALAS_MIRA_VALIDAS):
+            esc_rects.append((esc_val, pygame.Rect(cx0 + idx * 82, oy + 420, 76, 26)))
+        return cores_rects, esc_rects
 
     def ciclar_opcao_gameplay(self, config_id: str, direcao: int = 1) -> bool:
         """Cicla para a próxima opção disponível (e desbloqueada) de uma configuração de gameplay."""
@@ -460,9 +481,38 @@ class MenuConfigs:
             mouse_clicado = True
         self._mouse_pressionado_anterior = pressionado_agora
 
-        # 3. Processamento dos Cliques nas Abas, Menu Principal (em jogo) e Botão Fechar
         ox = getattr(self, "offset_x", (LARGURA_TELA - 800) // 2)
         oy = getattr(self, "offset_y", (ALTURA_TELA - 600) // 2)
+
+        if self._confirmacao_pendente is not None:
+            if teclado is not None:
+                esc_conf = (hasattr(teclado, "key_down") and teclado.key_down("ESC")) or (
+                    hasattr(teclado, "key_pressed") and teclado.key_pressed("ESC")
+                )
+                ent_conf = (hasattr(teclado, "key_down") and (teclado.key_down("RETURN") or teclado.key_down("ENTER"))) or (
+                    hasattr(teclado, "key_pressed") and (teclado.key_pressed("RETURN") or teclado.key_pressed("ENTER"))
+                )
+                if esc_conf:
+                    self._confirmacao_pendente = None
+                    return
+                if ent_conf:
+                    pend = self._confirmacao_pendente
+                    self._confirmacao_pendente = None
+                    self._aplicar_mudanca_gameplay_efetiva(pend["config_id"], pend["novo_valor"])
+                    return
+            if mouse_clicado:
+                _modal, btn_conf, btn_canc = self._obter_rects_modal_confirmacao(ox, oy)
+                if btn_conf.collidepoint(mx, my):
+                    pend = self._confirmacao_pendente
+                    self._confirmacao_pendente = None
+                    self._aplicar_mudanca_gameplay_efetiva(pend["config_id"], pend["novo_valor"])
+                    return
+                if btn_canc.collidepoint(mx, my):
+                    self._confirmacao_pendente = None
+                    return
+            return
+
+        # 3. Processamento dos Cliques nas Abas, Menu Principal (em jogo) e Botão Fechar
         aba0_rect, aba1_rect, btn_fechar_rect, btn_menu_rect = self._obter_rects_barra_topo()
 
         if mouse_clicado:
@@ -500,12 +550,18 @@ class MenuConfigs:
                     return
                 cat_x += largura_pill + 5
 
-            # Lista de itens de gameplay filtrados
+            # Lista de itens de gameplay filtrados (apenas configurações já desbloqueadas)
             configs_filtradas = [
                 cdef for cid, cdef in CONFIGURACOES_GAMEPLAY.items()
-                if self.categoria_filtro is None or
-                   (cdef.categoria.value if hasattr(cdef.categoria, "value") else str(cdef.categoria)) == self.categoria_filtro
+                if self.gerenciador_config.is_desbloqueada(cdef.id)
+                and (
+                    self.categoria_filtro is None
+                    or (cdef.categoria.value if hasattr(cdef.categoria, "value") else str(cdef.categoria)) == self.categoria_filtro
+                )
             ]
+            ids_filtrados = {c.id for c in configs_filtradas}
+            if self.config_selecionada_id not in ids_filtrados:
+                self.config_selecionada_id = configs_filtradas[0].id if configs_filtradas else None
 
             item_h = 52
             espaco_total = len(configs_filtradas) * item_h
@@ -516,15 +572,18 @@ class MenuConfigs:
             btn_up_rect = pygame.Rect(ox + 455, oy + 140, 20, 24)
             btn_down_rect = pygame.Rect(ox + 455, oy + 480, 20, 24)
 
-            # Suporte a MOUSEWHEEL via eventos do pygame
-            try:
-                for ev in pygame.event.get(pygame.MOUSEWHEEL):
+            # Suporte a MOUSEWHEEL via eventos preservados em Janela.eventos (sem drenar a fila do pygame antes dela)
+            from PPlay.window import Window
+            janela_inst = Window.get_instance()
+            eventos_wheel = list(getattr(janela_inst, "eventos", None) or [])
+            if not eventos_wheel and pygame.display.get_init():
+                eventos_wheel = pygame.event.get(pygame.MOUSEWHEEL)
+            for ev in eventos_wheel:
+                if getattr(ev, "type", None) == pygame.MOUSEWHEEL:
                     if ev.y > 0:
                         self.scroll_y = max(0.0, self.scroll_y - item_h * 2)
                     elif ev.y < 0:
                         self.scroll_y = min(self.max_scroll_y, self.scroll_y + item_h * 2)
-            except Exception:
-                pass
 
             if mouse_clicado:
                 if btn_up_rect.collidepoint(mx, my):
@@ -606,6 +665,19 @@ class MenuConfigs:
             if not pressionado_agora:
                 self._slider_arrastando = None
 
+            if mouse_clicado and hasattr(self.gerenciador_config, "definir_preferencias_mira"):
+                cores_rects, esc_rects = self._obter_rects_mira_sistema(ox, oy)
+                for cor_id, rect_c in cores_rects:
+                    if rect_c.collidepoint(mx, my):
+                        self.gerenciador_config.definir_preferencias_mira(cor=cor_id)
+                        self._tocar_som("sfx_btn_click")
+                        return
+                for esc_val, rect_e in esc_rects:
+                    if rect_e.collidepoint(mx, my):
+                        self.gerenciador_config.definir_preferencias_mira(escala=esc_val)
+                        self._tocar_som("sfx_btn_click")
+                        return
+
     def _atualizar_viewport(self, screen: pygame.Surface):
         """Calcula projeção Native-DPI (vx, vy, scale) e atualiza fontes cacheadas por escala."""
         sw, sh = screen.get_size()
@@ -669,10 +741,10 @@ class MenuConfigs:
         pygame.draw.rect(screen, _C_GOLD, (painel_px.x + self._ps(14) + meio_w, painel_px.y + 1, meio_w, stripe_h))
 
         # 3. Cabeçalho com Título e Subtítulo
-        tit_surf = self._fonte_titulo.render("CONFIGURAÇÕES DO SISTEMA", True, _C_GOLD)
+        tit_surf = self._fonte_titulo.render(t("menu_configs", "titulo"), True, _C_GOLD)
         screen.blit(tit_surf, (self._px(ox + 50), self._py(oy + 26)))
 
-        sub_txt = "Ative sacrifícios técnicos para desbloquear vantagens mecânicas em tempo real" if self.aba_atual == 0 else "Ajustes de áudio e volumes do sistema"
+        sub_txt = t("menu_configs", "subtitulo_gameplay") if self.aba_atual == 0 else t("menu_configs", "subtitulo_sistema")
         sub_surf = self._fonte_sub.render(sub_txt, True, _C_TEXT_SECONDARY)
         screen.blit(sub_surf, (self._px(ox + 50), self._py(oy + 51)))
 
@@ -688,7 +760,7 @@ class MenuConfigs:
         cor_borda0 = _C_GOLD if self.aba_atual == 0 else _C_ELEVATED
         pygame.draw.rect(screen, cor_aba0, aba0_rect, border_radius=self._ps(7))
         pygame.draw.rect(screen, cor_borda0, aba0_rect, width=self._ps(2) if self.aba_atual == 0 else max(1, self._ps(1)), border_radius=self._ps(7))
-        t_aba0 = self._fonte_aba.render("GAMEPLAY", True, _C_GOLD if self.aba_atual == 0 else _C_TEXT_SECONDARY)
+        t_aba0 = self._fonte_aba.render(t("menu_configs", "aba_gameplay"), True, _C_GOLD if self.aba_atual == 0 else _C_TEXT_SECONDARY)
         screen.blit(t_aba0, t_aba0.get_rect(center=aba0_rect.center))
 
         # Aba 1: Sistema
@@ -696,20 +768,20 @@ class MenuConfigs:
         cor_borda1 = _C_GOLD if self.aba_atual == 1 else _C_ELEVATED
         pygame.draw.rect(screen, cor_aba1, aba1_rect, border_radius=self._ps(7))
         pygame.draw.rect(screen, cor_borda1, aba1_rect, width=self._ps(2) if self.aba_atual == 1 else max(1, self._ps(1)), border_radius=self._ps(7))
-        t_aba1 = self._fonte_aba.render("ÁUDIO & SISTEMA", True, _C_GOLD if self.aba_atual == 1 else _C_TEXT_SECONDARY)
+        t_aba1 = self._fonte_aba.render(t("menu_configs", "aba_sistema"), True, _C_GOLD if self.aba_atual == 1 else _C_TEXT_SECONDARY)
         screen.blit(t_aba1, t_aba1.get_rect(center=aba1_rect.center))
 
         # Botão Sair para o Menu Principal (apenas durante gameplay)
         if btn_menu_rect is not None:
             pygame.draw.rect(screen, (42, 28, 16), btn_menu_rect, border_radius=self._ps(7))
             pygame.draw.rect(screen, _C_AMBER, btn_menu_rect, width=max(1, self._ps(1)), border_radius=self._ps(7))
-            t_menu = self._fonte_aba.render("MENU PRINCIPAL", True, _C_GOLD)
+            t_menu = self._fonte_aba.render(t("menu_configs", "btn_menu_principal"), True, _C_GOLD)
             screen.blit(t_menu, t_menu.get_rect(center=btn_menu_rect.center))
 
         # Botão Fechar [ESC]
         pygame.draw.rect(screen, (42, 18, 21), btn_fechar_rect, border_radius=self._ps(7))
         pygame.draw.rect(screen, _C_CRIMSON, btn_fechar_rect, width=max(1, self._ps(1)), border_radius=self._ps(7))
-        t_fec = self._fonte_btn.render("FECHAR [ESC]", True, _C_CRIMSON_SOFT)
+        t_fec = self._fonte_btn.render(t("menu_configs", "btn_fechar"), True, _C_CRIMSON_SOFT)
         screen.blit(t_fec, t_fec.get_rect(center=btn_fechar_rect.center))
 
         # 5. Renderização do Conteúdo Específico da Aba
@@ -719,7 +791,7 @@ class MenuConfigs:
             self._desenhar_aba_sistema(screen)
 
         # 6. Rodapé com Instruções (monospace)
-        rodape_txt = "[TAB] Abas   •   [ESC / C] Salvar e Fechar   •   [Mouse] Ajustar Opções"
+        rodape_txt = t("menu_configs", "rodape")
         rodape_surf = self._fonte_rodape.render(rodape_txt, True, _C_TEXT_MUTED)
         rodape_rect = rodape_surf.get_rect(centerx=painel_px.centerx, bottom=painel_px.bottom - self._ps(10))
         screen.blit(rodape_surf, rodape_rect)
@@ -727,6 +799,9 @@ class MenuConfigs:
         if hasattr(self, "banner_dicas") and self.banner_dicas is not None:
             dica_rect = pygame.Rect(painel_px.x, painel_px.bottom + self._ps(8), painel_px.width, self._ps(48))
             self.banner_dicas.desenhar(screen, dica_rect, scale=self._vp_scale)
+
+        if self._confirmacao_pendente is not None:
+            self._desenhar_modal_confirmacao_hotswap(screen, ox, oy)
 
     def _desenhar_aba_gameplay(self, screen: pygame.Surface):
         """Renderiza a lista de 20 configs e o painel de inspeção detalhado à direita em DPI nativo."""
@@ -751,16 +826,23 @@ class MenuConfigs:
             pygame.draw.rect(screen, cor_bg, cat_rect, border_radius=self._ps(5))
             pygame.draw.rect(screen, cor_borda, cat_rect, width=max(1, self._ps(1)), border_radius=self._ps(5))
 
-            cat_surf = self._fonte_cat.render(cat_nome.upper(), True, _C_CYAN if is_ativa else _C_TEXT_SECONDARY)
+            cat_label = t("menu_configs", f"cat_{cat_nome.lower()}")
+            cat_surf = self._fonte_cat.render(cat_label, True, _C_CYAN if is_ativa else _C_TEXT_SECONDARY)
             screen.blit(cat_surf, cat_surf.get_rect(center=cat_rect.center))
             cat_x += largura_pill + 5
 
-        # 2. Lista de Configurações
+        # 2. Lista de Configurações (oculta completamente opções bloqueadas)
         configs_filtradas = [
             cdef for cid, cdef in CONFIGURACOES_GAMEPLAY.items()
-            if self.categoria_filtro is None or
-               (cdef.categoria.value if hasattr(cdef.categoria, "value") else str(cdef.categoria)) == self.categoria_filtro
+            if self.gerenciador_config.is_desbloqueada(cdef.id)
+            and (
+                self.categoria_filtro is None
+                or (cdef.categoria.value if hasattr(cdef.categoria, "value") else str(cdef.categoria)) == self.categoria_filtro
+            )
         ]
+        ids_filtrados = {c.id for c in configs_filtradas}
+        if self.config_selecionada_id not in ids_filtrados:
+            self.config_selecionada_id = configs_filtradas[0].id if configs_filtradas else None
 
         item_h = 52
         start_y = oy + 136
@@ -769,6 +851,14 @@ class MenuConfigs:
         lista_bg = pygame.Rect(self._px(ox + 48), self._py(oy + 134), self._ps(404), self._ps(380))
         pygame.draw.rect(screen, _C_BACKDROP, lista_bg, border_radius=self._ps(8))
         pygame.draw.rect(screen, _C_ELEVATED, lista_bg, width=max(1, self._ps(1)), border_radius=self._ps(8))
+
+        if not configs_filtradas:
+            self.scroll_y = 0.0
+            self.max_scroll_y = 0.0
+            msg_vazio_1 = self._fonte_item_tit.render(t("menu_configs", "lista_vazia_titulo"), True, _C_TEXT_SECONDARY)
+            msg_vazio_2 = self._fonte_item_desc.render(t("menu_configs", "lista_vazia_subtitulo"), True, _C_TEXT_MUTED)
+            screen.blit(msg_vazio_1, msg_vazio_1.get_rect(center=(lista_bg.centerx, lista_bg.centery - self._ps(10))))
+            screen.blit(msg_vazio_2, msg_vazio_2.get_rect(center=(lista_bg.centerx, lista_bg.centery + self._ps(12))))
 
         for i, cdef in enumerate(configs_filtradas):
             item_y = start_y + i * item_h - self.scroll_y
@@ -823,13 +913,13 @@ class MenuConfigs:
 
             if not is_desbloqueada:
                 req_conq = bool(getattr(cdef, "exclusiva_conquista", False) or getattr(cdef, "requer_desbloqueio", None))
-                sub_str = "[CONQUISTA]" if req_conq else "Desbloqueie em marcos"
+                sub_str = t("menu_configs", "item_tag_conquista") if req_conq else t("menu_configs", "item_desbloqueie_marcos")
                 sub_cor = _C_AMBER if req_conq else _C_TEXT_MUTED
             elif is_modificada:
-                sub_str = "Sacrifício ativo"
+                sub_str = t("menu_configs", "item_sacrificio_ativo")
                 sub_cor = _C_GREEN_SOFT
             else:
-                sub_str = "Padrão neutro"
+                sub_str = t("menu_configs", "item_padrao_neutro")
                 sub_cor = _C_TEXT_MUTED
             cat_surf = self._fonte_item_desc.render(sub_str, True, sub_cor)
             screen.blit(cat_surf, (self._px(ox + 100), self._py(item_y + 25)))
@@ -866,7 +956,7 @@ class MenuConfigs:
             else:
                 lock_r = pygame.Rect(self._px(ox + 356), self._py(item_y + 12), self._ps(84), self._ps(24))
                 pygame.draw.rect(screen, _C_ELEVATED, lock_r, border_radius=self._ps(5))
-                lbl_bloq = self._fonte_btn.render("BLOQUEADA", True, _C_TEXT_MUTED)
+                lbl_bloq = self._fonte_btn.render(t("menu_configs", "item_bloqueada"), True, _C_TEXT_MUTED)
                 screen.blit(lbl_bloq, lbl_bloq.get_rect(center=lock_r.center))
 
         # Botões de scroll
@@ -901,8 +991,14 @@ class MenuConfigs:
         pygame.draw.rect(screen, _C_CARD, rect, border_radius=self._ps(8))
         pygame.draw.rect(screen, _C_BORDER, rect, width=max(1, self._ps(1)), border_radius=self._ps(8))
 
-        cdef = CONFIGURACOES_GAMEPLAY.get(self.config_selecionada_id)
-        if not cdef:
+        cdef = CONFIGURACOES_GAMEPLAY.get(self.config_selecionada_id) if self.config_selecionada_id else None
+        if not cdef or not self.gerenciador_config.is_desbloqueada(cdef.id):
+            tit_v = self._fonte_det_tit.render(t("menu_configs", "inspetor_titulo_vazio"), True, _C_TEXT_SECONDARY)
+            screen.blit(tit_v, (rect.x + self._ps(12), rect.y + self._ps(14)))
+            dica_v = self._fonte_det_corpo.render(t("menu_configs", "inspetor_dica_1"), True, _C_TEXT_MUTED)
+            dica_v2 = self._fonte_det_corpo.render(t("menu_configs", "inspetor_dica_2"), True, _C_TEXT_MUTED)
+            screen.blit(dica_v, (rect.x + self._ps(12), rect.y + self._ps(46)))
+            screen.blit(dica_v2, (rect.x + self._ps(12), rect.y + self._ps(64)))
             return
 
         is_desbloqueada = self.gerenciador_config.is_desbloqueada(cdef.id)
@@ -918,7 +1014,15 @@ class MenuConfigs:
         pygame.draw.rect(screen, _C_CYAN, cat_pill, width=max(1, self._ps(1)), border_radius=self._ps(4))
         screen.blit(cat_surf, cat_surf.get_rect(center=cat_pill.center))
 
-        st_txt = "DESBLOQUEADA" if is_desbloqueada else ("[CONQUISTA]" if (getattr(cdef, "exclusiva_conquista", False) or getattr(cdef, "requer_desbloqueio", None)) else "BLOQUEADA")
+        st_txt = (
+            t("menu_configs", "inspetor_desbloqueada")
+            if is_desbloqueada
+            else (
+                t("menu_configs", "item_tag_conquista")
+                if (getattr(cdef, "exclusiva_conquista", False) or getattr(cdef, "requer_desbloqueio", None))
+                else t("menu_configs", "item_bloqueada")
+            )
+        )
         st_fg = _C_GREEN_SOFT if is_desbloqueada else _C_AMBER
         st_bg = (6, 40, 30) if is_desbloqueada else (45, 28, 12)
         st_bd = _C_GREEN if is_desbloqueada else _C_AMBER
@@ -930,7 +1034,7 @@ class MenuConfigs:
 
         opt_def = cdef.opcoes.get(val_ativo)
         if opt_def and getattr(opt_def, "incompativel_com", None):
-            cf_surf = self._fonte_cat.render("CONFLITO", True, _C_CRIMSON_SOFT)
+            cf_surf = self._fonte_cat.render(t("menu_configs", "inspetor_conflito"), True, _C_CRIMSON_SOFT)
             cf_pill = pygame.Rect(st_pill.right + self._ps(6), rect.y + self._ps(36), cf_surf.get_width() + self._ps(12), cf_surf.get_height() + self._ps(6))
             pygame.draw.rect(screen, (68, 22, 22), cf_pill, border_radius=self._ps(4))
             pygame.draw.rect(screen, _C_CRIMSON, cf_pill, width=max(1, self._ps(1)), border_radius=self._ps(4))
@@ -939,7 +1043,7 @@ class MenuConfigs:
         val_box = pygame.Rect(rect.x + self._ps(12), rect.y + self._ps(64), rect.width - self._ps(24), self._ps(28))
         pygame.draw.rect(screen, _C_HUD_PANEL, val_box, border_radius=self._ps(6))
         pygame.draw.rect(screen, _C_ELEVATED, val_box, width=max(1, self._ps(1)), border_radius=self._ps(6))
-        lbl_m = self._fonte_cat.render("MODO ATIVO", True, _C_TEXT_MUTED)
+        lbl_m = self._fonte_cat.render(t("menu_configs", "inspetor_modo_ativo"), True, _C_TEXT_MUTED)
         screen.blit(lbl_m, (val_box.x + self._ps(8), val_box.y + self._ps(8)))
         val_surf = self._fonte_btn.render(val_ativo.upper(), True, _C_GOLD)
         screen.blit(val_surf, val_surf.get_rect(right=val_box.right - self._ps(8), centery=val_box.centery))
@@ -952,20 +1056,33 @@ class MenuConfigs:
         pygame.draw.rect(screen, _C_GREEN, ben_rect, width=max(1, self._ps(1)), border_radius=self._ps(7))
         pygame.draw.rect(screen, _C_GREEN, (ben_rect.x, ben_rect.y + self._ps(6), max(2, self._ps(3)), ben_rect.height - self._ps(12)), border_radius=max(1, self._ps(2)))
 
-        bh_surf = self._fonte_cat.render("+ BENEFÍCIO", True, _C_GREEN_SOFT)
+        bh_surf = self._fonte_cat.render(t("menu_configs", "inspetor_beneficio_titulo"), True, _C_GREEN_SOFT)
         bh_pill = pygame.Rect(ben_rect.x + self._ps(10), ben_rect.y + self._ps(7), bh_surf.get_width() + self._ps(10), bh_surf.get_height() + self._ps(4))
         pygame.draw.rect(screen, (14, 62, 46), bh_pill, border_radius=self._ps(4))
         screen.blit(bh_surf, bh_surf.get_rect(center=bh_pill.center))
 
         y_pos = bh_pill.bottom + self._ps(6)
+        max_w_ben = max(40, ben_rect.width - self._ps(20))
         if opt_def and opt_def.buff_text and opt_def.buff_text != "Nenhum":
-            b_linhas = _formatar_texto_wrap(opt_def.buff_text, max_chars_por_linha=27)
-            for bl in b_linhas[:5]:
-                bl_surf = self._fonte_det_corpo.render(bl, True, _C_TEXT_PRIMARY)
-                screen.blit(bl_surf, (ben_rect.x + self._ps(10), y_pos))
-                y_pos += self._ps(15)
+            b_linhas: list[str] = []
+            atual_b = ""
+            for palavra in opt_def.buff_text.split():
+                teste = f"{atual_b} {palavra}".strip()
+                if self._fonte_det_corpo.size(teste)[0] <= max_w_ben:
+                    atual_b = teste
+                else:
+                    if atual_b:
+                        b_linhas.append(atual_b)
+                    atual_b = palavra
+            if atual_b:
+                b_linhas.append(atual_b)
+            for bl in b_linhas:
+                if y_pos + self._ps(15) <= ben_rect.bottom - self._ps(4):
+                    bl_surf = self._fonte_det_corpo.render(bl, True, _C_TEXT_PRIMARY)
+                    screen.blit(bl_surf, (ben_rect.x + self._ps(10), y_pos))
+                    y_pos += self._ps(15)
         else:
-            nenhum_surf = self._fonte_det_corpo.render("Nenhum bônus ativo no padrão", True, _C_TEXT_MUTED)
+            nenhum_surf = self._fonte_det_corpo.render(t("menu_configs", "inspetor_sem_beneficio"), True, _C_TEXT_MUTED)
             screen.blit(nenhum_surf, (ben_rect.x + self._ps(10), y_pos))
 
         # Sub-card de SACRIFÍCIO (Carmesim #ef4444)
@@ -974,27 +1091,52 @@ class MenuConfigs:
         pygame.draw.rect(screen, _C_CRIMSON, sac_rect, width=max(1, self._ps(1)), border_radius=self._ps(7))
         pygame.draw.rect(screen, _C_CRIMSON, (sac_rect.x, sac_rect.y + self._ps(6), max(2, self._ps(3)), sac_rect.height - self._ps(12)), border_radius=max(1, self._ps(2)))
 
-        nh_surf = self._fonte_cat.render("- SACRIFÍCIO", True, _C_CRIMSON_SOFT)
+        nh_surf = self._fonte_cat.render(t("menu_configs", "inspetor_sacrificio_titulo"), True, _C_CRIMSON_SOFT)
         nh_pill = pygame.Rect(sac_rect.x + self._ps(10), sac_rect.y + self._ps(7), nh_surf.get_width() + self._ps(10), nh_surf.get_height() + self._ps(4))
         pygame.draw.rect(screen, (68, 24, 28), nh_pill, border_radius=self._ps(4))
         screen.blit(nh_surf, nh_surf.get_rect(center=nh_pill.center))
 
         ny_pos = nh_pill.bottom + self._ps(6)
+        max_w_sac = max(40, sac_rect.width - self._ps(20))
         if opt_def and opt_def.nerf_text and opt_def.nerf_text != "Nenhum":
-            n_linhas = _formatar_texto_wrap(opt_def.nerf_text, max_chars_por_linha=27)
-            for nl in n_linhas[:4]:
-                nl_surf = self._fonte_det_corpo.render(nl, True, _C_TEXT_PRIMARY)
-                screen.blit(nl_surf, (sac_rect.x + self._ps(10), ny_pos))
-                ny_pos += self._ps(15)
+            n_linhas: list[str] = []
+            atual_n = ""
+            for palavra in opt_def.nerf_text.split():
+                teste = f"{atual_n} {palavra}".strip()
+                if self._fonte_det_corpo.size(teste)[0] <= max_w_sac:
+                    atual_n = teste
+                else:
+                    if atual_n:
+                        n_linhas.append(atual_n)
+                    atual_n = palavra
+            if atual_n:
+                n_linhas.append(atual_n)
+            for nl in n_linhas:
+                if ny_pos + self._ps(15) <= sac_rect.bottom - self._ps(4):
+                    nl_surf = self._fonte_det_corpo.render(nl, True, _C_TEXT_PRIMARY)
+                    screen.blit(nl_surf, (sac_rect.x + self._ps(10), ny_pos))
+                    ny_pos += self._ps(15)
         else:
-            nenhum_n_surf = self._fonte_det_corpo.render("Nenhum sacrifício no padrão", True, _C_TEXT_MUTED)
+            nenhum_n_surf = self._fonte_det_corpo.render(t("menu_configs", "inspetor_sem_sacrificio"), True, _C_TEXT_MUTED)
             screen.blit(nenhum_n_surf, (sac_rect.x + self._ps(10), ny_pos))
 
-        # Flavor Text no rodapé do inspetor
+        # Flavor Text no rodapé do inspetor (wrap por largura em pixels)
         if opt_def and opt_def.flavor_text:
             fy = sac_rect.bottom + self._ps(10)
-            flavor_linhas = _formatar_texto_wrap(f'"{opt_def.flavor_text}"', max_chars_por_linha=30)
-            for fl in flavor_linhas[:3]:
+            max_w_flavor = max(40, rect.width - self._ps(24))
+            flavor_linhas: list[str] = []
+            atual = ""
+            for palavra in f'"{opt_def.flavor_text}"'.split():
+                teste = f"{atual} {palavra}".strip()
+                if self._fonte_det_flavor.size(teste)[0] <= max_w_flavor:
+                    atual = teste
+                else:
+                    if atual:
+                        flavor_linhas.append(atual)
+                    atual = palavra
+            if atual:
+                flavor_linhas.append(atual)
+            for fl in flavor_linhas:
                 if fy + self._ps(13) < rect.bottom - self._ps(6):
                     fl_surf = self._fonte_det_flavor.render(fl, True, _C_TEXT_MUTED)
                     screen.blit(fl_surf, (rect.x + self._ps(12), fy))
@@ -1009,13 +1151,13 @@ class MenuConfigs:
         pygame.draw.rect(screen, _C_CARD, area_rect, border_radius=self._ps(8))
         pygame.draw.rect(screen, _C_BORDER, area_rect, width=max(1, self._ps(1)), border_radius=self._ps(8))
 
-        tit_audio = self._fonte_det_tit.render("ÁUDIO & MÚSICA", True, _C_GOLD)
+        tit_audio = self._fonte_det_tit.render(t("menu_configs", "sistema_titulo_audio"), True, _C_GOLD)
         screen.blit(tit_audio, (self._px(ox + 70), self._py(oy + 125)))
 
         sliders_info = [
-            ("volume_master", "Volume Geral (Master)", oy + 160),
-            ("volume_musica", "Volume da Música", oy + 230),
-            ("volume_sfx", "Volume dos Efeitos (SFX)", oy + 300)
+            ("volume_master", t("menu_configs", "slider_master"), oy + 160),
+            ("volume_musica", t("menu_configs", "slider_musica"), oy + 230),
+            ("volume_sfx", t("menu_configs", "slider_sfx"), oy + 300)
         ]
 
         for cid, label, y_pos in sliders_info:
@@ -1049,6 +1191,82 @@ class MenuConfigs:
             val_txt = f"{val_atual:3d}%"
             txt_surf = self._fonte_btn.render(val_txt, True, _C_GOLD)
             screen.blit(txt_surf, (self._px(ox + 595), self._py(y_pos + 5)))
+
+        # Customização puramente estética da Mira (não conta como config de gameplay)
+        tit_mira = self._fonte_det_tit.render(t("menu_configs", "sistema_titulo_mira"), True, _C_CYAN)
+        screen.blit(tit_mira, (self._px(ox + 70), self._py(oy + 350)))
+
+        prefs = getattr(self.gerenciador_config, "preferencias_mira", {"cor": "ciano", "escala": 1.0}) or {}
+        cor_sel = str(prefs.get("cor", "ciano")).lower()
+        try:
+            esc_sel = float(prefs.get("escala", 1.0))
+        except (TypeError, ValueError):
+            esc_sel = 1.0
+
+        lbl_cor = self._fonte_item_tit.render(t("menu_configs", "mira_cor"), True, _C_TEXT_PRIMARY)
+        screen.blit(lbl_cor, (self._px(ox + 70), self._py(oy + 385)))
+        lbl_esc = self._fonte_item_tit.render(t("menu_configs", "mira_tamanho"), True, _C_TEXT_PRIMARY)
+        screen.blit(lbl_esc, (self._px(ox + 70), self._py(oy + 423)))
+
+        cores_rects, esc_rects = self._obter_rects_mira_sistema(ox, oy)
+        for cor_id, rect_c in cores_rects:
+            r_px = self._pr(rect_c)
+            ativo = (cor_id == cor_sel)
+            pygame.draw.rect(screen, _C_CARD_HOVER if ativo else _C_ELEVATED, r_px, border_radius=self._ps(5))
+            pygame.draw.rect(screen, _C_GOLD if ativo else _C_BORDER, r_px, width=self._ps(2) if ativo else max(1, self._ps(1)), border_radius=self._ps(5))
+            s_c = self._fonte_cat.render(cor_id.upper(), True, _C_GOLD if ativo else _C_TEXT_SECONDARY)
+            screen.blit(s_c, s_c.get_rect(center=r_px.center))
+
+        for esc_val, rect_e in esc_rects:
+            r_px = self._pr(rect_e)
+            ativo = abs(esc_val - esc_sel) < 0.05
+            pygame.draw.rect(screen, _C_CARD_HOVER if ativo else _C_ELEVATED, r_px, border_radius=self._ps(5))
+            pygame.draw.rect(screen, _C_CYAN if ativo else _C_BORDER, r_px, width=self._ps(2) if ativo else max(1, self._ps(1)), border_radius=self._ps(5))
+            s_e = self._fonte_cat.render(t("menu_configs", "mira_escala_valor", escala=esc_val), True, _C_CYAN if ativo else _C_TEXT_SECONDARY)
+            screen.blit(s_e, s_e.get_rect(center=r_px.center))
+
+    def _desenhar_modal_confirmacao_hotswap(self, screen: pygame.Surface, ox: int, oy: int):
+        """Renderiza o modal de confirmação ao desativar Firmware pela queda de cota 2-4-6."""
+        pend = self._confirmacao_pendente
+        if not pend:
+            return
+        modal_l, btn_conf_l, btn_canc_l = self._obter_rects_modal_confirmacao(ox, oy)
+        modal_p = self._pr(modal_l)
+        pygame.draw.rect(screen, _C_HUD_PANEL, modal_p, border_radius=self._ps(8))
+        pygame.draw.rect(screen, _C_AMBER, modal_p, width=max(2, self._ps(2)), border_radius=self._ps(8))
+
+        tit = self._fonte_det_tit.render(t("menu_configs", "modal_hotswap_titulo"), True, _C_AMBER)
+        screen.blit(tit, (modal_p.x + self._ps(18), modal_p.y + self._ps(16)))
+        sub = self._fonte_det_corpo.render(
+            t("menu_configs", "modal_hotswap_subtitulo", n_antes=pend["n_antes"], n_depois=pend["n_depois"]),
+            True,
+            _C_TEXT_PRIMARY,
+        )
+        screen.blit(sub, (modal_p.x + self._ps(18), modal_p.y + self._ps(44)))
+
+        cy_chip = modal_p.y + self._ps(76)
+        for chip_id, slot_num, cota in pend["chips"]:
+            chip_def = CHIPS_FIRMWARE.get(chip_id)
+            nome_chip = chip_def.nome if chip_def else chip_id
+            ln = self._fonte_item_tit.render(
+                t("menu_configs", "modal_hotswap_chip_linha", slot=slot_num, nome_chip=nome_chip, cota=cota),
+                True,
+                _C_CRIMSON_SOFT,
+            )
+            screen.blit(ln, (modal_p.x + self._ps(24), cy_chip))
+            cy_chip += self._ps(24)
+
+        b_conf_p = self._pr(btn_conf_l)
+        pygame.draw.rect(screen, (6, 44, 34), b_conf_p, border_radius=self._ps(6))
+        pygame.draw.rect(screen, _C_GREEN, b_conf_p, width=max(1, self._ps(1)), border_radius=self._ps(6))
+        s_conf = self._fonte_btn.render(t("menu_configs", "btn_confirmar"), True, _C_GREEN_SOFT)
+        screen.blit(s_conf, s_conf.get_rect(center=b_conf_p.center))
+
+        b_canc_p = self._pr(btn_canc_l)
+        pygame.draw.rect(screen, (52, 22, 24), b_canc_p, border_radius=self._ps(6))
+        pygame.draw.rect(screen, _C_CRIMSON, b_canc_p, width=max(1, self._ps(1)), border_radius=self._ps(6))
+        s_canc = self._fonte_btn.render(t("menu_configs", "btn_cancelar"), True, _C_CRIMSON_SOFT)
+        screen.blit(s_canc, s_canc.get_rect(center=b_canc_p.center))
 
 
 

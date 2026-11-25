@@ -4,6 +4,7 @@ Extraído de GameplayScene como mixin behavior-preserving (GameplayRenderMixin).
 """
 
 import math
+import os
 import random
 import pygame
 from src.armas.pistola import Pistola
@@ -16,6 +17,52 @@ from src.utils.constantes import (
 from src.utils.math_utils import clamp
 from src.sistemas.config_dados import CONFIGURACOES_GAMEPLAY
 from src.sistemas.efeitos_combate import obter_bandas_vsync_y
+from src.utils.traducao import t
+
+
+_CORES_MIRA_MAP = {
+    "ciano": (34, 211, 238),
+    "branco": (255, 255, 255),
+    "ouro": (251, 191, 36),
+    "verde": (74, 222, 128),
+    "magenta": (232, 121, 249),
+}
+
+
+def _gerar_surface_mira_alto_contraste(tam_px: int, cor_rgb: tuple[int, int, int]) -> pygame.Surface:
+    """Gera retícula nítida com contorno preto espesso + núcleo colorido de alto contraste."""
+    tam = max(16, int(tam_px))
+    surf = pygame.Surface((tam, tam), pygame.SRCALPHA)
+    c = tam // 2
+    raio = max(5, int(round(tam * 0.30)))
+    ext = max(raio + 3, int(round(tam * 0.44)))
+    gap = max(2, raio // 2)
+    borda = max(3, int(round(tam * 0.12)))
+    traco = max(1, borda - 2)
+    # Contorno externo preto em anel e cruz
+    pygame.draw.circle(surf, (8, 12, 20, 245), (c, c), raio, width=borda)
+    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        pygame.draw.line(
+            surf,
+            (8, 12, 20, 245),
+            (c + dx * gap, c + dy * gap),
+            (c + dx * ext, c + dy * ext),
+            width=borda,
+        )
+    # Núcleo colorido de alto contraste
+    pygame.draw.circle(surf, cor_rgb, (c, c), raio, width=traco)
+    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        pygame.draw.line(
+            surf,
+            cor_rgb,
+            (c + dx * gap, c + dy * gap),
+            (c + dx * ext, c + dy * ext),
+            width=traco,
+        )
+    # Ponto central branco com borda preta
+    pygame.draw.circle(surf, (8, 12, 20, 255), (c, c), max(2, traco + 1))
+    pygame.draw.circle(surf, (255, 255, 255, 255), (c, c), max(1, traco))
+    return surf
 
 
 class GameplayRenderMixin:
@@ -63,6 +110,141 @@ class GameplayRenderMixin:
             return cache.obter(surf, w, h)
         return pygame.transform.scale(surf, (w, h))
 
+    @staticmethod
+    def _cor_wireframe_projetil(proj) -> tuple[int, int, int]:
+        """Resolve a cor distinta da linha wireframe para tiros normais e especiais."""
+        if getattr(proj, "nao_desviavel", False):
+            return (232, 121, 249)  # Shuriken Ninja (magenta não-desviável)
+        if getattr(proj, "eh_impressora", False):
+            return (255, 110, 40)   # Núcleo de Sobrecarga da Impressora
+        if getattr(proj, "nao_parriavel", False):
+            return (255, 55, 75)    # Míssil industrial não-parriável
+        if getattr(proj, "criogenico", False):
+            return (125, 240, 255)  # Projétil criogênico (Boss)
+        if getattr(proj, "refletido_parry", False) or getattr(proj, "parried", False):
+            return (80, 255, 220)   # Projétil aparado por Parry
+        if getattr(proj, "explosivo", False):
+            return (255, 195, 45) if getattr(proj, "fragmentar", False) else (255, 135, 35)
+        if getattr(proj, "sobrecarregado", False):
+            return (56, 189, 248)   # 4º tiro sobrecarregado
+        if getattr(proj, "superaquecido", False) or getattr(proj, "perfurante", False):
+            return (250, 204, 21)   # Superaquecido / Perfurante
+        if getattr(proj, "homing_ativo", False):
+            return (192, 132, 252)  # Teleguiado
+        if getattr(proj, "dono", "jogador") == "inimigo":
+            return (244, 63, 94)    # Tiro inimigo comum
+        cor_p = getattr(proj, "cor", None)
+        if isinstance(cor_p, (tuple, list)) and len(cor_p) >= 3:
+            return (int(cor_p[0]), int(cor_p[1]), int(cor_p[2]))
+        return (210, 245, 255)      # Tiro jogador comum
+
+    def _desenhar_wireframe_drops(self, world_surf: pygame.Surface) -> None:
+        cores_drop = {
+            "xp": (250, 204, 21),
+            "cura": (74, 222, 128),
+            "arma": (56, 189, 248),
+            "equipamento": (34, 211, 238),
+            "overclock": (249, 115, 22),
+            "powerup": (232, 121, 249),
+            "micro_sucata": (253, 224, 71),
+        }
+        for dr in getattr(self.sistema_drops, "drops", []):
+            if not getattr(dr, "ativo", True):
+                continue
+            dx = int(round(self.camera.transform_x(dr.x)))
+            dy = int(round(self.camera.transform_y(dr.y)))
+            dw = max(6, int(round(getattr(dr, "largura", 14))))
+            dh = max(6, int(round(getattr(dr, "altura", 14))))
+            cor = cores_drop.get(getattr(dr, "tipo", "xp"), (220, 220, 220))
+            cx = dx + dw // 2
+            cy = dy + dh // 2
+            pts = [(cx, dy), (dx + dw, cy), (cx, dy + dh), (dx, cy)]
+            pygame.draw.polygon(world_surf, cor, pts, width=1)
+
+    def _desenhar_wireframe_inimigo(self, world_surf: pygame.Surface, inim) -> None:
+        ix = int(round(self.camera.transform_x(inim.x)))
+        iy = int(round(self.camera.transform_y(inim.y)))
+        iw = max(8, int(round(getattr(inim, "largura", 24))))
+        ih = max(8, int(round(getattr(inim, "altura", 24))))
+        if getattr(inim, "is_boss", False):
+            cor = (244, 63, 94)
+            esp = 2
+        elif getattr(inim, "is_elite", False):
+            cor = (250, 204, 21)
+            esp = 2
+        elif getattr(inim, "is_ninja", False):
+            cor = (232, 121, 249)
+            esp = 2
+        elif getattr(inim, "em_fase", False):
+            cor = (90, 120, 145)
+            esp = 1
+        elif "impressora" in type(inim).__name__.lower():
+            cor = (255, 130, 50)
+            esp = 1
+        elif "blindado" in type(inim).__name__.lower():
+            cor = (148, 163, 184)
+            esp = 2
+        else:
+            cor = (34, 211, 238)
+            esp = 1
+        pygame.draw.rect(world_surf, cor, (ix, iy, iw, ih), width=esp)
+        hp = float(getattr(inim, "hp", 1))
+        hp_max = max(1.0, float(getattr(inim, "hp_max", hp)))
+        if hp < hp_max:
+            frac = max(0.0, min(1.0, hp / hp_max))
+            pygame.draw.line(world_surf, (60, 75, 90), (ix, iy - 5), (ix + iw, iy - 5), width=2)
+            pygame.draw.line(world_surf, cor, (ix, iy - 5), (ix + int(round(iw * frac)), iy - 5), width=2)
+
+    def _desenhar_wireframe_jogador(self, world_surf: pygame.Surface, cx_mundo: float, cy_mundo: float) -> None:
+        if not getattr(self.jogador, "vivo", True):
+            return
+        jx = int(round(self.camera.transform_x(self.jogador.x)))
+        jy = int(round(self.camera.transform_y(self.jogador.y)))
+        jw = max(10, int(round(getattr(self.jogador, "largura", 32))))
+        jh = max(10, int(round(getattr(self.jogador, "altura", 32))))
+        em_dash = float(getattr(self.jogador, "dash_timer", 0.0)) > 0.0
+        cor_j = (255, 255, 255) if em_dash else (56, 189, 248)
+        pygame.draw.rect(world_surf, cor_j, (jx, jy, jw, jh), width=2)
+        cx_t = int(round(self.camera.transform_x(cx_mundo)))
+        cy_t = int(round(self.camera.transform_y(cy_mundo)))
+        ang = float(getattr(self.jogador, "aim_angle", 0.0))
+        pygame.draw.line(
+            world_surf,
+            cor_j,
+            (cx_t, cy_t),
+            (int(round(cx_t + math.cos(ang) * (jw * 0.7))), int(round(cy_t + math.sin(ang) * (jh * 0.7)))),
+            width=2,
+        )
+        for dr in getattr(self.jogador, "drones", []):
+            if not getattr(dr, "ativo", True):
+                continue
+            dx = int(round(self.camera.transform_x(dr.x)))
+            dy = int(round(self.camera.transform_y(dr.y)))
+            dw = max(8, int(round(getattr(dr, "largura", 20))))
+            dh = max(8, int(round(getattr(dr, "altura", 20))))
+            tipo_dr = str(getattr(dr, "tipo", "")).lower()
+            cor_d = (74, 222, 128) if "cura" in tipo_dr else ((244, 63, 94) if "combate" in tipo_dr else (56, 189, 248))
+            pygame.draw.rect(world_surf, cor_d, (dx, dy, dw, dh), width=1)
+
+    def _desenhar_wireframe_projetil(self, world_surf: pygame.Surface, proj) -> None:
+        px = int(round(self.camera.transform_x(proj.x)))
+        py = int(round(self.camera.transform_y(proj.y)))
+        pw = max(4, int(round(getattr(proj, "largura", 8))))
+        ph = max(4, int(round(getattr(proj, "altura", 8))))
+        cor = self._cor_wireframe_projetil(proj)
+        cx = px + pw // 2
+        cy = py + ph // 2
+        if getattr(proj, "nao_desviavel", False) or getattr(proj, "explosivo", False):
+            pygame.draw.rect(world_surf, cor, (px, py, pw, ph), width=2)
+            pygame.draw.line(world_surf, cor, (px, py), (px + pw, py + ph), width=1)
+            pygame.draw.line(world_surf, cor, (px + pw, py), (px, py + ph), width=1)
+        elif getattr(proj, "eh_impressora", False) or getattr(proj, "criogenico", False):
+            r = max(3, min(pw, ph) // 2)
+            pygame.draw.rect(world_surf, cor, (px, py, pw, ph), width=1)
+            pygame.draw.circle(world_surf, cor, (cx, cy), r, width=2)
+        else:
+            pygame.draw.rect(world_surf, cor, (px, py, pw, ph), width=2)
+
     def draw(self):
         screen = self.janela.screen
         self._carregar_assets_cenario()
@@ -75,6 +257,11 @@ class GameplayRenderMixin:
             self.janela.low_graphics = baixa_qualidade
         if hasattr(self, "sistema_particulas") and self.sistema_particulas:
             self.sistema_particulas.low_graphics = baixa_qualidade
+
+        mods = self.config_sistema.obter_modificadores() if hasattr(self, "config_sistema") and self.config_sistema else None
+        modo_wireframe = bool(getattr(mods, "modo_wireframe", False)) if mods is not None else False
+        if hasattr(self, "_sincronizar_hitboxes_wireframe"):
+            self._sincronizar_hitboxes_wireframe(mods)
 
         # =========================================================================
         # CAMADA 1: ESPAÇO DO MUNDO (TRANSFORMADO PELA CÂMERA, COM SUPORTE A DPI NATIVO E ZOOM 75%)
@@ -116,30 +303,30 @@ class GameplayRenderMixin:
             self.camera.y += random.uniform(-self.shake_intensidade, self.shake_intensidade)
 
         # Fundo da arena
-        world_surf.fill(CINZA_FUNDO)
+        world_surf.fill((8, 12, 18) if modo_wireframe else CINZA_FUNDO)
 
-        # Renderização do piso ladrilhado visível (ou grade fallback / baixa qualidade)
-        tile_tam = 32
+        # Renderização do piso ladrilhado visível (ou grade técnica em wireframe / baixa qualidade)
+        tile_tam = 64 if modo_wireframe else 32
         inicio_tx = max(0, int(self.camera.x // tile_tam))
         fim_tx = min(int(self.largura_arena // tile_tam), int((self.camera.x + view_w) // tile_tam) + 1)
         inicio_ty = max(0, int(self.camera.y // tile_tam))
         fim_ty = min(int(self.altura_arena // tile_tam), int((self.camera.y + view_h) // tile_tam) + 1)
 
-        if self._tile_piso is not None and not baixa_qualidade:
+        if self._tile_piso is not None and not baixa_qualidade and not modo_wireframe:
             for tx in range(inicio_tx, fim_tx):
                 for ty in range(inicio_ty, fim_ty):
                     wx = tx * tile_tam
                     wy = ty * tile_tam
                     world_surf.blit(self._tile_piso, (self.camera.transform_x(wx), self.camera.transform_y(wy)))
         else:
-            # Grade fallback caso textura não esteja em RAM ou graficos_qualidade == "baixa"
+            cor_grade = (20, 58, 72) if modo_wireframe else (28, 32, 42)
             for tx in range(inicio_tx, fim_tx):
                 for ty in range(inicio_ty, fim_ty):
                     wx = tx * tile_tam
                     wy = ty * tile_tam
                     dx = self.camera.transform_x(wx)
                     dy = self.camera.transform_y(wy)
-                    pygame.draw.rect(world_surf, (28, 32, 42), (dx, dy, tile_tam, tile_tam), 1)
+                    pygame.draw.rect(world_surf, cor_grade, (dx, dy, tile_tam, tile_tam), 1)
 
         # Linhas delimitadoras da arena
         borda_x0 = self.camera.transform_x(0)
@@ -291,8 +478,13 @@ class GameplayRenderMixin:
             for sp in getattr(efeito_dash, "subprocessos_pendentes", []):
                 ox_s = int(self.camera.transform_x(sp["origem"][0]))
                 oy_s = int(self.camera.transform_y(sp["origem"][1]))
-                dx_s = int(self.camera.transform_x(sp["destino"][0]))
-                dy_s = int(self.camera.transform_y(sp["destino"][1]))
+                if getattr(self, "jogador", None) is not None:
+                    alvo_x = float(self.jogador.x) + float(getattr(self.jogador, "largura", 32)) * 0.5
+                    alvo_y = float(self.jogador.y) + float(getattr(self.jogador, "altura", 32)) * 0.5
+                else:
+                    alvo_x, alvo_y = sp["destino"]
+                dx_s = int(self.camera.transform_x(alvo_x))
+                dy_s = int(self.camera.transform_y(alvo_y))
                 frac_sp = max(0.0, min(1.0, float(sp.get("tempo", 0.0)) / 0.75))
                 pygame.draw.line(world_surf, (56, 189, 248), (ox_s, oy_s), (dx_s, dy_s), width=1)
                 pygame.draw.circle(world_surf, (125, 240, 255), (ox_s, oy_s), 12, width=1)
@@ -354,14 +546,21 @@ class GameplayRenderMixin:
 
         # Drops de itens e gemas de XP no chão da arena (pausando pisca durante Boss)
         is_boss_lutando_draw = (self.chefe_final is not None and self.chefe_final.vivo)
-        self.sistema_drops.desenhar(self.janela, self.camera, pausar_despawn=is_boss_lutando_draw)
+        if modo_wireframe:
+            self._desenhar_wireframe_drops(world_surf)
+            for inimigo in self.inimigos:
+                if getattr(inimigo, "vivo", True):
+                    self._desenhar_wireframe_inimigo(world_surf, inimigo)
+            self._desenhar_wireframe_jogador(world_surf, cx_mundo, cy_mundo)
+        else:
+            self.sistema_drops.desenhar(self.janela, self.camera, pausar_despawn=is_boss_lutando_draw)
 
-        # Inimigos
-        for inimigo in self.inimigos:
-            inimigo.desenhar(self.janela, self.camera)
+            # Inimigos
+            for inimigo in self.inimigos:
+                inimigo.desenhar(self.janela, self.camera)
 
-        # Jogador
-        self.jogador.desenhar(self.janela, self.camera)
+            # Jogador
+            self.jogador.desenhar(self.janela, self.camera)
 
         # Brilho ciano pulsante no cano quando Slot 2 (Pistola) está com 4º tiro sobrecarregado pronto
         if self.jogador.vivo and getattr(self.jogador, "slot_ativo", 0) == 2 and isinstance(arma_ativa, Pistola) and getattr(arma_ativa, "esta_carregada", False):
@@ -374,12 +573,20 @@ class GameplayRenderMixin:
             pygame.draw.circle(world_surf, (220, 250, 255), (bx_t, by_t), max(2, r_glow // 2))
 
         # Projéteis (tiros do jogador primeiro; projéteis inimigos sempre acima de inimigos, Boss e jogador)
-        for proj in self.projeteis:
-            if getattr(proj, "dono", "jogador") != "inimigo":
-                proj.desenhar(self.janela, self.camera)
-        for proj in self.projeteis:
-            if getattr(proj, "dono", "jogador") == "inimigo":
-                proj.desenhar(self.janela, self.camera)
+        if modo_wireframe:
+            for proj in self.projeteis:
+                if getattr(proj, "dono", "jogador") != "inimigo":
+                    self._desenhar_wireframe_projetil(world_surf, proj)
+            for proj in self.projeteis:
+                if getattr(proj, "dono", "jogador") == "inimigo":
+                    self._desenhar_wireframe_projetil(world_surf, proj)
+        else:
+            for proj in self.projeteis:
+                if getattr(proj, "dono", "jogador") != "inimigo":
+                    proj.desenhar(self.janela, self.camera)
+            for proj in self.projeteis:
+                if getattr(proj, "dono", "jogador") == "inimigo":
+                    proj.desenhar(self.janela, self.camera)
 
         # Partículas de combate (faíscas, ondas de choque, bursts e detritos)
         self.sistema_particulas.desenhar(self.janela, self.camera)
@@ -441,44 +648,53 @@ class GameplayRenderMixin:
                         (int(ix_d + math.cos(sp_ang) * sp_r), int(iy_d + math.sin(sp_ang) * sp_r)),
                         width=1,
                     )
+            else:
+                eh_chamas = "chamas" in str(getattr(arma_cont, "id_arma", "")).lower() or "chamas" in str(type(arma_cont).__name__).lower()
+                if eh_chamas and getattr(arma_cont, "fluxo_ativo", False):
+                    orig_c = getattr(
+                        arma_cont,
+                        "fluxo_origem",
+                        (self.jogador.x + self.jogador.largura / 2.0, self.jogador.y + self.jogador.altura / 2.0),
+                    )
+                    ox_c = self.camera.transform_x(orig_c[0])
+                    oy_c = self.camera.transform_y(orig_c[1])
+                    ang_c = float(getattr(arma_cont, "fluxo_angulo", getattr(self.jogador, "aim_angle", 0.0)))
+                    alc_c = float(getattr(arma_cont, "fluxo_alcance", getattr(arma_cont, "alcance", 195.0)))
+                    meio_arco = math.radians(float(getattr(arma_cont, "arco_graus", 55.0)) * 0.5)
+                    raio_buf = int(math.ceil(alc_c)) + 8
+                    diam_buf = raio_buf * 2
+                    surf_cone = getattr(self, "_surf_cone_chama", None)
+                    if surf_cone is None or surf_cone.get_width() < diam_buf:
+                        surf_cone = pygame.Surface((diam_buf, diam_buf), pygame.SRCALPHA)
+                        self._surf_cone_chama = surf_cone
+                    surf_cone.fill((0, 0, 0, 0))
+                    cx_b = surf_cone.get_width() // 2
+                    cy_b = surf_cone.get_height() // 2
+                    pts_cone = [(cx_b, cy_b)]
+                    passos_cone = 12
+                    for i_c in range(passos_cone + 1):
+                        a_i = ang_c - meio_arco + (2.0 * meio_arco * i_c / float(passos_cone))
+                        pts_cone.append((int(cx_b + math.cos(a_i) * alc_c), int(cy_b + math.sin(a_i) * alc_c)))
+                    pygame.draw.polygon(surf_cone, (255, 115, 30, 34), pts_cone)
+                    pygame.draw.polygon(surf_cone, (255, 185, 70, 58), pts_cone, width=1)
+                    world_surf.blit(surf_cone, (int(ox_c - cx_b), int(oy_c - cy_b)))
 
         # Hooks visuais B+ (latencia_ping fantasma, sandbox_isolada, firewall_estatico, etc.)
-        mods = self.config_sistema.obter_modificadores() if hasattr(self, "config_sistema") and self.config_sistema else None
         if getattr(self, "efeitos_combate", None) is not None:
-            try:
-                from src.sistemas.efeitos_combate import ContextoCombate
-                ctx_render = ContextoCombate(
-                    cena=self,
-                    jogador=self.jogador,
-                    inimigos=self.inimigos,
-                    projeteis=self.projeteis,
-                    drops=getattr(self.sistema_drops, "drops", []),
-                    particulas=self.sistema_particulas,
-                    mods=mods,
-                    sistema_combo=getattr(self, "sistema_combo", None),
-                    sistema_conquistas=getattr(self, "sistema_conquistas", None),
-                    hologramas=getattr(self, "hologramas", None),
-                    tempo_sobrevivencia=getattr(self, "tempo_sobrevivencia", 0.0),
-                )
-                self.efeitos_combate.disparar_ao_pos_render_mundo(ctx_render, world_surf, camera=self.camera)
-            except Exception:
-                pass
-
-        # Passe técnico Modo Wireframe (grade + contornos geométricos + nó vulnerável)
-        if getattr(mods, "modo_wireframe", False):
-            for gx in range(0, LARGURA_TELA, 64):
-                pygame.draw.line(world_surf, (20, 58, 72), (gx, 0), (gx, ALTURA_TELA), width=1)
-            for gy in range(0, ALTURA_TELA, 64):
-                pygame.draw.line(world_surf, (20, 58, 72), (0, gy), (LARGURA_TELA, gy), width=1)
-            for inim in self.inimigos:
-                if not getattr(inim, "vivo", True):
-                    continue
-                ix = int(self.camera.transform_x(inim.x))
-                iy = int(self.camera.transform_y(inim.y))
-                iw = max(8, int(getattr(inim, "largura", 24)))
-                ih = max(8, int(getattr(inim, "altura", 24)))
-                pygame.draw.rect(world_surf, (34, 211, 238), (ix, iy, iw, ih), width=1)
-                pygame.draw.circle(world_surf, (251, 191, 36), (ix + iw // 2, iy + ih // 2), max(3, min(iw, ih) // 4), width=1)
+            from src.sistemas.efeitos_combate import ContextoCombate
+            ctx_render = ContextoCombate(
+                cena=self,
+                jogador=self.jogador,
+                inimigos=self.inimigos,
+                projeteis=self.projeteis,
+                drops=getattr(self.sistema_drops, "drops", []),
+                particulas=self.sistema_particulas,
+                mods=mods,
+                sistema_conquistas=getattr(self, "sistema_conquistas", None),
+                hologramas=getattr(self, "hologramas", None),
+                tempo_sobrevivencia=getattr(self, "tempo_sobrevivencia", 0.0),
+            )
+            self.efeitos_combate.disparar_ao_pos_render_mundo(ctx_render, world_surf, camera=self.camera)
 
         # Barra de HP in-world flutuando abaixo do jogador
         hud_visivel = (self.gerenciador_config.obter_valor("hud") != "desligado")
@@ -729,24 +945,39 @@ class GameplayRenderMixin:
                 pygame.draw.rect(self.janela.screen, cor_dash, (bar_x + 1, next_y + 1, fill_dash, sub_h - 2))
             next_y += sub_h + 1
 
-        # Barra de munição da arma atual
+        # Barra de munição APENAS para armas finitas, ou Calor da SMG no mesmo slot (removendo barra amarela estática)
         arma_ativa = self.jogador.obter_arma_ativa() if hasattr(self.jogador, "obter_arma_ativa") else None
         if arma_ativa is not None:
             municao_inf = bool(getattr(arma_ativa, "municao_infinita", True))
             municao_max = int(getattr(arma_ativa, "municao_max", 0))
             municao_atual = int(getattr(arma_ativa, "municao_atual", 0))
-            if not municao_inf and municao_max > 0:
+            if getattr(arma_ativa, "usa_calor", False) and hasattr(self, "hud") and self.hud is not None and hasattr(self.hud, "desenhar_barra_calor_in_world"):
+                self.hud.desenhar_barra_calor_in_world(self.janela.screen, bar_x, next_y + 1, bar_w, arma_ativa)
+                next_y += 7
+            elif not municao_inf and municao_max > 0:
                 prog_mun = clamp(municao_atual / float(municao_max), 0.0, 1.0)
                 cor_mun = DOURADO if prog_mun > 0.25 else VERMELHO_HP
-            else:
-                prog_mun = 1.0
-                cor_mun = DOURADO
-            pygame.draw.rect(self.janela.screen, (15, 23, 42), (bar_x, next_y, bar_w, sub_h))
-            fill_mun = int((bar_w - 2) * prog_mun)
-            if fill_mun > 0:
-                pygame.draw.rect(self.janela.screen, cor_mun, (bar_x + 1, next_y + 1, fill_mun, sub_h - 2))
-            if getattr(arma_ativa, "usa_calor", False) and hasattr(self, "hud") and self.hud is not None and hasattr(self.hud, "desenhar_barra_calor_in_world"):
-                self.hud.desenhar_barra_calor_in_world(self.janela.screen, bar_x, next_y + sub_h + 2, bar_w, arma_ativa)
+                pygame.draw.rect(self.janela.screen, (15, 23, 42), (bar_x, next_y, bar_w, sub_h))
+                fill_mun = int((bar_w - 2) * prog_mun)
+                if fill_mun > 0:
+                    pygame.draw.rect(self.janela.screen, cor_mun, (bar_x + 1, next_y + 1, fill_mun, sub_h - 2))
+                next_y += sub_h + 1
+
+        # Barra fina de recarga do Quick-Parry sob o jogador APENAS enquanto em cooldown
+        arma_parry = self._obter_arma_melee() if hasattr(self, "_obter_arma_melee") else None
+        if arma_parry is not None:
+            cd_p = max(0.0, float(getattr(arma_parry, "tempo_recarga_restante", 0.0)))
+            if cd_p > 0.0:
+                cd_max_p = max(
+                    0.01,
+                    float(getattr(arma_parry, "ultimo_parry_cd_total", getattr(arma_parry, "cooldown", 0.6))),
+                )
+                prog_p = clamp(1.0 - (cd_p / cd_max_p), 0.0, 1.0)
+                parry_h = 3
+                pygame.draw.rect(self.janela.screen, (15, 23, 42), (bar_x, next_y, bar_w, parry_h))
+                fill_p = int((bar_w - 2) * prog_p)
+                if fill_p > 0:
+                    pygame.draw.rect(self.janela.screen, DOURADO, (bar_x + 1, next_y + 1, fill_p, parry_h - 2))
 
     def _resolver_icone_arma(self, arma, chave_padrao: str | None = None):
         """Resolve o sprite do ícone priorizando `arma.icone_asset` antes do fallback legado por nome."""
@@ -768,7 +999,7 @@ class GameplayRenderMixin:
             if "Bastão" in nome_arma or "Choque" in nome_arma:
                 return self._obter_sprite_icone("arma_bastao_choque")
             if "SMG" in nome_arma:
-                return self._obter_sprite_icone("arma_smg")
+                return self._obter_sprite_icone("arma_smg_compacta")
             if "Rifle" in nome_arma:
                 return self._obter_sprite_icone("arma_rifle")
             if "Railgun" in nome_arma:
@@ -800,14 +1031,13 @@ class GameplayRenderMixin:
             cor_carmesim = (239, 68, 68)
             cor_muted = (148, 163, 184)
 
-            # 0. Painel compacto de Vitais no topo esquerdo (HP numérico + Overshield ciano + prontidão do Dash)
+            # 0. Painel compacto de Vitais no topo esquerdo (HP numérico + Overshield + Dash + Timer de Parry)
             if hasattr(self, "hud") and self.hud is not None and hasattr(self.hud, "desenhar_painel_vitais"):
-                self.hud.desenhar_painel_vitais(screen, self.jogador, visivel=hud_visivel)
+                arma_parry_hud = self._obter_arma_melee() if hasattr(self, "_obter_arma_melee") else None
+                self.hud.desenhar_painel_vitais(screen, self.jogador, visivel=hud_visivel, arma_melee=arma_parry_hud)
             if hasattr(self, "hud") and self.hud is not None:
                 if hasattr(self, "sistema_conquistas") and self.sistema_conquistas is not None and hasattr(self.hud, "desenhar_pins_conquistas"):
                     self.hud.desenhar_pins_conquistas(screen, self.sistema_conquistas.obter_resumo_fixadas(), visivel=hud_visivel)
-                if hasattr(self, "sistema_combo") and self.sistema_combo is not None and hasattr(self.hud, "desenhar_indicador_combo"):
-                    self.hud.desenhar_indicador_combo(screen, self.sistema_combo, visivel=hud_visivel)
                 if hasattr(self, "efeitos_combate") and self.efeitos_combate is not None and hasattr(self.hud, "desenhar_barra_ram_gc"):
                     efeito_gc = self.efeitos_combate.obter_efeito("garbage_collector")
                     if efeito_gc is not None:
@@ -897,9 +1127,9 @@ class GameplayRenderMixin:
 
                         menor_tempo = min(int(getattr(d, "tempo_restante", 0)) for d in drones_ativos)
                         if len(drones_ativos) > 1:
-                            texto_badge = f"x{len(drones_ativos)} {menor_tempo}s"
+                            texto_badge = t("ui_geral", "hud_drone_multi", qtd=len(drones_ativos), segundos=menor_tempo)
                         else:
-                            texto_badge = f"{menor_tempo}s"
+                            texto_badge = t("ui_geral", "hud_drone_unico", segundos=menor_tempo)
                         cor_badge = cor_ciano
 
                 if icone_img is not None:
@@ -938,7 +1168,7 @@ class GameplayRenderMixin:
                 pygame.draw.rect(screen, (28, 16, 44), (sx3b, sy3b, slot_tam, slot_tam), border_radius=raio_slot)
                 pygame.draw.rect(screen, cor_roxo, (sx3b, sy3b, slot_tam, slot_tam), width=max(1, int(round(s))), border_radius=raio_slot)
 
-                num_surf = fonte_slots.render("[3B]", True, (216, 180, 254))
+                num_surf = fonte_slots.render(t("ui_geral", "hud_slot_3b"), True, (216, 180, 254))
                 screen.blit(num_surf, (sx3b + max(2, int(round(3 * s))), sy3b + max(1, int(round(2 * s)))))
 
                 if getattr(self.jogador, "arma_especial_secundaria", None) is not None:
@@ -962,8 +1192,8 @@ class GameplayRenderMixin:
             minutos = int(self.tempo_sobrevivencia // 60)
             segundos = int(self.tempo_sobrevivencia % 60)
             texto_tempo = f"{minutos:02d}:{segundos:02d}"
-            texto_abates = f"ABATES {self.abates}"
-            texto_pontos = f"PTS {self.pontos}"
+            texto_abates = t("ui_geral", "hud_abates", abates=self.abates)
+            texto_pontos = t("ui_geral", "hud_pontos", pontos=self.pontos)
 
             centro_tela_x = ox + vw // 2
             pill_w = px_s(340)
@@ -1004,7 +1234,7 @@ class GameplayRenderMixin:
             # 6. FPS (Top-Right) em ciano monospace sob hud_visivel
             fps_val = int(self.janela.get_fps())
             fonte_fps = self._obter_fonte("fps", s)
-            fps_surf = fonte_fps.render(f"FPS {fps_val}", True, cor_ciano)
+            fps_surf = fonte_fps.render(t("ui_geral", "hud_fps", fps=fps_val), True, cor_ciano)
             fps_rect = fps_surf.get_rect(right=px_x(LARGURA_TELA - 56), centery=px_y(32))
             screen.blit(fps_surf, fps_rect)
 
@@ -1024,11 +1254,11 @@ class GameplayRenderMixin:
         else:
             pygame.draw.rect(screen, (45, 55, 75), (gear_x, gear_y, gear_dim, gear_dim), border_radius=max(2, int(round(4 * s))))
             fonte_fps = self._obter_fonte("fps", s)
-            gear_surf = fonte_fps.render("[C]", True, DOURADO)
+            gear_surf = fonte_fps.render(t("ui_geral", "hud_btn_configs"), True, DOURADO)
             gear_rect = gear_surf.get_rect(centerx=gear_x + gear_dim // 2, centery=gear_y + gear_dim // 2)
             screen.blit(gear_surf, gear_rect)
 
-        # 7. Mira (Crosshair) projetada na viewport nativa
+        # 7. Mira (Crosshair): cursor de hardware de alto contraste (com customização estética e Config Cursor Desabilitado)
         em_combate_ativo = (
             not self.pausado and not self.game_over and not self.vitoria
             and not (self.boss_cutscene_ativa and self.boss_cutscene_fase != "whiteout")
@@ -1036,10 +1266,66 @@ class GameplayRenderMixin:
             and not (hasattr(self, "menu_conquistas") and self.menu_conquistas is not None and self.menu_conquistas.ativo)
             and not (hasattr(self, "menu_debug") and self.menu_debug.ativo)
         )
-        if pygame.display.get_init():
-            pygame.mouse.set_visible(not (em_combate_ativo and self.jogador.vivo))
-        if em_combate_ativo and self.jogador.vivo:
-            val_kb = str(self.config_sistema.obter_valor("keybinds")).lower() if hasattr(self, "config_sistema") and self.config_sistema else "padrao"
+        val_kb = str(self.config_sistema.obter_valor("keybinds")).lower() if hasattr(self, "config_sistema") and self.config_sistema else "padrao"
+        ger_cfg_mira = getattr(self, "gerenciador_config", None) or getattr(self, "config_sistema", None)
+        mods_mira = ger_cfg_mira.obter_modificadores() if (ger_cfg_mira is not None and hasattr(ger_cfg_mira, "obter_modificadores")) else None
+        mira_oculta = bool(mods_mira is not None and getattr(mods_mira, "mira_oculta_homing", False))
+        prefs_mira = getattr(ger_cfg_mira, "preferencias_mira", None) or {}
+        cor_nome = str(prefs_mira.get("cor", "ciano")).lower()
+        cor_rgb = _CORES_MIRA_MAP.get(cor_nome, _CORES_MIRA_MAP["ciano"])
+        try:
+            escala_mira = float(prefs_mira.get("escala", 1.0))
+        except (TypeError, ValueError):
+            escala_mira = 1.0
+        escala_mira = max(0.75, min(2.0, escala_mira))
+
+        driver_dummy = os.environ.get("SDL_VIDEODRIVER", "").strip().lower() == "dummy"
+        usar_cursor_hw = (
+            em_combate_ativo
+            and self.jogador.vivo
+            and not mira_oculta
+            and val_kb not in ("uma_mao", "pesadelo")
+            and not driver_dummy
+            and pygame.display.get_init()
+        )
+        tam_base_l = max(18, int(round(24 * escala_mira)))
+        cache_mira = getattr(self, "_cache_mira_hc", None)
+        if cache_mira is None:
+            cache_mira = {}
+            self._cache_mira_hc = cache_mira
+
+        cursor_hw_aplicado = False
+        if usar_cursor_hw:
+            try:
+                cw = max(14, px_s(tam_base_l))
+                chave_hc = (cw, cor_rgb)
+                mira_hw = cache_mira.get(chave_hc)
+                if mira_hw is None:
+                    mira_hw = _gerar_surface_mira_alto_contraste(cw, cor_rgb)
+                    cache_mira[chave_hc] = mira_hw
+                if getattr(self, "_cursor_hw_cache_key", None) != chave_hc:
+                    self._cursor_hw_obj = pygame.cursors.Cursor((cw // 2, cw // 2), mira_hw)
+                    self._cursor_hw_cache_key = chave_hc
+                if not getattr(self, "_cursor_hw_ativo", False) or getattr(self, "_cursor_hw_key_aplicada", None) != chave_hc:
+                    pygame.mouse.set_cursor(self._cursor_hw_obj)
+                    self._cursor_hw_key_aplicada = chave_hc
+                self._cursor_hw_ativo = True
+                pygame.mouse.set_visible(True)
+                cursor_hw_aplicado = True
+            except Exception:
+                cursor_hw_aplicado = False
+
+        if not cursor_hw_aplicado:
+            if getattr(self, "_cursor_hw_ativo", False):
+                try:
+                    pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+                except Exception:
+                    pass
+                self._cursor_hw_ativo = False
+            if pygame.display.get_init():
+                pygame.mouse.set_visible(not (em_combate_ativo and self.jogador.vivo))
+
+        if em_combate_ativo and self.jogador.vivo and not cursor_hw_aplicado and not mira_oculta:
             if val_kb == "uma_mao":
                 dir_m = getattr(self.jogador, "dir_movimento", (0.0, -1.0))
                 dmx, dmy = float(dir_m[0]), float(dir_m[1])
@@ -1061,14 +1347,13 @@ class GameplayRenderMixin:
 
             mira_tx = px_x(mira_lx)
             mira_ty = px_y(mira_ly)
-            if self._mira_crosshair_img is not None:
-                cw = px_s(self._mira_crosshair_img.get_width())
-                ch = px_s(self._mira_crosshair_img.get_height())
-                mira_img = self._escalar_surf_nativa(self._mira_crosshair_img, cw, ch)
-                screen.blit(mira_img, (mira_tx - cw // 2, mira_ty - ch // 2))
-            else:
-                pygame.draw.circle(screen, AZUL_CIANO, (mira_tx, mira_ty), max(4, int(round(6 * s))), width=max(1, int(round(s))))
-                pygame.draw.circle(screen, DOURADO, (mira_tx, mira_ty), max(2, int(round(2 * s))))
+            cw = max(14, px_s(tam_base_l))
+            chave_hc = (cw, cor_rgb)
+            mira_img = cache_mira.get(chave_hc)
+            if mira_img is None:
+                mira_img = _gerar_surface_mira_alto_contraste(cw, cor_rgb)
+                cache_mira[chave_hc] = mira_img
+            screen.blit(mira_img, (mira_tx - cw // 2, mira_ty - cw // 2))
 
     def _desenhar_banner_grace_period(self, screen):
         """Renderiza o banner centralizado com a contagem regressiva de 10s antes do Chefe Final em DPI nativo."""
@@ -1093,10 +1378,14 @@ class GameplayRenderMixin:
         box_x = centro_x - box_w // 2
         box_y = oy + int(round(118 * s))
 
-        painel = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
-        painel.fill((18, 12, 30, 205))
-        pygame.draw.rect(painel, DOURADO, (0, 0, box_w, box_h), width=max(1, int(round(2 * s))), border_radius=max(4, int(round(8 * s))))
-        screen.blit(painel, (box_x, box_y))
+        chave_grace = (box_w, box_h, max(1, int(round(2 * s))), max(4, int(round(8 * s))))
+        if getattr(self, "_grace_banner_cache_key", None) != chave_grace:
+            painel = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
+            painel.fill((18, 12, 30, 205))
+            pygame.draw.rect(painel, DOURADO, (0, 0, box_w, box_h), width=chave_grace[2], border_radius=chave_grace[3])
+            self._grace_banner_surf = painel
+            self._grace_banner_cache_key = chave_grace
+        screen.blit(self._grace_banner_surf, (box_x, box_y))
 
         cur_y = box_y + pad_y
         off_sh = max(1, int(round(s)))
@@ -1210,16 +1499,16 @@ class GameplayRenderMixin:
 
         # Faixa superior de destaque
         fonte_tit = self._obter_fonte("tit_vit", s)
-        tit_surf = fonte_tit.render("GELADEIRA TSUNAMI DESLIGADA", True, DOURADO)
+        tit_surf = fonte_tit.render(t("ui_geral", "vitoria_titulo"), True, DOURADO)
         tit_rect = tit_surf.get_rect(centerx=cx_tela, top=px_y(oy + 60))
         screen.blit(tit_surf, tit_rect)
 
         minutos = int(self.tempo_sobrevivencia // 60)
         segundos = int(self.tempo_sobrevivencia % 60)
-        tempo_str = f"{minutos:02d}:{segundos:02d} ({self.tempo_sobrevivencia:.1f}s)"
+        tempo_str = t("ui_geral", "vitoria_tempo_valor", min=minutos, seg=segundos, tempo_str=f"{self.tempo_sobrevivencia:.1f}")
 
         fonte_sub = self._obter_fonte("sub_vit", s)
-        sub_surf = fonte_sub.render(f"Cleiton sobreviveu ao escritório por {minutos:02d}:{segundos:02d}.", True, (200, 220, 240))
+        sub_surf = fonte_sub.render(t("ui_geral", "vitoria_subtitulo", min=minutos, seg=segundos), True, (200, 220, 240))
         sub_rect = sub_surf.get_rect(centerx=cx_tela, top=px_y(oy + 95))
         screen.blit(sub_surf, sub_rect)
 
@@ -1233,11 +1522,19 @@ class GameplayRenderMixin:
         fonte_stat_destaque = self._obter_fonte("stat_destaque", s)
 
         stats_data = [
-            ("Tempo de Partida:", tempo_str, DOURADO),
-            ("Máquinas Destruídas:", f"{self.abates}", AMARELO_XP),
-            ("Dano Total Causado:", f"{self.dano_total_causado:,}", (255, 100, 100)),
-            ("Configurações Desbloqueadas:", f"{len(self.gerenciador_config.desbloqueadas)} / {len(CONFIGURACOES_GAMEPLAY)}", AZUL_CIANO),
-            ("Multiplicador de Configurações:", f"x{self.estatisticas_partida_resultado.get('mult_dif', 1.0):.2f}", (180, 210, 240)),
+            (t("ui_geral", "vitoria_stat_tempo"), tempo_str, DOURADO),
+            (t("ui_geral", "vitoria_stat_abates"), f"{self.abates}", AMARELO_XP),
+            (t("ui_geral", "vitoria_stat_dano"), f"{self.dano_total_causado:,}", (255, 100, 100)),
+            (
+                t("ui_geral", "vitoria_stat_configs"),
+                t("ui_geral", "vitoria_stat_configs_val", desbloqueadas=len(self.gerenciador_config.desbloqueadas), total_configs=len(CONFIGURACOES_GAMEPLAY)),
+                AZUL_CIANO,
+            ),
+            (
+                t("ui_geral", "vitoria_stat_mult"),
+                t("ui_geral", "vitoria_stat_mult_val", mult=self.estatisticas_partida_resultado.get("mult_dif", 1.0)),
+                (180, 210, 240),
+            ),
         ]
 
         start_y = oy + 145
@@ -1256,16 +1553,16 @@ class GameplayRenderMixin:
 
         # Pontuação Final
         score_val = self.estatisticas_partida_resultado.get("score_final", self.pontos)
-        score_lbl = fonte_stat_destaque.render("PONTUAÇÃO FINAL:", True, DOURADO)
+        score_lbl = fonte_stat_destaque.render(t("ui_geral", "vitoria_pontuacao_lbl"), True, DOURADO)
         screen.blit(score_lbl, (px_x(ox + 140), px_y(oy + 330)))
 
-        score_num_surf = fonte_stat_destaque.render(f"{score_val:,} PTS", True, DOURADO)
+        score_num_surf = fonte_stat_destaque.render(t("ui_geral", "vitoria_pontuacao_val", pontos=score_val), True, DOURADO)
         score_num_rect = score_num_surf.get_rect(right=px_x(ox + 660), top=px_y(oy + 330))
         screen.blit(score_num_surf, score_num_rect)
 
         # Badge de Recorde Histórico se atingido
         if self.estatisticas_partida_resultado.get("novo_recorde_pontos", False):
-            badge_rec_surf = fonte_stat_val.render("[NOVO RECORDE!]", True, AMARELO_XP)
+            badge_rec_surf = fonte_stat_val.render(t("ui_geral", "vitoria_novo_recorde"), True, AMARELO_XP)
             badge_rec_rect = badge_rec_surf.get_rect(centerx=cx_tela, top=px_y(oy + 375))
             screen.blit(badge_rec_surf, badge_rec_rect)
 
@@ -1273,13 +1570,13 @@ class GameplayRenderMixin:
         fonte_btn = self._obter_fonte("btn", s)
         fonte_btn_sub = self._obter_fonte("btn_sub", s)
 
-        btn1_surf = fonte_btn.render("[ENTER / ESPAÇO] Jogar Novamente", True, DOURADO)
+        btn1_surf = fonte_btn.render(t("ui_geral", "vitoria_btn_jogar"), True, DOURADO)
         screen.blit(btn1_surf, btn1_surf.get_rect(centerx=cx_tela, top=px_y(oy + 430)))
 
-        btn2_surf = fonte_btn_sub.render("[ESC / M] Menu Principal", True, (200, 210, 225))
+        btn2_surf = fonte_btn_sub.render(t("ui_geral", "vitoria_btn_menu"), True, (200, 210, 225))
         screen.blit(btn2_surf, btn2_surf.get_rect(centerx=cx_tela, top=px_y(oy + 465)))
 
-        btn3_surf = fonte_btn_sub.render("[C] Menu de Configurações", True, AZUL_CIANO)
+        btn3_surf = fonte_btn_sub.render(t("ui_geral", "vitoria_btn_configs"), True, AZUL_CIANO)
         screen.blit(btn3_surf, btn3_surf.get_rect(centerx=cx_tela, top=px_y(oy + 498)))
 
     def _obter_rects_overlay_pausa(self) -> tuple[pygame.Rect, pygame.Rect]:
@@ -1315,7 +1612,7 @@ class GameplayRenderMixin:
         fonte_titulo = self._obter_fonte("tit_pausa", s)
         fonte_sub = self._obter_fonte("sub_pausa", s)
 
-        t_surf = fonte_titulo.render("JOGO PAUSADO", True, DOURADO)
+        t_surf = fonte_titulo.render(t("ui_geral", "pausa_titulo"), True, DOURADO)
         t_rect = t_surf.get_rect(centerx=cx_tela, top=px_y(oy + 200))
         screen.blit(t_surf, t_rect)
 
@@ -1329,17 +1626,23 @@ class GameplayRenderMixin:
 
         pygame.draw.rect(screen, (30, 42, 62), btn_cont_rect, border_radius=raio)
         pygame.draw.rect(screen, AZUL_CIANO, btn_cont_rect, width=bw, border_radius=raio)
-        c_surf = fonte_sub.render("[ESC] Continuar Partida", True, BRANCO)
+        c_surf = fonte_sub.render(t("ui_geral", "pausa_btn_continuar"), True, BRANCO)
         screen.blit(c_surf, c_surf.get_rect(center=btn_cont_rect.center))
 
         pygame.draw.rect(screen, (52, 34, 24), btn_menu_rect, border_radius=raio)
         pygame.draw.rect(screen, LARANJA_ALERTA, btn_menu_rect, width=bw, border_radius=raio)
-        m_surf = fonte_sub.render("[M] Menu Principal", True, DOURADO)
+        m_surf = fonte_sub.render(t("ui_geral", "pausa_btn_menu"), True, DOURADO)
         screen.blit(m_surf, m_surf.get_rect(center=btn_menu_rect.center))
 
         pygame.draw.rect(screen, (32, 22, 52), btn_conq_rect, border_radius=raio)
         pygame.draw.rect(screen, ROXO_ACENTO, btn_conq_rect, width=bw, border_radius=raio)
-        q_surf = fonte_sub.render("Conquistas & Firmware", True, BRANCO)
+        sys_conq_p = getattr(self, "sistema_conquistas", None)
+        rotulo_conq = (
+            t("ui_geral", "pausa_btn_conquistas_fw")
+            if (sys_conq_p is not None and sys_conq_p.recompensas.get("modificador_run"))
+            else t("ui_geral", "pausa_btn_conquistas")
+        )
+        q_surf = fonte_sub.render(rotulo_conq, True, BRANCO)
         screen.blit(q_surf, q_surf.get_rect(center=btn_conq_rect.center))
 
         if hasattr(self, "banner_dicas") and self.banner_dicas is not None:
@@ -1370,14 +1673,14 @@ class GameplayRenderMixin:
         fonte_stat = self._obter_fonte("stat_go", s)
         fonte_prompt = self._obter_fonte("prompt_go", s)
 
-        tit_surf = fonte_tit.render("FIM DE LINHA", True, VERMELHO_HP)
+        tit_surf = fonte_tit.render(t("ui_geral", "gameover_titulo"), True, VERMELHO_HP)
         screen.blit(tit_surf, tit_surf.get_rect(centerx=cx_tela, top=px_y(oy + 115)))
 
-        sub_surf = fonte_sub.render("As máquinas do escritório drenaram a bateria de Cleiton.", True, (200, 180, 180))
+        sub_surf = fonte_sub.render(t("ui_geral", "gameover_subtitulo"), True, (200, 180, 180))
         screen.blit(sub_surf, sub_surf.get_rect(centerx=cx_tela, top=px_y(oy + 162)))
 
-        causa_str = getattr(self.jogador, "ultima_causa_morte", "") or "Dano fatal no escritório"
-        causa_surf = fonte_stat.render(f"Causa da Morte: {causa_str}", True, LARANJA_ALERTA)
+        causa_str = getattr(self.jogador, "ultima_causa_morte", "") or t("ui_geral", "causa_padrao")
+        causa_surf = fonte_stat.render(t("ui_geral", "gameover_causa", causa=causa_str), True, LARANJA_ALERTA)
         screen.blit(causa_surf, causa_surf.get_rect(centerx=cx_tela, top=px_y(oy + 190)))
 
         minutos = int(self.tempo_sobrevivencia // 60)
@@ -1388,22 +1691,22 @@ class GameplayRenderMixin:
         pygame.draw.rect(screen, (28, 15, 20), quadro_rect, border_radius=max(4, int(round(8 * s))))
         pygame.draw.rect(screen, (80, 40, 50), quadro_rect, width=max(1, int(round(s))), border_radius=max(4, int(round(8 * s))))
 
-        tempo_surf = fonte_stat.render(f"Tempo de Partida: {minutos:02d}:{segundos:02d}", True, BRANCO)
+        tempo_surf = fonte_stat.render(t("ui_geral", "gameover_tempo", min=minutos, seg=segundos), True, BRANCO)
         screen.blit(tempo_surf, tempo_surf.get_rect(centerx=cx_tela, top=px_y(oy + 242)))
 
-        abates_surf = fonte_stat.render(f"Total de Abates: {self.abates}", True, AMARELO_XP)
+        abates_surf = fonte_stat.render(t("ui_geral", "gameover_abates", abates=self.abates), True, AMARELO_XP)
         screen.blit(abates_surf, abates_surf.get_rect(centerx=cx_tela, top=px_y(oy + 278)))
 
-        dano_surf = fonte_stat.render(f"Dano Total: {self.dano_total_causado:,}", True, (255, 120, 120))
+        dano_surf = fonte_stat.render(t("ui_geral", "gameover_dano", dano=self.dano_total_causado), True, (255, 120, 120))
         screen.blit(dano_surf, dano_surf.get_rect(centerx=cx_tela, top=px_y(oy + 314)))
 
         score_val = self.estatisticas_partida_resultado.get("score_final", self.pontos)
-        pontos_surf = fonte_stat.render(f"Pontuação Final: {score_val:,} PTS", True, DOURADO)
+        pontos_surf = fonte_stat.render(t("ui_geral", "gameover_pontos", pontos=score_val), True, DOURADO)
         screen.blit(pontos_surf, pontos_surf.get_rect(centerx=cx_tela, top=px_y(oy + 350)))
 
         if self.estatisticas_partida_resultado.get("novo_recorde_pontos", False):
-            rec_surf = fonte_stat.render("[NOVO RECORDE DE PONTOS!]", True, AMARELO_XP)
+            rec_surf = fonte_stat.render(t("ui_geral", "gameover_novo_recorde"), True, AMARELO_XP)
             screen.blit(rec_surf, rec_surf.get_rect(centerx=cx_tela, top=px_y(oy + 386)))
 
-        prompt_surf = fonte_prompt.render("Pressione [ENTER] para Jogar Novamente ou [ESC] para o Menu", True, DOURADO)
+        prompt_surf = fonte_prompt.render(t("ui_geral", "gameover_prompt"), True, DOURADO)
         screen.blit(prompt_surf, prompt_surf.get_rect(centerx=cx_tela, top=px_y(oy + 458)))

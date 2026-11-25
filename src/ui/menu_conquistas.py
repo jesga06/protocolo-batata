@@ -25,6 +25,7 @@ from src.utils.constantes import (
     SAVE_FILE_PATH,
 )
 from src.utils.math_utils import clamp
+from src.utils.traducao import t
 
 
 COR_BG_MODAL = (11, 14, 23)
@@ -64,6 +65,7 @@ class MenuConquistas:
         cena=None,
     ):
         self.gerenciador_config = gerenciador_config
+        self._sistema_conquistas_explicit = sistema_conquistas is not None
         self.sistema_conquistas = (
             sistema_conquistas
             if sistema_conquistas is not None
@@ -99,8 +101,11 @@ class MenuConquistas:
             ("sans", 13, True): _criar_fonte(("DejaVu Sans", "Arial"), 13, bold=True),
             ("sans", 12, False): _criar_fonte(("DejaVu Sans", "Arial"), 12, bold=False),
             ("sans", 11, True): _criar_fonte(("DejaVu Sans", "Arial"), 11, bold=True),
+            ("sans", 11, False): _criar_fonte(("DejaVu Sans", "Arial"), 11, bold=False),
+            ("sans", 10, True): _criar_fonte(("DejaVu Sans", "Arial"), 10, bold=True),
             ("mono", 12, True): _criar_fonte(("DejaVu Sans Mono", "Consolas", "Courier New"), 12, bold=True),
             ("mono", 11, True): _criar_fonte(("DejaVu Sans Mono", "Consolas", "Courier New"), 11, bold=True),
+            ("mono", 10, True): _criar_fonte(("DejaVu Sans Mono", "Consolas", "Courier New"), 10, bold=True),
             ("mono", 10, False): _criar_fonte(("DejaVu Sans Mono", "Consolas", "Courier New"), 10, bold=False),
         }
 
@@ -140,9 +145,22 @@ class MenuConquistas:
     def _pr(self, r: pygame.Rect) -> pygame.Rect:
         return pygame.Rect(self._px(r.x), self._py(r.y), self._ps(r.width), self._ps(r.height))
 
+    def possui_firmware_desbloqueado(self) -> bool:
+        """Retorna True somente após desbloquear o primeiro Chip de Firmware."""
+        return bool(
+            self.sistema_conquistas is not None
+            and self.sistema_conquistas.recompensas.get("modificador_run")
+        )
+
     def abrir(self, aba: int | None = None):
+        if (not getattr(self, "_sistema_conquistas_explicit", False)) and self.gerenciador_config is not None:
+            sc_cfg = getattr(self.gerenciador_config, "sistema_conquistas", None)
+            if sc_cfg is not None:
+                self.sistema_conquistas = sc_cfg
         self.ativo = True
-        if aba is not None:
+        if not self.possui_firmware_desbloqueado():
+            self.aba_atual = 0
+        elif aba is not None:
             self.aba_atual = int(aba) % 2
         self.scroll_y = 0.0
         self.indice_selecionado = 0
@@ -179,6 +197,9 @@ class MenuConquistas:
             self.gerenciador_config.salvar_arquivo(SAVE_FILE_PATH)
 
     def alternar_aba(self, nova_aba: int):
+        if not self.possui_firmware_desbloqueado():
+            self.aba_atual = 0
+            return
         self.aba_atual = int(nova_aba) % 2
         self.scroll_y = 0.0
         self.indice_selecionado = 0
@@ -192,11 +213,11 @@ class MenuConquistas:
             return False
         ok = self.sistema_conquistas.alternar_fixada(conquista_id)
         if ok:
-            self._mensagem_feedback = "Pin atualizado!"
+            self._mensagem_feedback = t("menu_conquistas", "feedback_pin_atualizado")
             self._timer_feedback = 1.6
             self._salvar_se_fora_de_jogo()
         else:
-            self._mensagem_feedback = "Máximo de 3 conquistas fixadas."
+            self._mensagem_feedback = t("menu_conquistas", "feedback_max_pins")
             self._timer_feedback = 1.8
         return ok
 
@@ -206,7 +227,7 @@ class MenuConquistas:
         Bloqueia estritamente quando em_jogo=True (somente leitura na pausa).
         """
         if self.em_jogo:
-            self._mensagem_feedback = "Firmware somente leitura durante a partida!"
+            self._mensagem_feedback = t("menu_conquistas", "feedback_firmware_somente_leitura")
             self._timer_feedback = 2.0
             return False
         if self.sistema_conquistas is None:
@@ -216,21 +237,21 @@ class MenuConquistas:
         if chip_id in equipados:
             ok = self.sistema_conquistas.desequipar_firmware(chip_id)
             if ok:
-                self._mensagem_feedback = "Chip desequipado."
+                self._mensagem_feedback = t("menu_conquistas", "feedback_chip_desequipado")
                 self._timer_feedback = 1.5
                 self._salvar_se_fora_de_jogo()
             return ok
 
         ok = self.sistema_conquistas.equipar_firmware(chip_id)
         if ok:
-            self._mensagem_feedback = "Chip equipado!"
+            self._mensagem_feedback = t("menu_conquistas", "feedback_chip_equipado")
             self._timer_feedback = 1.5
             self._salvar_se_fora_de_jogo()
         else:
             if not self.sistema_conquistas.possui_recompensa("modificador_run", chip_id):
-                self._mensagem_feedback = "Chip bloqueado por conquista."
+                self._mensagem_feedback = t("menu_conquistas", "feedback_chip_bloqueado")
             else:
-                self._mensagem_feedback = "Todos os slots de Firmware ocupados."
+                self._mensagem_feedback = t("menu_conquistas", "feedback_slots_ocupados")
             self._timer_feedback = 1.8
         return ok
 
@@ -281,7 +302,7 @@ class MenuConquistas:
             card_h = 92
             gap = 8
             return max(0.0, float(len(itens) * (card_h + gap) - area_h))
-        card_h = 98
+        card_h = 118
         gap_y = 10
         total_rows = (len(CHIPS_FIRMWARE) + 1) // 2
         return max(0.0, float(total_rows * (card_h + gap_y) - area_h))
@@ -306,7 +327,8 @@ class MenuConquistas:
                     return
 
             if (
-                self._tab_cooldown_timer <= 0.0
+                self.possui_firmware_desbloqueado()
+                and self._tab_cooldown_timer <= 0.0
                 and hasattr(teclado, "key_down")
                 and teclado.key_down("TAB")
             ):
@@ -351,20 +373,11 @@ class MenuConquistas:
                 wheel += float(mouse.get_wheel_delta() or 0.0)
             except Exception:
                 pass
-        try:
-            from PPlay.window import Window
-            janela = Window.get_instance()
-            for ev in (getattr(janela, "eventos", None) or []):
-                if getattr(ev, "type", None) == pygame.MOUSEWHEEL:
-                    wheel += float(getattr(ev, "y", 0.0))
-        except Exception:
-            pass
-        if not wheel:
-            try:
-                for ev in pygame.event.get(pygame.MOUSEWHEEL):
-                    wheel += float(getattr(ev, "y", 0.0))
-            except Exception:
-                pass
+        from PPlay.window import Window
+        janela = Window.get_instance()
+        for ev in (getattr(janela, "eventos", None) or []):
+            if getattr(ev, "type", None) == pygame.MOUSEWHEEL:
+                wheel += float(getattr(ev, "y", 0.0))
         max_scroll = self._obter_max_scroll()
         if wheel:
             self.scroll_y = clamp(self.scroll_y - wheel * 28.0, 0.0, max_scroll)
@@ -413,7 +426,7 @@ class MenuConquistas:
         else:
             area_y = area_rect.y
             card_w = (self.largura_modal - 72) // 2
-            card_h = 98
+            card_h = 118
             gap_x = 16
             gap_y = 10
             if area_rect.collidepoint(mx, my):
@@ -438,7 +451,7 @@ class MenuConquistas:
         if aba0.collidepoint(mx, my):
             self.alternar_aba(0)
             return
-        if aba1.collidepoint(mx, my):
+        if self.possui_firmware_desbloqueado() and aba1.collidepoint(mx, my):
             self.alternar_aba(1)
             return
 
@@ -472,7 +485,7 @@ class MenuConquistas:
 
             area_y = area_rect.y
             card_w = (self.largura_modal - 72) // 2
-            card_h = 98
+            card_h = 118
             gap_x = 16
             gap_y = 10
             for idx, chip_id in enumerate(CHIPS_FIRMWARE.keys()):
@@ -514,17 +527,25 @@ class MenuConquistas:
         pygame.draw.rect(screen, COR_BG_MODAL, modal_rect, border_radius=self._ps(8))
         pygame.draw.rect(screen, COR_CIANO, modal_rect, width=max(1, self._ps(2)), border_radius=self._ps(8))
 
+        tem_fw = self.possui_firmware_desbloqueado()
+        if not tem_fw and self.aba_atual != 0:
+            self.aba_atual = 0
+
         # Título
         f_titulo = self._fonte_vp("sans", 20, True)
         f_sub = self._fonte_vp("mono", 11, True)
         f_aba = self._fonte_vp("sans", 13, True)
-        titulo_surf = f_titulo.render("SISTEMA DE CONQUISTAS & FIRMWARE", True, BRANCO)
+        tit_txt = t("menu_conquistas", "titulo_com_firmware") if tem_fw else t("menu_conquistas", "titulo_sem_firmware")
+        titulo_surf = f_titulo.render(tit_txt, True, BRANCO)
         screen.blit(titulo_surf, (self._px(ox + 28), self._py(oy + 18)))
 
         # Abas e Fechar
         aba0, aba1, btn_fechar = self._obter_rects_topo()
         hover_pos = getattr(self, "_hover_pos", (-1.0, -1.0))
-        for idx, (rect, label) in enumerate([(aba0, "CONQUISTAS"), (aba1, "CHIPS DE FIRMWARE")]):
+        abas_visiveis = [(0, aba0, t("menu_conquistas", "aba_conquistas"))]
+        if tem_fw:
+            abas_visiveis.append((1, aba1, t("menu_conquistas", "aba_firmware")))
+        for idx, rect, label in abas_visiveis:
             ativa = self.aba_atual == idx
             hovered = rect.collidepoint(*hover_pos)
             cor_bg = COR_ELEVADO if (ativa or hovered) else COR_CARD
@@ -539,10 +560,10 @@ class MenuConquistas:
         fechar_hover = btn_fechar.collidepoint(*hover_pos)
         pygame.draw.rect(screen, (90, 26, 36) if fechar_hover else (60, 20, 28), btn_fechar_p, border_radius=self._ps(5))
         pygame.draw.rect(screen, COR_CARMESIM, btn_fechar_p, width=max(1, self._ps(2 if fechar_hover else 1)), border_radius=self._ps(5))
-        s_close = f_aba.render("FECHAR [ESC]", True, BRANCO)
+        s_close = f_aba.render(t("menu_conquistas", "btn_fechar"), True, BRANCO)
         screen.blit(s_close, s_close.get_rect(center=btn_fechar_p.center))
 
-        if self.aba_atual == 0:
+        if self.aba_atual == 0 or not tem_fw:
             self._desenhar_aba_conquistas(screen, ox, oy)
         else:
             self._desenhar_aba_firmware(screen, ox, oy)
@@ -553,7 +574,11 @@ class MenuConquistas:
             s_fb = f_sub.render(self._mensagem_feedback, True, COR_OURO)
             screen.blit(s_fb, (self._px(ox + 28), self._py(rodape_y)))
         else:
-            dica = "TAB: Trocar Aba  |  Mouse/Scroll: Navegar  |  ESC: Fechar"
+            dica = (
+                t("menu_conquistas", "rodape_com_firmware")
+                if tem_fw
+                else t("menu_conquistas", "rodape_sem_firmware")
+            )
             screen.blit(self._fonte_vp("mono", 10, False).render(dica, True, COR_TEXTO_SUAVE), (self._px(ox + 28), self._py(rodape_y)))
 
     def _desenhar_aba_conquistas(self, screen: pygame.Surface, ox: int, oy: int):
@@ -564,17 +589,24 @@ class MenuConquistas:
 
         hover_pos = getattr(self, "_hover_pos", (-1.0, -1.0))
 
+        _filtro_chaves = {
+            "Todas": "filtro_todas",
+            "Contínuas": "filtro_continuas",
+            "Únicas": "filtro_unicas",
+            "Fixadas": "filtro_fixadas",
+        }
         for nome_f, r_f in self._obter_rects_filtros():
             ativo = self.filtro_atual == nome_f
             hovered_f = r_f.collidepoint(*hover_pos)
             r_fp = self._pr(r_f)
             pygame.draw.rect(screen, COR_ELEVADO if (ativo or hovered_f) else COR_CARD, r_fp, border_radius=self._ps(4))
             pygame.draw.rect(screen, COR_CIANO if (ativo or hovered_f) else COR_BORDA, r_fp, width=1, border_radius=self._ps(4))
-            s = f_btn.render(nome_f, True, BRANCO if (ativo or hovered_f) else COR_TEXTO_SUAVE)
+            lbl_f = t("menu_conquistas", _filtro_chaves.get(nome_f, "filtro_todas"))
+            s = f_btn.render(lbl_f, True, BRANCO if (ativo or hovered_f) else COR_TEXTO_SUAVE)
             screen.blit(s, s.get_rect(center=r_fp.center))
 
         fixadas = getattr(self.sistema_conquistas, "fixadas", []) if self.sistema_conquistas else []
-        s_pins = f_mono.render(f"FIXADAS NA HUD: {len(fixadas)}/3", True, COR_OURO)
+        s_pins = f_mono.render(t("menu_conquistas", "fixadas_hud_contador", qtd=len(fixadas)), True, COR_OURO)
         screen.blit(s_pins, (self._px(ox + self.largura_modal - 205), self._py(oy + 104)))
 
         area_rect = self._obter_area_scroll_rect()
@@ -613,17 +645,34 @@ class MenuConquistas:
                         prox_ms = ms
                         break
                 progresso = clamp(atual / max(1, prox_meta), 0.0, 1.0)
-                status_txt = f"M{len(concluidos)}/{len(cdef.milestones)}  ({atual}/{prox_meta})"
+                status_txt = t(
+                    "menu_conquistas",
+                    "continua_status",
+                    concluidos=len(concluidos),
+                    total=len(cdef.milestones),
+                    atual=atual,
+                    prox_meta=prox_meta,
+                )
                 recomp_txt = (
-                    "Todos os marcos concluídos!"
+                    t("menu_conquistas", "continua_todos_marcos")
                     if concluida
-                    else f"Desbloqueia: {formatar_recompensas_conquista(prox_ms.recompensas)}"
+                    else t("menu_conquistas", "desbloqueia_recompensa", recompensa=formatar_recompensas_conquista(prox_ms.recompensas))
                 )
             else:
                 concluida = cid in getattr(self.sistema_conquistas, "unicas_concluidas", set())
-                progresso = 1.0 if concluida else 0.0
-                status_txt = "CONCLUÍDA" if concluida else "PENDENTE"
-                recomp_txt = f"Desbloqueia: {formatar_recompensas_conquista(cdef.recompensas)}"
+                if cid == "monge_tibetano":
+                    segs_raw = float(getattr(self.sistema_conquistas, "monge_15fps_segundos", 0.0))
+                    segs_15 = 120 if concluida else min(120, int(segs_raw + 1e-6))
+                    progresso = 1.0 if concluida else min(1.0, segs_15 / 120.0)
+                    status_txt = (
+                        t("menu_conquistas", "unica_monge_concluida", segundos=segs_15)
+                        if concluida
+                        else t("menu_conquistas", "unica_monge_progresso", segundos=segs_15)
+                    )
+                else:
+                    progresso = 1.0 if concluida else 0.0
+                    status_txt = t("menu_conquistas", "unica_concluida") if concluida else t("menu_conquistas", "unica_pendente")
+                recomp_txt = t("menu_conquistas", "desbloqueia_recompensa", recompensa=formatar_recompensas_conquista(cdef.recompensas))
 
             cor_bd = COR_VERDE if concluida else (COR_OURO if fixada else (COR_CIANO if hovered else COR_BORDA))
             pygame.draw.rect(screen, COR_ELEVADO if hovered else COR_CARD, card_rect_p, border_radius=self._ps(5))
@@ -648,28 +697,58 @@ class MenuConquistas:
             btn_hover = area_rect.collidepoint(*hover_pos) and btn_pin.collidepoint(*hover_pos)
             pygame.draw.rect(screen, (60, 48, 16) if fixada else (COR_BORDA if btn_hover else COR_ELEVADO), btn_pin_p, border_radius=self._ps(4))
             pygame.draw.rect(screen, COR_OURO if fixada else (COR_CIANO if btn_hover else COR_BORDA), btn_pin_p, width=1, border_radius=self._ps(4))
-            s_pin = f_btn.render("FIXADA" if fixada else "FIXAR", True, COR_OURO if fixada else BRANCO)
+            s_pin = f_btn.render(t("menu_conquistas", "btn_fixada") if fixada else t("menu_conquistas", "btn_fixar"), True, COR_OURO if fixada else BRANCO)
             screen.blit(s_pin, s_pin.get_rect(center=btn_pin_p.center))
 
         screen.set_clip(prev_clip)
 
+    @staticmethod
+    def _quebrar_texto_largura(fonte: pygame.font.Font, texto: str, max_w: int, max_linhas: int = 4) -> list[str]:
+        palavras = str(texto or "").split()
+        if not palavras:
+            return []
+        linhas: list[str] = []
+        atual = palavras[0]
+        for idx, pal in enumerate(palavras[1:], start=1):
+            teste = f"{atual} {pal}"
+            if fonte.size(teste)[0] <= max_w:
+                atual = teste
+            else:
+                linhas.append(atual)
+                if len(linhas) >= max_linhas - 1:
+                    linhas.append(" ".join(palavras[idx:]))
+                    return linhas
+                atual = pal
+        linhas.append(atual)
+        return linhas[:max_linhas]
+
     def _desenhar_aba_firmware(self, screen: pygame.Surface, ox: int, oy: int):
         f_mono = self._fonte_vp("mono", 12, True)
+        f_cat = self._fonte_vp("mono", 10, True)
         f_nome = self._fonte_vp("sans", 13, True)
-        f_desc = self._fonte_vp("sans", 12, False)
-        f_badge = self._fonte_vp("sans", 11, True)
+        f_desc = self._fonte_vp("sans", 11, False)
+        f_badge = self._fonte_vp("sans", 10, True)
 
         equipados = list(getattr(self.sistema_conquistas, "modificadores_equipados", [])) if self.sistema_conquistas else []
         slots_max = int(getattr(self.sistema_conquistas, "slots_firmware_max", 1)) if self.sistema_conquistas else 1
+        n_configs = (
+            self.gerenciador_config.contar_configs_nao_neutras()
+            if self.gerenciador_config is not None and hasattr(self.gerenciador_config, "contar_configs_nao_neutras")
+            else 0
+        )
 
-        s_slots = f_mono.render(f"SLOTS DE FIRMWARE: {len(equipados)}/{slots_max}", True, COR_ROXO)
+        s_slots = f_mono.render(
+            t("menu_conquistas", "firmware_slots_header", equipados=len(equipados), slots_max=slots_max, n_configs=n_configs),
+            True,
+            COR_ROXO,
+        )
         screen.blit(s_slots, (self._px(ox + 28), self._py(oy + 100)))
 
         if self.em_jogo:
             badge_ro = self._pr(pygame.Rect(ox + self.largura_modal - 270, oy + 96, 242, 24))
             pygame.draw.rect(screen, (68, 22, 22), badge_ro, border_radius=self._ps(4))
             pygame.draw.rect(screen, COR_CARMESIM, badge_ro, width=1, border_radius=self._ps(4))
-            s_ro = f_badge.render("SOMENTE LEITURA EM PARTIDA", True, COR_CARMESIM)
+            s_ro = f_badge.render(t("menu_conquistas", "firmware_somente_leitura_badge"), True, COR_CARMESIM)
             screen.blit(s_ro, s_ro.get_rect(center=badge_ro.center))
 
         area_rect = self._obter_area_scroll_rect()
@@ -678,7 +757,7 @@ class MenuConquistas:
         screen.set_clip(area_rect_p)
 
         card_w = (self.largura_modal - 72) // 2
-        card_h = 98
+        card_h = 118
         gap_x = 16
         gap_y = 10
         total_rows = (len(CHIPS_FIRMWARE) + 1) // 2
@@ -701,30 +780,51 @@ class MenuConquistas:
                 else False
             )
             equipado = chip_id in equipados
+            cota_chip = None
+            slot_num = None
+            chip_ativo_cota = False
+            if equipado:
+                slot_idx = equipados.index(chip_id)
+                slot_num = slot_idx + 1
+                cota_chip = (2, 4, 6)[slot_idx] if slot_idx < 3 else 6
+                chip_ativo_cota = (n_configs >= cota_chip)
 
             card_rect = pygame.Rect(cx, cy, card_w, card_h)
             card_rect_p = self._pr(card_rect)
             hovered = area_rect.collidepoint(*hover_pos) and card_rect.collidepoint(*hover_pos)
-            cor_bg = (26, 20, 44) if equipado else (COR_ELEVADO if hovered else COR_CARD)
-            cor_bd = COR_ROXO if equipado else (COR_CIANO if (desbloqueado or hovered) else COR_BORDA)
+            cor_bg = (26, 20, 44) if (equipado and chip_ativo_cota) else ((36, 22, 22) if equipado else (COR_ELEVADO if hovered else COR_CARD))
+            cor_bd = (COR_ROXO if chip_ativo_cota else COR_AMBAR) if equipado else (COR_CIANO if (desbloqueado or hovered) else COR_BORDA)
             pygame.draw.rect(screen, cor_bg, card_rect_p, border_radius=self._ps(5))
             pygame.draw.rect(screen, cor_bd, card_rect_p, width=max(1, self._ps(2 if equipado else 1)), border_radius=self._ps(5))
 
-            cor_nome = COR_OURO if equipado else (BRANCO if desbloqueado else COR_TEXTO_SUAVE)
+            cor_nome = COR_OURO if (equipado and chip_ativo_cota) else (BRANCO if (desbloqueado or equipado) else COR_TEXTO_SUAVE)
             screen.blit(f_nome.render(chip.nome, True, cor_nome), (self._px(cx + 10), self._py(cy + 8)))
 
-            status = "EQUIPADO" if equipado else ("LIBERADO" if desbloqueado else "BLOQUEADO")
-            cor_st = COR_ROXO if equipado else (COR_VERDE if desbloqueado else COR_CARMESIM)
+            if equipado and chip_ativo_cota:
+                status = t("menu_conquistas", "firmware_status_ativo", slot=slot_num)
+                cor_st = COR_VERDE
+            elif equipado:
+                status = t("menu_conquistas", "firmware_status_inativo_cota", cota=cota_chip)
+                cor_st = COR_AMBAR
+            elif desbloqueado:
+                status = t("menu_conquistas", "firmware_status_liberado")
+                cor_st = COR_VERDE
+            else:
+                status = t("menu_conquistas", "firmware_status_bloqueado")
+                cor_st = COR_CARMESIM
             s_st = f_badge.render(status, True, cor_st)
             screen.blit(s_st, (card_rect_p.right - s_st.get_width() - self._ps(10), self._py(cy + 10)))
 
-            # Quebra simples da descrição em 2 linhas
-            desc = chip.descricao
-            linha1 = desc[:48]
-            linha2 = desc[48:96]
-            screen.blit(f_desc.render(linha1, True, COR_TEXTO_SUAVE), (self._px(cx + 10), self._py(cy + 34)))
-            if linha2:
-                screen.blit(f_desc.render(linha2, True, COR_TEXTO_SUAVE), (self._px(cx + 10), self._py(cy + 52)))
-            screen.blit(f_mono.render(f"[{chip.categoria}]", True, chip.icone_cor), (self._px(cx + 10), self._py(cy + 74)))
+            max_w_desc = max(80, card_rect_p.width - self._ps(20))
+            linhas_desc = self._quebrar_texto_largura(f_desc, chip.descricao, max_w_desc, max_linhas=4)
+            step_y = max(12, f_desc.get_linesize())
+            desc_y0 = self._py(cy + 30)
+            for i_ln, ln_txt in enumerate(linhas_desc):
+                screen.blit(f_desc.render(ln_txt, True, COR_TEXTO_SUAVE), (self._px(cx + 10), desc_y0 + i_ln * step_y))
+
+            screen.blit(f_cat.render(t("menu_conquistas", "firmware_categoria_tag", categoria=chip.categoria), True, chip.icone_cor), (self._px(cx + 10), self._py(cy + card_h - 20)))
+            if equipado and cota_chip is not None:
+                cota_lbl = f_cat.render(t("menu_conquistas", "firmware_cota_tag", n_configs=n_configs, cota=cota_chip), True, COR_VERDE if chip_ativo_cota else COR_AMBAR)
+                screen.blit(cota_lbl, (card_rect_p.right - cota_lbl.get_width() - self._ps(10), self._py(cy + card_h - 20)))
 
         screen.set_clip(prev_clip)

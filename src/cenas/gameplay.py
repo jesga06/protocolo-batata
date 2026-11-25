@@ -22,20 +22,24 @@ from src.sistemas.sistema_scavenger import SistemaScavenger
 from src.sistemas.sistema_particulas import SistemaParticulas
 from src.sistemas.sistema_audio import GerenciadorAudio, AnalisadorFFTBoss
 from src.sistemas.config_sistema import GerenciadorConfiguracoes
-from src.sistemas.sistema_combo import SistemaCombo
+from src.sistemas.conquistas_dados import CHIPS_FIRMWARE
+from src.sistemas.sistema_conquistas import COTAS_SLOTS_FIRMWARE
 from src.sistemas.efeitos_combate import GerenciadorEfeitosCombate, ContextoCombate
 from src.ui.hud import HUD
 from src.ui.banner_dicas import BannerDica
 from src.ui.modal_level_up import ModalLevelUp
+from src.utils.traducao import t as tr
 from src.ui.modal_overclock import ModalOverclock
 from src.ui.menu_configs import MenuConfigs
-from src.entidades.geladeira_tsunami import GeladeiraTsunami, ESTADO_MORTE
+from src.entidades.inimigos.geladeira_tsunami import GeladeiraTsunami, ESTADO_MORTE
 from PPlay.camera import Camera
 from PPlay.scenemanager import SceneManager
 from src.utils.constantes import (
     LARGURA_TELA, ALTURA_TELA, LARGURA_ARENA, ALTURA_ARENA,
     CAMERA_DAMPING_K, DT_CLAMP_MAX, DASH_COOLDOWN, DASH_PARRY_META, MELEE_ARCO_GRAUS,
     SPAWN_MAX_ATIVOS, MINIBOSS_CICLOS_RUN,
+    SEPARACAO_INIMIGOS_FATOR_RAIO, SEPARACAO_INIMIGOS_RIGIDEZ, SEPARACAO_INIMIGOS_VEL_MAX,
+    MINION_BLOCK_FATOR_RAIO, MINION_BLOCK_FORCA_JOGADOR, MINION_BLOCK_VEL_MAX, MINION_BLOCK_EMPURRAO_INIMIGO,
     BRANCO, PRETO, CINZA_FUNDO, CINZA_PAINEL, CINZA_BORDA,
     VERMELHO_HP, VERMELHO_DANO, VERDE_CURA, AMARELO_XP, AZUL_CIANO, DOURADO, LARANJA_ALERTA,
     ROXO_ACENTO, ROXO_CLARO, ROXO_ESCURO,
@@ -129,7 +133,6 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         self.sistema_particulas = SistemaParticulas()
         self.sistema_audio = GerenciadorAudio()
         self.analisador_fft_boss = AnalisadorFFTBoss()
-        self.sistema_combo = SistemaCombo()
         self.efeitos_combate = GerenciadorEfeitosCombate()
         self.hologramas: list = []
         self.pulso_assault_intro_timer: float = 0.0
@@ -144,11 +147,12 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
 
         # Métricas de partida e condição de vitória
         self.tempo_sobrevivencia = 0.0
+        self.tempo_15fps_acumulado = 0.0
         self.abates = 0
         self.pontos = 0
         self.dano_total_causado = 0
         self.pausado = False
-        self.banner_dicas = BannerDica()
+        self.banner_dicas = BannerDica(gerenciador_config=self.gerenciador_config)
         self.game_over = False
         self.vitoria = False
         self.partida_registrada = False
@@ -355,7 +359,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         return fov_w, fov_h, cam75_x, cam75_y
 
     def _obter_mouse_mundo(self, mx: float, my: float) -> tuple[float, float]:
-        """Converte coordenadas virtuais de tela (800x600) em coordenadas do mundo considerando o zoom ativo."""
+        """Converte coordenadas virtuais de tela (1280x720) em coordenadas do mundo considerando o zoom ativo."""
         val_zoom = str(self.config_sistema.obter_valor("zoom")) if hasattr(self, "config_sistema") and self.config_sistema else "100%"
         if val_zoom == "75%":
             fov_w, fov_h, cam75_x, cam75_y = self._obter_viewport_zoom75()
@@ -385,6 +389,20 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         cx = self.jogador.x + self.jogador.largura / 2.0
         cy = self.jogador.y + self.jogador.altura / 2.0
         self.jogador.curar(10)
+        cfg_sis = getattr(self, "config_sistema", None) or getattr(self, "gerenciador_config", None)
+        hud_off = bool(
+            cfg_sis is not None
+            and str(cfg_sis.obter_valor("hud")).strip().lower() in ("desligado", "false", "0", "off")
+        )
+        ilum_on = bool(
+            cfg_sis is not None
+            and str(cfg_sis.obter_valor("iluminacao")).strip().lower() in ("ligado", "true", "1", "on")
+        )
+        self._emitir_evento_conquista(
+            "nivel_alcancado",
+            int(novo_nivel),
+            {"nivel": int(novo_nivel), "hud_desligado": hud_off, "iluminacao_ligada": ilum_on},
+        )
         if hasattr(self, "sistema_particulas") and self.sistema_particulas is not None:
             self.sistema_particulas.emitir_onda_choque(cx, cy, raio_max=130.0, cor=DOURADO)
 
@@ -419,14 +437,14 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
             if hasattr(self, "sistema_drops") and hasattr(self.sistema_drops, "gerar_capsulas_powerup"):
                 self.sistema_drops.gerar_capsulas_powerup(cx, cy, opcoes_2)
             self.toasts_coleta.append({
-                "texto": f"NÍVEL {novo_nivel}! +10 HP & SUPRIMENTOS",
+                "texto": tr("ui_geral", "toast_nivel_normal", nivel=novo_nivel),
                 "cor": DOURADO,
                 "x": cx,
                 "y": self.jogador.y - 18,
                 "tempo": 1.8,
                 "tempo_max": 1.8
             })
-            if int(novo_nivel) >= getattr(self.jogador.sistema_xp, "nivel_max", 12) and getattr(self, "tempo_sobrevivencia", 0.0) >= 270.0:
+            if int(novo_nivel) >= getattr(self.jogador.sistema_xp, "nivel_max", 12) and getattr(self, "tempo_sobrevivencia", 0.0) >= 185.0:
                 self.iniciar_boss_grace_period()
 
     def aplicar_modificadores(self):
@@ -466,41 +484,93 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         arma_melee = self._obter_arma_melee()
         if arma_melee is not None:
             arma_melee.whiff_callback = self._ao_errar_parry
-            arma_melee.postura_riposte = (parry_prec == "postura_riposte")
+            arma_melee.parry_modo_postura_riposte = (parry_prec == "postura_riposte")
+            arma_melee.parry_modo_firewall = (parry_ef == "firewall_estatico")
+            arma_melee.parry_modo_ventoinha = (parry_ef == "ventoinha_360")
             arma_melee.parry_efeito = parry_ef
             arco_base = float(getattr(arma_melee, "_arco_graus_base", MELEE_ARCO_GRAUS))
+            alc_base = float(getattr(arma_melee, "_alcance_base", getattr(arma_melee, "alcance", 84.0)))
             cd_base = float(getattr(arma_melee, "_cooldown_base", 0.6))
+            arma_melee.alcance = alc_base
             if parry_prec == "cirurgico":
                 arma_melee.arco_graus = 65.0
                 arma_melee.parry_duracao = 0.09
-                arma_melee.parry_alcance_mult = 0.85
+                arma_melee.parry_alcance_mult = 0.85 * (0.75 if parry_ef == "ventoinha_360" else 1.0)
                 arma_melee.parry_dano_mult = 1.75
                 arma_melee.parry_splash_raio = 140.0
                 arma_melee.cooldown = cd_base
             elif parry_prec == "amplificado":
                 arma_melee.arco_graus = 135.0
                 arma_melee.parry_duracao = 0.17
-                arma_melee.parry_alcance_mult = 1.25
+                arma_melee.parry_alcance_mult = 1.25 * (0.75 if parry_ef == "ventoinha_360" else 1.0)
                 arma_melee.parry_dano_mult = 0.70
                 arma_melee.parry_splash_raio = 90.0
                 arma_melee.cooldown = round(cd_base + 0.25, 4)
+            elif parry_prec == "postura_riposte":
+                arma_melee.arco_graus = arco_base
+                arma_melee.parry_duracao = 0.45
+                arma_melee.parry_alcance_mult = 0.75 if parry_ef == "ventoinha_360" else 1.0
+                arma_melee.parry_dano_mult = 1.25
+                arma_melee.parry_splash_raio = 110.0
+                arma_melee.cooldown = cd_base
             else:
                 arma_melee.arco_graus = arco_base
                 arma_melee.parry_duracao = 0.12
-                arma_melee.parry_alcance_mult = 1.0
+                arma_melee.parry_alcance_mult = 0.75 if parry_ef == "ventoinha_360" else 1.0
                 arma_melee.parry_dano_mult = 1.0
                 arma_melee.parry_splash_raio = 90.0
                 arma_melee.cooldown = cd_base
+            if parry_ef == "ventoinha_360":
+                arma_melee.ultimo_parry_cd_total = 6.5
+            elif parry_ef == "firewall_estatico":
+                arma_melee.ultimo_parry_cd_total = 5.5
+            elif arma_melee.tempo_recarga_restante <= 0.0:
+                arma_melee.ultimo_parry_cd_total = float(arma_melee.cooldown)
 
-        firmwares = (
-            list(getattr(self.sistema_conquistas, "modificadores_equipados", []))
-            if getattr(self, "sistema_conquistas", None) is not None
-            else []
+        n_configs_ativas = (
+            self.gerenciador_config.contar_configs_nao_neutras()
+            if hasattr(self, "gerenciador_config") and hasattr(self.gerenciador_config, "contar_configs_nao_neutras")
+            else 0
         )
+        if getattr(self, "sistema_conquistas", None) is not None and hasattr(self.sistema_conquistas, "obter_firmwares_ativos"):
+            equipados_todos = list(getattr(self.sistema_conquistas, "modificadores_equipados", []))
+            firmwares = self.sistema_conquistas.obter_firmwares_ativos(n_configs_ativas)
+            if hasattr(self, "_firmwares_ativos_partida"):
+                prev_ativos = set(self._firmwares_ativos_partida)
+                novos_ativos = set(firmwares)
+                for slot_idx in (2, 1, 0):
+                    if slot_idx < len(equipados_todos):
+                        cid = equipados_todos[slot_idx]
+                        if cid in prev_ativos and cid not in novos_ativos:
+                            chip_def = CHIPS_FIRMWARE.get(cid)
+                            nome_c = chip_def.nome if chip_def else cid
+                            cota = COTAS_SLOTS_FIRMWARE[slot_idx]
+                            self.enfileirar_banner_desbloqueio(
+                                tr("ui_geral", "banner_firmware_desativado_tit"),
+                                tr("ui_geral", "banner_firmware_desativado_sub", nome=nome_c, slot=slot_idx + 1, cota=cota),
+                                cor=LARANJA_ALERTA,
+                            )
+                for slot_idx in (0, 1, 2):
+                    if slot_idx < len(equipados_todos):
+                        cid = equipados_todos[slot_idx]
+                        if cid in novos_ativos and cid not in prev_ativos:
+                            chip_def = CHIPS_FIRMWARE.get(cid)
+                            nome_c = chip_def.nome if chip_def else cid
+                            cota = COTAS_SLOTS_FIRMWARE[slot_idx]
+                            self.enfileirar_banner_desbloqueio(
+                                tr("ui_geral", "banner_firmware_reativado_tit"),
+                                tr("ui_geral", "banner_firmware_reativado_sub", nome=nome_c, n_configs=n_configs_ativas, cota=cota),
+                                cor=VERDE_CURA,
+                            )
+            self._firmwares_ativos_partida = set(firmwares)
+        else:
+            firmwares = (
+                list(getattr(self.sistema_conquistas, "modificadores_equipados", []))
+                if getattr(self, "sistema_conquistas", None) is not None
+                else []
+            )
         if hasattr(self, "efeitos_combate") and self.efeitos_combate is not None:
             self.efeitos_combate.reconstruir(mods, firmwares)
-        if hasattr(self, "sistema_combo") and self.sistema_combo is not None:
-            self.sistema_combo.definir_modo_estilo("medidor_estilo" in firmwares)
 
         for arma in self.jogador.armas:
             if not hasattr(arma, "_dano_original"):
@@ -542,42 +612,15 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                 self.sistema_musica.atualizar_volume(vol_master, vol_musica)
             pygame.mixer.music.set_volume(self._obter_volume_musica_efetivo(0.4))
             self.volume_sfx_efetivo = clamp((vol_master / 100.0) * (vol_sfx / 100.0), 0.0, 1.0)
+            from PPlay.sound import SoundManager
+            SoundManager.set_sfx_volume(int(round(self.volume_sfx_efetivo * 100.0)))
             if pygame.mixer.get_init():
                 from src.sistemas.sistema_musica import SistemaMusica
                 inicio_canais_sfx = SistemaMusica._CANAIS_RESERVADOS
                 for ch_idx in range(inicio_canais_sfx, pygame.mixer.get_num_channels()):
                     pygame.mixer.Channel(ch_idx).set_volume(self.volume_sfx_efetivo)
-        except Exception:
+        except (pygame.error, ValueError, TypeError, ImportError):
             pass
-
-
-    @staticmethod
-    def _obter_sfx_arma(arma) -> str | None:
-        if arma is None:
-            return None
-        if isinstance(arma, BastaoChoque):
-            return "sfx_ataque_melee"
-        if isinstance(arma, SMGCompacta):
-            return "sfx_tiro_minigun"
-        if isinstance(arma, RifleArco):
-            return "sfx_tiro_railgun"
-        if isinstance(arma, LancaChamas):
-            return "sfx_tiro_foguete"
-        if isinstance(arma, Pistola):
-            return "sfx_tiro_pistola"
-        if isinstance(arma, Minigun):
-            return "sfx_tiro_minigun"
-        if isinstance(arma, Shotgun):
-            return "sfx_tiro_shotgun"
-        if isinstance(arma, RifleAssalto):
-            return "sfx_tiro_rifle"
-        if isinstance(arma, LancaFoguetes):
-            return "sfx_tiro_foguete"
-        if isinstance(arma, LancaGranadas):
-            return "sfx_tiro_granada"
-        if isinstance(arma, Railgun):
-            return "sfx_tiro_railgun"
-        return None
 
     def _obter_arma_melee(self):
         for arma in getattr(self.jogador, "armas", []):
@@ -599,10 +642,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
     def obter_texto_boss_grace_period(self) -> str:
         """Retorna o texto formatado da contagem regressiva do grace period."""
         segundos = max(1, int(math.ceil(self.boss_grace_timer)))
-        return (
-            "Você ouve o Ritmo Cruel sacudindo o baile inteiro.\n"
-            f"Você tem {segundos} segundos até experienciar The Perfect Sound™"
-        )
+        return tr("ui_geral", "boss_grace_period", segundos=segundos)
 
     def iniciar_boss_cutscene(self):
         """
@@ -661,12 +701,22 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
 
     def loop(self, dt: float = None):
         if dt is None:
-            dt = self.janela.delta_time()
+            dt_real = None
+            if hasattr(self.janela, "delta_time_real"):
+                cand = self.janela.delta_time_real()
+                if isinstance(cand, (int, float)) and not isinstance(cand, bool):
+                    dt_real = float(cand)
+            dt = dt_real if dt_real is not None else self.janela.delta_time()
             # Em testes unitários headless (primeiro frame sem tick), avança 1 frame padrão (1/60s)
             if dt <= 0.0:
                 dt = 1.0 / 60.0
-            # Clampa dt para evitar saltos quânticos em frames atípicos (DT_CLAMP_MAX = 0.05s)
-            dt = min(dt, DT_CLAMP_MAX)
+            # Preserva tempo real sob fps_cap intencional (ex: 15 FPS = 0.0667s/frame), mantendo teto seguro <= 0.10s
+            max_dt_loop = DT_CLAMP_MAX
+            if hasattr(self, "config_sistema") and self.config_sistema is not None:
+                val_fps = str(self.config_sistema.obter_valor("fps_cap")).strip().lower()
+                if val_fps in ("15", "30", "45"):
+                    max_dt_loop = max(DT_CLAMP_MAX, min(0.10, 1.25 / float(int(val_fps))))
+            dt = min(dt, max_dt_loop)
         self._ultimo_dt_draw = max(1e-4, float(dt))
 
         # Atualiza rampa suave de volume do gerenciador de áudio
@@ -730,7 +780,15 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                 or (getattr(self, "boss_cutscene_ativa", False) and getattr(self, "boss_cutscene_fase", "") != "whiteout")
                 or not getattr(self.jogador, "vivo", True)
             )
-            pygame.mouse.set_visible(mostrar_cursor_sistema)
+            if not getattr(self, "_cursor_hw_ativo", False):
+                pygame.mouse.set_visible(mostrar_cursor_sistema)
+            elif mostrar_cursor_sistema:
+                try:
+                    pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+                except Exception:
+                    pass
+                self._cursor_hw_ativo = False
+                pygame.mouse.set_visible(True)
 
         # 0. Se o Menu de Debug estiver ativo, processa seus inputs e congela o jogo
         if hasattr(self, "menu_debug"):
@@ -789,13 +847,13 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                 self.pausado = True
             return
 
-        # 4. Tecla 'C' ou clique no botão de engrenagem (LARGURA_TELA - 48, 16, 32x32 ou 752..784 legado) antes de qualquer inversão de mouse
+        # 4. Tecla 'C' ou clique no botão de engrenagem (LARGURA_TELA - 48, 16, 32x32) antes de qualquer inversão de mouse
         pode_abrir_menu = getattr(self, "_cooldown_menu_toggle", 0.0) <= 0.0
         if pode_abrir_menu and self.mouse is not None and hasattr(self.mouse, "button_down") and self.mouse.button_down(1):
             try:
                 mx_gear, my_gear = self.mouse.get_position()
                 gear_x = LARGURA_TELA - 48
-                if ((gear_x <= mx_gear <= gear_x + 32) or (752 <= mx_gear <= 784)) and 16 <= my_gear <= 48:
+                if (gear_x <= mx_gear <= gear_x + 32) and 16 <= my_gear <= 48:
                     self.menu_configs.abrir()
                     self.pausado = True
                     self.buffer_tiro = 0.0
@@ -973,6 +1031,18 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         timer_congelado = getattr(self.menu_debug, "timer_congelado", False) if hasattr(self, "menu_debug") else False
         if not timer_congelado and not cutscene_congelada:
             self.tempo_sobrevivencia += dt
+            if getattr(self, "sistema_conquistas", None) is not None and getattr(self.jogador, "vivo", True):
+                val_fps_15 = str(self.config_sistema.obter_valor("fps_cap")).strip() if hasattr(self, "config_sistema") and self.config_sistema else ""
+                if val_fps_15 == "15":
+                    self.tempo_15fps_acumulado = getattr(self, "tempo_15fps_acumulado", 0.0) + dt
+                else:
+                    self.tempo_15fps_acumulado = 0.0
+                notifs_15 = self.sistema_conquistas.atualizar_progresso_15fps(self.tempo_15fps_acumulado)
+                if notifs_15:
+                    self._enfileirar_notificacoes_conquistas(notifs_15)
+                    if hasattr(self, "gerenciador_config") and self.gerenciador_config is not None:
+                        self.gerenciador_config.sincronizar_recompensas_conquistas()
+                        self.gerenciador_config.salvar_arquivo()
 
         # Atualiza temporizador de Screen Shake
         if self.shake_timer > 0.0:
@@ -1064,6 +1134,16 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
             hitbox_mult = (getattr(mods, "hitbox_projeteis_mult", 1.0) if mods else 1.0) * (getattr(mods, "resolucao_chunky_hitbox", 1.0) if mods else 1.0)
             mult_dano_buff = 1.05 if getattr(self.jogador, "buff_dano_timer", 0.0) > 0.0 else 1.0
 
+            efeitos_inst = self._obter_efeitos_combate() if hasattr(self, "_obter_efeitos_combate") else getattr(self, "efeitos_combate", None)
+            if efeitos_inst is not None:
+                self.jogador.mult_cadencia_efeitos = efeitos_inst.obter_mult_cadencia()
+                self.jogador.mult_vel_efeitos = efeitos_inst.obter_mult_velocidade()
+                self.jogador.mult_dano_recebido_efeitos = efeitos_inst.obter_mult_dano_recebido()
+            else:
+                self.jogador.mult_cadencia_efeitos = 1.0
+                self.jogador.mult_vel_efeitos = 1.0
+                self.jogador.mult_dano_recebido_efeitos = 1.0
+
             tiros_drone = self.jogador.update(
                 dt,
                 drops=self.sistema_drops.drops,
@@ -1088,7 +1168,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                 self.jogador.evento_cura_drone = 0
                 self.aura_cura_timer = 0.65
                 self.toasts_coleta.append({
-                    "texto": f"+{val_c} HP",
+                    "texto": tr("ui_geral", "toast_cura", val=val_c),
                     "cor": VERDE_CURA,
                     "x": self.jogador.x + 16,
                     "y": self.jogador.y - 12,
@@ -1109,24 +1189,8 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                         p_dr.height = p_dr.altura
                 self.projeteis.extend(tiros_drone)
 
-            # Cancela carga de armas caso o slot do jogador ou arma ativa tenha mudado
             slot_atual = getattr(self.jogador, "slot_ativo", None)
             arma_atual = self.jogador.obter_arma_ativa() if self.jogador.vivo else None
-            slot_mudou = (hasattr(self, "_ultimo_slot_ativo") and self._ultimo_slot_ativo != slot_atual)
-            arma_mudou = (hasattr(self, "_arma_ativa_anterior") and self._arma_ativa_anterior is not None and self._arma_ativa_anterior is not arma_atual)
-            if slot_mudou and hasattr(self, "sistema_combo") and self.sistema_combo is not None and slot_atual is not None:
-                self.sistema_combo.registrar_troca_slot(int(slot_atual))
-            if slot_mudou or arma_mudou:
-                for arma_cancel in (
-                    getattr(self.jogador, "arma_primaria", None),
-                    getattr(self.jogador, "arma_secundaria", None),
-                    getattr(self.jogador, "arma_especial", None),
-                    getattr(self.jogador, "arma_especial_secundaria", None),
-                    getattr(self, "_arma_ativa_anterior", None)
-                ):
-                    if arma_cancel is not None and getattr(arma_cancel, "carregando", False):
-                        if hasattr(arma_cancel, "cancelar_carga"):
-                            arma_cancel.cancelar_carga()
             self._ultimo_slot_ativo = slot_atual
             self._arma_ativa_anterior = arma_atual
 
@@ -1152,26 +1216,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
             ef["tempo"] -= dt
         self.efeitos_melee = [ef for ef in self.efeitos_melee if ef["tempo"] > 0]
 
-        # Atualiza SistemaCombo, Hologramas e hooks B+ por tick
-        if hasattr(self, "sistema_combo") and self.sistema_combo is not None:
-            estado_combo = self.sistema_combo.update(dt)
-            combo_qtd = int(estado_combo.get("contagem", getattr(self.sistema_combo, "contagem", 0)))
-            if getattr(self, "sistema_conquistas", None) is not None and combo_qtd > 0:
-                notifs_combo = self.sistema_conquistas.registrar_evento(
-                    "combo_atualizado",
-                    combo_qtd,
-                    contexto={
-                        "combo": combo_qtd,
-                        "duracao_s": float(estado_combo.get("duracao_s", 0.0)),
-                        "rank": estado_combo.get("rank", getattr(self.sistema_combo, "rank", "")),
-                    },
-                )
-                if notifs_combo:
-                    self._enfileirar_notificacoes_conquistas(notifs_combo)
-                    if hasattr(self, "gerenciador_config") and self.gerenciador_config is not None:
-                        self.gerenciador_config.sincronizar_recompensas_conquistas()
-                        self.gerenciador_config.salvar_arquivo()
-
+        # Atualiza Hologramas e hooks B+ por tick
         if hasattr(self, "hologramas") and self.hologramas:
             for holo in self.hologramas:
                 if hasattr(holo, "update"):
@@ -1202,7 +1247,6 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                 drops=self.sistema_drops.drops,
                 particulas=getattr(self, "sistema_particulas", None),
                 mods=mods,
-                sistema_combo=getattr(self, "sistema_combo", None),
                 sistema_conquistas=getattr(self, "sistema_conquistas", None),
                 hologramas=getattr(self, "hologramas", None),
                 tempo_sobrevivencia=self.tempo_sobrevivencia,
@@ -1222,30 +1266,62 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
 
             if self.chefe_final is not None and self.chefe_final.vivo:
                 if getattr(self.chefe_final, "estado", "") not in ("morte", ESTADO_MORTE):
-                    # Durante o Chefe Final: horda de apoio ativa (Padrão, Rápido e Projetor Laser) até 22 mobs
+                    # Durante o Chefe Final: ondas híbridas de especialistas coreografadas por fase (cap 24)
                     from src.entidades.inimigo_padrao import InimigoPadrao
                     from src.entidades.inimigo_rapido import InimigoRapido
                     from src.entidades.inimigo_ranged import InimigoRanged
+                    from src.entidades.inimigo_phasing import InimigoPhasing
+                    from src.entidades.inimigo_impressora import InimigoImpressoraTermica
+                    from src.entidades.inimigo_ninja import InimigoNinja
+                    from src.entidades.inimigo_blindado import InimigoBlindado
                     mobs_comuns = [e for e in self.inimigos if e.vivo and e != self.chefe_final and not getattr(e, "is_caixa_som", False)]
-                    if len(mobs_comuns) < 22 and random.random() < 0.85 * dt * 4.0:
+                    ninjas_vivos = sum(1 for e in mobs_comuns if getattr(e, "is_ninja", False))
+                    impressoras_vivas = sum(1 for e in mobs_comuns if type(e).__name__ == "InimigoImpressoraTermica")
+                    if len(mobs_comuns) < 24 and random.random() < min(0.95, 1.6 * dt * 3.0):
                         ex, ey = self.spawner.gerar_posicao_spawn(
                             self.camera.x, self.camera.y,
                             view_w=LARGURA_TELA, view_h=ALTURA_TELA,
                             arena_w=self.largura_arena, arena_h=self.altura_arena
                         )
+                        estado_boss = str(getattr(self.chefe_final, "estado", "fase1"))
                         r_mob = random.random()
-                        if r_mob < 0.25:
-                            mob_boss = InimigoRapido(x=ex, y=ey)
-                        elif r_mob < 0.315:
-                            mob_boss = InimigoRanged(x=ex, y=ey, modo_homing=fogo_cruzado_ranged)
-                            if fogo_cruzado_ranged:
-                                mob_boss.rajada_tripla = True
+                        if estado_boss == "fase1":
+                            if ninjas_vivos < 1 and r_mob < 0.14:
+                                mob_boss = InimigoNinja(x=ex, y=ey)
+                            elif r_mob < 0.40:
+                                mob_boss = InimigoRapido(x=ex, y=ey)
+                            elif r_mob < 0.60:
+                                mob_boss = InimigoRanged(x=ex, y=ey, modo_homing=fogo_cruzado_ranged)
+                                if fogo_cruzado_ranged:
+                                    mob_boss.rajada_tripla = True
+                            else:
+                                mob_boss = InimigoPadrao(x=ex, y=ey)
+                        elif estado_boss == "fase2":
+                            if impressoras_vivas < 1 and r_mob < 0.16:
+                                mob_boss = InimigoImpressoraTermica(x=ex, y=ey)
+                            elif r_mob < 0.36:
+                                mob_boss = InimigoPhasing(x=ex, y=ey)
+                            elif r_mob < 0.62:
+                                mob_boss = InimigoRapido(x=ex, y=ey)
+                            else:
+                                mob_boss = InimigoRanged(x=ex, y=ey, modo_homing=fogo_cruzado_ranged)
+                                if fogo_cruzado_ranged:
+                                    mob_boss.rajada_tripla = True
                         else:
-                            mob_boss = InimigoPadrao(x=ex, y=ey)
+                            if impressoras_vivas < 1 and r_mob < 0.14:
+                                mob_boss = InimigoImpressoraTermica(x=ex, y=ey)
+                            elif ninjas_vivos < 1 and r_mob < 0.28:
+                                mob_boss = InimigoNinja(x=ex, y=ey)
+                            elif r_mob < 0.48:
+                                mob_boss = InimigoBlindado(x=ex, y=ey)
+                            else:
+                                mob_boss = InimigoRapido(x=ex, y=ey)
                         escala_hp_tempo = self.spawner.calcular_escala_hp_tempo(self.tempo_sobrevivencia)
                         mob_boss.hp_max = max(1, int(round(mob_boss.hp_max * hp_inim_mult * escala_hp_tempo)))
                         mob_boss.hp = mob_boss.hp_max
                         mob_boss.velocidade = float(mob_boss.velocidade) * vel_inim_mult
+                        if hasattr(mob_boss, "orientar_para"):
+                            mob_boss.orientar_para(centro_jogador_x, centro_jogador_y)
                         self.inimigos.append(mob_boss)
             else:
                 gatilho_intro = (
@@ -1302,9 +1378,12 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                             ni.rajada_tripla = True
                         if hasattr(ni, "modo_homing"):
                             ni.modo_homing = True
+                for ni in novos_inimigos:
+                    if hasattr(ni, "orientar_para"):
+                        ni.orientar_para(centro_jogador_x, centro_jogador_y)
                 self.inimigos.extend(novos_inimigos)
 
-                # Gatilho Nível 12 após 4:30 (270s) OU 3º Ciclo Musical (Opção A) / fallback tempo_elite >= 300s
+                # Gatilho Nível 12 após ~3:05 (185s) OU 2º Ciclo Musical (MINIBOSS_CICLOS_RUN) / fallback tempo_elite >= 195s
                 nivel_max = getattr(getattr(self.jogador, "sistema_xp", None), "nivel_max", 12)
                 ciclos_concluidos = (
                     getattr(self.sistema_musica, "ciclos_assault_concluidos", 0)
@@ -1312,9 +1391,9 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                     else 0
                 )
                 if self.chefe_final is None and not self.boss_cutscene_ativa and not self.boss_grace_period_ativo:
-                    if getattr(self.jogador, "nivel", 1) >= nivel_max and getattr(self, "tempo_sobrevivencia", 0.0) >= 270.0:
+                    if getattr(self.jogador, "nivel", 1) >= nivel_max and getattr(self, "tempo_sobrevivencia", 0.0) >= 185.0:
                         self.iniciar_boss_grace_period()
-                    elif not possui_elite and (ciclos_concluidos >= MINIBOSS_CICLOS_RUN or getattr(self.spawner, "tempo_elite", 0.0) >= 300.0):
+                    elif not possui_elite and (ciclos_concluidos >= MINIBOSS_CICLOS_RUN or getattr(self.spawner, "tempo_elite", 0.0) >= 195.0):
                         self.iniciar_boss_grace_period()
 
         # =========================================================================
@@ -1358,10 +1437,10 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                         self.sistema_particulas.emitir_debris(icx_e, icy_e, cor=LARANJA_ALERTA, qtd=18)
                         self.aplicar_shake(14.0, 0.35)
                         if distancia(icx_e, icy_e, centro_jogador_x, centro_jogador_y) <= 150.0:
-                            self.jogador.receber_dano(25, causa_morte="Explosão de Mini-Boss (Superaquecimento)")
+                            self.jogador.receber_dano(25, causa_morte=tr("ui_geral", "causa_explosao_miniboss"))
                         inimigo.vivo = False
                         self.toasts_coleta.append({
-                            "texto": "O MINI-BOSS SUPERAQUECEU. VOCÊ NÃO RECEBERÁ RECOMPENSAS POR ELE.",
+                            "texto": tr("ui_geral", "toast_miniboss_superaqueceu"),
                             "cor": LARANJA_ALERTA,
                             "x": self.jogador.x + 16,
                             "y": self.jogador.y - 25,
@@ -1375,7 +1454,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                     icy_f = inimigo.y + getattr(inimigo, "altura", 28) / 2.0
                     self.sistema_particulas.emitir_onda_choque(icx_f, icy_f, raio_max=125.0, cor=LARANJA_ALERTA)
                     if distancia(icx_f, icy_f, centro_jogador_x, centro_jogador_y) <= 125.0:
-                        self.jogador.receber_dano(18, causa_morte="Pulso Elétrico (Fonte Genérica 500W)")
+                        self.jogador.receber_dano(18, causa_morte=tr("ui_geral", "causa_pulso_eletrico"))
                 if getattr(inimigo, "projeteis_elite_pendentes", None):
                     self.projeteis.extend(inimigo.projeteis_elite_pendentes)
                     inimigo.projeteis_elite_pendentes.clear()
@@ -1386,6 +1465,8 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                     novos_tiros = inimigo.obter_projeteis_pendentes()
                     if novos_tiros:
                         self.projeteis.extend(novos_tiros)
+                if hasattr(self, "_processar_eventos_blindagem"):
+                    self._processar_eventos_blindagem(inimigo)
 
             if cutscene_congelada:
                 continue
@@ -1437,7 +1518,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                             mult_dano_inim *= getattr(mods, "dano_fora_visao_mult", 0.50)
                     dano_efetivo_contato = max(1, int(round(dano_contato_base * mult_dano_inim)))
                     nome_inim = getattr(inimigo, "nome_elite", "") or getattr(inimigo, "nome_exibicao", "") or type(inimigo).__name__
-                    self.jogador.receber_dano(dano_efetivo_contato, causa_morte=f"Contato com {nome_inim}")
+                    self.jogador.receber_dano(dano_efetivo_contato, causa_morte=tr("ui_geral", "causa_contato_inimigo", nome=nome_inim))
                     inimigo.cooldown_contato_atual = getattr(inimigo, "cooldown_contato_max", 0.4)
                     self.aplicar_shake(6.0, 0.15)
                     # Casco Eletrostático (buff_resistencia_timer > 0): empurra e dá choque em quem encostar
@@ -1452,6 +1533,8 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                         self.sistema_particulas.emitir_faiscas(icx_c, icy_c, dir_x=dx_c, dir_y=dy_c, cor=(80, 255, 160), qtd=6)
                         if not inimigo.vivo:
                             self._registrar_abate_inimigo(inimigo, mods)
+
+        self._resolver_fisica_suave_horda(dt, mods, cutscene_congelada, pular_ia_inimigos)
 
         # Atualização do Chefe Final (Geladeira Tsunami)
         _boss_pode_atualizar = (
@@ -1539,7 +1622,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                             mult_dano_inim *= getattr(mods, "dano_fora_visao_mult", 0.50)
                     dano_efetivo_contato = max(1, int(round(dano_contato_base * mult_dano_inim)))
                     nome_inim = getattr(self.chefe_final, "nome_elite", "") or getattr(self.chefe_final, "nome_exibicao", "") or type(self.chefe_final).__name__
-                    self.jogador.receber_dano(dano_efetivo_contato, causa_morte=f"Contato com {nome_inim}")
+                    self.jogador.receber_dano(dano_efetivo_contato, causa_morte=tr("ui_geral", "causa_contato_inimigo", nome=nome_inim))
                     self.chefe_final.cooldown_contato_atual = getattr(self.chefe_final, "cooldown_contato_max", 0.4)
                     self.aplicar_shake(10.0, 0.25)
 
@@ -1581,14 +1664,18 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                     "cura": "sfx_pickup_cura",
                     "arma": "sfx_pickup_arma",
                     "equipamento": "sfx_pickup_equipamento",
+                    "overclock": "sfx_levelup",
+                    "powerup": "sfx_pickup_equipamento",
+                    "micro_sucata": "sfx_pickup_xp",
                 }
                 sfx_drop = mapa_sfx_drop.get(ev["tipo"])
                 if sfx_drop:
                     self.sistema_audio.tocar_sfx(sfx_drop, pitch_aleatorio=True)
 
             if ev["tipo"] == "xp":
+                xp_exibido = int(ev.get("xp_ganho") or max(1, int(round(ev["valor"] * mult_xp))))
                 self.toasts_coleta.append({
-                    "texto": f"+{ev['valor']} XP",
+                    "texto": tr("ui_geral", "toast_xp", val=xp_exibido),
                     "cor": AMARELO_XP,
                     "x": self.jogador.x + 16,
                     "y": self.jogador.y - 10,
@@ -1598,7 +1685,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
             elif ev["tipo"] == "cura":
                 val_cura = ev.get("valor", 35)
                 self.toasts_coleta.append({
-                    "texto": f"+{val_cura} HP",
+                    "texto": tr("ui_geral", "toast_cura", val=val_cura),
                     "cor": VERDE_CURA,
                     "x": self.jogador.x + 16,
                     "y": self.jogador.y - 10,
@@ -1607,10 +1694,10 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                 })
             elif ev["tipo"] == "arma":
                 arma_coletada = ev.get("arma") or self.jogador.arma_especial
-                nome_arma = getattr(arma_coletada, "nome", "Arma Especial")
+                nome_arma = getattr(arma_coletada, "nome", tr("ui_geral", "fallback_arma_especial"))
                 mun = getattr(arma_coletada, "municao_max", 30)
                 self.toasts_coleta.append({
-                    "texto": f"{nome_arma} ({mun})",
+                    "texto": tr("ui_geral", "toast_arma_coletada", nome=nome_arma, val=mun),
                     "cor": DOURADO,
                     "x": self.jogador.x + 16,
                     "y": self.jogador.y - 15,
@@ -1618,13 +1705,13 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                     "tempo_max": 1.8
                 })
             elif ev["tipo"] == "equipamento":
-                nome_drone = "Drone"
+                nome_drone = tr("ui_geral", "fallback_drone")
                 if hasattr(self.jogador, "drones") and self.jogador.drones:
-                    nome_drone = getattr(self.jogador.drones[-1], "nome", "Drone")
+                    nome_drone = getattr(self.jogador.drones[-1], "nome", nome_drone)
                 elif hasattr(self.jogador, "drone") and self.jogador.drone:
-                    nome_drone = getattr(self.jogador.drone, "nome", "Drone")
+                    nome_drone = getattr(self.jogador.drone, "nome", nome_drone)
                 self.toasts_coleta.append({
-                    "texto": f"{nome_drone} (30s)",
+                    "texto": tr("ui_geral", "toast_drone_coletado", nome=nome_drone),
                     "cor": (255, 160, 50),
                     "x": self.jogador.x + 16,
                     "y": self.jogador.y - 15,
@@ -1633,7 +1720,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                 })
             elif ev["tipo"] == "overclock":
                 self.toasts_coleta.append({
-                    "texto": "NÚCLEO DE OVERCLOCK OBTIDO!",
+                    "texto": tr("ui_geral", "toast_overclock_obtido"),
                     "cor": (215, 140, 255),
                     "x": self.jogador.x + 16,
                     "y": self.jogador.y - 20,
@@ -1648,7 +1735,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                     self.pontos += 500
             elif ev["tipo"] == "micro_sucata":
                 self.toasts_coleta.append({
-                    "texto": "+SUCATA",
+                    "texto": tr("ui_geral", "toast_micro_sucata"),
                     "cor": AZUL_CIANO,
                     "x": self.jogador.x + 16,
                     "y": self.jogador.y - 12,
@@ -1658,7 +1745,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
             elif ev["tipo"] == "capsula_powerup":
                 drop_obj = ev.get("drop")
                 sub = getattr(drop_obj, "subtipo", "buff_dano_temp") if drop_obj else "buff_dano_temp"
-                rotulo = getattr(drop_obj, "rotulo", "Suprimento") if drop_obj else "Suprimento"
+                rotulo = getattr(drop_obj, "rotulo", tr("combate_entidades", "drop_suprimento")) if drop_obj else tr("combate_entidades", "drop_suprimento")
                 if sub == "buff_dano_temp":
                     self.jogador.buff_dano_timer = 15.0
                 elif sub == "buff_vel_temp":
@@ -1689,7 +1776,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                     novo_d = random.choice([DroneCura, DroneCombate, DroneSuporte])(tempo_vida=30.0)
                     self.jogador.adicionar_drone(novo_d)
                 self.toasts_coleta.append({
-                    "texto": f"{rotulo} ATIVO!",
+                    "texto": tr("ui_geral", "toast_capsula_ativa", nome=rotulo),
                     "cor": AZUL_CIANO,
                     "x": self.jogador.x + 16,
                     "y": self.jogador.y - 16,
@@ -1813,9 +1900,35 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         })
         if hasattr(self, "sistema_audio") and self.sistema_audio is not None:
             if hasattr(self.sistema_audio, "tocar_sfx"):
-                self.sistema_audio.tocar_sfx("sfx_level_up")
+                self.sistema_audio.tocar_sfx("sfx_levelup")
             elif hasattr(self.sistema_audio, "tocar_parry_clang"):
                 self.sistema_audio.tocar_parry_clang()
+
+    def _emitir_evento_conquista(
+        self,
+        evento: str,
+        quantidade: int | float = 1,
+        contexto: dict | None = None,
+    ) -> list[dict]:
+        """Despacha um evento para SistemaConquistas, enfileira banners e salva apenas em desbloqueio novo."""
+        sis_cnq = getattr(self, "sistema_conquistas", None)
+        if sis_cnq is None and hasattr(self, "_obter_sistema_conquistas"):
+            sis_cnq = self._obter_sistema_conquistas()
+        if sis_cnq is None or not hasattr(sis_cnq, "registrar_evento"):
+            return []
+        notifs = list(sis_cnq.registrar_evento(evento, quantidade, contexto) or [])
+        if notifs:
+            self._enfileirar_notificacoes_conquistas(notifs)
+            ger = getattr(self, "gerenciador_config", None) or getattr(self, "config_sistema", None)
+            if ger is not None:
+                if hasattr(ger, "sincronizar_recompensas_conquistas"):
+                    ger.sincronizar_recompensas_conquistas()
+                if hasattr(ger, "salvar_arquivo"):
+                    try:
+                        ger.salvar_arquivo(SAVE_FILE_PATH)
+                    except OSError:
+                        pass
+        return notifs
 
     def _enfileirar_notificacoes_conquistas(self, notifs: list[dict] | None) -> None:
         """Converte notificações de `SistemaConquistas.registrar_evento` em banners estilo Steam."""
@@ -1823,9 +1936,9 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
             return
         from src.ui.hud import formatar_recompensas_conquista
         for notif in notifs:
-            titulo = str(notif.get("titulo", "Conquista Desbloqueada"))
+            titulo = str(notif.get("titulo", tr("ui_geral", "hud_banner_titulo_fallback")))
             recomps = notif.get("recompensas", [])
-            subtitulo = formatar_recompensas_conquista(recomps) if recomps else "Conquista desbloqueada!"
+            subtitulo = formatar_recompensas_conquista(recomps) if recomps else tr("ui_geral", "banner_conquista_sub_fallback")
             self.enfileirar_banner_desbloqueio(titulo, subtitulo, cor=DOURADO)
 
     def _acionar_vitoria(self):
@@ -1860,5 +1973,165 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
     def _voltar_menu(self):
         from src.cenas.menu_principal import MenuPrincipalScene
         SceneManager.change_scene(MenuPrincipalScene())
+
+    def _resolver_fisica_suave_horda(
+        self, dt: float, mods, cutscene_congelada: bool, pular_ia_inimigos: bool
+    ) -> None:
+        """
+        Aplica separação suave (dampened) entre inimigos via spatial hash O(N)
+        e minion block suave no jogador (contornado durante Dash ou atropelamento).
+        """
+        if cutscene_congelada or pular_ia_inimigos or dt <= 0.0:
+            return
+
+        tangiveis = [
+            e for e in self.inimigos
+            if getattr(e, "vivo", True)
+            and not getattr(e, "is_boss", False)
+            and not getattr(e, "is_caixa_som", False)
+            and not getattr(e, "em_fase", False)
+            and getattr(e, "estado", "") not in ("morte", ESTADO_MORTE)
+        ]
+        n = len(tangiveis)
+        if n == 0:
+            return
+
+        if n >= 2:
+            cell = 48.0
+            centros_w_h = []
+            buckets: dict[tuple[int, int], list[int]] = {}
+            for idx, inim in enumerate(tangiveis):
+                w = float(getattr(inim, "largura", 28))
+                h = float(getattr(inim, "altura", 28))
+                cx = float(inim.x) + w * 0.5
+                cy = float(inim.y) + h * 0.5
+                centros_w_h.append((cx, cy, max(w, h) * 0.5))
+                chave = (int(cx // cell), int(cy // cell))
+                buckets.setdefault(chave, []).append(idx)
+
+            disp_x = [0.0] * n
+            disp_y = [0.0] * n
+            fator_r = float(SEPARACAO_INIMIGOS_FATOR_RAIO)
+            rigidez = float(SEPARACAO_INIMIGOS_RIGIDEZ)
+            vel_max = float(SEPARACAO_INIMIGOS_VEL_MAX)
+
+            for idx, (cx1, cy1, r1) in enumerate(centros_w_h):
+                gx = int(cx1 // cell)
+                gy = int(cy1 // cell)
+                peso1 = 0.35 if getattr(tangiveis[idx], "is_elite", False) else 1.0
+                for ox in (-1, 0, 1):
+                    for oy in (-1, 0, 1):
+                        vizinhos = buckets.get((gx + ox, gy + oy))
+                        if not vizinhos:
+                            continue
+                        for jdx in vizinhos:
+                            if jdx <= idx:
+                                continue
+                            cx2, cy2, r2 = centros_w_h[jdx]
+                            raio_sep = (r1 + r2) * fator_r
+                            dx = cx2 - cx1
+                            dy = cy2 - cy1
+                            dist_sq = dx * dx + dy * dy
+                            if dist_sq >= raio_sep * raio_sep:
+                                continue
+                            if dist_sq < 1e-6:
+                                ang = (idx + jdx) * 2.39996
+                                nx, ny = math.cos(ang), math.sin(ang)
+                                frac = 1.0
+                            else:
+                                dist = math.sqrt(dist_sq)
+                                nx, ny = dx / dist, dy / dist
+                                frac = 1.0 - (dist / raio_sep)
+                            imp = min(vel_max, rigidez * frac)
+                            peso2 = 0.35 if getattr(tangiveis[jdx], "is_elite", False) else 1.0
+                            disp_x[idx] -= nx * imp * peso1
+                            disp_y[idx] -= ny * imp * peso1
+                            disp_x[jdx] += nx * imp * peso2
+                            disp_y[jdx] += ny * imp * peso2
+
+            max_step = vel_max * dt
+            for idx, inim in enumerate(tangiveis):
+                vx, vy = disp_x[idx], disp_y[idx]
+                if vx == 0.0 and vy == 0.0:
+                    continue
+                step_x = vx * dt
+                step_y = vy * dt
+                mag = math.hypot(step_x, step_y)
+                if mag > max_step and mag > 1e-6:
+                    escala = max_step / mag
+                    step_x *= escala
+                    step_y *= escala
+                inim.x += step_x
+                inim.y += step_y
+                self._clamp_entidade_arena(inim)
+
+        if not getattr(self.jogador, "vivo", True):
+            return
+        em_dash = (
+            float(getattr(self.jogador, "dash_ativo_timer", 0.0)) > 0.0
+            or bool(getattr(self.jogador, "em_dash_iframes", False))
+        )
+        tanque_bulldozer = (
+            getattr(self.jogador, "controles_tanque", False)
+            and getattr(self.jogador, "tanque_avancando", False)
+        )
+        em_ram = bool(getattr(mods, "movimento_ram_collision", False)) or tanque_bulldozer
+        if em_dash or em_ram:
+            return
+
+        jw = float(getattr(self.jogador, "largura", 32))
+        jh = float(getattr(self.jogador, "altura", 32))
+        jx = float(self.jogador.x) + jw * 0.5
+        jy = float(self.jogador.y) + jh * 0.5
+        rj = max(jw, jh) * 0.5
+
+        push_jx = 0.0
+        push_jy = 0.0
+        fator_bloq = float(MINION_BLOCK_FATOR_RAIO)
+        forca_j = float(MINION_BLOCK_FORCA_JOGADOR)
+        empurrao_inim = float(MINION_BLOCK_EMPURRAO_INIMIGO)
+
+        for inim in tangiveis:
+            iw = float(getattr(inim, "largura", 28))
+            ih = float(getattr(inim, "altura", 28))
+            icx = float(inim.x) + iw * 0.5
+            icy = float(inim.y) + ih * 0.5
+            re = max(iw, ih) * 0.5
+            raio_bloq = (rj + re) * fator_bloq
+            dx = jx - icx
+            dy = jy - icy
+            dist_sq = dx * dx + dy * dy
+            if dist_sq >= raio_bloq * raio_bloq:
+                continue
+            if dist_sq < 1e-6:
+                dir_m = getattr(inim, "_dir_mov", (1.0, 0.0))
+                nx, ny = float(dir_m[0]), float(dir_m[1])
+                if nx == 0.0 and ny == 0.0:
+                    nx, ny = 1.0, 0.0
+                frac = 1.0
+            else:
+                dist = math.sqrt(dist_sq)
+                nx, ny = dx / dist, dy / dist
+                frac = 1.0 - (dist / raio_bloq)
+
+            push_jx += nx * forca_j * frac
+            push_jy += ny * forca_j * frac
+            peso_inim = 0.30 if getattr(inim, "is_elite", False) else 1.0
+            inim.x -= nx * empurrao_inim * frac * peso_inim * dt
+            inim.y -= ny * empurrao_inim * frac * peso_inim * dt
+            self._clamp_entidade_arena(inim)
+
+        if push_jx != 0.0 or push_jy != 0.0:
+            step_jx = push_jx * dt
+            step_jy = push_jy * dt
+            max_j_step = float(MINION_BLOCK_VEL_MAX) * dt
+            mag_j = math.hypot(step_jx, step_jy)
+            if mag_j > max_j_step and mag_j > 1e-6:
+                escala = max_j_step / mag_j
+                step_jx *= escala
+                step_jy *= escala
+            self.jogador.x += step_jx
+            self.jogador.y += step_jy
+            self._clamp_entidade_arena(self.jogador)
 
 

@@ -16,6 +16,7 @@ from src.utils.constantes import (
     BRANCO, AZUL_CIANO, AMARELO_XP, CINZA_PAINEL, DOURADO,
     obter_caminho_asset, SAVE_FILE_PATH
 )
+from src.utils.traducao import t
 
 # Paleta Cyber-Office (Spec §8 aprovada)
 _C_BACKDROP = (7, 9, 14)
@@ -33,37 +34,10 @@ _C_PURPLE = (168, 85, 247)
 _C_GOLD = (251, 191, 36)
 
 
-_FONT_CACHE: dict[tuple[str, int, bool], pygame.font.Font] = {}
-
-
-def _carregar_fonte_sans(tamanho: int, bold: bool = False) -> pygame.font.Font:
-    px_sz = max(8, int(tamanho))
-    chave = ("sans", px_sz, bold)
-    if chave in _FONT_CACHE:
-        return _FONT_CACHE[chave]
-    for nome in ("notosans", "dejavusans", "liberationsans", "arial"):
-        f = pygame.font.SysFont(nome, px_sz, bold=bold)
-        if f is not None:
-            _FONT_CACHE[chave] = f
-            return f
-    f = pygame.font.SysFont("Arial", px_sz, bold=bold)
-    _FONT_CACHE[chave] = f
-    return f
-
-
-def _carregar_fonte_mono(tamanho: int, bold: bool = False) -> pygame.font.Font:
-    px_sz = max(8, int(tamanho))
-    chave = ("mono", px_sz, bold)
-    if chave in _FONT_CACHE:
-        return _FONT_CACHE[chave]
-    for nome in ("jetbrainsmono", "firacode", "consolas", "dejavusansmono"):
-        f = pygame.font.SysFont(nome, px_sz, bold=bold)
-        if f is not None:
-            _FONT_CACHE[chave] = f
-            return f
-    f = pygame.font.SysFont("Consolas", px_sz, bold=bold)
-    _FONT_CACHE[chave] = f
-    return f
+from src.utils.fontes import (
+    carregar_fonte_sans as _carregar_fonte_sans,
+    carregar_fonte_mono as _carregar_fonte_mono,
+)
 
 
 class MenuPrincipalScene(BaseScene):
@@ -72,12 +46,12 @@ class MenuPrincipalScene(BaseScene):
         self.tempo_acumulado = 0.0
         self.opcao_selecionada = 0
         self.opcoes = [
-            "JOGAR [ENTER]",
-            "CONFIGURAÇÕES [C]",
-            "CONQUISTAS & FIRMWARE [F]",
-            "TUTORIAL [T]",
-            "RESETAR DADOS SALVOS",
-            "SAIR [ESC]",
+            t("menu_principal", "opcao_jogar"),
+            t("menu_principal", "opcao_configs"),
+            t("menu_principal", "opcao_conquistas_firmware"),
+            t("menu_principal", "opcao_tutorial"),
+            t("menu_principal", "opcao_resetar"),
+            t("menu_principal", "opcao_sair"),
         ]
         self.confirmar_reset_save = False
         self.aviso_reset_timer = 0.0
@@ -86,6 +60,7 @@ class MenuPrincipalScene(BaseScene):
         # Sistema de configurações, Conquistas/Firmware e Menu de Configurações
         self.gerenciador_config = GerenciadorConfiguracoes()
         self.gerenciador_config.carregar_arquivo(SAVE_FILE_PATH)
+        self._sincronizar_rotulos_menu()
         self.menu_configs = MenuConfigs(self.gerenciador_config, em_jogo=False, cena=self)
         self.menu_conquistas = MenuConquistas(
             self.gerenciador_config,
@@ -93,7 +68,7 @@ class MenuPrincipalScene(BaseScene):
             em_jogo=False,
             cena=self,
         )
-        self.banner_dicas = BannerDica()
+        self.banner_dicas = BannerDica(gerenciador_config=self.gerenciador_config)
         self.mostrar_popup_tutorial = not bool(getattr(self.gerenciador_config, "tutorial_visto", False))
         self._popup_overlay_cache: dict[tuple[int, int], pygame.Surface] = {}
         try:
@@ -114,12 +89,12 @@ class MenuPrincipalScene(BaseScene):
         self._cleiton_sprite = None
         self._cleiton_sprite_tam = 0
         try:
-            caminho_batata = obter_caminho_asset("batata_idle")
+            caminho_batata = obter_caminho_asset("jogador_idle")
             if os.path.isfile(caminho_batata):
                 self._cleiton_base = pygame.image.load(caminho_batata).convert_alpha()
                 self._cleiton_sprite = pygame.transform.scale(self._cleiton_base, (44, 44))
                 self._cleiton_sprite_tam = 44
-        except Exception:
+        except (pygame.error, OSError, KeyError):
             self._cleiton_base = None
             self._cleiton_sprite = None
 
@@ -253,31 +228,32 @@ class MenuPrincipalScene(BaseScene):
                     if mouse_clicado:
                         self._executar_opcao_selecionada()
                         return
-            r_slot1, r_slot2 = self._obter_rects_loadout()
-            if mouse_clicado:
-                if r_slot1.collidepoint(mx, my):
-                    self.alternar_loadout_slot1()
-                    self.cooldown_input = 0.14
-                    return
-                if r_slot2.collidepoint(mx, my):
-                    self.alternar_loadout_slot2()
-                    self.cooldown_input = 0.14
-                    return
+            if self._possui_loadout_alternativo():
+                r_slot1, r_slot2 = self._obter_rects_loadout()
+                if mouse_clicado:
+                    if r_slot1.collidepoint(mx, my):
+                        self.alternar_loadout_slot1()
+                        self.cooldown_input = 0.14
+                        return
+                    if r_slot2.collidepoint(mx, my):
+                        self.alternar_loadout_slot2()
+                        self.cooldown_input = 0.14
+                        return
 
         # Navegação com Teclado
         if self.teclado.key_down("UP") or self.teclado.key_down("w"):
             self.opcao_selecionada = (self.opcao_selecionada - 1) % len(self.opcoes)
             self.confirmar_reset_save = False
-            self.opcoes[4] = "RESETAR DADOS SALVOS"
+            self.opcoes[4] = t("menu_principal", "opcao_resetar")
         elif self.teclado.key_down("DOWN") or self.teclado.key_down("s"):
             self.opcao_selecionada = (self.opcao_selecionada + 1) % len(self.opcoes)
             self.confirmar_reset_save = False
-            self.opcoes[4] = "RESETAR DADOS SALVOS"
+            self.opcoes[4] = t("menu_principal", "opcao_resetar")
 
         if getattr(self, "aviso_reset_timer", 0.0) > 0.0:
             self.aviso_reset_timer = max(0.0, self.aviso_reset_timer - dt)
             if self.aviso_reset_timer <= 0.0:
-                self.opcoes[4] = "RESETAR DADOS SALVOS"
+                self.opcoes[4] = t("menu_principal", "opcao_resetar")
 
         # Seleção de opções
         if self.teclado.key_down("ENTER") or self.teclado.key_down("SPACE"):
@@ -285,6 +261,30 @@ class MenuPrincipalScene(BaseScene):
 
         if self.teclado.key_down("ESC"):
             self.sair_jogo()
+
+    def _possui_firmware_desbloqueado(self) -> bool:
+        """Retorna True somente após o primeiro Chip de Firmware em recompensas['modificador_run']."""
+        sys_conq = getattr(self.gerenciador_config, "sistema_conquistas", None)
+        return bool(sys_conq is not None and sys_conq.recompensas.get("modificador_run"))
+
+    def _possui_loadout_alternativo(self) -> bool:
+        """Retorna True quando smg_compacta ou bastao_choque já foram desbloqueados."""
+        sys_conq = getattr(self.gerenciador_config, "sistema_conquistas", None)
+        if sys_conq is None:
+            return False
+        return bool(
+            sys_conq.possui_recompensa("arma", "smg_compacta")
+            or sys_conq.possui_recompensa("arma", "bastao_choque")
+        )
+
+    def _sincronizar_rotulos_menu(self) -> None:
+        """Atualiza rótulos condicionais do menu conforme progressão salva."""
+        if hasattr(self, "opcoes") and len(self.opcoes) > 2:
+            self.opcoes[2] = (
+                t("menu_principal", "opcao_conquistas_firmware")
+                if self._possui_firmware_desbloqueado()
+                else t("menu_principal", "opcao_conquistas")
+            )
 
     @staticmethod
     def _obter_rects_popup_tutorial() -> tuple[pygame.Rect, pygame.Rect, pygame.Rect]:
@@ -361,12 +361,16 @@ class MenuPrincipalScene(BaseScene):
         elif self.opcao_selecionada == 4:
             if not getattr(self, "confirmar_reset_save", False):
                 self.confirmar_reset_save = True
-                self.opcoes[4] = "CONFIRMAR RESET?"
+                self.opcoes[4] = t("menu_principal", "opcao_resetar_confirmar")
             else:
                 self.confirmar_reset_save = False
                 self.gerenciador_config.from_dict({})
                 self.gerenciador_config.salvar_arquivo()
-                self.opcoes[4] = "DADOS RESETADOS!"
+                if getattr(self, "menu_conquistas", None) is not None:
+                    self.menu_conquistas.sistema_conquistas = self.gerenciador_config.sistema_conquistas
+                self._sincronizar_rotulos_menu()
+                self.mostrar_popup_tutorial = not bool(getattr(self.gerenciador_config, "tutorial_visto", False))
+                self.opcoes[4] = t("menu_principal", "opcao_resetar_concluido")
                 self.aviso_reset_timer = 2.0
         elif self.opcao_selecionada == 5:
             self.sair_jogo()
@@ -377,6 +381,7 @@ class MenuPrincipalScene(BaseScene):
         SceneManager.change_scene(TutorialScene())
 
     def draw(self):
+        self._sincronizar_rotulos_menu()
         screen = self.janela.screen
 
         # Se o Menu de Configurações ou Conquistas estiver ativo, desenha-o
@@ -445,7 +450,7 @@ class MenuPrincipalScene(BaseScene):
             pygame.draw.rect(screen, _C_PURPLE, emblema_r, width=max(1, ps(1)), border_radius=ps(10))
             screen.blit(self._cleiton_sprite, self._cleiton_sprite.get_rect(center=emblema_r.center))
 
-        sub_surf = fonte_sub.render("SOBREVIVÊNCIA CYBER-OFFICE  •  CONFIGURAÇÕES COMO MECÂNICA", True, _C_TEXT_SECONDARY)
+        sub_surf = fonte_sub.render(t("menu_principal", "subtitulo"), True, _C_TEXT_SECONDARY)
         screen.blit(sub_surf, sub_surf.get_rect(centerx=centro_x, top=py(144)))
 
         # Badge de Recorde e Melhor Tempo (Estatísticas Globais em monospace)
@@ -460,7 +465,7 @@ class MenuPrincipalScene(BaseScene):
         pygame.draw.rect(screen, _C_HUD_PANEL, badge_rect, border_radius=ps(8))
         pygame.draw.rect(screen, _C_BORDER, badge_rect, width=max(1, ps(1)), border_radius=ps(8))
 
-        texto_badge = f"RECORDE: {high_score:,} PTS   •   MELHOR TEMPO: {m_tempo:02d}:{s_tempo:02d}"
+        texto_badge = t("menu_principal", "badge_recorde", high_score=high_score, min=m_tempo, seg=s_tempo)
         badge_surf = fonte_badge.render(texto_badge, True, _C_CYAN)
         badge_text_rect = badge_surf.get_rect(center=badge_rect.center)
         screen.blit(badge_surf, badge_text_rect)
@@ -511,33 +516,42 @@ class MenuPrincipalScene(BaseScene):
                 pygame.draw.rect(screen, hk_bg, hk_pill, border_radius=ps(5))
                 screen.blit(hk_surf, hk_surf.get_rect(center=hk_pill.center))
 
-        # Seletor compacto de Loadout Inicial (Slot 1 / Slot 2)
-        r_s1_l, r_s2_l = self._obter_rects_loadout()
-        sys_conq = getattr(self.gerenciador_config, "sistema_conquistas", None)
-        s1_id = self.gerenciador_config.loadout.get("slot1", "chave_manutencao")
-        s2_id = self.gerenciador_config.loadout.get("slot2", "pistola")
-        s1_lib = bool(sys_conq is not None and sys_conq.possui_recompensa("arma", "bastao_choque"))
-        s2_lib = bool(sys_conq is not None and sys_conq.possui_recompensa("arma", "smg_compacta"))
+        # Seletor compacto de Loadout Inicial (Slot 1 / Slot 2) — oculto até desbloquear arma alternativa
+        if self._possui_loadout_alternativo():
+            r_s1_l, r_s2_l = self._obter_rects_loadout()
+            sys_conq = getattr(self.gerenciador_config, "sistema_conquistas", None)
+            s1_id = self.gerenciador_config.loadout.get("slot1", "chave_manutencao")
+            s2_id = self.gerenciador_config.loadout.get("slot2", "pistola")
+            s1_lib = bool(sys_conq is not None and sys_conq.possui_recompensa("arma", "bastao_choque"))
+            s2_lib = bool(sys_conq is not None and sys_conq.possui_recompensa("arma", "smg_compacta"))
 
-        painel_loadout = pygame.Rect(px(838), py(228), ps(304), ps(142))
-        pygame.draw.rect(screen, _C_HUD_PANEL, painel_loadout, border_radius=ps(8))
-        pygame.draw.rect(screen, _C_BORDER, painel_loadout, width=max(1, ps(1)), border_radius=ps(8))
-        tit_ld = fonte_hotkey.render("LOADOUT INICIAL (CLIQUE P/ TROCAR)", True, _C_CYAN)
-        screen.blit(tit_ld, (px(850), py(236)))
+            painel_loadout = pygame.Rect(px(838), py(228), ps(304), ps(142))
+            pygame.draw.rect(screen, _C_HUD_PANEL, painel_loadout, border_radius=ps(8))
+            pygame.draw.rect(screen, _C_BORDER, painel_loadout, width=max(1, ps(1)), border_radius=ps(8))
+            tit_ld = fonte_hotkey.render(t("menu_principal", "loadout_titulo"), True, _C_CYAN)
+            screen.blit(tit_ld, (px(850), py(236)))
 
-        for r_l, label_slot, arma_id, liberada_alt in [
-            (r_s1_l, "SLOT 1:", s1_id, s1_lib),
-            (r_s2_l, "SLOT 2:", s2_id, s2_lib),
-        ]:
-            r_p = pygame.Rect(px(r_l.x), py(r_l.y), ps(r_l.width), ps(r_l.height))
-            pygame.draw.rect(screen, _C_CARD, r_p, border_radius=ps(6))
-            pygame.draw.rect(screen, _C_PURPLE if liberada_alt else _C_ELEVATED, r_p, width=max(1, ps(1)), border_radius=ps(6))
-            nome_arma = arma_id.replace("_", " ").upper()
-            s_lbl = fonte_hotkey.render(f"{label_slot} {nome_arma}", True, _C_TEXT_PRIMARY)
-            screen.blit(s_lbl, (r_p.x + ps(10), r_p.y + ps(8)))
-            sub = "TROCA DISPONÍVEL" if liberada_alt else "ALT. BLOQUEADA"
-            s_sub = fonte_hotkey.render(sub, True, _C_GOLD if liberada_alt else _C_TEXT_SECONDARY)
-            screen.blit(s_sub, (r_p.x + ps(10), r_p.y + ps(24)))
+            for r_l, label_slot, arma_id, liberada_alt in [
+                (r_s1_l, t("menu_principal", "loadout_slot1"), s1_id, s1_lib),
+                (r_s2_l, t("menu_principal", "loadout_slot2"), s2_id, s2_lib),
+            ]:
+                r_p = pygame.Rect(px(r_l.x), py(r_l.y), ps(r_l.width), ps(r_l.height))
+                pygame.draw.rect(screen, _C_CARD, r_p, border_radius=ps(6))
+                pygame.draw.rect(screen, _C_PURPLE if liberada_alt else _C_ELEVATED, r_p, width=max(1, ps(1)), border_radius=ps(6))
+                nome_arma = arma_id.replace("_", " ").upper()
+                s_lbl = fonte_hotkey.render(
+                    t("menu_principal", "loadout_slot_valor", slot_label=label_slot, arma_nome=nome_arma),
+                    True,
+                    _C_TEXT_PRIMARY,
+                )
+                screen.blit(s_lbl, (r_p.x + ps(10), r_p.y + ps(8)))
+                sub = (
+                    t("menu_principal", "loadout_troca_disponivel")
+                    if liberada_alt
+                    else t("menu_principal", "loadout_alt_bloqueada")
+                )
+                s_sub = fonte_hotkey.render(sub, True, _C_GOLD if liberada_alt else _C_TEXT_SECONDARY)
+                screen.blit(s_sub, (r_p.x + ps(10), r_p.y + ps(24)))
 
         # Rodapé com instruções perfeitamente centralizado
         dica_rect = pygame.Rect(0, py(516), ps(700), ps(56))
@@ -547,7 +561,7 @@ class MenuPrincipalScene(BaseScene):
             self.banner_dicas.desenhar(screen, dica_rect, scale=scale)
 
         rodape_surf = fonte_rodape.render(
-            "[W/S] ou [Setas] Navegar   •   [ENTER] Confirmar   •   [C] Configurações   •   [T] Tutorial",
+            t("menu_principal", "rodape"),
             True,
             _C_TEXT_MUTED
         )
@@ -572,22 +586,22 @@ class MenuPrincipalScene(BaseScene):
             pygame.draw.rect(screen, _C_PURPLE, (m_r.x + ps(12), m_r.y + 1, meio_p, max(2, ps(2))))
             pygame.draw.rect(screen, _C_GOLD, (m_r.x + ps(12) + meio_p, m_r.y + 1, meio_p, max(2, ps(2))))
 
-            t_pop = fonte_badge.render("BEM-VINDO AO PROTOCOLO: BATATA", True, _C_GOLD)
+            t_pop = fonte_badge.render(t("menu_principal", "popup_tutorial_titulo"), True, _C_GOLD)
             screen.blit(t_pop, t_pop.get_rect(centerx=m_r.centerx, top=m_r.y + ps(22)))
 
-            msg1 = fonte_opcoes.render("Parece ser sua primeira vez jogando —", True, _C_TEXT_PRIMARY)
-            msg2 = fonte_opcoes.render("que tal ver o tutorial?", True, _C_TEXT_PRIMARY)
+            msg1 = fonte_opcoes.render(t("menu_principal", "popup_tutorial_msg1"), True, _C_TEXT_PRIMARY)
+            msg2 = fonte_opcoes.render(t("menu_principal", "popup_tutorial_msg2"), True, _C_TEXT_PRIMARY)
             screen.blit(msg1, msg1.get_rect(centerx=m_r.centerx, top=m_r.y + ps(56)))
             screen.blit(msg2, msg2.get_rect(centerx=m_r.centerx, top=m_r.y + ps(82)))
 
             pygame.draw.rect(screen, (22, 48, 62), bv_r, border_radius=ps(6))
             pygame.draw.rect(screen, _C_CYAN, bv_r, width=max(1, ps(2)), border_radius=ps(6))
-            s_ver = fonte_badge.render("Ver Tutorial", True, _C_TEXT_PRIMARY)
+            s_ver = fonte_badge.render(t("menu_principal", "popup_tutorial_btn_ver"), True, _C_TEXT_PRIMARY)
             screen.blit(s_ver, s_ver.get_rect(center=bv_r.center))
 
             pygame.draw.rect(screen, _C_CARD, bn_r, border_radius=ps(6))
             pygame.draw.rect(screen, _C_BORDER, bn_r, width=max(1, ps(1)), border_radius=ps(6))
-            s_nao = fonte_badge.render("Agora Não", True, _C_TEXT_SECONDARY)
+            s_nao = fonte_badge.render(t("menu_principal", "popup_tutorial_btn_nao"), True, _C_TEXT_SECONDARY)
             screen.blit(s_nao, s_nao.get_rect(center=bn_r.center))
 
     def iniciar_jogo(self):

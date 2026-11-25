@@ -5,12 +5,14 @@ Explica os controles, HUD, tipos de drops, arquétipos de inimigos e mecânicas 
 
 import pygame
 from src.cenas.base_scene import BaseScene
+from src.sistemas.config_sistema import GerenciadorConfiguracoes
 from src.ui.banner_dicas import BannerDica
 from src.utils.constantes import (
     LARGURA_TELA, ALTURA_TELA, BRANCO, PRETO, DOURADO,
     AZUL_CIANO, AMARELO_XP, VERDE_CURA, VERMELHO_HP, LARANJA_ALERTA,
-    CINZA_BORDA, CINZA_PAINEL, CINZA_FUNDO, CINZA_TEXTO
+    CINZA_BORDA, CINZA_PAINEL, CINZA_FUNDO, CINZA_TEXTO, SAVE_FILE_PATH,
 )
+from src.utils.traducao import t
 
 _C_BACKDROP = (7, 9, 14)
 _C_HUD_PANEL = (11, 14, 23)
@@ -23,23 +25,13 @@ _C_TEXT_PRIMARY = (241, 245, 249)
 _C_TEXT_SECONDARY = (148, 163, 184)
 _C_TEXT_MUTED = (100, 116, 139)
 
-_FONT_CACHE: dict[tuple[str, int, bool], pygame.font.Font] = {}
+from src.utils.fontes import carregar_fonte_sans, carregar_fonte_mono
 
 
 def _obter_fonte(familia: str, tamanho: int, bold: bool = False) -> pygame.font.Font:
-    px_sz = max(8, int(tamanho))
-    chave = (familia, px_sz, bold)
-    if chave in _FONT_CACHE:
-        return _FONT_CACHE[chave]
-    candidatos = ("jetbrainsmono", "firacode", "consolas", "dejavusansmono") if familia == "mono" else ("notosans", "dejavusans", "liberationsans", "arial")
-    for nome in candidatos:
-        f = pygame.font.SysFont(nome, px_sz, bold=bold)
-        if f is not None:
-            _FONT_CACHE[chave] = f
-            return f
-    f = pygame.font.SysFont("Arial", px_sz, bold=bold)
-    _FONT_CACHE[chave] = f
-    return f
+    if familia == "mono":
+        return carregar_fonte_mono(tamanho, bold=bold)
+    return carregar_fonte_sans(tamanho, bold=bold)
 
 
 class TutorialScene(BaseScene):
@@ -53,7 +45,9 @@ class TutorialScene(BaseScene):
         self.tempo_acumulado = 0.0
         self.pagina_atual = 0  # 0: Controles, 1: Projéteis & Música, 2: Arsenal & Drops, 3: Inimigos & Sistemas
         self.total_paginas = 4
-        self.banner_dicas = BannerDica()
+        self.gerenciador_config = GerenciadorConfiguracoes()
+        self.gerenciador_config.carregar_arquivo(SAVE_FILE_PATH)
+        self.banner_dicas = BannerDica(gerenciador_config=self.gerenciador_config)
 
         # Debounce de entrada e proteção contra sangramento de teclas de cenas anteriores
         self.tempo_entrada = 0.0
@@ -215,6 +209,27 @@ class TutorialScene(BaseScene):
         def ps(val: float) -> int:
             return max(1, int(round(val * scale)))
 
+        def desenhar_wrap(fonte: pygame.font.Font, texto: str, lx: float, ly: float, max_w_l: float, cor: tuple) -> int:
+            max_w_px = ps(max_w_l)
+            linhas: list[str] = []
+            atual = ""
+            for pal in texto.split():
+                teste = f"{atual} {pal}".strip()
+                if fonte.size(teste)[0] <= max_w_px:
+                    atual = teste
+                else:
+                    if atual:
+                        linhas.append(atual)
+                    atual = pal
+            if atual:
+                linhas.append(atual)
+            cur_y = py(ly)
+            step_px = max(11, ps(13))
+            for ln in linhas[:2]:
+                screen.blit(fonte.render(ln, True, cor), (px(lx), cur_y))
+                cur_y += step_px
+            return len(linhas[:2])
+
         screen.fill(_C_BACKDROP)
 
         ox = (LARGURA_TELA - 800) // 2
@@ -237,7 +252,7 @@ class TutorialScene(BaseScene):
         fonte_rod = _obter_fonte("mono", max(8, int(round(11 * scale))), bold=False)
 
         # Cabeçalho
-        tit_surf = fonte_tit.render("GUIA DE SOBREVIVÊNCIA - PROTOCOLO: BATATA", True, _C_GOLD)
+        tit_surf = fonte_tit.render(t("tutorial", "titulo"), True, _C_GOLD)
         tit_rect = tit_surf.get_rect(centerx=px(LARGURA_TELA // 2), top=py(oy + 45))
         screen.blit(tit_surf, tit_rect)
 
@@ -247,7 +262,7 @@ class TutorialScene(BaseScene):
             pass
 
         # Indicador de abas / páginas
-        tabs = ["[1] CONTROLES", "[2] PROJÉTEIS & RITMO", "[3] ARSENAL & DROPS", "[4] INIMIGOS & SISTEMAS"]
+        tabs = [t("tutorial", f"tab_{i + 1}") for i in range(4)]
         fonte_tab_sm = _obter_fonte("mono", max(8, int(round(10 * scale))), bold=True)
         for i, nome_tab in enumerate(tabs):
             tx = px(ox + 60 + i * 172)
@@ -260,15 +275,15 @@ class TutorialScene(BaseScene):
         pygame.draw.line(screen, _C_BORDER, (px(ox + 60), py(oy + 105)), (px(ox + 740), py(oy + 105)), max(1, ps(1)))
 
         if self.pagina_atual == 0:
-            sec1_surf = fonte_sec.render("CONTROLES PRINCIPAIS", True, _C_CYAN)
+            sec1_surf = fonte_sec.render(t("tutorial", "sec_controles"), True, _C_CYAN)
             screen.blit(sec1_surf, (px(ox + 70), py(oy + 116)))
 
             controles = [
-                ("W, A, S, D", "Move Cleiton pelo escritório."),
-                ("LMB (ESQ.)", "Ataca com a arma equipada (Melee na Chave/Bastão)."),
-                ("RMB (DIR.)", "Parry Rápido instantâneo (sem precisar trocar para o Slot 1!)."),
-                ("SHIFT / ESPAÇO", "Dash com invencibilidade; Just-Dodge mantém seu Combo ativo."),
-                ("TECLAS 1, 2, 3 / F", "Troca Slots [1..3]; [F] alterna Auto-Fire; [ESC] abre Configs."),
+                (t("tutorial", "ctrl_wasd_tecla"), t("tutorial", "ctrl_wasd_desc")),
+                (t("tutorial", "ctrl_lmb_tecla"), t("tutorial", "ctrl_lmb_desc")),
+                (t("tutorial", "ctrl_rmb_tecla"), t("tutorial", "ctrl_rmb_desc")),
+                (t("tutorial", "ctrl_dash_tecla"), t("tutorial", "ctrl_dash_desc")),
+                (t("tutorial", "ctrl_slots_tecla"), t("tutorial", "ctrl_slots_desc")),
             ]
 
             y_pos = oy + 140
@@ -283,43 +298,43 @@ class TutorialScene(BaseScene):
                 screen.blit(d_surf, (px(ox + 238), py(y_pos + 4)))
                 y_pos += 30
 
-            sec2_surf = fonte_sec.render("HUD, COMBO & CONQUISTAS FIXADAS", True, _C_CYAN)
+            sec2_surf = fonte_sec.render(t("tutorial", "sec_hud_combo"), True, _C_CYAN)
             screen.blit(sec2_surf, (px(ox + 70), py(y_pos + 8)))
             y_pos += 32
 
             hud_itens = [
-                ("Topo Central", "Cronômetro, abates, barra de XP, vida dos chefes e Combo (Ranks D->S)."),
-                ("Canto Superior Direito", "Exibe até 3 Conquistas Fixadas com progresso e recompensa ao vivo."),
-                ("Canto Superior Esquerdo", "4 slots (Melee, Pistola/SMG, Especial, Drones) + calor/munição."),
+                (t("tutorial", "hud_topo_tit"), t("tutorial", "hud_topo_desc")),
+                (t("tutorial", "hud_dir_tit"), t("tutorial", "hud_dir_desc")),
+                (t("tutorial", "hud_esq_tit"), t("tutorial", "hud_esq_desc")),
             ]
             for tit_h, desc_h in hud_itens:
-                h_surf = fonte_destaque.render(f"- {tit_h}:", True, _C_TEXT_PRIMARY)
+                h_surf = fonte_destaque.render(t("tutorial", "item_traco", titulo=tit_h), True, _C_TEXT_PRIMARY)
                 screen.blit(h_surf, (px(ox + 70), py(y_pos)))
                 d_surf = fonte_corpo.render(desc_h, True, _C_TEXT_SECONDARY)
                 screen.blit(d_surf, (px(ox + 70), py(y_pos + 16)))
                 y_pos += 36
 
         elif self.pagina_atual == 1:
-            sec1_surf = fonte_sec.render("3 TIPOS DE PROJÉTEIS INIMIGOS (LEGENDA VISUAL)", True, _C_CYAN)
+            sec1_surf = fonte_sec.render(t("tutorial", "sec_projeteis"), True, _C_CYAN)
             screen.blit(sec1_surf, (px(ox + 70), py(oy + 116)))
 
             tipos_proj = [
                 (
                     "comum",
-                    "Projétil Comum (Vermelho)",
-                    "Pode ser rebatido com Parry (RMB) OU atravessado com Dash.",
+                    t("tutorial", "proj_comum_tit"),
+                    t("tutorial", "proj_comum_desc"),
                     (239, 68, 68),
                 ),
                 (
                     "shuriken",
-                    "Shuriken Ninja (Roxo-Magenta) — NÃO-DESVIÁVEL",
-                    "Ignora i-frames do Dash! Exige PARRY (RMB). Exclusivo do Ninja Corporativo.",
+                    t("tutorial", "proj_shuriken_tit"),
+                    t("tutorial", "proj_shuriken_desc"),
                     (217, 70, 239),
                 ),
                 (
                     "seta",
-                    "Seta de Perigo (Amarela-Preta) — NÃO-PARRIÁVEL",
-                    "Ignora Parry! Exige DASH / Just-Dodge. Exclusivo de Ranged (config ativa).",
+                    t("tutorial", "proj_seta_tit"),
+                    t("tutorial", "proj_seta_desc"),
                     (250, 204, 21),
                 ),
             ]
@@ -358,78 +373,77 @@ class TutorialScene(BaseScene):
                 screen.blit(fonte_corpo.render(desc_p, True, _C_TEXT_PRIMARY), (px(ox + 132), py(y_pos + 28)))
                 y_pos += 64
 
-            sec2_surf = fonte_sec.render("RITMO MÚSICA-ONDA & DESBLOQUEIOS", True, _C_CYAN)
+            sec2_surf = fonte_sec.render(t("tutorial", "sec_ritmo"), True, _C_CYAN)
             screen.blit(sec2_surf, (px(ox + 70), py(y_pos + 6)))
             y_pos += 30
             ritmo_info = [
-                ("Fases Música-Onda", "ANTICIPATION (preparo) -> HOLD (respiro) -> ASSAULT_INTRO -> ASSAULT (ataque intenso)."),
-                ("15 Parries = Dash + SMG", "Complete 15 Parries para liberar Dash e SMG Compacta (mira na zona 60%-92%)."),
+                (t("tutorial", "ritmo_fases_tit"), t("tutorial", "ritmo_fases_desc")),
+                (t("tutorial", "ritmo_parries_tit"), t("tutorial", "ritmo_parries_desc")),
             ]
             for tit_r, desc_r in ritmo_info:
-                screen.blit(fonte_destaque.render(f"- {tit_r}:", True, _C_GOLD), (px(ox + 70), py(y_pos)))
+                screen.blit(fonte_destaque.render(t("tutorial", "item_traco", titulo=tit_r), True, _C_GOLD), (px(ox + 70), py(y_pos)))
                 screen.blit(fonte_corpo.render(desc_r, True, _C_TEXT_SECONDARY), (px(ox + 70), py(y_pos + 16)))
                 y_pos += 36
 
         elif self.pagina_atual == 2:
-            sec1_surf = fonte_sec.render("ARSENAL V2.0 (SLOTS 1, 2 E 3)", True, _C_CYAN)
+            sec1_surf = fonte_sec.render(t("tutorial", "sec_arsenal"), True, _C_CYAN)
             screen.blit(sec1_surf, (px(ox + 70), py(oy + 116)))
 
             armas_info = [
-                ("Slot 1: Chave Inglesa / Bastão de Choque", "LMB golpeia de perto; RMB dá Parry. Bastão aplica corrente elétrica."),
-                ("Slot 2: Pistola / SMG Compacta", "Pistola: 4º tiro sobrecarregado. SMG: zona ideal de calor (60%-92%) dá +25% cadência."),
-                ("Slot 3: Escopeta, Rifle, Minigun, Foguetes, Granadas, Railgun", "Armas pesadas com munição limitada obtidas em Caixas de Arma."),
-                ("Slot 3 (Novas): Rifle de Arco & Lança-Chamas", "Arco elétrico em cadeia (Rifle de Arco) e cone contínuo de fogo (Lança-Chamas)."),
+                (t("tutorial", "arsenal_slot1_tit"), t("tutorial", "arsenal_slot1_desc")),
+                (t("tutorial", "arsenal_slot2_tit"), t("tutorial", "arsenal_slot2_desc")),
+                (t("tutorial", "arsenal_slot3_tit"), t("tutorial", "arsenal_slot3_desc")),
             ]
             y_pos = oy + 140
             for nome_a, desc_a in armas_info:
-                screen.blit(fonte_destaque.render(f"- {nome_a}:", True, _C_GOLD), (px(ox + 70), py(y_pos)))
-                screen.blit(fonte_corpo.render(desc_a, True, _C_TEXT_PRIMARY), (px(ox + 70), py(y_pos + 15)))
-                y_pos += 34
+                screen.blit(fonte_destaque.render(t("tutorial", "item_traco", titulo=nome_a), True, _C_GOLD), (px(ox + 70), py(y_pos)))
+                n_ln = desenhar_wrap(fonte_corpo, desc_a, ox + 70, y_pos + 15, 660, _C_TEXT_PRIMARY)
+                y_pos += 34 + max(0, n_ln - 1) * 12
 
-            sec2_surf = fonte_sec.render("ITENS E COLETÁVEIS NO CHÃO", True, _C_CYAN)
+            sec2_surf = fonte_sec.render(t("tutorial", "sec_drops"), True, _C_CYAN)
             screen.blit(sec2_surf, (px(ox + 70), py(y_pos + 6)))
             y_pos += 30
             drops_info = [
-                ("Gema XP / Caixa Reparo", "Sobe até Nível 12 ou cura +35 HP. Drops por >10s podem ser roubados pelo Scavenger!"),
-                ("Módulo Drone / Núcleo Overclock", "Evolui Drones (MK-I a MK-III) ou instala BIOS Overclock ao vencer Mini-Boss (<60s)."),
+                (t("tutorial", "drops_xp_cura_tit"), t("tutorial", "drops_xp_cura_desc")),
+                (t("tutorial", "drops_drone_overclock_tit"), t("tutorial", "drops_drone_overclock_desc")),
             ]
             for nome_d, desc_d in drops_info:
-                screen.blit(fonte_destaque.render(f"* {nome_d}:", True, _C_GOLD), (px(ox + 70), py(y_pos)))
-                screen.blit(fonte_corpo.render(desc_d, True, _C_TEXT_SECONDARY), (px(ox + 70), py(y_pos + 15)))
-                y_pos += 34
+                screen.blit(fonte_destaque.render(t("tutorial", "item_asterisco", titulo=nome_d), True, _C_GOLD), (px(ox + 70), py(y_pos)))
+                n_ln = desenhar_wrap(fonte_corpo, desc_d, ox + 70, y_pos + 15, 660, _C_TEXT_SECONDARY)
+                y_pos += 34 + max(0, n_ln - 1) * 12
 
         elif self.pagina_atual == 3:
-            sec1_surf = fonte_sec.render("INIMIGOS DO ESCRITÓRIO", True, _C_CYAN)
+            sec1_surf = fonte_sec.render(t("tutorial", "sec_inimigos"), True, _C_CYAN)
             screen.blit(sec1_surf, (px(ox + 70), py(oy + 116)))
 
             inimigos_info = [
-                ("Gabinete / Mouse / Xerox / CRT / Blindado", "Clássicos: CRT fica intangível a cada 3s; Blindado reduz 30% do dano frontal."),
-                ("Projetor Laser (Ranged)", "Atira projéteis vermelhos ou Setas Amarelas (Não-Parriáveis) com config ativa."),
-                ("Impressora Térmica", "Dispara projéteis grandes de alto impacto (sem aura dourada)."),
-                ("Ninja Corporativo", "Lança Shurikens Roxas (Não-Desviáveis) e inicia Duelos de Parry!"),
+                (t("tutorial", "inim_classicos_tit"), t("tutorial", "inim_classicos_desc")),
+                (t("tutorial", "inim_ranged_tit"), t("tutorial", "inim_ranged_desc")),
+                (t("tutorial", "inim_impressora_tit"), t("tutorial", "inim_impressora_desc")),
+                (t("tutorial", "inim_ninja_tit"), t("tutorial", "inim_ninja_desc")),
             ]
             y_pos = oy + 140
             for nome_i, desc_i in inimigos_info:
-                screen.blit(fonte_destaque.render(f"* {nome_i}:", True, (252, 165, 165)), (px(ox + 70), py(y_pos)))
-                screen.blit(fonte_corpo.render(desc_i, True, _C_TEXT_PRIMARY), (px(ox + 70), py(y_pos + 15)))
-                y_pos += 33
+                screen.blit(fonte_destaque.render(t("tutorial", "item_asterisco", titulo=nome_i), True, (252, 165, 165)), (px(ox + 70), py(y_pos)))
+                n_ln = desenhar_wrap(fonte_corpo, desc_i, ox + 70, y_pos + 15, 660, _C_TEXT_PRIMARY)
+                y_pos += 33 + max(0, n_ln - 1) * 12
 
-            sec2_surf = fonte_sec.render("CONQUISTAS, FIRMWARE & 28 CONFIGURAÇÕES", True, _C_CYAN)
+            sec2_surf = fonte_sec.render(t("tutorial", "sec_sistemas"), True, _C_CYAN)
             screen.blit(sec2_surf, (px(ox + 70), py(y_pos + 6)))
             y_pos += 30
 
             regras_info = [
-                ("Conquistas & Chips de Firmware", "Desbloqueie armas, habilidades e até 3 Slots de Firmware equipáveis no Menu Principal."),
-                ("28 Configurações de Gameplay", "Cada config combina um Benefício e um Sacrifício mecânico; ative várias para desafios."),
-                ("Mini-Bosses & Geladeira Tsunami", "Mini-Bosses a cada 1 min (superaquecem em 60s); Chefe Final entra no Nível 12."),
+                (t("tutorial", "sist_conq_tit"), t("tutorial", "sist_conq_desc")),
+                (t("tutorial", "sist_configs_tit"), t("tutorial", "sist_configs_desc")),
+                (t("tutorial", "sist_chefes_tit"), t("tutorial", "sist_chefes_desc")),
             ]
             for nome_r, desc_r in regras_info:
-                screen.blit(fonte_destaque.render(f"- {nome_r}:", True, _C_GOLD), (px(ox + 70), py(y_pos)))
-                screen.blit(fonte_corpo.render(desc_r, True, _C_TEXT_SECONDARY), (px(ox + 70), py(y_pos + 15)))
-                y_pos += 33
+                screen.blit(fonte_destaque.render(t("tutorial", "item_traco", titulo=nome_r), True, _C_GOLD), (px(ox + 70), py(y_pos)))
+                n_ln = desenhar_wrap(fonte_corpo, desc_r, ox + 70, y_pos + 15, 660, _C_TEXT_SECONDARY)
+                y_pos += 33 + max(0, n_ln - 1) * 12
 
         # Rodapé de Instruções
-        rodape_txt = "[1, 2, 3, 4] / [A / D] / [SETAS] ou CLIQUE para trocar de página   •   [ESC / ENTER] Voltar"
+        rodape_txt = t("tutorial", "rodape")
         rod_surf = fonte_rod.render(rodape_txt, True, _C_TEXT_MUTED)
         screen.blit(rod_surf, rod_surf.get_rect(centerx=px(LARGURA_TELA // 2), bottom=painel_rect.bottom - ps(12)))
 

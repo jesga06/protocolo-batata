@@ -20,6 +20,7 @@ from src.utils.constantes import (
     CINZA_BORDA, CINZA_PAINEL, ROXO_ACENTO, ROXO_CLARO, ROXO_ESCURO,
     obter_caminho_asset, SAVE_FILE_PATH
 )
+from src.utils.traducao import t
 
 # Paleta Cyber-Office (Spec §8 aprovada)
 _C_BACKDROP = (7, 9, 14)
@@ -42,38 +43,12 @@ _C_CRIMSON = (239, 68, 68)
 _C_CRIMSON_SOFT = (252, 165, 165)
 
 
-_FONT_CACHE: dict[tuple[str, int, bool, bool], pygame.font.Font] = {}
+from src.utils.fontes import (
+    carregar_fonte_sans as _carregar_fonte_sans,
+    carregar_fonte_mono as _carregar_fonte_mono,
+)
+
 _ICON_SCALE_CACHE: dict[tuple[str, int, int], pygame.Surface] = {}
-
-
-def _carregar_fonte_sans(tamanho: int, bold: bool = False, italic: bool = False) -> pygame.font.Font:
-    px_sz = max(8, int(tamanho))
-    chave = ("sans", px_sz, bold, italic)
-    if chave in _FONT_CACHE:
-        return _FONT_CACHE[chave]
-    for nome in ("notosans", "dejavusans", "liberationsans", "arial"):
-        f = pygame.font.SysFont(nome, px_sz, bold=bold, italic=italic)
-        if f is not None:
-            _FONT_CACHE[chave] = f
-            return f
-    f = pygame.font.SysFont("Arial", px_sz, bold=bold, italic=italic)
-    _FONT_CACHE[chave] = f
-    return f
-
-
-def _carregar_fonte_mono(tamanho: int, bold: bool = False) -> pygame.font.Font:
-    px_sz = max(8, int(tamanho))
-    chave = ("mono", px_sz, bold, False)
-    if chave in _FONT_CACHE:
-        return _FONT_CACHE[chave]
-    for nome in ("jetbrainsmono", "firacode", "consolas", "dejavusansmono"):
-        f = pygame.font.SysFont(nome, px_sz, bold=bold)
-        if f is not None:
-            _FONT_CACHE[chave] = f
-            return f
-    f = pygame.font.SysFont("Consolas", px_sz, bold=bold)
-    _FONT_CACHE[chave] = f
-    return f
 
 
 def _formatar_texto_wrap(texto: str, max_chars_por_linha: int = 22) -> list[str]:
@@ -114,9 +89,9 @@ def extrair_resumo_config(cdef: ConfiguracaoDef) -> tuple[list[str], list[str]]:
             nerfs.append(opt.nerf_text)
 
     if not buffs:
-        buffs.append("Personalização flexível")
+        buffs.append(t("modal_level_up", "resumo_personalizacao_flexivel"))
     if not nerfs:
-        nerfs.append("Nenhum sacrifício")
+        nerfs.append(t("modal_level_up", "resumo_nenhum_sacrificio"))
 
     return buffs, nerfs
 
@@ -156,14 +131,15 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
     11. caixa_arma: Desbloqueia/equipa arma aleatória no Slot 3
     12. caixa_equip: Desbloqueia/equipa drone/equipamento aleatório no Slot 4
     """
+    cat_consumivel = t("modal_level_up", "categoria_consumivel")
     card_cura_pequena = {
         "tipo": "cura",
         "subtipo": "cura_pequena",
-        "nome": "Reparo +25",
-        "categoria": "Consumível",
+        "nome": t("modal_level_up", "cura_pequena_nome"),
+        "categoria": cat_consumivel,
         "icone_asset": "drop_cura",
         "valor": 25,
-        "buffs": ["Recupera 25 de vida na hora."],
+        "buffs": [t("modal_level_up", "cura_pequena_buff")],
         "nerfs": [],
         "flavor_text": ""
     }
@@ -171,11 +147,11 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
     card_cura_grande = {
         "tipo": "cura",
         "subtipo": "cura_grande",
-        "nome": "Reparo +50",
-        "categoria": "Consumível",
+        "nome": t("modal_level_up", "cura_grande_nome"),
+        "categoria": cat_consumivel,
         "icone_asset": "drop_cura",
         "valor": 50,
-        "buffs": ["Recupera 50 de vida na hora."],
+        "buffs": [t("modal_level_up", "cura_grande_buff")],
         "nerfs": [],
         "flavor_text": ""
     }
@@ -183,11 +159,11 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
     card_xp_pequeno = {
         "tipo": "xp",
         "subtipo": "xp_pequeno",
-        "nome": "Pacote de XP +15",
-        "categoria": "Consumível",
+        "nome": t("modal_level_up", "xp_pequeno_nome"),
+        "categoria": cat_consumivel,
         "icone_asset": "drop_xp",
         "valor": 15,
-        "buffs": ["Concede 15 de XP imediatamente."],
+        "buffs": [t("modal_level_up", "xp_pequeno_buff")],
         "nerfs": [],
         "flavor_text": ""
     }
@@ -195,11 +171,11 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
     card_xp_grande = {
         "tipo": "xp",
         "subtipo": "xp_grande",
-        "nome": "Pacote de XP +30",
-        "categoria": "Consumível",
+        "nome": t("modal_level_up", "xp_grande_nome"),
+        "categoria": cat_consumivel,
         "icone_asset": "drop_xp",
         "valor": 30,
-        "buffs": ["Concede 30 de XP imediatamente."],
+        "buffs": [t("modal_level_up", "xp_grande_buff")],
         "nerfs": [],
         "flavor_text": ""
     }
@@ -207,13 +183,13 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
     card_buff_dano = {
         "tipo": "buff_dano_temp",
         "subtipo": "buff_dano_temp",
-        "nome": "Munição Superaquecida",
-        "categoria": "Consumível",
+        "nome": t("modal_level_up", "buff_dano_nome"),
+        "categoria": cat_consumivel,
         "icone_asset": "mira_crosshair",
         "valor": 0.05,
         "duracao": 15.0,
-        "descricao": "+5% de dano. Tiros soltam brasas e atravessam +1 alvo por 15s.",
-        "buffs": ["+5% de dano por 15s. Seus tiros soltam brasas e atravessam +1 inimigo."],
+        "descricao": t("modal_level_up", "buff_dano_desc"),
+        "buffs": [t("modal_level_up", "buff_dano_buff")],
         "nerfs": [],
         "flavor_text": ""
     }
@@ -221,13 +197,13 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
     card_buff_vel = {
         "tipo": "buff_vel_temp",
         "subtipo": "buff_vel_temp",
-        "nome": "Passo Fantasma",
-        "categoria": "Consumível",
+        "nome": t("modal_level_up", "buff_vel_nome"),
+        "categoria": cat_consumivel,
         "icone_asset": "icon_vsync",
         "valor": 0.08,
         "duracao": 15.0,
-        "descricao": "+8% de velocidade e desacelera inimigos colados em 40% por 15s.",
-        "buffs": ["+8% de velocidade por 15s. Desacelera inimigos muito próximos em 40%."],
+        "descricao": t("modal_level_up", "buff_vel_desc"),
+        "buffs": [t("modal_level_up", "buff_vel_buff")],
         "nerfs": [],
         "flavor_text": ""
     }
@@ -235,13 +211,13 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
     card_buff_cadencia = {
         "tipo": "buff_cadencia_temp",
         "subtipo": "buff_cadencia_temp",
-        "nome": "Gatilho Magnético",
-        "categoria": "Consumível",
+        "nome": t("modal_level_up", "buff_cadencia_nome"),
+        "categoria": cat_consumivel,
         "icone_asset": "icon_auto_fire",
         "valor": 0.08,
         "duracao": 15.0,
-        "descricao": "+8% de cadência. Armas especiais não gastam munição por 15s.",
-        "buffs": ["+8% de cadência de tiro por 15s. Armas especiais não gastam munição."],
+        "descricao": t("modal_level_up", "buff_cadencia_desc"),
+        "buffs": [t("modal_level_up", "buff_cadencia_buff")],
         "nerfs": [],
         "flavor_text": ""
     }
@@ -249,13 +225,13 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
     card_buff_resistencia = {
         "tipo": "buff_resistencia_temp",
         "subtipo": "buff_resistencia_temp",
-        "nome": "Casco Eletrostático",
-        "categoria": "Consumível",
+        "nome": t("modal_level_up", "buff_resistencia_nome"),
+        "categoria": cat_consumivel,
         "icone_asset": "icon_fps_cap",
         "valor": 0.08,
         "duracao": 15.0,
-        "descricao": "-8% de dano recebido. Empurra e dá choque em quem encostar por 15s.",
-        "buffs": ["-8% de dano recebido por 15s. Empurra e dá choque em inimigos que encostarem."],
+        "descricao": t("modal_level_up", "buff_resistencia_desc"),
+        "buffs": [t("modal_level_up", "buff_resistencia_buff")],
         "nerfs": [],
         "flavor_text": ""
     }
@@ -263,11 +239,11 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
     card_escudo = {
         "tipo": "escudo",
         "subtipo": "escudo",
-        "nome": "Escudo de Emergência",
-        "categoria": "Consumível",
+        "nome": t("modal_level_up", "escudo_nome"),
+        "categoria": cat_consumivel,
         "icone_asset": "drone_suporte",
         "valor": 1,
-        "buffs": ["Bloqueia o próximo dano recebido e garante 4s de invulnerabilidade."],
+        "buffs": [t("modal_level_up", "escudo_buff")],
         "nerfs": [],
         "flavor_text": ""
     }
@@ -275,11 +251,11 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
     card_pulso = {
         "tipo": "pulso_magnetico",
         "subtipo": "pulso_magnetico",
-        "nome": "Ímã de Arena",
-        "categoria": "Consumível",
+        "nome": t("modal_level_up", "pulso_nome"),
+        "categoria": cat_consumivel,
         "icone_asset": "drop_xp",
         "valor": 1,
-        "buffs": ["Puxa todos os itens e gemas de XP da arena até você."],
+        "buffs": [t("modal_level_up", "pulso_buff")],
         "nerfs": [],
         "flavor_text": ""
     }
@@ -287,11 +263,11 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
     card_caixa_arma = {
         "tipo": "caixa_arma",
         "subtipo": "caixa_arma",
-        "nome": "Caixa de Arma Especial",
-        "categoria": "Consumível",
+        "nome": t("modal_level_up", "caixa_arma_nome"),
+        "categoria": cat_consumivel,
         "icone_asset": "drop_arma",
         "valor": 1,
-        "buffs": ["Equipa uma arma especial aleatória no Slot 3."],
+        "buffs": [t("modal_level_up", "caixa_arma_buff")],
         "nerfs": [],
         "flavor_text": ""
     }
@@ -299,11 +275,11 @@ def gerar_pool_consumiveis_por_tier(tier: int) -> list[dict[str, Any]]:
     card_caixa_equip = {
         "tipo": "caixa_equip",
         "subtipo": "caixa_equip",
-        "nome": "Módulo de Drone",
-        "categoria": "Consumível",
+        "nome": t("modal_level_up", "caixa_equip_nome"),
+        "categoria": cat_consumivel,
         "icone_asset": "drop_equipamento",
         "valor": 1,
-        "buffs": ["Ativa um drone no Slot 4 por 30s (ou evolui um ativo para MK-II/MK-III)."],
+        "buffs": [t("modal_level_up", "caixa_equip_buff")],
         "nerfs": [],
         "flavor_text": ""
     }
@@ -630,8 +606,8 @@ class ModalLevelUp:
             if self.cena is not None and hasattr(self.cena, "enfileirar_banner_desbloqueio"):
                 nome_cfg = card.get("titulo", cid)
                 self.cena.enfileirar_banner_desbloqueio(
-                    f"Config: {nome_cfg}",
-                    "Disponível em Configurações (C)",
+                    t("modal_level_up", "banner_config_titulo", nome_cfg=nome_cfg),
+                    t("modal_level_up", "banner_config_subtitulo"),
                 )
         elif card["tipo"] == "cura":
             if self.jogador:
@@ -781,14 +757,14 @@ class ModalLevelUp:
                 return
 
         # 4. Inputs de Mouse
-        mx, my = (400, 300)
+        mx, my = (LARGURA_TELA // 2, ALTURA_TELA // 2)
         mouse_clicado = False
 
         if mouse is not None:
             try:
                 mx, my = mouse.get_position()
-            except Exception:
-                mx, my = (400, 300)
+            except (AttributeError, TypeError):
+                mx, my = (LARGURA_TELA // 2, ALTURA_TELA // 2)
 
             try:
                 if hasattr(mouse, "button_down") and mouse.button_down(1):
@@ -894,7 +870,7 @@ class ModalLevelUp:
 
         # 2. Título Centralizado: LEVEL UP!
         tem_config = any(c.get("tipo") == "config" for c in self.cards_sorteados)
-        titulo_txt = "LEVEL UP!  •  MARCO DE SISTEMA" if tem_config else "LEVEL UP!"
+        titulo_txt = t("modal_level_up", "titulo_marco") if tem_config else t("modal_level_up", "titulo_padrao")
         tit_surf = fonte_titulo.render(titulo_txt, True, _C_GOLD)
         tit_rect = tit_surf.get_rect(centerx=centro_x, top=py(42 + slide_offset_y))
         tit_sombra = fonte_titulo.render(titulo_txt, True, (0, 0, 0))
@@ -904,18 +880,18 @@ class ModalLevelUp:
 
         # 3. Subtítulo
         if self.escolhas_restantes > 1:
-            sub_texto = f"Escolha {self.escolhas_restantes} protocolos com [1] [2] [3] ou clique nos cards"
+            sub_texto = t("modal_level_up", "subtitulo_multiplas", qtd=self.escolhas_restantes)
         elif len(self.indices_selecionados) > 0:
-            sub_texto = "Escolha mais 1 protocolo com [1] [2] [3] ou clique no card"
+            sub_texto = t("modal_level_up", "subtitulo_mais_um")
         else:
-            sub_texto = "Escolha um protocolo com [1] [2] [3] ou clique no card"
+            sub_texto = t("modal_level_up", "subtitulo_unico")
         sub_surf = fonte_sub.render(sub_texto, True, _C_TEXT_SECONDARY)
         sub_rect = sub_surf.get_rect(centerx=centro_x, top=py(86 + slide_offset_y))
         layer_surf.blit(sub_surf, sub_rect)
 
         # Indicador de Níveis na Fila (se > 1)
         if self.fila_level_ups > 1:
-            fila_texto = f"+{self.fila_level_ups - 1} UPGRADE(S) RESTANTE(S) NA FILA"
+            fila_texto = t("modal_level_up", "fila_restante", qtd=self.fila_level_ups - 1)
             fila_surf = fonte_card_cat.render(fila_texto, True, _C_AMBER)
             fila_rect = fila_surf.get_rect(centerx=centro_x, top=py(114 + slide_offset_y))
             pill_rect = pygame.Rect(fila_rect.x - ps(12), fila_rect.y - ps(4), fila_rect.width + ps(24), fila_rect.height + ps(8))
@@ -967,7 +943,15 @@ class ModalLevelUp:
             pygame.draw.rect(layer_surf, cor_topo, (rect.x + ps(14), rect.y + 1, rect.width - ps(28), max(2, ps(3))), border_radius=max(1, ps(2)))
 
             # 4.3 Tag de Categoria (Top-Left pill)
-            cat_texto = "SELECIONADO" if ja_selecionado else ("CONFIGURAÇÃO • MARCO" if is_config else f"{card.get('categoria', 'Consumível').upper()}")
+            cat_texto = (
+                t("modal_level_up", "tag_selecionado")
+                if ja_selecionado
+                else (
+                    t("modal_level_up", "tag_config_marco")
+                    if is_config
+                    else f"{card.get('categoria', t('modal_level_up', 'categoria_consumivel')).upper()}"
+                )
+            )
             cor_cat = _C_GREEN if ja_selecionado else accent
             cat_surf = fonte_card_cat.render(cat_texto, True, cor_cat)
             cat_pill = pygame.Rect(rect.x + ps(12), rect.y + ps(12), cat_surf.get_width() + ps(14), cat_surf.get_height() + ps(6))
@@ -1024,14 +1008,14 @@ class ModalLevelUp:
             pygame.draw.rect(layer_surf, _C_GREEN, ben_rect, width=max(1, ps(1)), border_radius=ps(8))
             pygame.draw.rect(layer_surf, _C_GREEN, (ben_rect.x, ben_rect.y + ps(6), max(2, ps(3)), ben_rect.height - ps(12)), border_radius=max(1, ps(2)))
 
-            header_label = "+ BENEFÍCIO" if is_config else "+ EFEITO"
+            header_label = t("modal_level_up", "header_beneficio") if is_config else t("modal_level_up", "header_efeito")
             hdr_surf = fonte_card_sec.render(header_label, True, _C_GREEN_SOFT)
             hdr_pill = pygame.Rect(ben_rect.x + ps(10), ben_rect.y + ps(8), hdr_surf.get_width() + ps(12), hdr_surf.get_height() + ps(4))
             pygame.draw.rect(layer_surf, (16, 185, 129, 40), hdr_pill, border_radius=ps(4))
             layer_surf.blit(hdr_surf, hdr_surf.get_rect(center=hdr_pill.center))
 
             y_cursor = hdr_pill.bottom + ps(8)
-            buffs = card.get("buffs", ["Nenhum"])
+            buffs = card.get("buffs", [t("modal_level_up", "resumo_nenhum")])
             max_linhas_buff = 4 if is_config else 7
             linhas_desenhadas = 0
             for b_txt in buffs[:2]:
@@ -1052,20 +1036,20 @@ class ModalLevelUp:
                 pygame.draw.rect(layer_surf, _C_CRIMSON, sac_rect, width=max(1, ps(1)), border_radius=ps(8))
                 pygame.draw.rect(layer_surf, _C_CRIMSON, (sac_rect.x, sac_rect.y + ps(6), max(2, ps(3)), sac_rect.height - ps(12)), border_radius=max(1, ps(2)))
 
-                nh_surf = fonte_card_sec.render("- SACRIFÍCIO", True, _C_CRIMSON_SOFT)
+                nh_surf = fonte_card_sec.render(t("modal_level_up", "header_sacrificio"), True, _C_CRIMSON_SOFT)
                 nh_pill = pygame.Rect(sac_rect.x + ps(10), sac_rect.y + ps(8), nh_surf.get_width() + ps(12), nh_surf.get_height() + ps(4))
                 pygame.draw.rect(layer_surf, (239, 68, 68, 40), nh_pill, border_radius=ps(4))
                 layer_surf.blit(nh_surf, nh_surf.get_rect(center=nh_pill.center))
 
                 ny_cursor = nh_pill.bottom + ps(8)
-                nerfs = card.get("nerfs", ["Nenhum sacrifício"])
+                nerfs = card.get("nerfs", [t("modal_level_up", "resumo_nenhum_sacrificio")])
                 linhas_n = 0
                 for n_txt in nerfs[:2]:
                     linhas_nerf = _formatar_texto_wrap(n_txt, max_chars_por_linha=28)
                     for nl in linhas_nerf:
                         if linhas_n >= 4:
                             break
-                        cor_n = _C_TEXT_PRIMARY if nl not in ("Nenhum", "Nenhum sacrifício") else _C_TEXT_MUTED
+                        cor_n = _C_TEXT_PRIMARY if nl not in (t("modal_level_up", "resumo_nenhum"), t("modal_level_up", "resumo_nenhum_sacrificio")) else _C_TEXT_MUTED
                         n_surf = fonte_card_corpo.render(nl, True, cor_n)
                         layer_surf.blit(n_surf, (sac_rect.x + ps(12), ny_cursor))
                         ny_cursor += ps(17)
@@ -1076,11 +1060,11 @@ class ModalLevelUp:
             pygame.draw.rect(layer_surf, (*accent, 42) if is_hovered else _C_ELEVATED, cta_rect, border_radius=ps(7))
             pygame.draw.rect(layer_surf, accent if is_hovered else _C_BORDER, cta_rect, width=max(1, ps(1)), border_radius=ps(7))
             prompt_cor = accent if is_hovered else _C_TEXT_SECONDARY
-            prompt_surf = fonte_card_cta.render(f"SELECIONAR [{i + 1}]", True, prompt_cor)
+            prompt_surf = fonte_card_cta.render(t("modal_level_up", "cta_selecionar", indice=i + 1), True, prompt_cor)
             layer_surf.blit(prompt_surf, prompt_surf.get_rect(center=cta_rect.center))
 
         # 5. Rodapé Geral com Instruções de Controle
-        rodape_txt = "[1] [2] [3] Selecionar pelo teclado   •   [Mouse] Clique no card"
+        rodape_txt = t("modal_level_up", "rodape")
         rodape_surf = fonte_rodape.render(rodape_txt, True, _C_TEXT_MUTED)
         rodape_rect = rodape_surf.get_rect(centerx=centro_x, bottom=py(ALTURA_TELA - 32))
         layer_surf.blit(rodape_surf, rodape_rect)
