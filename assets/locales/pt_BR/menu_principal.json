@@ -1,0 +1,137 @@
+{
+  "_meta": {
+    "categoria": "menu_principal",
+    "descricao": "Textos do Menu Principal, badge de recorde, seletor de loadout inicial e popup de boas-vindas.",
+    "placeholders_disponiveis": {
+      "high_score": "int — pontuação máxima formatada com separador de milhar",
+      "min": "int — minutos do melhor tempo de sobrevivência",
+      "seg": "int — segundos do melhor tempo de sobrevivência",
+      "slot_label": "str — rótulo do slot (ex: 'SLOT 1:' ou 'SLOT 2:')",
+      "arma_nome": "str — nome da arma equipada no slot"
+    }
+  },
+  "entradas": {
+    "opcao_jogar": {
+      "texto": "JOGAR [ENTER]",
+      "contexto": "Botão principal para iniciar partida no Menu Principal.",
+      "placeholders": {}
+    },
+    "opcao_configs": {
+      "texto": "CONFIGURAÇÕES [C]",
+      "contexto": "Botão para abrir o Menu de Configurações no Menu Principal.",
+      "placeholders": {}
+    },
+    "opcao_conquistas": {
+      "texto": "CONQUISTAS [F]",
+      "contexto": "Botão de Conquistas antes de desbloquear o primeiro Chip de Firmware.",
+      "placeholders": {}
+    },
+    "opcao_conquistas_firmware": {
+      "texto": "CONQUISTAS & FIRMWARE [F]",
+      "contexto": "Botão de Conquistas após desbloquear ao menos 1 Chip de Firmware.",
+      "placeholders": {}
+    },
+    "opcao_tutorial": {
+      "texto": "TUTORIAL [T]",
+      "contexto": "Botão para abrir a tela de Tutorial no Menu Principal.",
+      "placeholders": {}
+    },
+    "opcao_resetar": {
+      "texto": "RESETAR DADOS SALVOS",
+      "contexto": "Botão para apagar o save.json no Menu Principal.",
+      "placeholders": {}
+    },
+    "opcao_resetar_confirmar": {
+      "texto": "CONFIRMAR RESET?",
+      "contexto": "Texto de confirmação no botão de reset após o primeiro clique/Enter.",
+      "placeholders": {}
+    },
+    "opcao_resetar_concluido": {
+      "texto": "DADOS RESETADOS!",
+      "contexto": "Feedback temporário (2s) no botão após resetar os dados salvos.",
+      "placeholders": {}
+    },
+    "opcao_sair": {
+      "texto": "SAIR [ESC]",
+      "contexto": "Botão para fechar o jogo no Menu Principal.",
+      "placeholders": {}
+    },
+    "subtitulo": {
+      "texto": "CONFIGURAÇÕES COMO MECÂNICA",
+      "contexto": "Subtítulo abaixo do título principal no Menu Principal.",
+      "placeholders": {}
+    },
+    "badge_recorde": {
+      "texto": "RECORDE: {high_score:,} PTS   •   MELHOR TEMPO: {min:02d}:{seg:02d}",
+      "contexto": "Badge monospace com maior pontuação e melhor tempo no Menu Principal.",
+      "placeholders": {
+        "high_score": "int — pontuação máxima registrada",
+        "min": "int — minutos do melhor tempo",
+        "seg": "int — segundos do melhor tempo"
+      }
+    },
+    "loadout_titulo": {
+      "texto": "LOADOUT INICIAL (CLIQUE P/ TROCAR)",
+      "contexto": "Cabeçalho do painel lateral de seleção de Loadout no Menu Principal.",
+      "placeholders": {}
+    },
+    "loadout_slot1": {
+      "texto": "SLOT 1:",
+      "contexto": "Prefixo do seletor de arma do Slot 1 no painel de Loadout.",
+      "placeholders": {}
+    },
+    "loadout_slot2": {
+      "texto": "SLOT 2:",
+      "contexto": "Prefixo do seletor de arma do Slot 2 no painel de Loadout.",
+      "placeholders": {}
+    },
+    "loadout_slot_valor": {
+      "texto": "{slot_label} {arma_nome}",
+      "contexto": "Linha exibindo o slot e o nome da arma selecionada no Loadout.",
+      "placeholders": {
+        "slot_label": "str — prefixo do slot (SLOT 1: ou SLOT 2:)",
+        "arma_nome": "str — nome da arma em maiúsculas"
+      }
+    },
+    "loadout_troca_disponivel": {
+      "texto": "TROCA DISPONÍVEL",
+      "contexto": "Subtítulo verde/dourado quando a arma alternativa do slot está desbloqueada.",
+      "placeholders": {}
+    },
+    "loadout_alt_bloqueada": {
+      "texto": "ALT. BLOQUEADA",
+      "contexto": "Subtítulo secundário quando a arma alternativa do slot ainda está bloqueada.",
+      "placeholders": {}
+    },
+    "rodape": {
+      "texto": "[W/S] ou [Setas] Navegar   •   [ENTER] Confirmar   •   [C] Configurações   •   [T] Tutorial",
+      "contexto": "Rodapé com instruções de teclado no Menu Principal.",
+      "placeholders": {}
+    },
+    "popup_tutorial_titulo": {
+      "texto": "BEM-VINDO AO PROTOCOLO: BATATA",
+      "contexto": "Título do modal de boas-vindas exibido na primeira execução.",
+      "placeholders": {}
+    },
+    "popup_tutorial_msg1": {
+      "texto": "Parece ser sua primeira vez jogando.",
+      "contexto": "Primeira linha da mensagem do modal de boas-vindas.",
+      "placeholders": {}
+    },
+    "popup_tutorial_msg2": {
+      "texto": "Que tal ver o tutorial?",
+      "contexto": "Segunda linha da mensagem do modal de boas-vindas.",
+      "placeholders": {}
+    },
+    "popup_tutorial_btn_ver": {
+      "texto": "Ver Tutorial",
+      "contexto": "Botão de ação primária no modal de boas-vindas.",
+      "placeholders": {}
+    },
+    "popup_tutorial_btn_nao": {
+      "texto": "Agora Não",
+      "contexto": "Botão secundário para dispensar o modal de boas-vindas.",
+      "placeholders": {}
+    }
+  }
+}

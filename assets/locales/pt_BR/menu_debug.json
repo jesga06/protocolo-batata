@@ -1,0 +1,496 @@
+{
+  "_meta": {
+    "categoria": "menu_debug",
+    "descricao": "Textos do Console de Debug in-game (F1 / ~), opções de spawn, status e mira.",
+    "placeholders_disponiveis": {
+      "dano": "int — quantidade de dano aplicado ao jogador",
+      "qtd": "int — quantidade de níveis, configurações ou segundos",
+      "nome": "str — nome da entidade, drop, arma, drone, overclock ou fase musical",
+      "valor": "str/int — valor exibido entre < > nas opções selecionáveis"
+    }
+  },
+  "entradas": {
+    "titulo": {
+      "texto": "MENU DEBUG (F1 / ~)",
+      "contexto": "Cabeçalho do console de debug.",
+      "placeholders": {}
+    },
+    "status_ativado": {
+      "texto": "DEBUG MENU ATIVADO",
+      "contexto": "Mensagem inicial ao abrir o console de debug.",
+      "placeholders": {}
+    },
+    "rodape_dica": {
+      "texto": "SETAS: Navegar | ENTER: Ação | CLIQUE: Spawn",
+      "contexto": "Rodapé padrão com instruções do console de debug.",
+      "placeholders": {}
+    },
+    "estado_ligado": {
+      "texto": "LIGADO",
+      "contexto": "Estado ativo para toggles booleanos no debug.",
+      "placeholders": {}
+    },
+    "estado_desligado": {
+      "texto": "DESLIGADO",
+      "contexto": "Estado inativo para toggles booleanos no debug.",
+      "placeholders": {}
+    },
+    "selector_valor": {
+      "texto": "< {valor} >",
+      "contexto": "Formatação padrão de item selecionável com setas.",
+      "placeholders": {
+        "valor": "str — opção atual selecionada"
+      }
+    },
+    "selector_level_up": {
+      "texto": "< +{qtd} Nivel >",
+      "contexto": "Valor selecionável para o item Level Up (+X).",
+      "placeholders": {
+        "qtd": "int — quantidade de níveis"
+      }
+    },
+    "selector_kit_tempo": {
+      "texto": "< +{qtd}s +Kit >",
+      "contexto": "Valor selecionável para o item Kit Debug (+Tempo).",
+      "placeholders": {
+        "qtd": "int — segundos avançados"
+      }
+    },
+    "item_1": {
+      "texto": "1. Spawn Natural",
+      "contexto": "Item 1 do debug.",
+      "placeholders": {}
+    },
+    "item_2": {
+      "texto": "2. Congelar Timer",
+      "contexto": "Item 2 do debug.",
+      "placeholders": {}
+    },
+    "item_3": {
+      "texto": "3. Munição Infinita",
+      "contexto": "Item 3 do debug.",
+      "placeholders": {}
+    },
+    "item_4": {
+      "texto": "4. HP Infinito",
+      "contexto": "Item 4 do debug.",
+      "placeholders": {}
+    },
+    "item_5": {
+      "texto": "5. Spawn Drop",
+      "contexto": "Item 5 do debug.",
+      "placeholders": {}
+    },
+    "item_6": {
+      "texto": "6. Equipar Arma",
+      "contexto": "Item 6 do debug.",
+      "placeholders": {}
+    },
+    "item_7": {
+      "texto": "7. Ativar Drone",
+      "contexto": "Item 7 do debug.",
+      "placeholders": {}
+    },
+    "item_8": {
+      "texto": "8. Spawn Inimigo",
+      "contexto": "Item 8 do debug.",
+      "placeholders": {}
+    },
+    "item_9": {
+      "texto": "9. Curar Vida Máxima",
+      "contexto": "Item 9 do debug.",
+      "placeholders": {}
+    },
+    "item_9_acao": {
+      "texto": "[ENTER PARA CURAR]",
+      "contexto": "Ação do item 9.",
+      "placeholders": {}
+    },
+    "item_10": {
+      "texto": "10. Tomar Dano 1/8",
+      "contexto": "Item 10 do debug.",
+      "placeholders": {}
+    },
+    "item_10_acao": {
+      "texto": "[ENTER PARA DANO]",
+      "contexto": "Ação do item 10.",
+      "placeholders": {}
+    },
+    "item_11": {
+      "texto": "11. Level Up (+X)",
+      "contexto": "Item 11 do debug.",
+      "placeholders": {}
+    },
+    "item_12": {
+      "texto": "12. Destravar Configs",
+      "contexto": "Item 12 do debug.",
+      "placeholders": {}
+    },
+    "item_12_acao": {
+      "texto": "[ENTER]",
+      "contexto": "Ação do item 12.",
+      "placeholders": {}
+    },
+    "item_13": {
+      "texto": "13. PULAR PARA BOSS FINAL",
+      "contexto": "Item 13 do debug.",
+      "placeholders": {}
+    },
+    "item_13_acao": {
+      "texto": "[ENTER]",
+      "contexto": "Ação do item 13.",
+      "placeholders": {}
+    },
+    "item_14": {
+      "texto": "14. Conceder Overclock",
+      "contexto": "Item 14 do debug.",
+      "placeholders": {}
+    },
+    "item_15": {
+      "texto": "15. Matar Chefe",
+      "contexto": "Item 15 do debug.",
+      "placeholders": {}
+    },
+    "item_15_acao": {
+      "texto": "[ENTER]",
+      "contexto": "Ação do item 15.",
+      "placeholders": {}
+    },
+    "item_16": {
+      "texto": "16. Kit Debug (+Tempo)",
+      "contexto": "Item 16 do debug.",
+      "placeholders": {}
+    },
+    "item_17": {
+      "texto": "17. Fase Musica-Onda",
+      "contexto": "Item 17 do debug.",
+      "placeholders": {}
+    },
+    "item_18": {
+      "texto": "18. Destravar Conq/FW",
+      "contexto": "Item 18 do debug.",
+      "placeholders": {}
+    },
+    "item_18_acao": {
+      "texto": "[ENTER DESTRAVA TUDO]",
+      "contexto": "Ação do item 18.",
+      "placeholders": {}
+    },
+    "drop_xp_5": {
+      "texto": "XP (+5)",
+      "contexto": "Opção de drop XP +5 no debug.",
+      "placeholders": {}
+    },
+    "drop_xp_50": {
+      "texto": "XP (+50)",
+      "contexto": "Opção de drop XP +50 no debug.",
+      "placeholders": {}
+    },
+    "drop_cura": {
+      "texto": "Cura (+35)",
+      "contexto": "Opção de drop Cura no debug.",
+      "placeholders": {}
+    },
+    "drop_arma": {
+      "texto": "Caixa de Arma",
+      "contexto": "Opção de drop Arma no debug.",
+      "placeholders": {}
+    },
+    "drop_equipamento": {
+      "texto": "Caixa Equipamento",
+      "contexto": "Opção de drop Equipamento no debug.",
+      "placeholders": {}
+    },
+    "drop_overclock": {
+      "texto": "Núcleo Overclock",
+      "contexto": "Opção de drop Overclock no debug.",
+      "placeholders": {}
+    },
+    "arma_minigun": {
+      "texto": "Minigun",
+      "contexto": "Opção de arma Minigun no debug.",
+      "placeholders": {}
+    },
+    "arma_shotgun": {
+      "texto": "Shotgun",
+      "contexto": "Opção de arma Shotgun no debug.",
+      "placeholders": {}
+    },
+    "arma_rifle_assalto": {
+      "texto": "Rifle Assalto",
+      "contexto": "Opção de arma Rifle Assalto no debug.",
+      "placeholders": {}
+    },
+    "arma_lanca_foguetes": {
+      "texto": "Lanca-Foguetes",
+      "contexto": "Opção de arma Lança-Foguetes no debug.",
+      "placeholders": {}
+    },
+    "arma_lanca_granadas": {
+      "texto": "Lanca-Granadas",
+      "contexto": "Opção de arma Lança-Granadas no debug.",
+      "placeholders": {}
+    },
+    "arma_railgun": {
+      "texto": "Railgun",
+      "contexto": "Opção de arma Railgun no debug.",
+      "placeholders": {}
+    },
+    "arma_bastao_choque": {
+      "texto": "Bastao de Choque",
+      "contexto": "Opção de arma Bastão de Choque no debug.",
+      "placeholders": {}
+    },
+    "arma_smg_compacta": {
+      "texto": "SMG Compacta",
+      "contexto": "Opção de arma SMG Compacta no debug.",
+      "placeholders": {}
+    },
+    "arma_rifle_arco": {
+      "texto": "Rifle de Arco",
+      "contexto": "Opção de arma Rifle de Arco no debug.",
+      "placeholders": {}
+    },
+    "arma_lanca_chamas": {
+      "texto": "Lanca-Chamas",
+      "contexto": "Opção de arma Lança-Chamas no debug.",
+      "placeholders": {}
+    },
+    "drone_cura": {
+      "texto": "Drone Cura",
+      "contexto": "Opção de Drone Cura no debug.",
+      "placeholders": {}
+    },
+    "drone_combate": {
+      "texto": "Drone Combate",
+      "contexto": "Opção de Drone Combate no debug.",
+      "placeholders": {}
+    },
+    "drone_suporte": {
+      "texto": "Drone Suporte",
+      "contexto": "Opção de Drone Suporte no debug.",
+      "placeholders": {}
+    },
+    "inim_padrao": {
+      "texto": "Padrao (Gabinete)",
+      "contexto": "Opção de inimigo Padrão no debug.",
+      "placeholders": {}
+    },
+    "inim_rapido": {
+      "texto": "Rapido (Mouse)",
+      "contexto": "Opção de inimigo Rápido no debug.",
+      "placeholders": {}
+    },
+    "inim_phasing": {
+      "texto": "Phasing (Monitor)",
+      "contexto": "Opção de inimigo Phasing no debug.",
+      "placeholders": {}
+    },
+    "inim_blindado": {
+      "texto": "Blindado",
+      "contexto": "Opção de inimigo Blindado no debug.",
+      "placeholders": {}
+    },
+    "inim_ranged": {
+      "texto": "Ranged (Projetor)",
+      "contexto": "Opção de inimigo Ranged no debug.",
+      "placeholders": {}
+    },
+    "inim_tank": {
+      "texto": "Tanque (Scanner)",
+      "contexto": "Opção de inimigo Tank no debug.",
+      "placeholders": {}
+    },
+    "inim_impressora": {
+      "texto": "Impressora Termica",
+      "contexto": "Opção de inimigo Impressora Térmica no debug.",
+      "placeholders": {}
+    },
+    "inim_ninja": {
+      "texto": "Ninja Corporativo",
+      "contexto": "Opção de inimigo Ninja no debug.",
+      "placeholders": {}
+    },
+    "inim_elite": {
+      "texto": "Chefe de Elite",
+      "contexto": "Opção de Mini-Boss no debug.",
+      "placeholders": {}
+    },
+    "inim_boss": {
+      "texto": "Geladeira Tsunami (Boss)",
+      "contexto": "Opção de Chefe Final no debug.",
+      "placeholders": {}
+    },
+    "ov_multithreading": {
+      "texto": "Multithreading",
+      "contexto": "Opção de Overclock Multithreading no debug.",
+      "placeholders": {}
+    },
+    "ov_refrigeracao": {
+      "texto": "Refrigeração",
+      "contexto": "Opção de Overclock Refrigeração no debug.",
+      "placeholders": {}
+    },
+    "ov_overvolt": {
+      "texto": "Overvolt",
+      "contexto": "Opção de Overclock Overvolt no debug.",
+      "placeholders": {}
+    },
+    "ov_bios_modding": {
+      "texto": "BIOS Modding",
+      "contexto": "Opção de Overclock BIOS Modding no debug.",
+      "placeholders": {}
+    },
+    "ov_protecao_surtos": {
+      "texto": "Proteção Surtos",
+      "contexto": "Opção de Overclock Proteção Surtos no debug.",
+      "placeholders": {}
+    },
+    "ov_upgrade_barramento": {
+      "texto": "Upgrade Barramento",
+      "contexto": "Opção de Overclock Upgrade Barramento no debug.",
+      "placeholders": {}
+    },
+    "fase_anticipation": {
+      "texto": "ANTICIPATION",
+      "contexto": "Fase musical ANTICIPATION no debug.",
+      "placeholders": {}
+    },
+    "fase_hold": {
+      "texto": "HOLD",
+      "contexto": "Fase musical HOLD no debug.",
+      "placeholders": {}
+    },
+    "fase_assault_intro": {
+      "texto": "ASSAULT_INTRO",
+      "contexto": "Fase musical ASSAULT_INTRO no debug.",
+      "placeholders": {}
+    },
+    "fase_assault": {
+      "texto": "ASSAULT",
+      "contexto": "Fase musical ASSAULT no debug.",
+      "placeholders": {}
+    },
+    "status_vida_max": {
+      "texto": "VIDA RESTAURADA AO MAXIMO!",
+      "contexto": "Feedback ao curar vida máxima.",
+      "placeholders": {}
+    },
+    "status_dano": {
+      "texto": "DANO RECEBIDO: -{dano} HP",
+      "contexto": "Feedback ao aplicar dano de teste no jogador.",
+      "placeholders": {
+        "dano": "int — dano aplicado"
+      }
+    },
+    "status_level_up": {
+      "texto": "LEVEL UP (+{qtd}) ATIVADO!",
+      "contexto": "Feedback ao ativar level up pelo debug.",
+      "placeholders": {
+        "qtd": "int — níveis adicionados"
+      }
+    },
+    "status_configs_desbloqueadas": {
+      "texto": "TODAS AS {qtd} CONFIGS DESBLOQUEADAS!",
+      "contexto": "Feedback ao destravar todas as configs.",
+      "placeholders": {
+        "qtd": "int — total de configurações"
+      }
+    },
+    "status_boss_cutscene": {
+      "texto": "BOSS CUTSCENE INICIADA!",
+      "contexto": "Feedback ao iniciar cutscene do chefe.",
+      "placeholders": {}
+    },
+    "status_overclock": {
+      "texto": "OVERCLOCK CONCEDIDO: {nome}",
+      "contexto": "Feedback ao conceder módulo Overclock.",
+      "placeholders": {
+        "nome": "str — nome do overclock"
+      }
+    },
+    "status_boss_destruido": {
+      "texto": "GELADEIRA TSUNAMI DESTRUÍDA!",
+      "contexto": "Feedback ao matar o chefe final.",
+      "placeholders": {}
+    },
+    "status_minibosses_destruidos": {
+      "texto": "MINI-BOSSES DESTRUÍDOS!",
+      "contexto": "Feedback ao matar mini-bosses.",
+      "placeholders": {}
+    },
+    "status_musica_onda": {
+      "texto": "MUSICA-ONDA: {nome}",
+      "contexto": "Feedback ao forçar fase musical.",
+      "placeholders": {
+        "nome": "str — nome da fase musical"
+      }
+    },
+    "status_conq_fw_desbloqueados": {
+      "texto": "CONQUISTAS & FIRMWARE DESBLOQUEADOS!",
+      "contexto": "Feedback ao destravar conquistas e firmware.",
+      "placeholders": {}
+    },
+    "status_drop_spawnado": {
+      "texto": "DROP SPAWNADO: {nome}",
+      "contexto": "Feedback ao spawnar drop.",
+      "placeholders": {
+        "nome": "str — nome do drop"
+      }
+    },
+    "status_arma_equipada": {
+      "texto": "ARMA EQUIPADA: {nome}",
+      "contexto": "Feedback ao equipar arma pelo debug.",
+      "placeholders": {
+        "nome": "str — nome da arma"
+      }
+    },
+    "status_drone_ativado": {
+      "texto": "DRONE ATIVADO: {nome}",
+      "contexto": "Feedback ao ativar drone pelo debug.",
+      "placeholders": {
+        "nome": "str — nome do drone"
+      }
+    },
+    "status_inimigo_spawnado": {
+      "texto": "INIMIGO SPAWNADO: {nome}",
+      "contexto": "Feedback ao spawnar inimigo pelo debug.",
+      "placeholders": {
+        "nome": "str — nome do inimigo"
+      }
+    },
+    "status_kit_debug": {
+      "texto": "+{qtd}s + ARMA + CONSUMIVEIS + BIOS + DASH!",
+      "contexto": "Feedback ao aplicar kit debug.",
+      "placeholders": {
+        "qtd": "int — segundos avançados"
+      }
+    },
+    "nome_elite_debug": {
+      "texto": "CHEFE DE ELITE (DEBUG)",
+      "contexto": "Nome do Mini-Boss spawnado pelo debug.",
+      "placeholders": {}
+    },
+    "mira_spawn": {
+      "texto": "Spawn: {nome}",
+      "contexto": "Rótulo na mira do mouse para spawn de drop/inimigo.",
+      "placeholders": {
+        "nome": "str — nome da entidade"
+      }
+    },
+    "mira_equipar": {
+      "texto": "Equipar: {nome}",
+      "contexto": "Rótulo na mira do mouse para equipar arma.",
+      "placeholders": {
+        "nome": "str — nome da arma"
+      }
+    },
+    "mira_drone": {
+      "texto": "Drone: {nome}",
+      "contexto": "Rótulo na mira do mouse para ativar drone.",
+      "placeholders": {
+        "nome": "str — nome do drone"
+      }
+    }
+  }
+}

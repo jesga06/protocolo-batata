@@ -1,0 +1,324 @@
+{
+  "_meta": {
+    "categoria": "conquistas",
+    "descricao": "Catálogo de Conquistas Contínuas, Conquistas Únicas e Chips de Firmware.",
+    "placeholders_disponiveis": {}
+  },
+  "entradas": {
+    "continua_mestre_chave_inglesa__nome": {
+      "texto": "Mestre do Parry",
+      "contexto": "Nome da conquista contínua 'mestre_chave_inglesa'.",
+      "placeholders": {}
+    },
+    "continua_mestre_chave_inglesa__descricao": {
+      "texto": "Execute parries bem-sucedidos contra projéteis inimigos.",
+      "contexto": "Descrição da conquista contínua 'mestre_chave_inglesa'.",
+      "placeholders": {}
+    },
+    "continua_velocidade_de_clock__nome": {
+      "texto": "Hardware Acelerado",
+      "contexto": "Nome da conquista contínua 'velocidade_de_clock'.",
+      "placeholders": {}
+    },
+    "continua_velocidade_de_clock__descricao": {
+      "texto": "Execute Just-Dodges atravessando ameaças com os i-frames do Dash.",
+      "contexto": "Descrição da conquista contínua 'velocidade_de_clock'.",
+      "placeholders": {}
+    },
+    "continua_depurador_escritorio__nome": {
+      "texto": "Depurador do Escritório",
+      "contexto": "Nome da conquista contínua 'depurador_escritorio'.",
+      "placeholders": {}
+    },
+    "continua_depurador_escritorio__descricao": {
+      "texto": "Acumule abates de inimigos corporativos.",
+      "contexto": "Descrição da conquista contínua 'depurador_escritorio'.",
+      "placeholders": {}
+    },
+    "continua_cacador_hardware__nome": {
+      "texto": "Caçador de Hardware",
+      "contexto": "Nome da conquista contínua 'cacador_hardware'.",
+      "placeholders": {}
+    },
+    "continua_cacador_hardware__descricao": {
+      "texto": "Derrote Mini-Bosses.",
+      "contexto": "Descrição da conquista contínua 'cacador_hardware'.",
+      "placeholders": {}
+    },
+    "continua_sobrevivente_caos__nome": {
+      "texto": "The Perfect Sound",
+      "contexto": "Nome da conquista contínua 'sobrevivente_caos'.",
+      "placeholders": {}
+    },
+    "continua_sobrevivente_caos__descricao": {
+      "texto": "Derrote a Geladeira Tsunami.",
+      "contexto": "Descrição da conquista contínua 'sobrevivente_caos'.",
+      "placeholders": {}
+    },
+    "unica_monge_tibetano__nome": {
+      "texto": "Monge Tibetano",
+      "contexto": "Nome da conquista única 'monge_tibetano'.",
+      "placeholders": {}
+    },
+    "unica_monge_tibetano__descricao": {
+      "texto": "Sobreviva 2 minutos contínuos jogando em 15 FPS.",
+      "contexto": "Descrição da conquista única 'monge_tibetano'.",
+      "placeholders": {}
+    },
+    "unica_cabo_vga_solto__nome": {
+      "texto": "Cabo VGA Solto",
+      "contexto": "Nome da conquista única 'cabo_vga_solto'.",
+      "placeholders": {}
+    },
+    "unica_cabo_vga_solto__descricao": {
+      "texto": "Vença a partida com Cores Invertidas e VSync Desligado ativos.",
+      "contexto": "Descrição da conquista única 'cabo_vga_solto'.",
+      "placeholders": {}
+    },
+    "unica_blindado_escritorio__nome": {
+      "texto": "Blindado de Escritório",
+      "contexto": "Nome da conquista única 'blindado_escritorio'.",
+      "placeholders": {}
+    },
+    "unica_blindado_escritorio__descricao": {
+      "texto": "Derrote um Mini-Boss usando Controles de Tanque.",
+      "contexto": "Descrição da conquista única 'blindado_escritorio'.",
+      "placeholders": {}
+    },
+    "unica_boliche_corporativo__nome": {
+      "texto": "Boliche Corporativo",
+      "contexto": "Nome da conquista única 'boliche_corporativo'.",
+      "placeholders": {}
+    },
+    "unica_boliche_corporativo__descricao": {
+      "texto": "Abata 3 inimigos por colisão cinética com um único dash.",
+      "contexto": "Descrição da conquista única 'boliche_corporativo'.",
+      "placeholders": {}
+    },
+    "unica_zero_visao_cem_fe__nome": {
+      "texto": "Cabra Cega",
+      "contexto": "Nome da conquista única 'zero_visao_cem_fe'.",
+      "placeholders": {}
+    },
+    "unica_zero_visao_cem_fe__descricao": {
+      "texto": "Alcance o Nível 8 com HUD Desligado e Iluminação Dinâmica Ligada.",
+      "contexto": "Descrição da conquista única 'zero_visao_cem_fe'.",
+      "placeholders": {}
+    },
+    "unica_auto_sabotagem__nome": {
+      "texto": "Auto-Sabotagem",
+      "contexto": "Nome da conquista única 'auto_sabotagem'.",
+      "placeholders": {}
+    },
+    "unica_auto_sabotagem__descricao": {
+      "texto": "Derrote um Mini-Boss com Fogo Amigo ativado.",
+      "contexto": "Descrição da conquista única 'auto_sabotagem'.",
+      "placeholders": {}
+    },
+    "unica_limpeza_de_disco__nome": {
+      "texto": "Otimização Extrema",
+      "contexto": "Nome da conquista única 'limpeza_de_disco'.",
+      "placeholders": {}
+    },
+    "unica_limpeza_de_disco__descricao": {
+      "texto": "Apague 15 ou mais projéteis inimigos em uma única coleta do Garbage Collector.",
+      "contexto": "Descrição da conquista única 'limpeza_de_disco'.",
+      "placeholders": {}
+    },
+    "unica_intocavel_rh__nome": {
+      "texto": "The PERFECT Sound.",
+      "contexto": "Nome da conquista única 'intocavel_rh'.",
+      "placeholders": {}
+    },
+    "unica_intocavel_rh__descricao": {
+      "texto": "Vença a Geladeira Tsunami sem sofrer dano na Fase 3.",
+      "contexto": "Descrição da conquista única 'intocavel_rh'.",
+      "placeholders": {}
+    },
+    "unica_reset_infinito__nome": {
+      "texto": "Batatas Die Twice",
+      "contexto": "Nome da conquista única 'reset_infinito'.",
+      "placeholders": {}
+    },
+    "unica_reset_infinito__descricao": {
+      "texto": "Execute 5 parries consecutivos em menos de 12 segundos sem errar.",
+      "contexto": "Descrição da conquista única 'reset_infinito'.",
+      "placeholders": {}
+    },
+    "unica_modo_batata_supremo__nome": {
+      "texto": "Absolutamente Injogável",
+      "contexto": "Nome da conquista única 'modo_batata_supremo'.",
+      "placeholders": {}
+    },
+    "unica_modo_batata_supremo__descricao": {
+      "texto": "Vença a partida com 5 ou mais configurações não-neutras ativas.",
+      "contexto": "Descrição da conquista única 'modo_batata_supremo'.",
+      "placeholders": {}
+    },
+    "unica_primeiro_overclock_sujo__nome": {
+      "texto": "Primeiros Passos",
+      "contexto": "Nome da conquista única 'primeiro_overclock_sujo'.",
+      "placeholders": {}
+    },
+    "unica_primeiro_overclock_sujo__descricao": {
+      "texto": "Abata 1 Mini-Boss em menos de 60s com pelo menos 2 configurações ativas.",
+      "contexto": "Descrição da conquista única 'primeiro_overclock_sujo'.",
+      "placeholders": {}
+    },
+    "firmware_gatilho_duplo__nome": {
+      "texto": "Gatilho Duplo",
+      "contexto": "Nome do Chip de Firmware 'gatilho_duplo' (categoria Ofensivo).",
+      "placeholders": {}
+    },
+    "firmware_gatilho_duplo__descricao": {
+      "texto": "Após um Dash ou Parry, seu próximo disparo sai duas vezes (2º projétil tem ~60% dano e reduz -0,4s CD no Dash).",
+      "contexto": "Descrição mecânica do Chip de Firmware 'gatilho_duplo'.",
+      "placeholders": {}
+    },
+    "firmware_recarga_tatica__nome": {
+      "texto": "Avanço Tático",
+      "contexto": "Nome do Chip de Firmware 'recarga_tatica' (categoria Tático).",
+      "placeholders": {}
+    },
+    "firmware_recarga_tatica__descricao": {
+      "texto": "A cada 3 dashes, recupera ~25% de munição e ganha 1 stack de blindagem (-8% dano, máx. 3 por 4s).",
+      "contexto": "Descrição mecânica do Chip de Firmware 'recarga_tatica'.",
+      "placeholders": {}
+    },
+    "firmware_adrenalina_overclock__nome": {
+      "texto": "Precision Boost Overdrive",
+      "contexto": "Nome do Chip de Firmware 'adrenalina_overclock' (categoria Mobilidade).",
+      "placeholders": {}
+    },
+    "firmware_adrenalina_overclock__descricao": {
+      "texto": "Abater um inimigo Elite, destruir uma Caixa de Som, ou realizar 5 abates rápidos concede pico decrescente de +45% vel. e +35% cadência por 3,5s.",
+      "contexto": "Descrição mecânica do Chip de Firmware 'adrenalina_overclock'.",
+      "placeholders": {}
+    },
+    "firmware_canhoes_perimetrais__nome": {
+      "texto": "Canhões Perimetrais",
+      "contexto": "Nome do Chip de Firmware 'canhoes_perimetrais' (categoria Ofensivo).",
+      "placeholders": {}
+    },
+    "firmware_canhoes_perimetrais__descricao": {
+      "texto": "Cria 6 setores angulares ao redor de Cleiton com CD individual. Atirar na direção de um setor pronto dispara uma rajada flamejante.",
+      "contexto": "Descrição mecânica do Chip de Firmware 'canhoes_perimetrais'.",
+      "placeholders": {}
+    },
+    "firmware_sobrecarga_estrutural__nome": {
+      "texto": "Sobrecarga Estrutural",
+      "contexto": "Nome do Chip de Firmware 'sobrecarga_estrutural' (categoria Ofensivo).",
+      "placeholders": {}
+    },
+    "firmware_sobrecarga_estrutural__descricao": {
+      "texto": "3 tiros consecutivos no mesmo alvo fragmentam sua blindagem (+20% dano recebido por 4s + explosão perfurante).",
+      "contexto": "Descrição mecânica do Chip de Firmware 'sobrecarga_estrutural'.",
+      "placeholders": {}
+    },
+    "firmware_overclock_termico__nome": {
+      "texto": "Cache X3D",
+      "contexto": "Nome do Chip de Firmware 'overclock_termico' (categoria Reativo).",
+      "placeholders": {}
+    },
+    "firmware_overclock_termico__descricao": {
+      "texto": "Dano recebido acumula Cache Hits (5s, até +30% cadência) descarregados no próximo Parry ou Tiro Sobrecarregado.",
+      "contexto": "Descrição mecânica do Chip de Firmware 'overclock_termico'.",
+      "placeholders": {}
+    },
+    "firmware_sandbox_isolada__nome": {
+      "texto": "Sandbox Isolado",
+      "contexto": "Nome do Chip de Firmware 'sandbox_isolada' (categoria Defensivo).",
+      "placeholders": {}
+    },
+    "firmware_sandbox_isolada__descricao": {
+      "texto": "Cria uma cúpula fixa no chão por 3,5s que bloqueia projéteis externos ao acertar um Parry. 28s de cooldown.",
+      "contexto": "Descrição mecânica do Chip de Firmware 'sandbox_isolada'.",
+      "placeholders": {}
+    },
+    "firmware_reset_voraz__nome": {
+      "texto": "Reset Voraz",
+      "contexto": "Nome do Chip de Firmware 'reset_voraz' (categoria Tático).",
+      "placeholders": {}
+    },
+    "firmware_reset_voraz__descricao": {
+      "texto": "Abates dentro de 2s após um Dash ou Parry reduzem em 50% o cooldown restante de ambos.",
+      "contexto": "Descrição mecânica do Chip de Firmware 'reset_voraz'.",
+      "placeholders": {}
+    },
+    "continua_mestre_chave_inglesa__ms_0_titulo": {
+      "texto": "Aprendiz do Parry",
+      "contexto": "Título do marco 1 da conquista contínua 'mestre_chave_inglesa'.",
+      "placeholders": {}
+    },
+    "continua_mestre_chave_inglesa__ms_1_titulo": {
+      "texto": "Reflexos Provados",
+      "contexto": "Título do marco 2 da conquista contínua 'mestre_chave_inglesa'.",
+      "placeholders": {}
+    },
+    "continua_mestre_chave_inglesa__ms_2_titulo": {
+      "texto": "Parry, o Ornitorrinco",
+      "contexto": "Título do marco 3 da conquista contínua 'mestre_chave_inglesa'.",
+      "placeholders": {}
+    },
+    "continua_velocidade_de_clock__ms_0_titulo": {
+      "texto": "Desvio Sincronizado",
+      "contexto": "Título do marco 1 da conquista contínua 'velocidade_de_clock'.",
+      "placeholders": {}
+    },
+    "continua_velocidade_de_clock__ms_1_titulo": {
+      "texto": "Thread Prioritária",
+      "contexto": "Título do marco 2 da conquista contínua 'velocidade_de_clock'.",
+      "placeholders": {}
+    },
+    "continua_velocidade_de_clock__ms_2_titulo": {
+      "texto": "Alta Frequência",
+      "contexto": "Título do marco 3 da conquista contínua 'velocidade_de_clock'.",
+      "placeholders": {}
+    },
+    "continua_depurador_escritorio__ms_0_titulo": {
+      "texto": "Faxina Inicial",
+      "contexto": "Título do marco 1 da conquista contínua 'depurador_escritorio'.",
+      "placeholders": {}
+    },
+    "continua_depurador_escritorio__ms_1_titulo": {
+      "texto": "Controle de Pragas",
+      "contexto": "Título do marco 2 da conquista contínua 'depurador_escritorio'.",
+      "placeholders": {}
+    },
+    "continua_depurador_escritorio__ms_2_titulo": {
+      "texto": "Valgrind",
+      "contexto": "Título do marco 3 da conquista contínua 'depurador_escritorio'.",
+      "placeholders": {}
+    },
+    "continua_cacador_hardware__ms_0_titulo": {
+      "texto": "Descompilador",
+      "contexto": "Título do marco 1 da conquista contínua 'cacador_hardware'.",
+      "placeholders": {}
+    },
+    "continua_cacador_hardware__ms_1_titulo": {
+      "texto": "Sucateador",
+      "contexto": "Título do marco 2 da conquista contínua 'cacador_hardware'.",
+      "placeholders": {}
+    },
+    "continua_cacador_hardware__ms_2_titulo": {
+      "texto": "Garimpeiro de Hardware",
+      "contexto": "Título do marco 3 da conquista contínua 'cacador_hardware'.",
+      "placeholders": {}
+    },
+    "continua_sobrevivente_caos__ms_0_titulo": {
+      "texto": "Primeiro Degelo",
+      "contexto": "Título do marco 1 da conquista contínua 'sobrevivente_caos'.",
+      "placeholders": {}
+    },
+    "continua_sobrevivente_caos__ms_1_titulo": {
+      "texto": "Subwoofer Gelado",
+      "contexto": "Título do marco 2 da conquista contínua 'sobrevivente_caos'.",
+      "placeholders": {}
+    },
+    "continua_sobrevivente_caos__ms_2_titulo": {
+      "texto": "Equalizador Sub-Zero",
+      "contexto": "Título do marco 3 da conquista contínua 'sobrevivente_caos'.",
+      "placeholders": {}
+    }
+  }
+}

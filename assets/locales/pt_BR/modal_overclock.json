@@ -1,0 +1,163 @@
+{
+  "_meta": {
+    "categoria": "modal_overclock",
+    "descricao": "Textos do Modal de Overclock / BIOS Upgrade (6 módulos de hardware e UI).",
+    "placeholders_disponiveis": {
+      "indice": "int — número da tecla de atalho do card (1, 2 ou 3)"
+    }
+  },
+  "entradas": {
+    "titulo": {
+      "texto": "UPGRADE DE BIOS OBTIDO!",
+      "contexto": "Título principal do Modal de Overclock.",
+      "placeholders": {}
+    },
+    "subtitulo": {
+      "texto": "Selecione um Upgrade de BIOS para instalar na Batata com [1] [2] [3] ou clique",
+      "contexto": "Subtítulo instrucional do Modal de Overclock.",
+      "placeholders": {}
+    },
+    "tag_padrao": {
+      "texto": "UPGRADE DE BIOS",
+      "contexto": "Tag padrão caso o card não defina subtítulo.",
+      "placeholders": {}
+    },
+    "header_efeito_bios": {
+      "texto": "+ EFEITO BIOS",
+      "contexto": "Cabeçalho verde do sub-card de efeito do módulo Overclock.",
+      "placeholders": {}
+    },
+    "cta_instalar": {
+      "texto": "INSTALAR [{indice}]",
+      "contexto": "Botão inferior de cada card de Overclock.",
+      "placeholders": {
+        "indice": "int — número do card (1, 2 ou 3)"
+      }
+    },
+    "rodape": {
+      "texto": "[1] [2] [3] Instalar pelo teclado   •   [Mouse] Clique no módulo",
+      "contexto": "Rodapé de instruções do Modal de Overclock.",
+      "placeholders": {}
+    },
+    "multithreading_nome": {
+      "texto": "Multithreading",
+      "contexto": "Nome do módulo Overclock Multithreading.",
+      "placeholders": {}
+    },
+    "multithreading_subtitulo": {
+      "texto": "NÚCLEOS DE ESCOLTA",
+      "contexto": "Subtítulo do módulo Multithreading.",
+      "placeholders": {}
+    },
+    "multithreading_buff": {
+      "texto": "Gera 2 núcleos orbitais que disparam cópias dos seus disparos e bloqueiam 1 projétil inimigo a cada 4s.",
+      "contexto": "Descrição do efeito do módulo Multithreading.",
+      "placeholders": {}
+    },
+    "multithreading_flavor": {
+      "texto": "Um é bom. Três é foda.",
+      "contexto": "Flavor text do módulo Multithreading.",
+      "placeholders": {}
+    },
+    "refrigeracao_nome": {
+      "texto": "Refrigeração a Nitrogênio",
+      "contexto": "Nome do módulo Overclock Refrigeração a Nitrogênio.",
+      "placeholders": {}
+    },
+    "refrigeracao_subtitulo": {
+      "texto": "REFRIGERAÇÃO EXTREMA",
+      "contexto": "Subtítulo do módulo Refrigeração a Nitrogênio.",
+      "placeholders": {}
+    },
+    "refrigeracao_buff": {
+      "texto": "+20% de cadência base. Parar de atirar por 1.5s libera uma onda de frio que reduz a velocidade dos inimigos próximos em 50%.",
+      "contexto": "Descrição do efeito do módulo Refrigeração a Nitrogênio.",
+      "placeholders": {}
+    },
+    "refrigeracao_flavor": {
+      "texto": "\"Fica frio aí.\"",
+      "contexto": "Flavor text do módulo Refrigeração a Nitrogênio.",
+      "placeholders": {}
+    },
+    "overvolt_nome": {
+      "texto": "Overvolt",
+      "contexto": "Nome do módulo Overclock Overvolt.",
+      "placeholders": {}
+    },
+    "overvolt_subtitulo": {
+      "texto": "ACÚMULO DE ENERGIA",
+      "contexto": "Subtítulo do módulo Overvolt.",
+      "placeholders": {}
+    },
+    "overvolt_buff": {
+      "texto": "+15% de chance de crítico. A cada 25 abates (ou acerto crítico), dispara um arco elétrico em até 4 inimigos.",
+      "contexto": "Descrição do efeito do módulo Overvolt.",
+      "placeholders": {}
+    },
+    "overvolt_flavor": {
+      "texto": "\"Eu vou dar choque no seu sistema.\"",
+      "contexto": "Flavor text do módulo Overvolt.",
+      "placeholders": {}
+    },
+    "bios_modding_nome": {
+      "texto": "BIOS Flashing",
+      "contexto": "Nome do módulo Overclock BIOS Modding.",
+      "placeholders": {}
+    },
+    "bios_modding_subtitulo": {
+      "texto": "SLOT DUPLO",
+      "contexto": "Subtítulo do módulo BIOS Modding.",
+      "placeholders": {}
+    },
+    "bios_modding_buff": {
+      "texto": "Permite equipar duas armas (disparadas juntas com LMB, alternáveis com [Q]) e recupera 15% de munição ao derrotar Mini-Bosses.",
+      "contexto": "Descrição do efeito do módulo BIOS Modding.",
+      "placeholders": {}
+    },
+    "bios_modding_flavor": {
+      "texto": "Não existe bottleneck que não possa ser resolvido com mais barramentos.",
+      "contexto": "Flavor text do módulo BIOS Modding.",
+      "placeholders": {}
+    },
+    "protecao_surtos_nome": {
+      "texto": "Proteção contra Surtos",
+      "contexto": "Nome do módulo Overclock Proteção contra Surtos.",
+      "placeholders": {}
+    },
+    "protecao_surtos_subtitulo": {
+      "texto": "DISJUNTOR DE EMERGÊNCIA",
+      "contexto": "Subtítulo do módulo Proteção contra Surtos.",
+      "placeholders": {}
+    },
+    "protecao_surtos_buff": {
+      "texto": "+50 de vida máxima. Dano fatal desarma o disjuntor e congela toda a arena por 4s, além de recuperar 50% da vida (60s de recarga).",
+      "contexto": "Descrição do efeito do módulo Proteção contra Surtos.",
+      "placeholders": {}
+    },
+    "protecao_surtos_flavor": {
+      "texto": "Patrocinado pela iClamper.",
+      "contexto": "Flavor text do módulo Proteção contra Surtos.",
+      "placeholders": {}
+    },
+    "upgrade_barramento_nome": {
+      "texto": "Upgrade de Barramento",
+      "contexto": "Nome do módulo Overclock Upgrade de Barramento.",
+      "placeholders": {}
+    },
+    "upgrade_barramento_subtitulo": {
+      "texto": "PALAVRAS MAIORES",
+      "contexto": "Subtítulo do módulo Upgrade de Barramento.",
+      "placeholders": {}
+    },
+    "upgrade_barramento_buff": {
+      "texto": "Dá +15% de velocidade de movimento e puxa automaticamente todos os itens e gemas de XP na arena.",
+      "contexto": "Descrição do efeito do módulo Upgrade de Barramento.",
+      "placeholders": {}
+    },
+    "upgrade_barramento_flavor": {
+      "texto": "\"Mais dados. MAIS DADOS!\"",
+      "contexto": "Flavor text do módulo Upgrade de Barramento.",
+      "placeholders": {}
+    }
+  }
+}

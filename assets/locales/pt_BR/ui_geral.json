@@ -1,0 +1,665 @@
+{
+  "_meta": {
+    "categoria": "ui_geral",
+    "descricao": "Strings gerais de interface, HUD, telemetria, toasts de combate/coleta, banners de desbloqueio, pausa, vitória, game over e causas de morte.",
+    "placeholders_disponiveis": {
+      "hp_atual": "int — vida atual",
+      "hp_max": "int — vida máxima",
+      "escudo": "int — valor de escudo ativo",
+      "segundos": "float/int — segundos restantes ou tempo formatado",
+      "parries": "int — quantidade acumulada de parries",
+      "nivel": "int — nível atual do jogador",
+      "xp_atual": "int — XP atual no nível",
+      "xp_prox": "int — XP necessário para o próximo nível",
+      "prefixo": "str — prefixo de status do timer do Mini-Boss (FAST/HEAT/CRIT)",
+      "recompensa": "str — descrição formatada de recompensa",
+      "nome": "str — nome da entidade, arma, drone, firmware ou config",
+      "pct": "int — porcentagem (0..100)",
+      "slot": "int — número do slot",
+      "cota": "int — cota mínima de configs",
+      "n_configs": "int — quantidade de configs ativas",
+      "val": "int — valor numérico de XP, cura ou munição",
+      "qtd": "int — quantidade de drones ou abates",
+      "stage": "int — estágio atual do duelo de parry (1..3)",
+      "abates": "int — total de abates",
+      "pontos": "int — pontuação atual/final",
+      "fps": "int — FPS atual",
+      "min": "int — minutos",
+      "seg": "int — segundos",
+      "tempo_str": "str — tempo formatado com décimos",
+      "dano": "int — dano total causado",
+      "desbloqueadas": "int — configs desbloqueadas",
+      "total_configs": "int — total de configs",
+      "mult": "float — multiplicador de dificuldade",
+      "causa": "str — causa da morte"
+    }
+  },
+  "entradas": {
+    "titulo_jogo": {
+      "texto": "Protocolo: Batata",
+      "contexto": "Título oficial do jogo exibido na janela e Menu Principal.",
+      "placeholders": {}
+    },
+    "tag_dica": {
+      "texto": "DICA",
+      "contexto": "Etiqueta curta exibida no BannerDica.",
+      "placeholders": {}
+    },
+    "recomp_dash": {
+      "texto": "Dash",
+      "contexto": "Nome legível da recompensa Dash.",
+      "placeholders": {}
+    },
+    "recomp_smg_compacta": {
+      "texto": "SMG Compacta",
+      "contexto": "Nome legível da recompensa SMG Compacta.",
+      "placeholders": {}
+    },
+    "recomp_bastao_choque": {
+      "texto": "Bastão de Choque",
+      "contexto": "Nome legível da recompensa Bastão de Choque.",
+      "placeholders": {}
+    },
+    "recomp_rifle_arco": {
+      "texto": "Rifle de Arco",
+      "contexto": "Nome legível da recompensa Rifle de Arco.",
+      "placeholders": {}
+    },
+    "recomp_lanca_chamas": {
+      "texto": "Lança-Chamas",
+      "contexto": "Nome legível da recompensa Lança-Chamas.",
+      "placeholders": {}
+    },
+    "recomp_latencia_ping": {
+      "texto": "Configuração - Latência",
+      "contexto": "Nome legível da recompensa Config Latência/Ping.",
+      "placeholders": {}
+    },
+    "recomp_slot_firmware": {
+      "texto": "+1 Slot de Firmware",
+      "contexto": "Nome legível da recompensa +1 Slot de Firmware.",
+      "placeholders": {}
+    },
+    "recomp_postura_riposte": {
+      "texto": "Ripostar (Precisão de Parry)",
+      "contexto": "Nome legível da opção Postura de Riposte.",
+      "placeholders": {}
+    },
+    "recomp_thread_fantasma": {
+      "texto": "Thread Prioritária (Rastro de Dash)",
+      "contexto": "Nome legível da opção Thread Fantasma.",
+      "placeholders": {}
+    },
+    "recomp_sombra_espelho": {
+      "texto": "Symlink (Protocolo de Dash)",
+      "contexto": "Nome legível da opção Sombra Espelho.",
+      "placeholders": {}
+    },
+    "recomp_rollback_estado": {
+      "texto": "Rollback (Protocolo de Dash)",
+      "contexto": "Nome legível da opção Rollback de Estado.",
+      "placeholders": {}
+    },
+    "recomp_trofeu_permanente": {
+      "texto": "Troféu Permanente",
+      "contexto": "Fallback quando a conquista não tem recompensa mecânica.",
+      "placeholders": {}
+    },
+    "recomp_firmware_prefixo": {
+      "texto": "Firmware {nome}",
+      "contexto": "Prefixo para recompensas de Chip de Firmware.",
+      "placeholders": {
+        "nome": "str — nome ou id do chip"
+      }
+    },
+    "recomp_trofeu": {
+      "texto": "Troféu",
+      "contexto": "Rótulo genérico de troféu.",
+      "placeholders": {}
+    },
+    "hud_hp_padrao": {
+      "texto": "HP {hp_atual}/{hp_max}",
+      "contexto": "Texto da barra de vida quando sem escudo.",
+      "placeholders": {
+        "hp_atual": "int",
+        "hp_max": "int"
+      }
+    },
+    "hud_hp_escudo": {
+      "texto": "{hp_atual}/{hp_max} +{escudo}",
+      "contexto": "Texto da barra de vida com escudo ativo.",
+      "placeholders": {
+        "hp_atual": "int",
+        "hp_max": "int",
+        "escudo": "int"
+      }
+    },
+    "hud_dash_pronto": {
+      "texto": "DASH PRONTO",
+      "contexto": "Indicador de Dash pronto na HUD.",
+      "placeholders": {}
+    },
+    "hud_dash_cd": {
+      "texto": "DASH {segundos:.1f}s",
+      "contexto": "Contador de recarga do Dash na HUD.",
+      "placeholders": {
+        "segundos": "float — segundos restantes"
+      }
+    },
+    "hud_parry_ativo": {
+      "texto": "PARRY ATIVO",
+      "contexto": "Indicador de janela de Parry ativa na HUD.",
+      "placeholders": {}
+    },
+    "hud_parry_pronto": {
+      "texto": "PARRY PRONTO",
+      "contexto": "Indicador de Quick-Parry pronto na HUD.",
+      "placeholders": {}
+    },
+    "hud_parry_cd": {
+      "texto": "PARRY {segundos:.1f}s",
+      "contexto": "Contador de recarga do Quick-Parry na HUD.",
+      "placeholders": {
+        "segundos": "float — segundos restantes"
+      }
+    },
+    "hud_xp_max": {
+      "texto": "NV.{nivel} MAX",
+      "contexto": "Texto da barra de XP ao atingir nível máximo.",
+      "placeholders": {
+        "nivel": "int — nível máximo"
+      }
+    },
+    "hud_xp_progresso": {
+      "texto": "NV.{nivel}  {xp_atual}/{xp_prox} XP",
+      "contexto": "Texto da barra de XP durante progressão.",
+      "placeholders": {
+        "nivel": "int",
+        "xp_atual": "int",
+        "xp_prox": "int"
+      }
+    },
+    "hud_miniboss_fallback": {
+      "texto": "MINI-BOSS",
+      "contexto": "Nome fallback na barra de chefe para Mini-Boss sem nome.",
+      "placeholders": {}
+    },
+    "hud_boss_timer_fast": {
+      "texto": "FAST ",
+      "contexto": "Prefixo do timer do Mini-Boss quando >= 30s.",
+      "placeholders": {}
+    },
+    "hud_boss_timer_heat": {
+      "texto": "HEAT ",
+      "contexto": "Prefixo do timer do Mini-Boss entre 15s e 30s.",
+      "placeholders": {}
+    },
+    "hud_boss_timer_crit": {
+      "texto": "CRIT ",
+      "contexto": "Prefixo do timer do Mini-Boss quando < 15s.",
+      "placeholders": {}
+    },
+    "hud_pin_todos_marcos": {
+      "texto": "Todos os marcos concluídos!",
+      "contexto": "Texto do pin na HUD quando conquista contínua foi 100% concluída.",
+      "placeholders": {}
+    },
+    "hud_pin_desbloqueia": {
+      "texto": "Desbloqueia: {recompensa}",
+      "contexto": "Linha de recompensa nos pins fixados da HUD.",
+      "placeholders": {
+        "recompensa": "str — recompensa formatada"
+      }
+    },
+    "hud_pin_desbloqueada": {
+      "texto": "Desbloqueada!",
+      "contexto": "Texto do pin na HUD quando conquista única foi concluída.",
+      "placeholders": {}
+    },
+    "hud_pin_ok": {
+      "texto": "OK",
+      "contexto": "Indicador numérico de pin concluído na HUD.",
+      "placeholders": {}
+    },
+    "hud_ram_flush": {
+      "texto": "GC CHAMADO!",
+      "contexto": "Texto do indicador de memória RAM do Garbage Collector quando travado.",
+      "placeholders": {}
+    },
+    "hud_ram_uso": {
+      "texto": "RAM EM USO: {pct}%",
+      "contexto": "Texto do indicador de uso de RAM do Garbage Collector.",
+      "placeholders": {
+        "pct": "int — porcentagem"
+      }
+    },
+    "hud_banner_desbloqueado": {
+      "texto": "DESBLOQUEADO!",
+      "contexto": "Badge superior no banner estilo Steam de desbloqueio.",
+      "placeholders": {}
+    },
+    "hud_banner_titulo_fallback": {
+      "texto": "Conquista Desbloqueada",
+      "contexto": "Título fallback no banner estilo Steam.",
+      "placeholders": {}
+    },
+    "hud_slot_3b": {
+      "texto": "[3B]",
+      "contexto": "Rótulo do slot secundário 3B com BIOS Modding.",
+      "placeholders": {}
+    },
+    "hud_drone_multi": {
+      "texto": "x{qtd} {segundos}s",
+      "contexto": "Badge do slot 4 quando há múltiplos drones ativos.",
+      "placeholders": {
+        "qtd": "int",
+        "segundos": "int"
+      }
+    },
+    "hud_drone_unico": {
+      "texto": "{segundos}s",
+      "contexto": "Badge do slot 4 quando há 1 drone ativo.",
+      "placeholders": {
+        "segundos": "int"
+      }
+    },
+    "hud_abates": {
+      "texto": "ABATES: {abates}",
+      "contexto": "Telemetria de abates no topo central da HUD.",
+      "placeholders": {
+        "abates": "int"
+      }
+    },
+    "hud_pontos": {
+      "texto": "PTS: {pontos}",
+      "contexto": "Telemetria de pontos no topo central da HUD.",
+      "placeholders": {
+        "pontos": "int"
+      }
+    },
+    "hud_fps": {
+      "texto": "FPS: {fps}",
+      "contexto": "Contador de FPS no canto superior direito.",
+      "placeholders": {
+        "fps": "int"
+      }
+    },
+    "hud_btn_configs": {
+      "texto": "[C]",
+      "contexto": "Rótulo do botão de atalho de Configurações na HUD.",
+      "placeholders": {}
+    },
+    "toast_nivel_normal": {
+      "texto": "NÍVEL {nivel}! +10 HP & SUPRIMENTOS",
+      "contexto": "Toast ao subir para nível normal (não-marco).",
+      "placeholders": {
+        "nivel": "int"
+      }
+    },
+    "toast_miniboss_superaqueceu": {
+      "texto": "O MINI-BOSS SUPERAQUECEU. VOCÊ NÃO RECEBERÁ RECOMPENSAS POR ELE.",
+      "contexto": "Toast obrigatório quando Mini-Boss atinge 60s de sobrecarga térmica.",
+      "placeholders": {}
+    },
+    "toast_xp": {
+      "texto": "+{val} XP",
+      "contexto": "Toast ao coletar gema de XP.",
+      "placeholders": {
+        "val": "int"
+      }
+    },
+    "toast_cura": {
+      "texto": "+{val} HP",
+      "contexto": "Toast ao coletar kit de cura.",
+      "placeholders": {
+        "val": "int"
+      }
+    },
+    "toast_arma_coletada": {
+      "texto": "{nome} ({val})",
+      "contexto": "Toast ao coletar caixa de arma.",
+      "placeholders": {
+        "nome": "str",
+        "val": "int — munição máxima"
+      }
+    },
+    "toast_drone_coletado": {
+      "texto": "{nome} (30s)",
+      "contexto": "Toast ao coletar módulo de drone.",
+      "placeholders": {
+        "nome": "str"
+      }
+    },
+    "toast_overclock_obtido": {
+      "texto": "NÚCLEO DE OVERCLOCK OBTIDO!",
+      "contexto": "Toast ao coletar drop de Overclock.",
+      "placeholders": {}
+    },
+    "toast_micro_sucata": {
+      "texto": "+SUCATA",
+      "contexto": "Toast ao coletar micro-sucata.",
+      "placeholders": {}
+    },
+    "toast_capsula_ativa": {
+      "texto": "{nome} ATIVO!",
+      "contexto": "Toast ao coletar cápsula de suprimento.",
+      "placeholders": {
+        "nome": "str — rótulo da cápsula"
+      }
+    },
+    "toast_just_dodge": {
+      "texto": "JUST-DODGE!",
+      "contexto": "Toast ao atravessar ataque com i-frames do Dash.",
+      "placeholders": {}
+    },
+    "toast_exposto": {
+      "texto": "EXPOSTO!",
+      "contexto": "Toast ao falhar janela de Parry (whiff).",
+      "placeholders": {}
+    },
+    "toast_duelo_parry": {
+      "texto": "DUELO DE PARRY {stage}/3!",
+      "contexto": "Toast ao rebater golpe intermediário no duelo contra Ninja/Boss.",
+      "placeholders": {
+        "stage": "int — estágio 1 ou 2"
+      }
+    },
+    "toast_duelo_vencido": {
+      "texto": "DUELO VENCIDO! +15 HP",
+      "contexto": "Toast ao vencer o 3º estágio do duelo de Parry.",
+      "placeholders": {}
+    },
+    "toast_abate_rapido": {
+      "texto": "ABATE RÁPIDO (<30s)! ARMA SUPERAQUECIDA + REPARO!",
+      "contexto": "Toast ao derrotar Mini-Boss em menos de 30s.",
+      "placeholders": {}
+    },
+    "toast_autofire_on": {
+      "texto": "AUTO-FIRE: ON",
+      "contexto": "Toast ao ligar Auto-Fire com [F].",
+      "placeholders": {}
+    },
+    "toast_autofire_off": {
+      "texto": "AUTO-FIRE: OFF",
+      "contexto": "Toast ao desligar Auto-Fire com [F].",
+      "placeholders": {}
+    },
+    "toast_falha_duelo_parry": {
+      "texto": "FALHA NO DUELO DE PARRY!",
+      "contexto": "Toast ao ser atingido durante duelo de Parry.",
+      "placeholders": {}
+    },
+    "toast_ninja_parry": {
+      "texto": "NINJA PARRY!",
+      "contexto": "Toast quando o Ninja Corporativo defende seu tiro.",
+      "placeholders": {}
+    },
+    "banner_firmware_desativado_tit": {
+      "texto": "FIRMWARE DESATIVADO",
+      "contexto": "Título do banner quando Firmware cai abaixo da cota.",
+      "placeholders": {}
+    },
+    "banner_firmware_desativado_sub": {
+      "texto": "{nome} (Slot {slot} requer {cota} configs ativas)",
+      "contexto": "Subtítulo do banner de Firmware desativado.",
+      "placeholders": {
+        "nome": "str",
+        "slot": "int",
+        "cota": "int"
+      }
+    },
+    "banner_firmware_reativado_tit": {
+      "texto": "FIRMWARE REATIVADO",
+      "contexto": "Título do banner quando Firmware volta a atingir a cota.",
+      "placeholders": {}
+    },
+    "banner_firmware_reativado_sub": {
+      "texto": "{nome} (Cota {n_configs}/{cota} atingida)",
+      "contexto": "Subtítulo do banner de Firmware reativado.",
+      "placeholders": {
+        "nome": "str",
+        "n_configs": "int",
+        "cota": "int"
+      }
+    },
+    "banner_dash_smg_tit": {
+      "texto": "DASH + SMG COMPACTA DESBLOQUEADOS!",
+      "contexto": "Título do banner ao completar 15 Parries.",
+      "placeholders": {}
+    },
+    "banner_dash_smg_sub": {
+      "texto": "Recompensa de Mestre do Parry",
+      "contexto": "Subtítulo do banner ao completar 15 Parries.",
+      "placeholders": {}
+    },
+    "banner_conquista_sub_fallback": {
+      "texto": "Conquista desbloqueada!",
+      "contexto": "Subtítulo fallback de banner de conquista.",
+      "placeholders": {}
+    },
+    "boss_grace_period": {
+      "texto": "Você ouve o Ritmo Cruel sacudindo o baile inteiro.\nVocê tem {segundos} segundos até experienciar The Perfect Sound™",
+      "contexto": "Banner de contagem regressiva de 10s antes da entrada da Geladeira Tsunami.",
+      "placeholders": {
+        "segundos": "int — segundos restantes"
+      }
+    },
+    "causa_explosao_miniboss": {
+      "texto": "Explosão de Mini-Boss (Superaquecimento)",
+      "contexto": "Causa da morte por explosão de Mini-Boss aos 60s.",
+      "placeholders": {}
+    },
+    "causa_pulso_eletrico": {
+      "texto": "Pulso Elétrico (Fonte Genérica 500W)",
+      "contexto": "Causa da morte por pulso elétrico de Mini-Boss.",
+      "placeholders": {}
+    },
+    "causa_contato_inimigo": {
+      "texto": "Contato com {nome}",
+      "contexto": "Causa da morte por colisão física com inimigo ou chefe.",
+      "placeholders": {
+        "nome": "str — nome do inimigo"
+      }
+    },
+    "causa_projetil_inimigo": {
+      "texto": "Projétil Inimigo",
+      "contexto": "Causa da morte por projétil inimigo ou onda do chefe.",
+      "placeholders": {}
+    },
+    "causa_fogo_amigo_proprio": {
+      "texto": "Fogo Amigo (Seu próprio projétil ou explosão)",
+      "contexto": "Causa da morte por projétil próprio com Fogo Amigo ativo.",
+      "placeholders": {}
+    },
+    "causa_padrao": {
+      "texto": "Dano fatal no escritório",
+      "contexto": "Causa de morte padrão caso nenhuma específica seja informada.",
+      "placeholders": {}
+    },
+    "fallback_arma_especial": {
+      "texto": "Arma Especial",
+      "contexto": "Nome fallback quando arma coletada não define nome.",
+      "placeholders": {}
+    },
+    "fallback_drone": {
+      "texto": "Drone",
+      "contexto": "Nome fallback quando drone coletado não define nome.",
+      "placeholders": {}
+    },
+    "vitoria_titulo": {
+      "texto": "GELADEIRA TSUNAMI DESLIGADA",
+      "contexto": "Título principal do overlay de Vitória.",
+      "placeholders": {}
+    },
+    "vitoria_subtitulo": {
+      "texto": "Cleiton sobreviveu ao escritório por {min:02d}:{seg:02d}.",
+      "contexto": "Subtítulo do overlay de Vitória.",
+      "placeholders": {
+        "min": "int",
+        "seg": "int"
+      }
+    },
+    "vitoria_tempo_valor": {
+      "texto": "{min:02d}:{seg:02d} ({tempo_str}s)",
+      "contexto": "Valor formatado de tempo no quadro de estatísticas da Vitória.",
+      "placeholders": {
+        "min": "int",
+        "seg": "int",
+        "tempo_str": "str — tempo com 1 casa decimal"
+      }
+    },
+    "vitoria_stat_tempo": {
+      "texto": "Tempo de Partida:",
+      "contexto": "Rótulo de tempo na Vitória.",
+      "placeholders": {}
+    },
+    "vitoria_stat_abates": {
+      "texto": "Máquinas Destruídas:",
+      "contexto": "Rótulo de abates na Vitória.",
+      "placeholders": {}
+    },
+    "vitoria_stat_dano": {
+      "texto": "Dano Total Causado:",
+      "contexto": "Rótulo de dano total na Vitória.",
+      "placeholders": {}
+    },
+    "vitoria_stat_configs": {
+      "texto": "Configurações Desbloqueadas:",
+      "contexto": "Rótulo de configs desbloqueadas na Vitória.",
+      "placeholders": {}
+    },
+    "vitoria_stat_mult": {
+      "texto": "Multiplicador de Configurações:",
+      "contexto": "Rótulo de multiplicador na Vitória.",
+      "placeholders": {}
+    },
+    "vitoria_stat_configs_val": {
+      "texto": "{desbloqueadas} / {total_configs}",
+      "contexto": "Valor de configs desbloqueadas na Vitória.",
+      "placeholders": {
+        "desbloqueadas": "int",
+        "total_configs": "int"
+      }
+    },
+    "vitoria_stat_mult_val": {
+      "texto": "x{mult:.2f}",
+      "contexto": "Valor de multiplicador na Vitória.",
+      "placeholders": {
+        "mult": "float"
+      }
+    },
+    "vitoria_pontuacao_lbl": {
+      "texto": "PONTUAÇÃO FINAL:",
+      "contexto": "Rótulo de pontuação final na Vitória.",
+      "placeholders": {}
+    },
+    "vitoria_pontuacao_val": {
+      "texto": "{pontos:,} PTS",
+      "contexto": "Valor de pontuação final na Vitória.",
+      "placeholders": {
+        "pontos": "int"
+      }
+    },
+    "vitoria_novo_recorde": {
+      "texto": "[NOVO RECORDE!]",
+      "contexto": "Badge de novo recorde na Vitória.",
+      "placeholders": {}
+    },
+    "vitoria_btn_jogar": {
+      "texto": "[ENTER / ESPAÇO] Jogar Novamente",
+      "contexto": "Atalho para jogar novamente na Vitória.",
+      "placeholders": {}
+    },
+    "vitoria_btn_menu": {
+      "texto": "[ESC / M] Menu Principal",
+      "contexto": "Atalho para Menu Principal na Vitória.",
+      "placeholders": {}
+    },
+    "vitoria_btn_configs": {
+      "texto": "[C] Menu de Configurações",
+      "contexto": "Atalho para Configurações na Vitória.",
+      "placeholders": {}
+    },
+    "pausa_titulo": {
+      "texto": "JOGO PAUSADO",
+      "contexto": "Título do overlay de Pausa.",
+      "placeholders": {}
+    },
+    "pausa_btn_continuar": {
+      "texto": "[ESC] Continuar Partida",
+      "contexto": "Botão Continuar no overlay de Pausa.",
+      "placeholders": {}
+    },
+    "pausa_btn_menu": {
+      "texto": "[M] Menu Principal",
+      "contexto": "Botão Menu Principal no overlay de Pausa.",
+      "placeholders": {}
+    },
+    "pausa_btn_conquistas_fw": {
+      "texto": "[C] Conquistas & Firmware",
+      "contexto": "Botão Conquistas & Firmware no overlay de Pausa.",
+      "placeholders": {}
+    },
+    "pausa_btn_conquistas": {
+      "texto": "[C] Conquistas",
+      "contexto": "Botão Conquistas no overlay de Pausa.",
+      "placeholders": {}
+    },
+    "gameover_titulo": {
+      "texto": "FIM DE LINHA",
+      "contexto": "Título do overlay de Game Over.",
+      "placeholders": {}
+    },
+    "gameover_subtitulo": {
+      "texto": "As máquinas do escritório drenaram a bateria de Cleiton.",
+      "contexto": "Subtítulo do overlay de Game Over.",
+      "placeholders": {}
+    },
+    "gameover_causa": {
+      "texto": "Causa da Morte: {causa}",
+      "contexto": "Linha mostrando a causa da morte no Game Over.",
+      "placeholders": {
+        "causa": "str"
+      }
+    },
+    "gameover_tempo": {
+      "texto": "Tempo de Partida: {min:02d}:{seg:02d}",
+      "contexto": "Linha de tempo no Game Over.",
+      "placeholders": {
+        "min": "int",
+        "seg": "int"
+      }
+    },
+    "gameover_abates": {
+      "texto": "Total de Abates: {abates}",
+      "contexto": "Linha de abates no Game Over.",
+      "placeholders": {
+        "abates": "int"
+      }
+    },
+    "gameover_dano": {
+      "texto": "Dano Total: {dano:,}",
+      "contexto": "Linha de dano total no Game Over.",
+      "placeholders": {
+        "dano": "int"
+      }
+    },
+    "gameover_pontos": {
+      "texto": "Pontuação Final: {pontos:,} PTS",
+      "contexto": "Linha de pontuação final no Game Over.",
+      "placeholders": {
+        "pontos": "int"
+      }
+    },
+    "gameover_novo_recorde": {
+      "texto": "[NOVO RECORDE DE PONTOS!]",
+      "contexto": "Badge de novo recorde no Game Over.",
+      "placeholders": {}
+    },
+    "gameover_prompt": {
+      "texto": "Pressione [ENTER] para Jogar Novamente ou [ESC] para o Menu",
+      "contexto": "Instrução inferior no overlay de Game Over.",
+      "placeholders": {}
+    }
+  }
+}
