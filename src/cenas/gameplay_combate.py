@@ -261,7 +261,7 @@ class GameplayCombateMixin:
                             icx, icy, dir_x=0.0, dir_y=-1.0, cor=LARANJA_ALERTA, qtd=2
                         )
                         if show_dmg:
-                            self.sistema_particulas.adicionar_texto_dano(
+                            self.sistema_particulas.emitir_texto_dano(
                                 icx, icy - 10, dano_q, critico=False
                             )
                     if not inim_q.vivo:
@@ -2288,6 +2288,11 @@ class GameplayCombateMixin:
                                 ignorar_blindagem=bool(res_imp and res_imp.get("dano_verdadeiro")),
                                 quebra_blindagem=bool(getattr(proj, "sobrecarregado", False)),
                             )
+                            queim_proj = float(getattr(proj, "aplicar_queimadura", 0.0))
+                            if queim_proj > 0.0:
+                                inimigo.queimadura_timer = max(
+                                    getattr(inimigo, "queimadura_timer", 0.0), queim_proj
+                                )
                             self._processar_eventos_blindagem(inimigo)
                             self._aplicar_efeitos_pos_impacto(res_imp, inimigo, mods)
                             dano_efetivo_b = int(ret_d) if isinstance(ret_d, (int, float)) else dano_final

@@ -232,7 +232,10 @@ class TestConfigsDashFirmware(unittest.TestCase):
         # gatilho_duplo + canhoes_perimetrais no disparo
         tiro = Projetil(x=900.0, y=100.0, dir_x=1.0, dir_y=0.0, dano=20)
         extras = ger.disparar_ao_disparo(ctx, None, [tiro])
-        self.assertEqual(len(extras), 2)
+        self.assertEqual(len(extras), 5)
+        pellets_canhao = [e for e in extras if getattr(e, "aplicar_queimadura", 0.0) > 0.0]
+        self.assertEqual(len(pellets_canhao), 4)
+        self.assertAlmostEqual(pellets_canhao[0].knockback_forca, 15.75)
 
         # sobrecarga_estrutural no impacto
         res_imp = ger.disparar_ao_impacto(ctx, inim_elite, 20, fonte=tiro)

@@ -1583,20 +1583,68 @@ class FirmwareCanhoesPerimetrais(EfeitoCombate):
         setor = int((ang / (2.0 * math.pi)) * 6) % 6
         if self.setores_cd[setor] <= 0.0:
             self.setores_cd[setor] = 4.0
-            rep = Projetil(
-                x=p.x,
-                y=p.y,
-                dir_x=p.dir_x,
-                dir_y=p.dir_y,
-                velocidade=p.velocidade * 1.15,
-                dano=max(1, int(round(p.dano * 0.85))),
-                tempo_vida=1.4,
-                dono="jogador",
-                cor=(255, 110, 40),
-            )
-            rep.eh_replica = True
-            return [rep]
+            n_pellets = max(1, int(getattr(_const, "SHOTGUN_PELLETS", 9)) // 2)
+            spread = float(getattr(_const, "SHOTGUN_SPREAD_ANGULO", 0.45))
+            dano_pellet = max(1, int(getattr(_const, "SHOTGUN_DANO", 10)))
+            vel_pellet = float(getattr(_const, "SHOTGUN_VELOCIDADE_PROJETIL", 540.0))
+            kb_pellet = 10.5 * 1.5
+            meio_leque = spread / 2.0
+            passo = spread / (n_pellets - 1) if n_pellets > 1 else 0.0
+            reps: list[Projetil] = []
+            for i in range(n_pellets):
+                offset = (-meio_leque + i * passo) if n_pellets > 1 else 0.0
+                cos_o = math.cos(offset)
+                sin_o = math.sin(offset)
+                dx = p.dir_x * cos_o - p.dir_y * sin_o
+                dy = p.dir_x * sin_o + p.dir_y * cos_o
+                rep = Projetil(
+                    x=p.x,
+                    y=p.y,
+                    dir_x=dx,
+                    dir_y=dy,
+                    velocidade=vel_pellet,
+                    dano=dano_pellet,
+                    tempo_vida=1.2,
+                    dono="jogador",
+                    largura=6,
+                    altura=6,
+                    cor=(255, 110, 40),
+                    knockback_forca=kb_pellet,
+                )
+                rep.eh_replica = True
+                rep.aplicar_queimadura = 3.0
+                reps.append(rep)
+            return reps
         return []
+
+    def ao_pos_render_mundo(self, ctx: ContextoCombate, superficie: Any, camera: Any = None) -> None:
+        if ctx.jogador is None or superficie is None:
+            return
+        import pygame
+        jx = float(getattr(ctx.jogador, "x", 0.0)) + float(getattr(ctx.jogador, "largura", 32)) * 0.5
+        jy = float(getattr(ctx.jogador, "y", 0.0)) + float(getattr(ctx.jogador, "altura", 32)) * 0.5
+        cx = int(round(camera.transform_x(jx))) if camera else int(round(jx))
+        cy = int(round(camera.transform_y(jy))) if camera else int(round(jy))
+        raio = 40
+        rect = pygame.Rect(cx - raio, cy - raio, raio * 2, raio * 2)
+        passo = (2.0 * math.pi) / 6.0
+        folga = 0.08
+        for i in range(6):
+            a0 = i * passo + folga
+            a1 = (i + 1) * passo - folga
+            cd = self.setores_cd[i]
+            if cd <= 0.0:
+                pygame.draw.arc(superficie, (255, 130, 45), rect, -a1, -a0, 3)
+                ang_mid = (a0 + a1) * 0.5
+                p1 = (cx + int(round(math.cos(ang_mid) * (raio + 2))), cy + int(round(math.sin(ang_mid) * (raio + 2))))
+                p2 = (cx + int(round(math.cos(ang_mid) * (raio + 8))), cy + int(round(math.sin(ang_mid) * (raio + 8))))
+                pygame.draw.line(superficie, (255, 185, 90), p1, p2, 2)
+            else:
+                pygame.draw.arc(superficie, (70, 80, 95), rect, -a1, -a0, 2)
+                prog = max(0.0, min(1.0, 1.0 - (cd / 4.0)))
+                if prog > 0.02:
+                    a_prog = a0 + (a1 - a0) * prog
+                    pygame.draw.arc(superficie, (200, 95, 35), rect, -a_prog, -a0, 2)
 
 
 class FirmwareSobrecargaEstrutural(EfeitoCombate):

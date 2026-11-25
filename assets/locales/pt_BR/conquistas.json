@@ -201,7 +201,7 @@
       "placeholders": {}
     },
     "firmware_canhoes_perimetrais__descricao": {
-      "texto": "Cria 6 setores angulares ao redor de Cleiton com CD individual. Atirar na direção de um setor pronto dispara uma rajada flamejante.",
+      "texto": "Cria 6 setores angulares ao redor de Cleiton com CD individual. Atirar num setor pronto dispara escopeta flamejante (1/2 pellets, +50% knockback).",
       "contexto": "Descrição mecânica do Chip de Firmware 'canhoes_perimetrais'.",
       "placeholders": {}
     },
