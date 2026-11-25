@@ -42,6 +42,7 @@ CHAVES_PITCH_ARMAS: tuple[str, ...] = (
     "tiro_foguete",
     "tiro_granada",
     "ataque_melee",
+    "explosao",
 )
 
 CHAVES_PITCH_PICKUPS: tuple[str, ...] = (
@@ -203,6 +204,11 @@ class GerenciadorAudio:
         self._sons_parry_clang_pitch: dict[str, Optional[pygame.mixer.Sound]] = {}
         self._som_parry_whiff: Optional[pygame.mixer.Sound] = None
         self._som_tiro_sobrecarregado: Optional[pygame.mixer.Sound] = None
+        self._som_dash: Optional[pygame.mixer.Sound] = None
+        self._som_arco_eletrico: Optional[pygame.mixer.Sound] = None
+        self._som_lanca_chamas: Optional[pygame.mixer.Sound] = None
+        self._sons_lanca_chamas: list[pygame.mixer.Sound] = []
+        self._idx_lanca_chamas: int = 0
 
         # Estado de rampa suave de volume (~20 ms)
         self._volume_musica_atual: float = self._headroom_musica
@@ -271,6 +277,13 @@ class GerenciadorAudio:
         }
         self._som_parry_whiff = self._sintetizar_parry_whiff()
         self._som_tiro_sobrecarregado = self._sintetizar_tiro_sobrecarregado()
+        self._som_dash = self._sintetizar_dash_whoosh()
+        self._som_arco_eletrico = self._sintetizar_arco_eletrico()
+        self._sons_lanca_chamas = [
+            som for som in (self._sintetizar_lanca_chamas(seed=303 + i * 17) for i in range(4))
+            if som is not None
+        ]
+        self._som_lanca_chamas = self._sons_lanca_chamas[0] if self._sons_lanca_chamas else None
         return True
 
     def _garantir_mixer(self) -> bool:
@@ -407,6 +420,110 @@ class GerenciadorAudio:
         except Exception:
             return None
 
+    def _sintetizar_dash_whoosh(self) -> Optional[pygame.mixer.Sound]:
+        """Sintetiza efeito sonoro curto de deslocamento/whoosh para o Dash."""
+        if not self._mixer_disponivel:
+            return None
+        try:
+            duracao = 0.14
+            n = max(1, int(round(self._taxa_mixer * duracao)))
+            t = np.linspace(0.0, duracao, n, endpoint=False, dtype=np.float32)
+
+            gerador = np.random.default_rng(101)
+            ruido = gerador.uniform(-1.0, 1.0, size=n).astype(np.float32)
+            # Filtro passa-baixa simples por média móvel para timbre de ar
+            kernel = np.ones(9, dtype=np.float32) / 9.0
+            ar = np.convolve(ruido, kernel, mode="same").astype(np.float32)
+
+            # Sweep de sub-grave descendente para dar sensação de impulso
+            freq = 480.0 * np.exp(-t * 14.0) + 110.0
+            fase = 2.0 * np.pi * np.cumsum(freq) / float(self._taxa_mixer)
+            impulso = np.sin(fase).astype(np.float32)
+
+            env = np.minimum(1.0, t / 0.012) * np.exp(-t * 18.0)
+            onda = (0.65 * ar + 0.45 * impulso) * env
+            pico = float(np.max(np.abs(onda)))
+            if pico > 1e-6:
+                onda = (onda / pico) * 0.80
+
+            arr = _float32_para_array_mixer(onda.astype(np.float32), self._canais_mixer)
+            return pygame.sndarray.make_sound(arr)
+        except Exception:
+            return None
+
+    def _sintetizar_arco_eletrico(self) -> Optional[pygame.mixer.Sound]:
+        """Sintetiza pulso elétrico/zumbido estalado para o Rifle de Arco."""
+        if not self._mixer_disponivel:
+            return None
+        try:
+            duracao = 0.11
+            n = max(1, int(round(self._taxa_mixer * duracao)))
+            t = np.linspace(0.0, duracao, n, endpoint=False, dtype=np.float32)
+
+            # Modulação de frequência rápida típica de arco voltaico
+            mod = 120.0 * np.sin(2.0 * np.pi * 65.0 * t)
+            freq = 320.0 + mod
+            fase = 2.0 * np.pi * np.cumsum(freq) / float(self._taxa_mixer)
+            zumbido = np.tanh(2.2 * np.sin(fase)).astype(np.float32)
+
+            gerador = np.random.default_rng(202)
+            estalos = gerador.uniform(-1.0, 1.0, size=n).astype(np.float32)
+            mascara_faisca = (np.abs(estalos) > 0.82).astype(np.float32)
+            faisca = estalos * mascara_faisca
+
+            env = np.minimum(1.0, t / 0.008) * np.minimum(1.0, (duracao - t) / 0.025)
+            onda = (0.60 * zumbido + 0.50 * faisca) * env
+            pico = float(np.max(np.abs(onda)))
+            if pico > 1e-6:
+                onda = (onda / pico) * 0.72
+
+            arr = _float32_para_array_mixer(onda.astype(np.float32), self._canais_mixer)
+            return pygame.sndarray.make_sound(arr)
+        except Exception:
+            return None
+
+    def _sintetizar_lanca_chamas(self, seed: int = 303) -> Optional[pygame.mixer.Sound]:
+        """Sintetiza rugido orgânico de chama pressurizada via modelagem espectral (FFT) com crossfade suave."""
+        if not self._mixer_disponivel:
+            return None
+        try:
+            duracao = 0.40
+            fade = 0.14
+            n = max(1, int(round(self._taxa_mixer * duracao)))
+            t = np.linspace(0.0, duracao, n, endpoint=False, dtype=np.float32)
+
+            gerador = np.random.default_rng(int(seed))
+            ruido = gerador.standard_normal(n).astype(np.float32)
+
+            # Moldagem espectral natural de combustão (ruído rosa/marrom + sopro quente 400-1400 Hz)
+            espectro = np.fft.rfft(ruido)
+            freqs = np.fft.rfftfreq(n, d=1.0 / float(self._taxa_mixer)).astype(np.float32)
+            hp = (freqs / 85.0) ** 2 / (1.0 + (freqs / 85.0) ** 2)
+            lp = 1.0 / (1.0 + (freqs / 260.0) ** 1.15)
+            sopro = 0.35 * np.exp(-0.5 * ((freqs - 850.0) / 450.0) ** 2)
+            corte_agudo = 1.0 / (1.0 + (freqs / 2400.0) ** 3.0)
+            ganho = (hp * (lp + sopro) * corte_agudo).astype(np.float32)
+
+            chama = np.fft.irfft(espectro * ganho, n=n).astype(np.float32)
+
+            # Envelope cosseno simétrico (fade-in 0.14s + sustain 0.12s + fade-out 0.14s)
+            # Quando disparado a cada 0.26s, soma perfeitamente sem pulso mecânico
+            env = np.ones(n, dtype=np.float32)
+            n_fade = min(n // 2, max(1, int(round(self._taxa_mixer * fade))))
+            rampa = 0.5 * (1.0 - np.cos(np.linspace(0.0, np.pi, n_fade, dtype=np.float32)))
+            env[:n_fade] = rampa
+            env[-n_fade:] = rampa[::-1]
+
+            onda = chama * env
+            pico = float(np.max(np.abs(onda)))
+            if pico > 1e-6:
+                onda = (onda / pico) * 0.62
+
+            arr = _float32_para_array_mixer(onda.astype(np.float32), self._canais_mixer)
+            return pygame.sndarray.make_sound(arr)
+        except Exception:
+            return None
+
     # ------------------------------------------------------------------
     # Reprodução SFX (sobreposta, sem cancelar canais ativos)
     # ------------------------------------------------------------------
@@ -496,6 +613,22 @@ class GerenciadorAudio:
     def tocar_tiro_sobrecarregado(self, volume_mult: float = 1.0) -> Optional[pygame.mixer.Channel]:
         """Reproduz o estalo sintetizado do 4º tiro sobrecarregado (no-op seguro sem mixer)."""
         return self._reproduzir_som(self._som_tiro_sobrecarregado, volume_mult=volume_mult)
+
+    def tocar_dash(self, volume_mult: float = 0.85) -> Optional[pygame.mixer.Channel]:
+        """Reproduz o whoosh sintetizado do Dash (no-op seguro sem mixer)."""
+        return self._reproduzir_som(self._som_dash, volume_mult=volume_mult)
+
+    def tocar_arco_eletrico(self, volume_mult: float = 0.70) -> Optional[pygame.mixer.Channel]:
+        """Reproduz o pulso elétrico sintetizado do Rifle de Arco (no-op seguro sem mixer)."""
+        return self._reproduzir_som(self._som_arco_eletrico, volume_mult=volume_mult)
+
+    def tocar_lanca_chamas(self, volume_mult: float = 0.68) -> Optional[pygame.mixer.Channel]:
+        """Reproduz o rugido contínuo sintetizado do Lança-Chamas rotacionando variantes (no-op seguro sem mixer)."""
+        if self._sons_lanca_chamas:
+            som = self._sons_lanca_chamas[self._idx_lanca_chamas % len(self._sons_lanca_chamas)]
+            self._idx_lanca_chamas = (self._idx_lanca_chamas + 1) % len(self._sons_lanca_chamas)
+            return self._reproduzir_som(som, volume_mult=volume_mult)
+        return self._reproduzir_som(self._som_lanca_chamas, volume_mult=volume_mult)
 
     # ------------------------------------------------------------------
     # Rampa suave de volume (~20 ms)

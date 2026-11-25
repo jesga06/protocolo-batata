@@ -1,12 +1,14 @@
 """
 Catálogo e Definições de Dados do Sistema de Configurações — Protocolo: Batata
 SSOT: CONFIGURACOES.md
-Define todas as 28 configurações de gameplay desbloqueáveis e as 3 configurações de sistema (31 no total).
+Define todas as 29 configurações de gameplay desbloqueáveis e as 3 configurações de sistema (32 no total).
 """
 
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
+
+from src.utils.traducao import t
 
 
 class CategoriaConfig(str, Enum):
@@ -55,14 +57,14 @@ class ConfiguracaoDef:
 
 
 # =============================================================================
-# CATÁLOGO DE CONFIGURAÇÕES DE GAMEPLAY (28 ITENS DESBLOQUEÁVEIS)
+# CATÁLOGO DE CONFIGURAÇÕES DE GAMEPLAY (29 ITENS DESBLOQUEÁVEIS)
 # =============================================================================
 
 CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
     # 1. Limite de Quadros (Performance)
     "fps_cap": ConfiguracaoDef(
         id="fps_cap",
-        nome="Limite de Quadros",
+        nome=t("configs_catalogo", "fps_cap__nome"),
         categoria=CategoriaConfig.PERFORMANCE,
         tipo=TipoControleConfig.GRUPO,
         valor_padrao="ilimitado",
@@ -70,35 +72,35 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
         opcoes={
             "ilimitado": OpcaoConfig(
                 id="ilimitado",
-                label="Ilimitado",
+                label=t("configs_catalogo", "fps_cap__opt_ilimitado__label"),
                 modificadores={},
-                flavor_text="O olho humano não consegue ver além de 30 FPS.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "fps_cap__opt_ilimitado__flavor"),
+                nerf_text=t("configs_catalogo", "fps_cap__opt_ilimitado__nerf"),
+                buff_text=t("configs_catalogo", "fps_cap__opt_ilimitado__buff")
             ),
             "45": OpcaoConfig(
                 id="45",
-                label="45 FPS",
+                label=t("configs_catalogo", "fps_cap__opt_45__label"),
                 modificadores={"dano_inimigos_mult": 0.85, "fps_stutter_dodge": True},
-                flavor_text="Os inimigos também estão perdendo frames.",
-                nerf_text="Fluidez reduzida a 45 FPS",
-                buff_text="Dano recebido de inimigos reduzido em 15% (x0.85) e micro-congelamentos de esquiva (stutter dodge)"
+                flavor_text=t("configs_catalogo", "fps_cap__opt_45__flavor"),
+                nerf_text=t("configs_catalogo", "fps_cap__opt_45__nerf"),
+                buff_text=t("configs_catalogo", "fps_cap__opt_45__buff")
             ),
             "30": OpcaoConfig(
                 id="30",
-                label="30 FPS",
+                label=t("configs_catalogo", "fps_cap__opt_30__label"),
                 modificadores={"vel_inimigos_mult": 0.90, "fps_stutter_dodge": True},
-                flavor_text="Só é lag se você estiver perdendo.",
-                nerf_text="Fluidez reduzida a 30 FPS",
-                buff_text="Velocidade dos inimigos -10% e micro-congelamentos de esquiva (stutter dodge)"
+                flavor_text=t("configs_catalogo", "fps_cap__opt_30__flavor"),
+                nerf_text=t("configs_catalogo", "fps_cap__opt_30__nerf"),
+                buff_text=t("configs_catalogo", "fps_cap__opt_30__buff")
             ),
             "15": OpcaoConfig(
                 id="15",
-                label="15 FPS",
+                label=t("configs_catalogo", "fps_cap__opt_15__label"),
                 modificadores={"dano_inimigos_mult": 0.7225, "vel_inimigos_mult": 0.81, "fps_stutter_dodge": True},
-                flavor_text="Cada frame foi desenhado à mão por monges tibetanos.",
-                nerf_text="Experiência quase injogável",
-                buff_text="Dano de inimigos -27.75% (x0.7225), velocidade -19% (x0.81) e micro-congelamentos de esquiva (stutter dodge)"
+                flavor_text=t("configs_catalogo", "fps_cap__opt_15__flavor"),
+                nerf_text=t("configs_catalogo", "fps_cap__opt_15__nerf"),
+                buff_text=t("configs_catalogo", "fps_cap__opt_15__buff")
             ),
         }
     ),
@@ -106,27 +108,27 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
     # 2. Qualidade Gráfica (Performance)
     "graficos_qualidade": ConfiguracaoDef(
         id="graficos_qualidade",
-        nome="Qualidade Gráfica",
-        categoria=CategoriaConfig.PERFORMANCE,
+        nome=t("configs_catalogo", "graficos_qualidade__nome"),
+                categoria=CategoriaConfig.PERFORMANCE,
         tipo=TipoControleConfig.TOGGLE,
         valor_padrao="alta",
         ordem=2,
         opcoes={
             "alta": OpcaoConfig(
                 id="alta",
-                label="Alta",
+                label=t("configs_catalogo", "graficos_qualidade__opt_alta__label"),
                 modificadores={},
-                flavor_text="Tudo bonito enquanto a placa aguenta.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "graficos_qualidade__opt_alta__flavor"),
+                nerf_text=t("configs_catalogo", "graficos_qualidade__opt_alta__nerf"),
+                buff_text=t("configs_catalogo", "graficos_qualidade__opt_alta__buff")
             ),
             "baixa": OpcaoConfig(
                 id="baixa",
-                label="Baixa",
+                label=t("configs_catalogo", "graficos_qualidade__opt_baixa__label"),
                 modificadores={"hp_inimigos_mult": 0.80, "graficos_shrapnel": True},
-                flavor_text="O verdadeiro modo batata.",
-                nerf_text="Cenário e partículas simplificados",
-                buff_text="-20% de vida nos inimigos e estilhaços perfurantes ao abatê-los",
+                flavor_text=t("configs_catalogo", "graficos_qualidade__opt_baixa__flavor"),
+                nerf_text=t("configs_catalogo", "graficos_qualidade__opt_baixa__nerf"),
+                buff_text=t("configs_catalogo", "graficos_qualidade__opt_baixa__buff"),
                 incompativel_com=[("modo_wireframe", "ligado")],
             ),
         }
@@ -135,79 +137,75 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
     # 3. Resolução da Tela (Performance)
     "resolucao": ConfiguracaoDef(
         id="resolucao",
-        nome="Resolução da Tela",
-        categoria=CategoriaConfig.PERFORMANCE,
+        nome=t("configs_catalogo", "resolucao__nome"),
+                categoria=CategoriaConfig.PERFORMANCE,
         tipo=TipoControleConfig.GRUPO,
         valor_padrao="100%",
         ordem=3,
         opcoes={
             "100%": OpcaoConfig(
                 id="100%",
-                label="1280x720 (100%)",
+                label=t("configs_catalogo", "resolucao__opt_100%__label"),
                 modificadores={},
-                flavor_text="Cada pixel em seu devido lugar.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "resolucao__opt_100%__flavor"),
+                nerf_text=t("configs_catalogo", "resolucao__opt_100%__nerf"),
+                buff_text=t("configs_catalogo", "resolucao__opt_100%__buff")
             ),
             "75%": OpcaoConfig(
                 id="75%",
-                label="960x540 (75%)",
+                label=t("configs_catalogo", "resolucao__opt_75%__label"),
                 modificadores={"drop_chance_bonus": 0.10, "resolucao_chunky_hitbox": 1.25},
-                flavor_text="Menos pixels na tela, mais caixas no chão.",
-                nerf_text="Visão levemente pixelada",
-                buff_text="Drop de itens +10% e área de impacto dos tiros aumentada em +25%"
-            ),
+                flavor_text=t("configs_catalogo", "resolucao__opt_75%__flavor"),
+                nerf_text=t("configs_catalogo", "resolucao__opt_75%__nerf"),
+                buff_text=t("configs_catalogo", "resolucao__opt_75%__buff")            ),
             "50%": OpcaoConfig(
                 id="50%",
-                label="640x360 (50%)",
+                label=t("configs_catalogo", "resolucao__opt_50%__label"),
                 modificadores={"drop_chance_bonus": 0.25, "resolucao_chunky_hitbox": 1.50},
-                flavor_text="Lembranças de uma época de monitores CRT.",
-                nerf_text="Visão consideravelmente pixelada",
-                buff_text="Drop de itens +25% e área de impacto dos tiros aumentada em +50%"
-            ),
+                flavor_text=t("configs_catalogo", "resolucao__opt_50%__flavor"),
+                nerf_text=t("configs_catalogo", "resolucao__opt_50%__nerf"),
+                buff_text=t("configs_catalogo", "resolucao__opt_50%__buff")            ),
             "25%": OpcaoConfig(
                 id="25%",
-                label="320x180 (25%)",
+                label=t("configs_catalogo", "resolucao__opt_25%__label"),
                 modificadores={"drop_chance_bonus": 0.50, "resolucao_chunky_hitbox": 2.00},
-                flavor_text="Se você consegue contar os pixels nos dedos, está economizando processamento.",
-                nerf_text="Praticamente indecifrável",
-                buff_text="Drop de itens +50% e área de impacto dos tiros dobrada (x2.0)"
-            ),
+                flavor_text=t("configs_catalogo", "resolucao__opt_25%__flavor"),
+                nerf_text=t("configs_catalogo", "resolucao__opt_25%__nerf"),
+                buff_text=t("configs_catalogo", "resolucao__opt_25%__buff")            ),
         }
     ),
 
     # 4. Sincronização Vertical (Performance)
     "vsync": ConfiguracaoDef(
         id="vsync",
-        nome="Sincronização Vertical",
-        categoria=CategoriaConfig.PERFORMANCE,
+        nome=t("configs_catalogo", "vsync__nome"),
+                categoria=CategoriaConfig.PERFORMANCE,
         tipo=TipoControleConfig.TOGGLE,
         valor_padrao="ligado",
         ordem=4,
         opcoes={
             "ligado": OpcaoConfig(
                 id="ligado",
-                label="Ligado",
+                label=t("configs_catalogo", "vsync__opt_ligado__label"),
                 modificadores={},
-                flavor_text="Sem cortes na tela.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "vsync__opt_ligado__flavor"),
+                nerf_text=t("configs_catalogo", "vsync__opt_ligado__nerf"),
+                buff_text=t("configs_catalogo", "vsync__opt_ligado__buff")
             ),
             "desligado": OpcaoConfig(
                 id="desligado",
-                label="Desligado",
+                label=t("configs_catalogo", "vsync__opt_desligado__label"),
                 modificadores={"vsync_tear_refraction": True, "vsync_cadencia_contra_varredura": 1.15},
-                flavor_text="Monitor sem sincronia. A imagem rasga, e as trajetórias rasgam junto.",
-                nerf_text="Rasgo de quadro real em bandas horizontais distorcendo mira e projéteis",
-                buff_text="Seus tiros que cruzam o rasgo dividem-se em 2; tiros inimigos sofrem desvio; +15% cadência contra a varredura"
-            ),
+                flavor_text=t("configs_catalogo", "vsync__opt_desligado__flavor"),
+                nerf_text=t("configs_catalogo", "vsync__opt_desligado__nerf"),
+                buff_text=t("configs_catalogo", "vsync__opt_desligado__buff")            ),
         }
     ),
 
     # 5. Tremor de Tela (Performance / Visual)
     "screen_shake": ConfiguracaoDef(
         id="screen_shake",
-        nome="Tremor de Tela",
+        nome=t("configs_catalogo", "screen_shake__nome"),
         categoria=CategoriaConfig.PERFORMANCE,
         tipo=TipoControleConfig.TOGGLE,
         valor_padrao="desligado",
@@ -215,19 +213,19 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
         opcoes={
             "desligado": OpcaoConfig(
                 id="desligado",
-                label="Desligado",
+                label=t("configs_catalogo", "screen_shake__opt_desligado__label"),
                 modificadores={},
-                flavor_text="Câmera firme no tripé.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "screen_shake__opt_desligado__flavor"),
+                nerf_text=t("configs_catalogo", "screen_shake__opt_desligado__nerf"),
+                buff_text=t("configs_catalogo", "screen_shake__opt_desligado__buff")
             ),
             "ligado": OpcaoConfig(
                 id="ligado",
-                label="Ligado",
+                label=t("configs_catalogo", "screen_shake__opt_ligado__label"),
                 modificadores={"dano_explosivos_mult": 1.20, "screen_shake_stagger": True},
-                flavor_text="A tela treme. A sua mira também.",
-                nerf_text="A tela treme em disparos pesados, explosões e dano",
-                buff_text="+20% de dano explosivo e impactos de tiros e bombas empurram e desaceleram inimigos"
+                flavor_text=t("configs_catalogo", "screen_shake__opt_ligado__flavor"),
+                nerf_text=t("configs_catalogo", "screen_shake__opt_ligado__nerf"),
+                buff_text=t("configs_catalogo", "screen_shake__opt_ligado__buff")
             ),
         }
     ),
@@ -235,7 +233,7 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
     # 6. Desfoque de Movimento (Performance / Visual)
     "motion_blur": ConfiguracaoDef(
         id="motion_blur",
-        nome="Desfoque de Movimento",
+        nome=t("configs_catalogo", "motion_blur__nome"),
         categoria=CategoriaConfig.PERFORMANCE,
         tipo=TipoControleConfig.TOGGLE,
         valor_padrao="desligado",
@@ -243,127 +241,121 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
         opcoes={
             "desligado": OpcaoConfig(
                 id="desligado",
-                label="Desligado",
+                label=t("configs_catalogo", "motion_blur__opt_desligado__label"),
                 modificadores={},
-                flavor_text="Imagem limpa em movimento.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "motion_blur__opt_desligado__flavor"),
+                nerf_text=t("configs_catalogo", "motion_blur__opt_desligado__nerf"),
+                buff_text=t("configs_catalogo", "motion_blur__opt_desligado__buff")
             ),
             "ligado": OpcaoConfig(
                 id="ligado",
-                label="Ligado",
+                label=t("configs_catalogo", "motion_blur__opt_ligado__label"),
                 modificadores={"vel_jogador_mult": 1.15, "motion_blur_ghosting": True},
-                flavor_text="Parece que passaram vaselina na lente.",
-                nerf_text="Rastro visual borra a tela em movimento",
-                buff_text="+15% de velocidade e +0.40s de i-frames após sofrer dano"
-            ),
+                flavor_text=t("configs_catalogo", "motion_blur__opt_ligado__flavor"),
+                nerf_text=t("configs_catalogo", "motion_blur__opt_ligado__nerf"),
+                buff_text=t("configs_catalogo", "motion_blur__opt_ligado__buff")            ),
         }
     ),
 
     # 7. Exibição de Interface (Interface)
     "hud": ConfiguracaoDef(
         id="hud",
-        nome="Exibição de Interface",
-        categoria=CategoriaConfig.INTERFACE,
+        nome=t("configs_catalogo", "hud__nome"),
+                categoria=CategoriaConfig.INTERFACE,
         tipo=TipoControleConfig.TOGGLE,
         valor_padrao="ligado",
         ordem=7,
         opcoes={
             "ligado": OpcaoConfig(
                 id="ligado",
-                label="Ligado",
+                label=t("configs_catalogo", "hud__opt_ligado__label"),
                 modificadores={},
-                flavor_text="Barras de vida, experiência, inventário e cronômetro visíveis.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "hud__opt_ligado__flavor"),
+                nerf_text=t("configs_catalogo", "hud__opt_ligado__nerf"),
+                buff_text=t("configs_catalogo", "hud__opt_ligado__buff")
             ),
             "desligado": OpcaoConfig(
                 id="desligado",
-                label="Desligado",
+                label=t("configs_catalogo", "hud__opt_desligado__label"),
                 modificadores={"xp_ganho_mult": 1.25, "hud_pulse_magnet": True},
-                flavor_text="Com certeza você ainda tem vida sobrando. Provavelmente.",
-                nerf_text="Oculta completamente HP, XP, inventário e timer",
-                buff_text="XP +25% e pulso magnético a cada 4s que puxa todos os drops do mapa até você"
-            ),
+                flavor_text=t("configs_catalogo", "hud__opt_desligado__flavor"),
+                nerf_text=t("configs_catalogo", "hud__opt_desligado__nerf"),
+                buff_text=t("configs_catalogo", "hud__opt_desligado__buff")          ),
         }
     ),
 
     # 8. Números de Dano (Interface)
     "damage_numbers": ConfiguracaoDef(
         id="damage_numbers",
-        nome="Números de Dano",
-        categoria=CategoriaConfig.INTERFACE,
+        nome=t("configs_catalogo", "damage_numbers__nome"),
+                categoria=CategoriaConfig.INTERFACE,
         tipo=TipoControleConfig.TOGGLE,
         valor_padrao="desligado",
         ordem=8,
         opcoes={
             "desligado": OpcaoConfig(
                 id="desligado",
-                label="Desligado",
+                label=t("configs_catalogo", "damage_numbers__opt_desligado__label"),
                 modificadores={},
-                flavor_text="Inimigos sofrem dano em silêncio.",
-                nerf_text="Nenhum (acertos críticos desabilitados)",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "damage_numbers__opt_desligado__flavor"),
+                nerf_text=t("configs_catalogo", "damage_numbers__opt_desligado__nerf"),
+                buff_text=t("configs_catalogo", "damage_numbers__opt_desligado__buff")
             ),
             "ligado": OpcaoConfig(
                 id="ligado",
-                label="Ligado",
+                label=t("configs_catalogo", "damage_numbers__opt_ligado__label"),
                 modificadores={"critico_chance": 0.25, "critico_mult": 2.0, "damage_numbers_knockback": True},
-                flavor_text="Finalmente uma aplicação prática para aritmética básica.",
-                nerf_text="Poluição visual com números flutuando",
-                buff_text="Habilita Críticos (+25% chance) e os números flutuantes empurram os inimigos para trás"
-            ),
+                flavor_text=t("configs_catalogo", "damage_numbers__opt_ligado__flavor"),
+                nerf_text=t("configs_catalogo", "damage_numbers__opt_ligado__nerf"),
+                buff_text=t("configs_catalogo", "damage_numbers__opt_ligado__buff")          ),
         }
     ),
 
     # 9. Nível de Zoom (Interface)
     "zoom": ConfiguracaoDef(
         id="zoom",
-        nome="Nível de Zoom",
-        categoria=CategoriaConfig.INTERFACE,
+        nome=t("configs_catalogo", "zoom__nome"),
+                categoria=CategoriaConfig.INTERFACE,
         tipo=TipoControleConfig.GRUPO,
         valor_padrao="100%",
         ordem=9,
         opcoes={
             "75%": OpcaoConfig(
                 id="75%",
-                label="75% (Zoom Out)",
+                label=t("configs_catalogo", "zoom__opt_75%__label"),
                 modificadores={"zoom_balistica_longa": True, "zoom_queima_roupa_mult": 0.85},
-                flavor_text="Mire de longe; tiros à queima-roupa perdem força.",
-                nerf_text="FOV ampliado, sprites menores, inimigos detectam de longe e -15% de dano à queima-roupa",
-                buff_text="Balística Longa: projéteis escalam dano pela distância (até +45%) e ganham +1 perfuração em longa distância"
-            ),
+                flavor_text=t("configs_catalogo", "zoom__opt_75%__flavor"),
+                nerf_text=t("configs_catalogo", "zoom__opt_75%__nerf"),
+                buff_text=t("configs_catalogo", "zoom__opt_75%__buff")      ),
             "100%": OpcaoConfig(
                 id="100%",
-                label="100%",
+                label=t("configs_catalogo", "zoom__opt_100%__label"),
                 modificadores={},
-                flavor_text="Campo de visão padrão e equilibrado.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "zoom__opt_100%__flavor"),
+                nerf_text=t("configs_catalogo", "zoom__opt_100%__nerf"),
+                buff_text=t("configs_catalogo", "zoom__opt_100%__buff")
             ),
             "125%": OpcaoConfig(
                 id="125%",
-                label="125% (Zoom In)",
+                label=t("configs_catalogo", "zoom__opt_125%__label"),
                 modificadores={"zoom_execucao_cd_red": 0.5},
-                flavor_text="Olho no olho. Cada abate encurta sua próxima esquiva.",
-                nerf_text="Campo periférico severamente reduzido (flancos cegos)",
-                buff_text="Execução Próxima: abates reduzem cooldown de Dash/Parry em -0,5s"
-            ),
+                flavor_text=t("configs_catalogo", "zoom__opt_125%__flavor"),
+                nerf_text=t("configs_catalogo", "zoom__opt_125%__nerf"),
+                buff_text=t("configs_catalogo", "zoom__opt_125%__buff")          ),
             "150%": OpcaoConfig(
                 id="150%",
-                label="150% (Zoom In)",
+                label=t("configs_catalogo", "zoom__opt_150%__label"),
                 modificadores={"zoom_execucao_cd_red": 1.0, "zoom_execucao_limiar_hp": 0.20},
-                flavor_text="Quem entra no seu foco não sai inteiro.",
-                nerf_text="Visão extremamente restrita do mapa",
-                buff_text="Execução Próxima Máxima: abates reduzem cooldown de Dash/Parry em -1,0s e executam comuns abaixo de 20% HP"
-            ),
+                flavor_text=t("configs_catalogo", "zoom__opt_150%__flavor"),
+                nerf_text=t("configs_catalogo", "zoom__opt_150%__nerf"),
+                buff_text=t("configs_catalogo", "zoom__opt_150%__buff")         ),
         }
     ),
 
     # 10. Movimento pelo Mouse (Controles)
     "movimento_mouse": ConfiguracaoDef(
         id="movimento_mouse",
-        nome="Movimento pelo Mouse",
+        nome=t("configs_catalogo", "movimento_mouse__nome"),
         categoria=CategoriaConfig.CONTROLES,
         tipo=TipoControleConfig.TOGGLE,
         valor_padrao="desligado",
@@ -371,19 +363,19 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
         opcoes={
             "desligado": OpcaoConfig(
                 id="desligado",
-                label="Desligado",
+                label=t("configs_catalogo", "movimento_mouse__opt_desligado__label"),
                 modificadores={},
-                flavor_text="Controle manual com pés firmes nas teclas.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "movimento_mouse__opt_desligado__flavor"),
+                nerf_text=t("configs_catalogo", "movimento_mouse__opt_desligado__nerf"),
+                buff_text=t("configs_catalogo", "movimento_mouse__opt_desligado__buff")
             ),
             "ligado": OpcaoConfig(
                 id="ligado",
-                label="Ligado",
+                label=t("configs_catalogo", "movimento_mouse__opt_ligado__label"),
                 modificadores={"drop_chance_mult": 1.40, "movimento_ram_collision": True},
-                flavor_text="Para que servem as pernas quando o destino tem um cursor?",
-                nerf_text="A batata caminha incessantemente na direção do cursor",
-                buff_text="Drop de itens +40% e andar continuamente te faz atropelar e empurrar inimigos",
+                flavor_text=t("configs_catalogo", "movimento_mouse__opt_ligado__flavor"),
+                nerf_text=t("configs_catalogo", "movimento_mouse__opt_ligado__nerf"),
+                buff_text=t("configs_catalogo", "movimento_mouse__opt_ligado__buff"),
                 incompativel_com=[
                     ("controles_tanque", "ligado"),
                     ("keybinds", "uma_mao"),
@@ -396,7 +388,7 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
     # 11. Modificadores de Teclas (Controles)
     "keybinds": ConfiguracaoDef(
         id="keybinds",
-        nome="Modificadores de Teclas",
+        nome=t("configs_catalogo", "keybinds__nome"),
         categoria=CategoriaConfig.CONTROLES,
         tipo=TipoControleConfig.GRUPO,
         valor_padrao="padrao",
@@ -404,47 +396,46 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
         opcoes={
             "padrao": OpcaoConfig(
                 id="padrao",
-                label="Padrão",
+                label=t("configs_catalogo", "keybinds__opt_padrao__label"),
                 modificadores={},
-                flavor_text="Ergonomia convencional para seres humanos normais.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "keybinds__opt_padrao__flavor"),
+                nerf_text=t("configs_catalogo", "keybinds__opt_padrao__nerf"),
+                buff_text=t("configs_catalogo", "keybinds__opt_padrao__buff")
             ),
             "invertido": OpcaoConfig(
                 id="invertido",
-                label="Invertido",
+                label=t("configs_catalogo", "keybinds__opt_invertido__label"),
                 modificadores={"dano_armas_mult": 1.10, "keybinds_overdrive_dash": True},
-                flavor_text="Para cima é o novo para baixo.",
-                nerf_text="Teclas de movimento invertidas (W: baixo, S: cima, etc.)",
-                buff_text="Dano de armas +10% e manobras repentinas geram pulso de empurrão"
-            ),
+                flavor_text=t("configs_catalogo", "keybinds__opt_invertido__flavor"),
+                nerf_text=t("configs_catalogo", "keybinds__opt_invertido__nerf"),
+                buff_text=t("configs_catalogo", "keybinds__opt_invertido__buff")            ),
             "arrow_keys": OpcaoConfig(
                 id="arrow_keys",
-                label="Arrow Keys",
+                label=t("configs_catalogo", "keybinds__opt_arrow_keys__label"),
                 modificadores={"vel_jogador_mult": 1.15, "keybinds_overdrive_dash": True},
-                flavor_text="Lembranças dolorosas de jogar no teclado de 1998.",
-                nerf_text="Movimento transferido exclusivamente para as setas direcionais",
-                buff_text="Velocidade da batata +15% e manobras repentinas geram pulso de empurrão"
-            ),
+                flavor_text=t("configs_catalogo", "keybinds__opt_arrow_keys__flavor"),
+                nerf_text=t("configs_catalogo", "keybinds__opt_arrow_keys__nerf"),
+                buff_text=t("configs_catalogo", "keybinds__opt_arrow_keys__buff")            ),
             "uma_mao": OpcaoConfig(
                 id="uma_mao",
-                label="Uma Mão Só",
+                label=t("configs_catalogo", "keybinds__opt_uma_mao__label"),
                 modificadores={"xp_ganho_mult": 1.20, "keybinds_overdrive_dash": True},
-                flavor_text="Uma mão no volante, a outra no carinho.",
-                nerf_text="Movimentação em QWER, ações 100% no teclado (sem mouse)",
-                buff_text="Ganho de XP +20% e manobras repentinas geram pulso de empurrão",
+                flavor_text=t("configs_catalogo", "keybinds__opt_uma_mao__flavor"),
+                nerf_text=t("configs_catalogo", "keybinds__opt_uma_mao__nerf"),
+                buff_text=t("configs_catalogo", "keybinds__opt_uma_mao__buff"),
                 incompativel_com=[
                     ("movimento_mouse", "ligado"),
                     ("controles_tanque", "ligado"),
+                    ("mira_oculta", "ligado"),
                 ],
             ),
             "pesadelo": OpcaoConfig(
                 id="pesadelo",
-                label="Pesadelo",
+                label=t("configs_catalogo", "keybinds__opt_pesadelo__label"),
                 modificadores={"dano_armas_mult": 1.30, "keybinds_overdrive_dash": True},
-                flavor_text="Sua memória muscular acabou de pedir demissão.",
-                nerf_text="Movimento em IJKL com eixo Y do mouse invertido",
-                buff_text="Dano de armas +30% e pulso forte de empurrão ao desviar",
+                flavor_text=t("configs_catalogo", "keybinds__opt_pesadelo__flavor"),
+                nerf_text=t("configs_catalogo", "keybinds__opt_pesadelo__nerf"),
+                buff_text=t("configs_catalogo", "keybinds__opt_pesadelo__buff"),
                 incompativel_com=[
                     ("movimento_mouse", "ligado"),
                 ],
@@ -455,91 +446,88 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
     # 12. Suavização de Câmera (Controles / Câmera)
     "suavizacao_camera": ConfiguracaoDef(
         id="suavizacao_camera",
-        nome="Suavização de Câmera",
-        categoria=CategoriaConfig.CONTROLES,
+        nome=t("configs_catalogo", "suavizacao_camera__nome"),
+                categoria=CategoriaConfig.CONTROLES,
         tipo=TipoControleConfig.TOGGLE,
         valor_padrao="ligado",
         ordem=12,
         opcoes={
             "ligado": OpcaoConfig(
                 id="ligado",
-                label="Ligado",
+                label=t("configs_catalogo", "suavizacao_camera__opt_ligado__label"),
                 modificadores={},
-                flavor_text="Transições suaves para evitar tontura.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "suavizacao_camera__opt_ligado__flavor"),
+                nerf_text=t("configs_catalogo", "suavizacao_camera__opt_ligado__nerf"),
+                buff_text=t("configs_catalogo", "suavizacao_camera__opt_ligado__buff")
             ),
             "desligado": OpcaoConfig(
                 id="desligado",
-                label="Desligado",
+                label=t("configs_catalogo", "suavizacao_camera__opt_desligado__label"),
                 modificadores={"camera_hard_kick": True, "flick_shot_ativo": True},
-                flavor_text="Sem amortecedor. Giros secos viram disparos cirúrgicos.",
-                nerf_text="Tranco Seco (Hard Kick): câmera sem amortecimento aplica coice a cada tiro, dash ou impacto",
-                buff_text="Flick-Shot de Precisão: após giro rápido (>45°) ou parada, próximo tiro sai 2x vel., +1 perfuração e +35% dano"
-            ),
+                flavor_text=t("configs_catalogo", "suavizacao_camera__opt_desligado__flavor"),
+                nerf_text=t("configs_catalogo", "suavizacao_camera__opt_desligado__nerf"),
+                buff_text=t("configs_catalogo", "suavizacao_camera__opt_desligado__buff")      ),
         }
     ),
 
     # 13. Disparo Automático (Controles / Combate)
     "auto_fire": ConfiguracaoDef(
         id="auto_fire",
-        nome="Disparo Automático",
-        categoria=CategoriaConfig.CONTROLES,
+        nome=t("configs_catalogo", "auto_fire__nome"),
+                categoria=CategoriaConfig.CONTROLES,
         tipo=TipoControleConfig.TOGGLE,
         valor_padrao="ligado",
         ordem=13,
         opcoes={
             "ligado": OpcaoConfig(
                 id="ligado",
-                label="Ligado",
+                label=t("configs_catalogo", "auto_fire__opt_ligado__label"),
                 modificadores={},
-                flavor_text="Segure o botão e reze.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "auto_fire__opt_ligado__flavor"),
+                nerf_text=t("configs_catalogo", "auto_fire__opt_ligado__nerf"),
+                buff_text=t("configs_catalogo", "auto_fire__opt_ligado__buff")
             ),
             "desligado": OpcaoConfig(
                 id="desligado",
-                label="Desligado",
+                label=t("configs_catalogo", "auto_fire__opt_desligado__label"),
                 modificadores={"dano_armas_mult": 1.15, "auto_fire_burst": True},
-                flavor_text="Cada clique do mouse foi pago com o suor do seu dedo indicador.",
-                nerf_text="Necessário clicar manualmente a cada disparo",
-                buff_text="Dano +15% e cada clique manual dispara rajada dupla (2 tiros rápidos)"
-            ),
+                flavor_text=t("configs_catalogo", "auto_fire__opt_desligado__flavor"),
+                nerf_text=t("configs_catalogo", "auto_fire__opt_desligado__nerf"),
+                buff_text=t("configs_catalogo", "auto_fire__opt_desligado__buff")            ),
         }
     ),
 
     # 14. Inimigos à Distância (Dificuldade)
     "inimigos_ranged": ConfiguracaoDef(
         id="inimigos_ranged",
-        nome="Inimigos à Distância",
-        categoria=CategoriaConfig.DIFICULDADE,
+        nome=t("configs_catalogo", "inimigos_ranged__nome"),
+                categoria=CategoriaConfig.DIFICULDADE,
         tipo=TipoControleConfig.TOGGLE,
         valor_padrao="desligado",
         ordem=14,
         opcoes={
             "desligado": OpcaoConfig(
                 id="desligado",
-                label="Desligado",
+                label=t("configs_catalogo", "inimigos_ranged__opt_desligado__label"),
                 modificadores={},
-                flavor_text="Por enquanto eles só sabem correr atrás de você.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "inimigos_ranged__opt_desligado__flavor"),
+                nerf_text=t("configs_catalogo", "inimigos_ranged__opt_desligado__nerf"),
+                buff_text=t("configs_catalogo", "inimigos_ranged__opt_desligado__buff")
             ),
             "ligado": OpcaoConfig(
                 id="ligado",
-                label="Ligado",
+                label=t("configs_catalogo", "inimigos_ranged__opt_ligado__label"),
                 modificadores={"loot_enriquecido": True, "inimigos_ranged_bullet_hell": True},
-                flavor_text="Mais projéteis teleguiados vindo na sua cara significam mais combustível para contra-atacar.",
-                nerf_text="Dobro de Projetores Laser disparando projéteis teleguiados não-parriáveis",
-                buff_text="Combustível de Bullet-Hell: loot enriquecido e Parry/Just-Dodge reduz CD e sobrecarrega o próximo tiro"
-            ),
+                flavor_text=t("configs_catalogo", "inimigos_ranged__opt_ligado__flavor"),
+                nerf_text=t("configs_catalogo", "inimigos_ranged__opt_ligado__nerf"),
+                buff_text=t("configs_catalogo", "inimigos_ranged__opt_ligado__buff")           ),
         }
     ),
 
     # 15. Captura de Drops por Inimigos (Dificuldade)
     "coleta_inimiga": ConfiguracaoDef(
         id="coleta_inimiga",
-        nome="Captura de Drops por Inimigos",
+        nome=t("configs_catalogo", "coleta_inimiga__nome"),
         categoria=CategoriaConfig.DIFICULDADE,
         tipo=TipoControleConfig.TOGGLE,
         valor_padrao="desligado",
@@ -547,27 +535,26 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
         opcoes={
             "desligado": OpcaoConfig(
                 id="desligado",
-                label="Desligado",
+                label=t("configs_catalogo", "coleta_inimiga__opt_desligado__label"),
                 modificadores={},
-                flavor_text="Raposo, não pegue.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "coleta_inimiga__opt_desligado__flavor"),
+                nerf_text=t("configs_catalogo", "coleta_inimiga__opt_desligado__nerf"),
+                buff_text=t("configs_catalogo", "coleta_inimiga__opt_desligado__buff")
             ),
             "ligado": OpcaoConfig(
                 id="ligado",
-                label="Ligado",
+                label=t("configs_catalogo", "coleta_inimiga__opt_ligado__label"),
                 modificadores={"drops_valor_mult": 2.0, "coleta_inimiga": True},
-                flavor_text="Achado não é roubado.",
-                nerf_text="Inimigos roubam itens que ficarem mais de 10s no chão",
-                buff_text="Todos os drops coletados por você valem o dobro (2x XP e cura)"
-            ),
+                flavor_text=t("configs_catalogo", "coleta_inimiga__opt_ligado__flavor"),
+                nerf_text=t("configs_catalogo", "coleta_inimiga__opt_ligado__nerf"),
+                buff_text=t("configs_catalogo", "coleta_inimiga__opt_ligado__buff")            ),
         }
     ),
 
     # 16. Velocidade dos Inimigos (Dificuldade)
     "velocidade_inimigos": ConfiguracaoDef(
         id="velocidade_inimigos",
-        nome="Velocidade dos Inimigos",
+        nome=t("configs_catalogo", "velocidade_inimigos__nome"),
         categoria=CategoriaConfig.DIFICULDADE,
         tipo=TipoControleConfig.GRUPO,
         valor_padrao="normal",
@@ -575,35 +562,33 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
         opcoes={
             "normal": OpcaoConfig(
                 id="normal",
-                label="Normal",
+                label=t("configs_catalogo", "velocidade_inimigos__opt_normal__label"),
                 modificadores={},
-                flavor_text="Ritmo normal de segunda-feira.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "velocidade_inimigos__opt_normal__flavor"),
+                nerf_text=t("configs_catalogo", "velocidade_inimigos__opt_normal__nerf"),
+                buff_text=t("configs_catalogo", "velocidade_inimigos__opt_normal__buff")
             ),
             "+25%": OpcaoConfig(
                 id="+25%",
-                label="+25% Velocidade",
+                label=t("configs_catalogo", "velocidade_inimigos__opt_+25%__label"),
                 modificadores={"vel_inimigos_mult": 1.25, "xp_ganho_mult": 1.15, "inercia_cinetica_nivel": 1},
-                flavor_text="Mais rápidos para correr, mais pesados para bater nos colegas.",
-                nerf_text="Inimigos +25% mais rápidos",
-                buff_text="Inércia Cinética: +15% XP e inimigos empurrados derrapam e colidem entre si"
-            ),
+                flavor_text=t("configs_catalogo", "velocidade_inimigos__opt_+25%__flavor"),
+                nerf_text=t("configs_catalogo", "velocidade_inimigos__opt_+25%__nerf"),
+                buff_text=t("configs_catalogo", "velocidade_inimigos__opt_+25%__buff")           ),
             "+50%": OpcaoConfig(
                 id="+50%",
-                label="+50% Velocidade",
+                label=t("configs_catalogo", "velocidade_inimigos__opt_+50%__label"),
                 modificadores={"vel_inimigos_mult": 1.50, "xp_ganho_mult": 1.30, "inercia_cinetica_nivel": 2},
-                flavor_text="Um único empurrão transforma a horda em strike.",
-                nerf_text="Inimigos +50% mais rápidos",
-                buff_text="Inércia Cinética Máxima: +30% XP e colisões em cadeia de pinos com maior alcance e impacto"
-            ),
+                flavor_text=t("configs_catalogo", "velocidade_inimigos__opt_+50%__flavor"),
+                nerf_text=t("configs_catalogo", "velocidade_inimigos__opt_+50%__nerf"),
+                buff_text=t("configs_catalogo", "velocidade_inimigos__opt_+50%__buff")         ),
         }
     ),
 
     # 17. Vida dos Inimigos (Dificuldade)
     "vida_inimigos": ConfiguracaoDef(
         id="vida_inimigos",
-        nome="Vida dos Inimigos",
+        nome=t("configs_catalogo", "vida_inimigos__nome"),
         categoria=CategoriaConfig.DIFICULDADE,
         tipo=TipoControleConfig.GRUPO,
         valor_padrao="normal",
@@ -611,63 +596,60 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
         opcoes={
             "normal": OpcaoConfig(
                 id="normal",
-                label="Normal",
+                label=t("configs_catalogo", "vida_inimigos__opt_normal__label"),
                 modificadores={},
-                flavor_text="Carcaça padrão de plástico.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "vida_inimigos__opt_normal__flavor"),
+                nerf_text=t("configs_catalogo", "vida_inimigos__opt_normal__nerf"),
+                buff_text=t("configs_catalogo", "vida_inimigos__opt_normal__buff")
             ),
             "+50%": OpcaoConfig(
                 id="+50%",
-                label="+50% HP",
+                label=t("configs_catalogo", "vida_inimigos__opt_+50%__label"),
                 modificadores={"hp_inimigos_mult": 1.50, "pinhata_hardware_nivel": 1},
-                flavor_text="Carcaça grossa demais, mas solta peças úteis a cada pancada.",
-                nerf_text="Inimigos com +50% de vida",
-                buff_text="Pinhata de Hardware: a cada 33% de HP perdido libera micro-sucata (munição Slot 3, carga ou XP)"
-            ),
+                flavor_text=t("configs_catalogo", "vida_inimigos__opt_+50%__flavor"),
+                nerf_text=t("configs_catalogo", "vida_inimigos__opt_+50%__nerf"),
+                buff_text=t("configs_catalogo", "vida_inimigos__opt_+50%__buff")           ),
             "+100%": OpcaoConfig(
                 id="+100%",
-                label="+100% HP",
+                label=t("configs_catalogo", "vida_inimigos__opt_+100%__label"),
                 modificadores={"hp_inimigos_mult": 2.00, "pinhata_hardware_nivel": 2, "drop_chance_bonus": 0.15},
-                flavor_text="Quanto mais apanham, mais munição derrubam no chão.",
-                nerf_text="Inimigos com o dobro de vida (+100%)",
-                buff_text="Pinhata de Hardware Pesada: micro-sucata dobrada a cada 33% de HP perdido + 15% bônus de drop"
-            ),
+                flavor_text=t("configs_catalogo", "vida_inimigos__opt_+100%__flavor"),
+                nerf_text=t("configs_catalogo", "vida_inimigos__opt_+100%__nerf"),
+                buff_text=t("configs_catalogo", "vida_inimigos__opt_+100%__buff")            ),
         }
     ),
 
     # 18. Iluminação Dinâmica (Experimental / Atmosfera)
     "iluminacao": ConfiguracaoDef(
         id="iluminacao",
-        nome="Iluminação Dinâmica",
-        categoria=CategoriaConfig.EXPERIMENTAL,
+        nome=t("configs_catalogo", "iluminacao__nome"),
+                categoria=CategoriaConfig.EXPERIMENTAL,
         tipo=TipoControleConfig.TOGGLE,
         valor_padrao="desligado",
         ordem=18,
         opcoes={
             "desligado": OpcaoConfig(
                 id="desligado",
-                label="Desligado",
+                label=t("configs_catalogo", "iluminacao__opt_desligado__label"),
                 modificadores={},
-                flavor_text="Luz acesa o tempo todo.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "iluminacao__opt_desligado__flavor"),
+                nerf_text=t("configs_catalogo", "iluminacao__opt_desligado__nerf"),
+                buff_text=t("configs_catalogo", "iluminacao__opt_desligado__buff")
             ),
             "ligado": OpcaoConfig(
                 id="ligado",
-                label="Ligado",
+                label=t("configs_catalogo", "iluminacao__opt_ligado__label"),
                 modificadores={"clarao_fotossensivel": True},
-                flavor_text="No breu total, o primeiro clarão cega quem saiu das sombras.",
-                nerf_text="Escuridão densa fora do halo/cone de luz da batata",
-                buff_text="Clarão Fotossensível: inimigos revelados da escuridão sofrem Crítico Garantido + micro-atordoamento (0,35s)"
-            ),
+                flavor_text=t("configs_catalogo", "iluminacao__opt_ligado__flavor"),
+                nerf_text=t("configs_catalogo", "iluminacao__opt_ligado__nerf"),
+                buff_text=t("configs_catalogo", "iluminacao__opt_ligado__buff")         ),
         }
     ),
 
     # 19. Cores Invertidas (Experimental / Visual)
     "cores_invertidas": ConfiguracaoDef(
         id="cores_invertidas",
-        nome="Cores Invertidas",
+        nome=t("configs_catalogo", "cores_invertidas__nome"),
         categoria=CategoriaConfig.EXPERIMENTAL,
         tipo=TipoControleConfig.TOGGLE,
         valor_padrao="desligado",
@@ -675,19 +657,19 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
         opcoes={
             "desligado": OpcaoConfig(
                 id="desligado",
-                label="Desligado",
+                label=t("configs_catalogo", "cores_invertidas__opt_desligado__label"),
                 modificadores={},
-                flavor_text="Cores normais de fábrica.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "cores_invertidas__opt_desligado__flavor"),
+                nerf_text=t("configs_catalogo", "cores_invertidas__opt_desligado__nerf"),
+                buff_text=t("configs_catalogo", "cores_invertidas__opt_desligado__buff")
             ),
             "ligado": OpcaoConfig(
                 id="ligado",
-                label="Ligado",
+                label=t("configs_catalogo", "cores_invertidas__opt_ligado__label"),
                 modificadores={"polaridade_invertida": True},
-                flavor_text="O que antes bloqueava tiros agora atrai o estrago.",
-                nerf_text="Inversão total de RGB da tela",
-                buff_text="Polaridade Invertida: +40% dano em blindados e surto de velocidade/dano por 2s ao sofrer slow ou graze"
+                flavor_text=t("configs_catalogo", "cores_invertidas__opt_ligado__flavor"),
+                nerf_text=t("configs_catalogo", "cores_invertidas__opt_ligado__nerf"),
+                buff_text=t("configs_catalogo", "cores_invertidas__opt_ligado__buff")
             ),
         }
     ),
@@ -695,7 +677,7 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
     # 20. Fogo Amigo (Experimental / Risco Extremo)
     "fogo_amigo": ConfiguracaoDef(
         id="fogo_amigo",
-        nome="Fogo Amigo",
+        nome=t("configs_catalogo", "fogo_amigo__nome"),
         categoria=CategoriaConfig.EXPERIMENTAL,
         tipo=TipoControleConfig.TOGGLE,
         valor_padrao="desligado",
@@ -703,27 +685,26 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
         opcoes={
             "desligado": OpcaoConfig(
                 id="desligado",
-                label="Desligado",
+                label=t("configs_catalogo", "fogo_amigo__opt_desligado__label"),
                 modificadores={},
-                flavor_text="Seus tiros sabem quem é o dono.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "fogo_amigo__opt_desligado__flavor"),
+                nerf_text=t("configs_catalogo", "fogo_amigo__opt_desligado__nerf"),
+                buff_text=t("configs_catalogo", "fogo_amigo__opt_desligado__buff")
             ),
             "ligado": OpcaoConfig(
                 id="ligado",
-                label="Ligado",
+                label=t("configs_catalogo", "fogo_amigo__opt_ligado__label"),
                 modificadores={"dano_armas_mult": 1.25, "auto_dano": True, "fogo_amigo_rocket_jump": True},
-                flavor_text="A boa notícia é que dá o dobro de dano. A má é que você também apanha dos seus tiros.",
-                nerf_text="Seus tiros e explosões causam dano a você e aos seus drones",
-                buff_text="+25% de dano e explosões impulsionam a batata (rocket-jump)"
-            ),
+                flavor_text=t("configs_catalogo", "fogo_amigo__opt_ligado__flavor"),
+                nerf_text=t("configs_catalogo", "fogo_amigo__opt_ligado__nerf"),
+                buff_text=t("configs_catalogo", "fogo_amigo__opt_ligado__buff")            ),
         }
     ),
 
     # 21. Calibragem de Parry (Precisão vs Poder)
     "precisao_parry": ConfiguracaoDef(
         id="precisao_parry",
-        nome="Calibragem de Parry",
+        nome=t("configs_catalogo", "precisao_parry__nome"),
         categoria=CategoriaConfig.CONTROLES,
         tipo=TipoControleConfig.SELETOR,
         valor_padrao="padrao",
@@ -731,35 +712,33 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
         opcoes={
             "padrao": OpcaoConfig(
                 id="padrao",
-                label="Padrão",
+                label=t("configs_catalogo", "precisao_parry__opt_padrao__label"),
                 modificadores={},
-                flavor_text="Chave de manutenção calibrada de fábrica.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "precisao_parry__opt_padrao__flavor"),
+                nerf_text=t("configs_catalogo", "precisao_parry__opt_padrao__nerf"),
+                buff_text=t("configs_catalogo", "precisao_parry__opt_padrao__buff")
             ),
             "cirurgico": OpcaoConfig(
                 id="cirurgico",
-                label="Cirúrgico",
+                label=t("configs_catalogo", "precisao_parry__opt_cirurgico__label"),
                 modificadores={"parry_precisao": "cirurgico"},
-                flavor_text="Janela minúscula, impacto absurdo.",
-                nerf_text="Arco 65°, janela 0.09s e alcance 0.85x",
-                buff_text="+75% dano refletido e explosão de 140px"
-            ),
+                flavor_text=t("configs_catalogo", "precisao_parry__opt_cirurgico__flavor"),
+                nerf_text=t("configs_catalogo", "precisao_parry__opt_cirurgico__nerf"),
+                buff_text=t("configs_catalogo", "precisao_parry__opt_cirurgico__buff")            ),
             "amplificado": OpcaoConfig(
                 id="amplificado",
-                label="Amplificado",
+                label=t("configs_catalogo", "precisao_parry__opt_amplificado__label"),
                 modificadores={"parry_precisao": "amplificado"},
-                flavor_text="Mais fácil de acertar, menos letal.",
-                nerf_text="-30% dano refletido e +0.25s cooldown melee",
-                buff_text="Arco 135°, janela 0.17s e alcance 1.25x"
-            ),
+                flavor_text=t("configs_catalogo", "precisao_parry__opt_amplificado__flavor"),
+                nerf_text=t("configs_catalogo", "precisao_parry__opt_amplificado__nerf"),
+                buff_text=t("configs_catalogo", "precisao_parry__opt_amplificado__buff")            ),
             "postura_riposte": OpcaoConfig(
                 id="postura_riposte",
-                label="Postura Riposte",
+                label=t("configs_catalogo", "precisao_parry__opt_postura_riposte__label"),
                 modificadores={"parry_precisao": "postura_riposte"},
-                flavor_text="Fique firme; se algo te tocar, devolva atravessando tudo.",
-                nerf_text="Enraíza Cleiton no lugar por 0,45s",
-                buff_text="Invulnerabilidade total na postura + estocada perfurante que atordoa por 1,5s ao aparar",
+                flavor_text=t("configs_catalogo", "precisao_parry__opt_postura_riposte__flavor"),
+                nerf_text=t("configs_catalogo", "precisao_parry__opt_postura_riposte__nerf"),
+                buff_text=t("configs_catalogo", "precisao_parry__opt_postura_riposte__buff"),
                 desbloqueada_por="opcao_config:precisao_parry:postura_riposte",
             ),
         }
@@ -768,59 +747,55 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
     # 22. Protocolo de Reflexão (Efeito do Parry)
     "efeito_parry": ConfiguracaoDef(
         id="efeito_parry",
-        nome="Protocolo de Reflexão",
-        categoria=CategoriaConfig.EXPERIMENTAL,
+        nome=t("configs_catalogo", "efeito_parry__nome"),
+                categoria=CategoriaConfig.EXPERIMENTAL,
         tipo=TipoControleConfig.SELETOR,
         valor_padrao="padrao",
         ordem=22,
         opcoes={
             "padrao": OpcaoConfig(
                 id="padrao",
-                label="Padrão",
+                label=t("configs_catalogo", "efeito_parry__opt_padrao__label"),
                 modificadores={},
-                flavor_text="Reflexão explosiva padrão.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "efeito_parry__opt_padrao__flavor"),
+                nerf_text=t("configs_catalogo", "efeito_parry__opt_padrao__nerf"),
+                buff_text=t("configs_catalogo", "efeito_parry__opt_padrao__buff")
             ),
             "estilhaco": OpcaoConfig(
                 id="estilhaco",
-                label="Estilhaço",
+                label=t("configs_catalogo", "efeito_parry__opt_estilhaco__label"),
                 modificadores={"parry_efeito": "estilhaco"},
-                flavor_text="Estilhaça projéteis rebatidos em 3 dardos perfurantes.",
-                nerf_text="-25% dano por fragmento e sem explosão AoE",
-                buff_text="Projéteis refletidos dividem-se em 3 tiros perfurantes"
-            ),
+                flavor_text=t("configs_catalogo", "efeito_parry__opt_estilhaco__flavor"),
+                nerf_text=t("configs_catalogo", "efeito_parry__opt_estilhaco__nerf"),
+                buff_text=t("configs_catalogo", "efeito_parry__opt_estilhaco__buff")            ),
             "pulso_emp": OpcaoConfig(
                 id="pulso_emp",
-                label="Pulso EMP",
+                label=t("configs_catalogo", "efeito_parry__opt_pulso_emp__label"),
                 modificadores={"parry_efeito": "pulso_emp"},
-                flavor_text="O parry libera um pulso eletromagnético atordoante.",
-                nerf_text="Errar o parry aumenta Exposto para +45% de dano recebido",
-                buff_text="Parry bem-sucedido atordoa inimigos próximos por 1.2s"
-            ),
+                flavor_text=t("configs_catalogo", "efeito_parry__opt_pulso_emp__flavor"),
+                nerf_text=t("configs_catalogo", "efeito_parry__opt_pulso_emp__nerf"),
+                buff_text=t("configs_catalogo", "efeito_parry__opt_pulso_emp__buff")            ),
             "firewall_estatico": OpcaoConfig(
                 id="firewall_estatico",
-                label="Firewall Estático",
+                label=t("configs_catalogo", "efeito_parry__opt_firewall_estatico__label"),
                 modificadores={"parry_efeito": "firewall_estatico"},
-                flavor_text="Nada devolvido, nada passa.",
-                nerf_text="Não reflete projéteis e cooldown alto (~5,0s-6,0s)",
-                buff_text="Ergue parede energética fixa por 2,5s destruindo projéteis inimigos"
-            ),
+                flavor_text=t("configs_catalogo", "efeito_parry__opt_firewall_estatico__flavor"),
+                nerf_text=t("configs_catalogo", "efeito_parry__opt_firewall_estatico__nerf"),
+                buff_text=t("configs_catalogo", "efeito_parry__opt_firewall_estatico__buff")           ),
             "ventoinha_360": OpcaoConfig(
                 id="ventoinha_360",
-                label="Ventoinha 360°",
+                label=t("configs_catalogo", "efeito_parry__opt_ventoinha_360__label"),
                 modificadores={"parry_efeito": "ventoinha_360"},
-                flavor_text="Cooler em rotação máxima fatiando tudo ao redor.",
-                nerf_text="Alcance 0,75x e cooldown bem alto (~6,0s-8,0s)",
-                buff_text="Giro 360° por 0,6s pulverizando projéteis e aplicando dois cortes circulares"
-            ),
+                flavor_text=t("configs_catalogo", "efeito_parry__opt_ventoinha_360__flavor"),
+                nerf_text=t("configs_catalogo", "efeito_parry__opt_ventoinha_360__nerf"),
+                buff_text=t("configs_catalogo", "efeito_parry__opt_ventoinha_360__buff")           ),
         }
     ),
 
     # 23. Controles de Tanque (Blindagem & Artilharia)
     "controles_tanque": ConfiguracaoDef(
         id="controles_tanque",
-        nome="Controles de Tanque",
+        nome=t("configs_catalogo", "controles_tanque__nome"),
         categoria=CategoriaConfig.CONTROLES,
         tipo=TipoControleConfig.TOGGLE,
         valor_padrao="desligado",
@@ -828,19 +803,19 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
         opcoes={
             "desligado": OpcaoConfig(
                 id="desligado",
-                label="Desligado",
+                label=t("configs_catalogo", "controles_tanque__opt_desligado__label"),
                 modificadores={},
-                flavor_text="Movimento omnidirecional padrão.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum"
+                flavor_text=t("configs_catalogo", "controles_tanque__opt_desligado__flavor"),
+                nerf_text=t("configs_catalogo", "controles_tanque__opt_desligado__nerf"),
+                buff_text=t("configs_catalogo", "controles_tanque__opt_desligado__buff")
             ),
             "ligado": OpcaoConfig(
                 id="ligado",
-                label="Ligado",
+                label=t("configs_catalogo", "controles_tanque__opt_ligado__label"),
                 modificadores={"controles_tanque": True, "dano_armas_mult": 1.35, "dano_recebido_mult": 0.80},
-                flavor_text="A/D rotacionam a seta; W/S aceleram ou dão ré.",
-                nerf_text="Sem strafe lateral (direção controlada por rotação)",
-                buff_text="250 HP máx, -20% dano recebido, +35% dano, +1 perfuração, +20% cadência parado e atropelamento frontal",
+                flavor_text=t("configs_catalogo", "controles_tanque__opt_ligado__flavor"),
+                nerf_text=t("configs_catalogo", "controles_tanque__opt_ligado__nerf"),
+                buff_text=t("configs_catalogo", "controles_tanque__opt_ligado__buff"),
                 incompativel_com=[
                     ("movimento_mouse", "ligado"),
                     ("keybinds", "uma_mao"),
@@ -852,7 +827,7 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
     # 24. Protocolo de Dash (Controles — Requer habilidade:dash)
     "dash_protocolo": ConfiguracaoDef(
         id="dash_protocolo",
-        nome="Protocolo de Dash",
+        nome=t("configs_catalogo", "dash_protocolo__nome"),
         categoria=CategoriaConfig.CONTROLES,
         tipo=TipoControleConfig.SELETOR,
         valor_padrao="padrao",
@@ -861,44 +836,43 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
         opcoes={
             "padrao": OpcaoConfig(
                 id="padrao",
-                label="Padrão",
+                label=t("configs_catalogo", "dash_protocolo__opt_padrao__label"),
                 modificadores={},
-                flavor_text="Propulsão direcional calibrada.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum",
+                flavor_text=t("configs_catalogo", "dash_protocolo__opt_padrao__flavor"),
+                nerf_text=t("configs_catalogo", "dash_protocolo__opt_padrao__nerf"),
+                buff_text=t("configs_catalogo", "dash_protocolo__opt_padrao__buff"),
             ),
             "teleporte_buffer": OpcaoConfig(
                 id="teleporte_buffer",
-                label="Blink de Memória",
+                label=t("configs_catalogo", "dash_protocolo__opt_teleporte_buffer__label"),
                 modificadores={"dash_protocolo": "teleporte_buffer"},
-                flavor_text="Pula os frames do trajeto e frita quem ficou no meio.",
-                nerf_text="+0,6s cooldown, sem controle fino no trajeto e micro-stumble na borda",
-                buff_text="Teleporte instantâneo deixando linha elétrica que corta inimigos",
-            ),
+                flavor_text=t("configs_catalogo", "dash_protocolo__opt_teleporte_buffer__flavor"),
+                nerf_text=t("configs_catalogo", "dash_protocolo__opt_teleporte_buffer__nerf"),
+                buff_text=t("configs_catalogo", "dash_protocolo__opt_teleporte_buffer__buff")            ),
             "propulsor_instavel": OpcaoConfig(
                 id="propulsor_instavel",
-                label="Propulsor Sem Escudo",
+                label=t("configs_catalogo", "dash_protocolo__opt_propulsor_instavel__label"),
                 modificadores={"dash_protocolo": "propulsor_instavel"},
-                flavor_text="Sem proteção, mas com o dobro de fôlego.",
-                nerf_text="Remove totalmente os i-frames de invulnerabilidade do Dash",
-                buff_text="2 cargas de Dash com recarga 35% mais rápida",
+                flavor_text=t("configs_catalogo", "dash_protocolo__opt_propulsor_instavel__flavor"),
+                nerf_text=t("configs_catalogo", "dash_protocolo__opt_propulsor_instavel__nerf"),
+                buff_text=t("configs_catalogo", "dash_protocolo__opt_propulsor_instavel__buff")
             ),
             "sombra_espelho": OpcaoConfig(
                 id="sombra_espelho",
-                label="Sombra Espelho",
+                label=t("configs_catalogo", "dash_protocolo__opt_sombra_espelho__label"),
                 modificadores={"dash_protocolo": "sombra_espelho"},
-                flavor_text="Um processo espelho atacando do outro ângulo.",
-                nerf_text="No 1º toque Cleiton não se move; projeta sombra por 3,5s (2º toque troca posição)",
-                buff_text="Sombra replica disparos e parries (~55% dano) na direção da mira",
+                flavor_text=t("configs_catalogo", "dash_protocolo__opt_sombra_espelho__flavor"),
+                nerf_text=t("configs_catalogo", "dash_protocolo__opt_sombra_espelho__nerf"),
+                buff_text=t("configs_catalogo", "dash_protocolo__opt_sombra_espelho__buff"),
                 desbloqueada_por="opcao_config:dash_protocolo:sombra_espelho",
             ),
             "rollback_estado": OpcaoConfig(
                 id="rollback_estado",
-                label="Rollback de Estado",
+                label=t("configs_catalogo", "dash_protocolo__opt_rollback_estado__label"),
                 modificadores={"dash_protocolo": "rollback_estado"},
-                flavor_text="Ctrl+Z no próprio corpo.",
-                nerf_text="Direção fixa para o passado + cooldown alto",
-                buff_text="Teleporta ao snapshot de 3s atrás, recupera parte do HP perdido e detona onda de choque",
+                flavor_text=t("configs_catalogo", "dash_protocolo__opt_rollback_estado__flavor"),
+                nerf_text=t("configs_catalogo", "dash_protocolo__opt_rollback_estado__nerf"),
+                buff_text=t("configs_catalogo", "dash_protocolo__opt_rollback_estado__buff"),
                 desbloqueada_por="opcao_config:dash_protocolo:rollback_estado",
             ),
         },
@@ -907,7 +881,7 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
     # 25. Rastro de Dash (Experimental — Requer habilidade:dash)
     "dash_rastro": ConfiguracaoDef(
         id="dash_rastro",
-        nome="Rastro de Dash",
+        nome=t("configs_catalogo", "dash_rastro__nome"),
         categoria=CategoriaConfig.EXPERIMENTAL,
         tipo=TipoControleConfig.SELETOR,
         valor_padrao="padrao",
@@ -916,43 +890,43 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
         opcoes={
             "padrao": OpcaoConfig(
                 id="padrao",
-                label="Padrão",
+                label=t("configs_catalogo", "dash_rastro__opt_padrao__label"),
                 modificadores={},
-                flavor_text="Rastro padrão sem efeitos colaterais.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum",
+                flavor_text=t("configs_catalogo", "dash_rastro__opt_padrao__flavor"),
+                nerf_text=t("configs_catalogo", "dash_rastro__opt_padrao__nerf"),
+                buff_text=t("configs_catalogo", "dash_rastro__opt_padrao__buff"),
             ),
             "exaustao_termica": OpcaoConfig(
                 id="exaustao_termica",
-                label="Exaustão Térmica",
+                label=t("configs_catalogo", "dash_rastro__opt_exaustao_termica__label"),
                 modificadores={"dash_rastro": "exaustao_termica"},
-                flavor_text="Escape quente demais que cozinha quem persegue.",
-                nerf_text="Arma superaquece após o Dash (-25% cadência por 1,2s)",
-                buff_text="Deixa trilha incandescente por 3,5s que queima e aplica +25% vulnerabilidade",
+                flavor_text=t("configs_catalogo", "dash_rastro__opt_exaustao_termica__flavor"),
+                nerf_text=t("configs_catalogo", "dash_rastro__opt_exaustao_termica__nerf"),
+                buff_text=t("configs_catalogo", "dash_rastro__opt_exaustao_termica__buff"),
             ),
             "vacuo_io": OpcaoConfig(
                 id="vacuo_io",
-                label="Vácuo de I/O",
+                label=t("configs_catalogo", "dash_rastro__opt_vacuo_io__label"),
                 modificadores={"dash_rastro": "vacuo_io"},
-                flavor_text="Curto no alcance, mas junta toda a horda num ponto só.",
-                nerf_text="Alcance do Dash reduzido em -25%",
-                buff_text="Cria vórtice no ponto final que puxa drops e agrupa inimigos",
+                flavor_text=t("configs_catalogo", "dash_rastro__opt_vacuo_io__flavor"),
+                nerf_text=t("configs_catalogo", "dash_rastro__opt_vacuo_io__nerf"),
+                buff_text=t("configs_catalogo", "dash_rastro__opt_vacuo_io__buff")
             ),
             "subprocesso_atrasado": OpcaoConfig(
                 id="subprocesso_atrasado",
-                label="Subprocesso Atrasado",
+                label=t("configs_catalogo", "dash_rastro__opt_subprocesso_atrasado__label"),
                 modificadores={"dash_rastro": "subprocesso_atrasado"},
-                flavor_text="O processo pai atravessa atrasado paralisando a fila.",
-                nerf_text="Alcance -15% e cooldown +0,4s",
-                buff_text="Fantasma dispara após 0,75s causando dano e atordoamento (1,1s) na linha",
+                flavor_text=t("configs_catalogo", "dash_rastro__opt_subprocesso_atrasado__flavor"),
+                nerf_text=t("configs_catalogo", "dash_rastro__opt_subprocesso_atrasado__nerf"),
+                buff_text=t("configs_catalogo", "dash_rastro__opt_subprocesso_atrasado__buff")
             ),
             "thread_fantasma": OpcaoConfig(
                 id="thread_fantasma",
-                label="Thread Fantasma",
+                label=t("configs_catalogo", "dash_rastro__opt_thread_fantasma__label"),
                 modificadores={"dash_rastro": "thread_fantasma"},
-                flavor_text="Isca de hardware pronta para estourar.",
-                nerf_text="Cooldown do Dash +40%",
-                buff_text="Deixa Clone Holográfico por 2,5s que atrai agro e explode ao ser destruído",
+                flavor_text=t("configs_catalogo", "dash_rastro__opt_thread_fantasma__flavor"),
+                nerf_text=t("configs_catalogo", "dash_rastro__opt_thread_fantasma__nerf"),
+                buff_text=t("configs_catalogo", "dash_rastro__opt_thread_fantasma__buff"),
                 desbloqueada_por="opcao_config:dash_rastro:thread_fantasma",
             ),
         },
@@ -961,7 +935,7 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
     # 26. Garbage Collector (Performance)
     "garbage_collector": ConfiguracaoDef(
         id="garbage_collector",
-        nome="Garbage Collector",
+        nome=t("configs_catalogo", "garbage_collector__nome"),
         categoria=CategoriaConfig.PERFORMANCE,
         tipo=TipoControleConfig.TOGGLE,
         valor_padrao="desligado",
@@ -969,28 +943,27 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
         opcoes={
             "desligado": OpcaoConfig(
                 id="desligado",
-                label="Desligado",
+                label=t("configs_catalogo", "garbage_collector__opt_desligado__label"),
                 modificadores={},
-                flavor_text="Memória gerenciada de forma contínua.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum",
+                flavor_text=t("configs_catalogo", "garbage_collector__opt_desligado__flavor"),
+                nerf_text=t("configs_catalogo", "garbage_collector__opt_desligado__nerf"),
+                buff_text=t("configs_catalogo", "garbage_collector__opt_desligado__buff"),
             ),
             "ligado": OpcaoConfig(
                 id="ligado",
-                label="Ligado",
+                label=t("configs_catalogo", "garbage_collector__opt_ligado__label"),
                 modificadores={"garbage_collector": True},
-                flavor_text="Stop-the-World — O coletor trava sua arma, mas limpa o lixo balístico da sala.",
-                nerf_text="Barra de RAM enche em ~12s e trava disparos por ~0,8s",
-                buff_text="Apaga projéteis inimigos próximos e concede +40% cadência por 4s + munição Slot 3",
-            ),
+                flavor_text=t("configs_catalogo", "garbage_collector__opt_ligado__flavor"),
+                nerf_text=t("configs_catalogo", "garbage_collector__opt_ligado__nerf"),
+                buff_text=t("configs_catalogo", "garbage_collector__opt_ligado__buff")         ),
         },
     ),
 
     # 27. Latência Simulada (Experimental — Exclusiva de Conquista)
     "latencia_ping": ConfiguracaoDef(
         id="latencia_ping",
-        nome="Latência Simulada",
-        categoria=CategoriaConfig.EXPERIMENTAL,
+        nome=t("configs_catalogo", "latencia_ping__nome"),
+                categoria=CategoriaConfig.EXPERIMENTAL,
         tipo=TipoControleConfig.TOGGLE,
         valor_padrao="desligado",
         ordem=27,
@@ -998,19 +971,19 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
         opcoes={
             "desligado": OpcaoConfig(
                 id="desligado",
-                label="Desligado",
+                label=t("configs_catalogo", "latencia_ping__opt_desligado__label"),
                 modificadores={},
-                flavor_text="Conexão local 0 ms.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum",
+                flavor_text=t("configs_catalogo", "latencia_ping__opt_desligado__flavor"),
+                nerf_text=t("configs_catalogo", "latencia_ping__opt_desligado__nerf"),
+                buff_text=t("configs_catalogo", "latencia_ping__opt_desligado__buff"),
             ),
             "ligado": OpcaoConfig(
                 id="ligado",
-                label="Ligado",
+                label=t("configs_catalogo", "latencia_ping__opt_ligado__label"),
                 modificadores={"latencia_ping": True},
-                flavor_text="Ping 80ms — Você já saiu daqui no servidor, e seu tiro chegou duas vezes.",
-                nerf_text="Atraso real de input de ~80ms aplicado a todas as ações (disparo, melee, Parry e Dash)",
-                buff_text="Dessincronia de hitbox e eco de pacote (+30% dano após 0,3s ignorando blindagem)",
+                flavor_text=t("configs_catalogo", "latencia_ping__opt_ligado__flavor"),
+                nerf_text=t("configs_catalogo", "latencia_ping__opt_ligado__nerf"),
+                buff_text=t("configs_catalogo", "latencia_ping__opt_ligado__buff")
             ),
         },
     ),
@@ -1018,7 +991,7 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
     # 28. Modo Wireframe (Performance)
     "modo_wireframe": ConfiguracaoDef(
         id="modo_wireframe",
-        nome="Modo Wireframe",
+        nome=t("configs_catalogo", "modo_wireframe__nome"),
         categoria=CategoriaConfig.PERFORMANCE,
         tipo=TipoControleConfig.TOGGLE,
         valor_padrao="desligado",
@@ -1026,20 +999,49 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
         opcoes={
             "desligado": OpcaoConfig(
                 id="desligado",
-                label="Desligado",
+                label=t("configs_catalogo", "modo_wireframe__opt_desligado__label"),
                 modificadores={},
-                flavor_text="Renderização completa com sprites.",
-                nerf_text="Nenhum",
-                buff_text="Nenhum",
+                flavor_text=t("configs_catalogo", "modo_wireframe__opt_desligado__flavor"),
+                nerf_text=t("configs_catalogo", "modo_wireframe__opt_desligado__nerf"),
+                buff_text=t("configs_catalogo", "modo_wireframe__opt_desligado__buff"),
             ),
             "ligado": OpcaoConfig(
                 id="ligado",
-                label="Ligado",
+                label=t("configs_catalogo", "modo_wireframe__opt_ligado__label"),
                 modificadores={"modo_wireframe": True},
-                flavor_text="Sem texturas, só geometria e pontos de ruptura.",
-                nerf_text="Renderização em contornos técnicos minimalistas + grade de debug",
-                buff_text="Nós Vulneráveis: acertar o ângulo exposto causa dano verdadeiro e espalha vulnerabilidade",
+                flavor_text=t("configs_catalogo", "modo_wireframe__opt_ligado__flavor"),
+                nerf_text=t("configs_catalogo", "modo_wireframe__opt_ligado__nerf"),
+                buff_text=t("configs_catalogo", "modo_wireframe__opt_ligado__buff"),
                 incompativel_com=[("graficos_qualidade", "baixa")],
+            ),
+        },
+    ),
+
+    # 29. Cursor Desabilitado / Mira Oculta (Interface)
+    "mira_oculta": ConfiguracaoDef(
+        id="mira_oculta",
+        nome=t("configs_catalogo", "mira_oculta__nome"),
+        categoria=CategoriaConfig.INTERFACE,
+        tipo=TipoControleConfig.TOGGLE,
+        valor_padrao="desligado",
+        ordem=29,
+        opcoes={
+            "desligado": OpcaoConfig(
+                id="desligado",
+                label=t("configs_catalogo", "mira_oculta__opt_desligado__label"),
+                modificadores={},
+                flavor_text=t("configs_catalogo", "mira_oculta__opt_desligado__flavor"),
+                nerf_text=t("configs_catalogo", "mira_oculta__opt_desligado__nerf"),
+                buff_text=t("configs_catalogo", "mira_oculta__opt_desligado__buff"),
+            ),
+            "ligado": OpcaoConfig(
+                id="ligado",
+                label=t("configs_catalogo", "mira_oculta__opt_ligado__label"),
+                modificadores={"mira_oculta_homing": True},
+                flavor_text=t("configs_catalogo", "mira_oculta__opt_ligado__flavor"),
+                nerf_text=t("configs_catalogo", "mira_oculta__opt_ligado__nerf"),
+                buff_text=t("configs_catalogo", "mira_oculta__opt_ligado__buff"),
+                incompativel_com=[("keybinds", "uma_mao")],
             ),
         },
     ),
@@ -1055,41 +1057,39 @@ CONFIGURACOES_SISTEMA: dict[str, ConfiguracaoDef] = {
     # S1. Volume Geral
     "volume_master": ConfiguracaoDef(
         id="volume_master",
-        nome="Volume Geral",
+        nome=t("configs_catalogo", "volume_master__nome"),
         categoria=CategoriaConfig.SISTEMA,
         tipo=TipoControleConfig.SLIDER,
         valor_padrao=100,
         is_gameplay=False,
         ordem=101,
-        descricao_sistema="Controla o volume geral de toda a aplicação (0% a 100%)."
-    ),
+        descricao_sistema=t("configs_catalogo", "volume_master__descricao_sistema")   ),
 
     # S2. Volume da Música
     "volume_musica": ConfiguracaoDef(
         id="volume_musica",
-        nome="Volume da Música",
-        categoria=CategoriaConfig.SISTEMA,
+        nome=t("configs_catalogo", "volume_musica__nome"),
+                categoria=CategoriaConfig.SISTEMA,
         tipo=TipoControleConfig.SLIDER,
         valor_padrao=100,
         is_gameplay=False,
         ordem=102,
-        descricao_sistema="Controla a trilha sonora 8-bit em loop (0% a 100%)."
+        descricao_sistema=t("configs_catalogo", "volume_musica__descricao_sistema")
     ),
 
     # S3. Volume dos Efeitos
     "volume_sfx": ConfiguracaoDef(
         id="volume_sfx",
-        nome="Volume dos Efeitos",
+        nome=t("configs_catalogo", "volume_sfx__nome"),
         categoria=CategoriaConfig.SISTEMA,
         tipo=TipoControleConfig.SLIDER,
         valor_padrao=100,
         is_gameplay=False,
         ordem=103,
-        descricao_sistema="Controla tiros, explosões, pickups e menus (0% a 100%)."
-    ),
+        descricao_sistema=t("configs_catalogo", "volume_sfx__descricao_sistema")    ),
 }
 
-# Dicionário consolidado com as configurações (31 no total: 28 gameplay + 3 sistema)
+# Dicionário consolidado com as configurações (32 no total: 29 gameplay + 3 sistema)
 TODAS_CONFIGURACOES: dict[str, ConfiguracaoDef] = {
     **CONFIGURACOES_GAMEPLAY,
     **CONFIGURACOES_SISTEMA

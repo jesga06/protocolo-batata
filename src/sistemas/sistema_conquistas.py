@@ -19,6 +19,7 @@ TIPOS_RECOMPENSA_VALIDOS = (
     "arma",
     "trofeu",
 )
+COTAS_SLOTS_FIRMWARE = (2, 4, 6)
 
 
 class SistemaConquistas:
@@ -31,11 +32,35 @@ class SistemaConquistas:
             for cid in CONQUISTAS_CONTINUAS
         }
         self.fixadas: list[str] = ["mestre_chave_inglesa"]
+        self.fixadas_editada_manualmente: bool = False
         self.recompensas: dict[str, set[str]] = {
             k: set() for k in TIPOS_RECOMPENSA_VALIDOS
         }
         self.slots_firmware_max: int = 1
         self.modificadores_equipados: list[str] = []
+        self.monge_15fps_segundos: float = 0.0
+
+    def resetar(self) -> None:
+        """Reinicia todo o estado de conquistas, pins e firmwares para o padrão limpo."""
+        self.unicas_concluidas.clear()
+        self.continuas = {
+            cid: {"valor": 0, "milestones_concluidos": []}
+            for cid in CONQUISTAS_CONTINUAS
+        }
+        self.fixadas = ["mestre_chave_inglesa"]
+        self.fixadas_editada_manualmente = False
+        self.recompensas = {k: set() for k in TIPOS_RECOMPENSA_VALIDOS}
+        self.slots_firmware_max = 1
+        self.modificadores_equipados = []
+        self.monge_15fps_segundos = 0.0
+
+    def atualizar_progresso_15fps(self, segundos: float) -> list[dict]:
+        """Atualiza o contador contínuo em segundos a 15 FPS (0..120) e conclui Monge Tibetano ao atingir 120s."""
+        val = max(0.0, float(segundos))
+        self.monge_15fps_segundos = 120.0 if "monge_tibetano" in self.unicas_concluidas else min(120.0, val)
+        if val >= 120.0 and "monge_tibetano" not in self.unicas_concluidas:
+            return self.registrar_evento("tempo_15fps", val, {"tempo_15fps": val})
+        return []
 
     def possui_recompensa(self, tipo: str, recompensa_id: str) -> bool:
         """Verifica se uma recompensa permanente foi conquistada."""
@@ -79,6 +104,7 @@ class SistemaConquistas:
 
         # 1. Conquistas Contínuas
         inc = max(0, int(quantidade)) if isinstance(quantidade, (int, float)) else 1
+        mestre_m1_recem = False
         for cid, cdef in CONQUISTAS_CONTINUAS.items():
             if cdef.evento != evento:
                 continue
@@ -94,6 +120,8 @@ class SistemaConquistas:
                 if estado["valor"] >= ms.meta:
                     concluidos.append(idx)
                     self._conceder_recompensas(ms.recompensas)
+                    if cid == "mestre_chave_inglesa" and idx == 0:
+                        mestre_m1_recem = True
                     notificacoes.append(
                         {
                             "id": f"{cid}:m{idx + 1}",
@@ -102,11 +130,28 @@ class SistemaConquistas:
                         }
                     )
 
+        if (
+            mestre_m1_recem
+            and not self.fixadas_editada_manualmente
+            and "primeiro_overclock_sujo" not in self.unicas_concluidas
+        ):
+            if "mestre_chave_inglesa" in self.fixadas:
+                idx_pin = self.fixadas.index("mestre_chave_inglesa")
+                if "primeiro_overclock_sujo" not in self.fixadas:
+                    self.fixadas[idx_pin] = "primeiro_overclock_sujo"
+                else:
+                    self.fixadas.remove("mestre_chave_inglesa")
+            elif "primeiro_overclock_sujo" not in self.fixadas and len(self.fixadas) < 3:
+                self.fixadas.insert(0, "primeiro_overclock_sujo")
+
         # 2. Conquistas Únicas
         candidatas_unicas: list[str] = []
 
         if evento == "tempo_15fps":
-            if float(quantidade) >= 120.0 or float(ctx.get("tempo_15fps", 0.0)) >= 120.0:
+            tempo_ev = max(float(quantidade), float(ctx.get("tempo_15fps", 0.0)))
+            self.monge_15fps_segundos = max(self.monge_15fps_segundos, min(120.0, tempo_ev))
+            if tempo_ev >= 120.0:
+                self.monge_15fps_segundos = 120.0
                 candidatas_unicas.append("monge_tibetano")
 
         elif evento == "vitoria_boss":
@@ -130,6 +175,12 @@ class SistemaConquistas:
                 candidatas_unicas.append("blindado_escritorio")
             if bool(ctx.get("fogo_amigo", False)):
                 candidatas_unicas.append("auto_sabotagem")
+            if (
+                evento == "miniboss_rapido"
+                and int(ctx.get("configs_nao_neutras", 0)) >= 2
+                and not bool(ctx.get("superaqueceu", False))
+            ):
+                candidatas_unicas.append("primeiro_overclock_sujo")
 
         elif evento == "abate_boliche":
             if int(quantidade) >= 3 or int(ctx.get("abates_golpe", 0)) >= 3:
@@ -149,12 +200,6 @@ class SistemaConquistas:
             if apagados >= 15:
                 candidatas_unicas.append("limpeza_de_disco")
 
-        elif evento == "combo_atualizado":
-            duracao_s = float(ctx.get("duracao_s", 0.0))
-            contagem = max(int(ctx.get("contagem", 0)), int(quantidade) if isinstance(quantidade, (int, float)) else 0)
-            if duracao_s >= 45.0 or contagem >= 50:
-                candidatas_unicas.append("estilo_corporativo_s")
-
         elif evento == "parry_streak":
             streak = max(int(quantidade), int(ctx.get("streak", 0)))
             tempo_janela = float(ctx.get("tempo_janela", 0.0))
@@ -165,6 +210,12 @@ class SistemaConquistas:
             notif = self._concluir_unica(u_id)
             if notif is not None:
                 notificacoes.append(notif)
+                if (
+                    u_id == "primeiro_overclock_sujo"
+                    and not self.fixadas_editada_manualmente
+                    and "primeiro_overclock_sujo" in self.fixadas
+                ):
+                    self.fixadas.remove("primeiro_overclock_sujo")
 
         return notificacoes
 
@@ -172,13 +223,47 @@ class SistemaConquistas:
         """Adiciona ou remove uma conquista dos pins da HUD (máximo 3)."""
         if conquista_id in self.fixadas:
             self.fixadas.remove(conquista_id)
+            self.fixadas_editada_manualmente = True
             return True
         if conquista_id not in CONQUISTAS_CONTINUAS and conquista_id not in CONQUISTAS_UNICAS:
             return False
         if len(self.fixadas) >= 3:
             return False
         self.fixadas.append(conquista_id)
+        self.fixadas_editada_manualmente = True
         return True
+
+    @staticmethod
+    def obter_cota_slot(indice_slot: int) -> int:
+        """Retorna a cota mínima de configurações não-neutras para o índice de slot (0..2)."""
+        idx = max(0, min(len(COTAS_SLOTS_FIRMWARE) - 1, int(indice_slot)))
+        return int(COTAS_SLOTS_FIRMWARE[idx])
+
+    def obter_cota_chip(self, chip_id: str) -> int | None:
+        """Retorna a cota do slot onde o chip está equipado, ou None se não estiver equipado."""
+        if chip_id not in self.modificadores_equipados:
+            return None
+        idx = self.modificadores_equipados.index(chip_id)
+        return self.obter_cota_slot(idx)
+
+    def obter_firmwares_ativos(self, num_configs_nao_neutras: int) -> list[str]:
+        """Retorna apenas os Chips de Firmware equipados cuja cota de slot (2-4-6) foi atingida."""
+        n_cfg = max(0, int(num_configs_nao_neutras))
+        return [
+            cid
+            for idx, cid in enumerate(self.modificadores_equipados[:3])
+            if n_cfg >= self.obter_cota_slot(idx)
+        ]
+
+    def obter_firmwares_inativos(self, num_configs_nao_neutras: int) -> list[tuple[str, int]]:
+        """Retorna [(chip_id, cota)] dos Chips equipados atualmente abaixo da cota."""
+        n_cfg = max(0, int(num_configs_nao_neutras))
+        inativos: list[tuple[str, int]] = []
+        for idx, cid in enumerate(self.modificadores_equipados[:3]):
+            cota = self.obter_cota_slot(idx)
+            if n_cfg < cota:
+                inativos.append((cid, cota))
+        return inativos
 
     def equipar_firmware(self, chip_id: str) -> bool:
         """Equipa um Chip de Firmware se desbloqueado e houver slot disponível."""
@@ -229,16 +314,30 @@ class SistemaConquistas:
             elif cid in CONQUISTAS_UNICAS:
                 cdef = CONQUISTAS_UNICAS[cid]
                 concluida = cid in self.unicas_concluidas
-                resumo.append(
-                    {
-                        "id": cid,
-                        "nome": cdef.nome,
-                        "atual": 1 if concluida else 0,
-                        "meta": 1,
-                        "progresso": 1.0 if concluida else 0.0,
-                        "concluida": concluida,
-                    }
-                )
+                if cid == "monge_tibetano":
+                    segs_raw = float(getattr(self, "monge_15fps_segundos", 0.0))
+                    segs = 120 if concluida else min(120, int(segs_raw + 1e-6))
+                    resumo.append(
+                        {
+                            "id": cid,
+                            "nome": cdef.nome,
+                            "atual": segs,
+                            "meta": 120,
+                            "progresso": 1.0 if concluida else min(1.0, segs / 120.0),
+                            "concluida": concluida,
+                        }
+                    )
+                else:
+                    resumo.append(
+                        {
+                            "id": cid,
+                            "nome": cdef.nome,
+                            "atual": 1 if concluida else 0,
+                            "meta": 1,
+                            "progresso": 1.0 if concluida else 0.0,
+                            "concluida": concluida,
+                        }
+                    )
         return resumo
 
     def to_dict(self) -> dict:
@@ -255,6 +354,7 @@ class SistemaConquistas:
                 for cid in CONQUISTAS_CONTINUAS
             },
             "fixadas": list(self.fixadas[:3]),
+            "fixadas_editada_manualmente": bool(getattr(self, "fixadas_editada_manualmente", False)),
             "recompensas": {
                 k: sorted(list(self.recompensas.get(k, set())))
                 for k in TIPOS_RECOMPENSA_VALIDOS
@@ -327,9 +427,15 @@ class SistemaConquistas:
                     ):
                         temp_equip.append(chip_id)
 
+            if "fixadas_editada_manualmente" in dados:
+                temp_edit_manual = bool(dados.get("fixadas_editada_manualmente", False))
+            else:
+                temp_edit_manual = (temp_fixadas != ["mestre_chave_inglesa"])
+
             self.unicas_concluidas = temp_unicas
             self.continuas = temp_continuas
             self.fixadas = temp_fixadas
+            self.fixadas_editada_manualmente = temp_edit_manual
             self.recompensas = temp_recomp
             self.slots_firmware_max = temp_slots
             self.modificadores_equipados = temp_equip

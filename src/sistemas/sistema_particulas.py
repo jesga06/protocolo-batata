@@ -237,6 +237,7 @@ class SistemaParticulas:
         self.marcas_queimadura: list[MarcaQueimadura] = []
         self.arcos_parry: list[ArcoParry] = []
         self.low_graphics: bool = False
+        self._acum_jato_chamas: float = 0.0
         self._surfs_onda_cache: dict[int, pygame.Surface] = {}
         self._surfs_marca_cache: dict[int, pygame.Surface] = {}
 
@@ -463,46 +464,64 @@ class SistemaParticulas:
         angulo: float,
         alcance: float,
         arco_graus: float,
+        dt: float = 1.0 / 60.0,
+        vel_origem_x: float = 0.0,
+        vel_origem_y: float = 0.0,
     ):
         """
         Emite partículas leves de fogo, brasa e fumaça ao longo do cone do Lança-Chamas
-        (zero alocações de fontes ou superfícies).
+        (zero alocações de fontes ou superfícies), calibradas para preencher exatamente
+        o setor de dano (alcance e arco_graus) com densidade equilibrada.
         """
-        qtd = 3 if self.low_graphics else 6
-        meio_arco_rad = math.radians(max(1.0, float(arco_graus)) * 0.5)
+        taxa = 85.0 if self.low_graphics else 165.0
+        self._acum_jato_chamas = min(
+            6.0, self._acum_jato_chamas + taxa * max(0.0, float(dt))
+        )
+        qtd = int(self._acum_jato_chamas)
+        if qtd <= 0:
+            return
+        self._acum_jato_chamas -= qtd
+
+        meio_arco_rad = math.radians(max(1.0, float(arco_graus)) * 0.5) * 0.92
         alc = max(24.0, float(alcance))
+        decaimento = 0.965
+        k_arrasto = -60.0 * math.log(decaimento)
+        vox = max(-420.0, min(420.0, float(vel_origem_x))) * 0.60
+        voy = max(-420.0, min(420.0, float(vel_origem_y))) * 0.60
         paleta_chama = (
-            (255, 220, 90),   # núcleo amarelo-quente
-            (255, 145, 35),   # chama laranja
-            (235, 75, 25),    # brasa vermelho-alaranjada
-            (95, 85, 80),     # fumaça escura leve
+            (255, 232, 115),  # núcleo amarelo-quente
+            (255, 148, 38),   # chama laranja
+            (235, 72, 24),    # brasa vermelho-alaranjada
+            (92, 82, 76),     # fumaça escura leve
         )
 
-        for i in range(qtd):
+        for _ in range(qtd):
             ang = float(angulo) + random.uniform(-meio_arco_rad, meio_arco_rad)
-            vida = random.uniform(0.18, 0.34)
-            vel = random.uniform(alc * 2.1, alc * 3.3)
-            vx = math.cos(ang) * vel
-            vy = math.sin(ang) * vel
-            if i == qtd - 1 and random.random() < 0.35:
+            vida = random.uniform(0.15, 0.22)
+            fator_dist = (1.0 - math.exp(-k_arrasto * vida)) / k_arrasto
+            dist_alvo = alc * random.uniform(0.82, 0.98)
+            vel = dist_alvo / max(0.04, fator_dist)
+            vx = math.cos(ang) * vel + vox
+            vy = math.sin(ang) * vel + voy
+            if random.random() < 0.14:
                 cor = paleta_chama[3]
-                tam_ini = random.uniform(4.0, 6.5)
-                tam_fim = random.uniform(6.0, 9.0)
+                tam_ini = random.uniform(2.5, 4.0)
+                tam_fim = random.uniform(5.0, 7.0)
             else:
-                cor = paleta_chama[i % 3]
-                tam_ini = random.uniform(3.5, 6.0)
-                tam_fim = 1.0
+                cor = paleta_chama[random.randrange(3)]
+                tam_ini = random.uniform(3.2, 5.0)
+                tam_fim = random.uniform(1.6, 2.8)
 
             p = Particula(
-                x=float(x) + random.uniform(-3.0, 3.0),
-                y=float(y) + random.uniform(-3.0, 3.0),
+                x=float(x),
+                y=float(y),
                 vx=vx,
                 vy=vy,
                 vida_max=vida,
                 tamanho_inicial=tam_ini,
                 tamanho_final=tam_fim,
                 cor=cor,
-                decaimento_vel=0.92,
+                decaimento_vel=decaimento,
             )
             self.particulas.append(p)
 
@@ -616,8 +635,8 @@ class SistemaParticulas:
         Renderiza todas as partículas, ondas de choque e números de dano na tela virtual com suporte a low_graphics.
         """
         screen = getattr(janela, "screen", janela)
-        largura_janela = getattr(janela, "largura", getattr(screen, "get_width", lambda: 800)())
-        altura_janela = getattr(janela, "altura", getattr(screen, "get_height", lambda: 600)())
+        largura_janela = getattr(janela, "largura", getattr(screen, "get_width", lambda: 1280)())
+        altura_janela = getattr(janela, "altura", getattr(screen, "get_height", lambda: 720)())
         is_low_graphics = self.low_graphics or getattr(janela, "low_graphics", False)
 
         # 1. Renderiza ondas de choque

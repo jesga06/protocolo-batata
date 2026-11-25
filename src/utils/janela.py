@@ -1,7 +1,7 @@
 """
 Módulo de Gerenciamento de Janela e Escalonamento Nativo — Protocolo: Batata
 Implementa uma camada nativa em Pygame puro com suporte a:
-- Resolução virtual fixa (800x600) com canvas virtual em alta definição.
+- Resolução virtual fixa (1280x720) com canvas virtual em alta definição.
 - Escalonamento com Letterboxing preciso (manutenção rigorosa de Aspect Ratio).
 - Conversão segura e clampada de coordenadas do mouse (Windowed e Fullscreen).
 - Alternância robusta de tela cheia (F11 e Alt+Enter sem conflito de flags).
@@ -256,6 +256,7 @@ class Janela(metaclass=JanelaMeta):
 
         self._clock = pygame.time.Clock()
         self._delta_time = 0.0
+        self._delta_time_real = 0.0
         self.fps_alvo = FPS_PADRAO
         self.eventos = []
         self.cor_fundo = (18, 22, 30)
@@ -568,7 +569,7 @@ class Janela(metaclass=JanelaMeta):
 
     def screen_to_virtual_coords(self, px: float, py: float) -> tuple[float, float]:
         """
-        Converte as coordenadas de tela real do mouse para o espaço virtual (800x600).
+        Converte as coordenadas de tela real do mouse para o espaço virtual (1280x720).
         Aplica clamping automático para manter as coordenadas dentro do canvas do jogo.
         """
         lw, lh = self.real_screen.get_size()
@@ -662,7 +663,9 @@ class Janela(metaclass=JanelaMeta):
             pygame.display.flip()
             limite_fps = int(self.fps_alvo if fps_alvo is None else fps_alvo)
             ms_passados = self._clock.tick(limite_fps)
-            self._delta_time = min(DT_CLAMP_MAX, max(0.0, ms_passados / 1000.0))
+            dt_real = min(0.25, max(0.0, ms_passados / 1000.0))
+            self._delta_time_real = dt_real
+            self._delta_time = min(DT_CLAMP_MAX, dt_real)
             self._eventos_processados_frame = False
             return
 
@@ -724,14 +727,20 @@ class Janela(metaclass=JanelaMeta):
         # 6. Sincronização do Relógio (FPS Cap e Delta Time clampado <= DT_CLAMP_MAX)
         limite_fps = int(self.fps_alvo if fps_alvo is None else fps_alvo)
         ms_passados = self._clock.tick(limite_fps)
-        self._delta_time = min(DT_CLAMP_MAX, max(0.0, ms_passados / 1000.0))
+        dt_real = min(0.25, max(0.0, ms_passados / 1000.0))
+        self._delta_time_real = dt_real
+        self._delta_time = min(DT_CLAMP_MAX, dt_real)
 
         # Reseta flag de eventos para o próximo frame
         self._eventos_processados_frame = False
 
     def delta_time(self) -> float:
-        """Retorna o tempo decorrido no último frame em segundos."""
+        """Retorna o tempo decorrido no último frame em segundos (clampado por DT_CLAMP_MAX)."""
         return self._delta_time
+
+    def delta_time_real(self) -> float:
+        """Retorna o tempo decorrido real no último frame em segundos (clamp de segurança 0.25s)."""
+        return self._delta_time_real if getattr(self, "_delta_time_real", 0.0) > 0.0 else self._delta_time
 
     def get_fps(self) -> float:
         """Retorna a taxa atual de quadros por segundo."""

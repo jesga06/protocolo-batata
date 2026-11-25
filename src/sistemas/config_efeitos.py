@@ -68,6 +68,7 @@ class ModificadoresGameplay:
     garbage_collector: bool = False
     latencia_ping: bool = False
     modo_wireframe: bool = False
+    mira_oculta_homing: bool = False
 
 
 def calcular_modificadores(
@@ -217,5 +218,7 @@ def calcular_modificadores(
             mods.latencia_ping = mods.latencia_ping or bool(mod_dict["latencia_ping"])
         if "modo_wireframe" in mod_dict:
             mods.modo_wireframe = mods.modo_wireframe or bool(mod_dict["modo_wireframe"])
+        if "mira_oculta_homing" in mod_dict:
+            mods.mira_oculta_homing = mods.mira_oculta_homing or bool(mod_dict["mira_oculta_homing"])
 
     return mods

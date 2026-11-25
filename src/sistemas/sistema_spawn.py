@@ -23,6 +23,7 @@ from src.utils.constantes import (
     LARGURA_ARENA, ALTURA_ARENA
 )
 from src.utils.math_utils import clamp
+from src.utils.traducao import t
 
 
 class SistemaSpawn:
@@ -32,10 +33,10 @@ class SistemaSpawn:
     HORARIOS_BOSS = [60.0, 120.0, 180.0, 240.0]
     RUSH_INTERVALO = 45.0
     ARQUETIPOS_MINIBOSS_4 = (
-        (InimigoRapido, "MINI-BOSS: IMPRESSORA MATRICIAL", "impressora_matricial"),
-        (InimigoTank, "MINI-BOSS: FONTE GENÉRICA 500W", "fonte_generica"),
-        (InimigoPhasing, "MINI-BOSS: ROTEADOR CORPORATIVO", "roteador_corporativo"),
-        (InimigoBlindado, "MINI-BOSS: NO-BREAK CHUMBADO", "nobreak_chumbado"),
+        (InimigoRapido, t("combate_entidades", "miniboss_impressora_matricial"), "impressora_matricial"),
+        (InimigoTank, t("combate_entidades", "miniboss_fonte_500w"), "fonte_generica"),
+        (InimigoPhasing, t("combate_entidades", "miniboss_roteador"), "roteador_corporativo"),
+        (InimigoBlindado, t("combate_entidades", "miniboss_nobreak"), "nobreak_chumbado"),
     )
 
     def __init__(
@@ -55,7 +56,7 @@ class SistemaSpawn:
         if fila_minibosses is not None:
             self.fila_minibosses_run = list(fila_minibosses)
         else:
-            qtd_ciclos = max(1, int(getattr(_const, "MINIBOSS_CICLOS_RUN", 3)))
+            qtd_ciclos = max(1, int(getattr(_const, "MINIBOSS_CICLOS_RUN", 2)))
             self.fila_minibosses_run = random.sample(
                 list(self.ARQUETIPOS_MINIBOSS_4),
                 min(qtd_ciclos, len(self.ARQUETIPOS_MINIBOSS_4)),
@@ -93,19 +94,19 @@ class SistemaSpawn:
         alinhado com o CATALOGO_ARQUITETURAL.md.
         """
         catalogo = {
-            1: (InimigoRapido, "MINI-BOSS: IMPRESSORA MATRICIAL"),
-            2: (InimigoTank, "MINI-BOSS: FONTE GENÉRICA 500W"),
-            3: (InimigoPhasing, "MINI-BOSS: ROTEADOR CORPORATIVO"),
-            4: (InimigoBlindado, "MINI-BOSS: NO-BREAK CHUMBADO"),
-            5: (InimigoRanged, "MINI-BOSS: PROJETOR CORPORATIVO"),
-            6: (InimigoTank, "MINI-BOSS: SERVIDOR RACK 42U"),
-            7: (InimigoPhasing, "MINI-BOSS: SWITCH DE REDE FANTASMA"),
-            8: (InimigoBlindado, "MINI-BOSS: COFRE DIGITAL BLINDADO"),
-            9: (InimigoRanged, "MINI-BOSS: SCANNER LASER INDUSTRIAL"),
+            1: (InimigoRapido, t("combate_entidades", "miniboss_impressora_matricial")),
+            2: (InimigoTank, t("combate_entidades", "miniboss_fonte_500w")),
+            3: (InimigoPhasing, t("combate_entidades", "miniboss_roteador")),
+            4: (InimigoBlindado, t("combate_entidades", "miniboss_nobreak")),
+            5: (InimigoRanged, t("combate_entidades", "miniboss_projetor")),
+            6: (InimigoTank, t("combate_entidades", "miniboss_servidor_rack")),
+            7: (InimigoPhasing, t("combate_entidades", "miniboss_switch_fantasma")),
+            8: (InimigoBlindado, t("combate_entidades", "miniboss_cofre_digital")),
+            9: (InimigoRanged, t("combate_entidades", "miniboss_scanner_laser")),
         }
         if boss_idx in catalogo:
             return catalogo[boss_idx]
-        return (InimigoTank, f"MINI-BOSS: AUDITORIA INTERMINÁVEL MK-{boss_idx}")
+        return (InimigoTank, t("combate_entidades", "miniboss_auditoria_mk", nivel=boss_idx))
 
     def escolher_arquetipo(self, tempo_s: float, permitir_ranged: bool = True):
         """
@@ -210,7 +211,7 @@ class SistemaSpawn:
         self.tempo_decorrido += dt
         novos_inimigos = []
 
-        escalas_miniboss = tuple(getattr(_const, "MINIBOSS_ESCALA_HP_CICLOS", (1.0, 1.25, 1.50)))
+        escalas_miniboss = tuple(getattr(_const, "MINIBOSS_ESCALA_HP_CICLOS", (1.0, 1.35, 1.50)))
         max_ranged = int(getattr(_const, "SPAWN_MAX_RANGED", 4)) * (2 if forcar_rajada_tripla else 1)
         max_impressora = int(getattr(_const, "SPAWN_MAX_IMPRESSORA", 2))
         max_tank = int(getattr(_const, "SPAWN_MAX_TANK", 3))
@@ -239,15 +240,22 @@ class SistemaSpawn:
             )
             boss_elite = cls_elite(x=ex, y=ey, is_elite=True, nome_elite=nome_elite)
             boss_elite.arquetipo_miniboss = arq_id
-            boss_elite.hp_max = max(int(boss_elite.hp_max), 700)
-            boss_elite.hp = boss_elite.hp_max
-            escala_ciclo = float(escalas_miniboss[min(ciclo_idx, len(escalas_miniboss) - 1)])
-            escala_total = escala_ciclo * float(hp_mult)
-            if escala_total != 1.0:
-                boss_elite.hp_max = max(1, int(round(boss_elite.hp_max * escala_total)))
+            if ciclo_idx == 0:
+                hp_base_c1 = random.randint(750, 850)
+                boss_elite.hp_max = max(1, int(round(hp_base_c1 * float(hp_mult))))
                 boss_elite.hp = boss_elite.hp_max
+            else:
+                boss_elite.hp_max = max(int(boss_elite.hp_max), 700)
+                boss_elite.hp = boss_elite.hp_max
+                escala_ciclo = float(escalas_miniboss[min(ciclo_idx, len(escalas_miniboss) - 1)])
+                escala_total = escala_ciclo * float(hp_mult)
+                if escala_total != 1.0:
+                    boss_elite.hp_max = max(1, int(round(boss_elite.hp_max * escala_total)))
+                    boss_elite.hp = boss_elite.hp_max
             if vel_mult != 1.0:
                 boss_elite.velocidade *= float(vel_mult)
+            if hasattr(boss_elite, "orientar_para"):
+                boss_elite.orientar_para(camera_x + view_w * 0.5, camera_y + view_h * 0.5)
             return boss_elite
 
         # 1. Spawn de Mini-Boss Elite
@@ -331,6 +339,8 @@ class SistemaSpawn:
                     novo.dano_contato = max(1, int(round(novo.dano_contato * escala_dano_tempo)))
                 if hasattr(novo, "dano_projetil"):
                     novo.dano_projetil = max(1, int(round(novo.dano_projetil * escala_dano_tempo)))
+            if hasattr(novo, "orientar_para"):
+                novo.orientar_para(camera_x + view_w * 0.5, camera_y + view_h * 0.5)
             return novo
 
         def _escolher_calm():

@@ -4,6 +4,7 @@ Controla o ganho de experiência, cálculo dinâmico de nível pela fórmula pro
 tratamento de overflow multi-nível e limite máximo (Nível 20).
 """
 
+import math
 from src.utils.math_utils import clamp
 
 NIVEIS_MARCO_CONFIG = (5, 11)
@@ -19,6 +20,8 @@ class SistemaXP:
         self.nivel_max: int = int(nivel_maximo)
         self.xp_atual: int = 0
         self.xp_total: int = 0
+        self._xp_frac_carry: float = 0.0
+        self.ultimo_xp_ganho: int = 0
         self._callbacks_level_up: list = []
 
     def registrar_callback_level_up(self, callback):
@@ -69,14 +72,21 @@ class SistemaXP:
 
     def adicionar_xp(self, quantidade: int, mult_xp: float = 1.0) -> list[int]:
         """
-        Acrescenta XP com multiplicador, processa subida de nível com suporte a transbordo
-        (multi-level carryover) e dispara eventos de level-up.
+        Acrescenta XP com multiplicador preservando frações acumuladas (evita perda em bônus +25%),
+        processa subida de nível com suporte a transbordo e dispara eventos de level-up.
         Retorna lista dos novos níveis atingidos neste incremento.
         """
         if quantidade <= 0:
+            self.ultimo_xp_ganho = 0
             return []
 
-        xp_ganho = int(round(quantidade * mult_xp))
+        bruto = float(quantidade) * float(mult_xp) + getattr(self, "_xp_frac_carry", 0.0)
+        xp_ganho = int(math.floor(bruto + 1e-9)) if abs(mult_xp - 1.0) > 1e-6 else int(round(quantidade))
+        if abs(mult_xp - 1.0) > 1e-6:
+            self._xp_frac_carry = max(0.0, bruto - xp_ganho)
+        else:
+            self._xp_frac_carry = 0.0
+        self.ultimo_xp_ganho = xp_ganho
         self.xp_total += xp_ganho
         self.xp_atual += xp_ganho
 

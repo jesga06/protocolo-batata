@@ -14,6 +14,7 @@ from src.utils.constantes import (
     DROP_LARGURA, DROP_ALTURA,
     obter_caminho_asset
 )
+from src.utils.traducao import t
 
 
 class SistemaDrops:
@@ -283,7 +284,7 @@ class SistemaDrops:
                 largura=26,
                 altura=26,
                 subtipo=str(op.get("subtipo", op.get("tipo", "buff_dano_temp"))),
-                rotulo=str(op.get("nome", "Suprimento")),
+                rotulo=str(op.get("nome", t("combate_entidades", "drop_suprimento"))),
                 par_id=par_id
             )
             cap.pickup_cooldown = 0.65
@@ -334,7 +335,7 @@ class SistemaDrops:
                 tempo_scavenger=999.0,
                 largura=18,
                 altura=18,
-                rotulo="Micro-Sucata",
+                rotulo=t("combate_entidades", "drop_micro_sucata"),
             )
             criados.append(drop)
             self._adicionar_drop(drop)
@@ -436,7 +437,7 @@ class SistemaDrops:
                         nova_arma.municao_max = int(round(nova_arma.municao_max * mult_valor_drop))
                         nova_arma.municao_atual = nova_arma.municao_max
 
-                    bonus_mun = float(getattr(drop, "bonus_municao_mult", 3.0))
+                    bonus_mun = float(getattr(drop, "bonus_municao_mult", 1.0))
                     if bonus_mun > 1.0:
                         nova_arma.municao_max = int(round(nova_arma.municao_max * bonus_mun))
                         nova_arma.municao_atual = nova_arma.municao_max
@@ -477,13 +478,6 @@ class SistemaDrops:
                     elif hasattr(jogador, "drone"):
                         jogador.drone = novo_drone
 
-                try:
-                    from PPlay.sound import Sound
-                    sfx = Sound(obter_caminho_asset(sfx_nome))
-                    sfx.play()
-                except Exception:
-                    pass
-
                 evento = {
                     "tipo": drop.tipo,
                     "valor": valor_efetivo,
@@ -492,6 +486,10 @@ class SistemaDrops:
                     "x": drop.x,
                     "y": drop.y
                 }
+                if drop.tipo == "xp":
+                    sx_p = getattr(jogador, "sistema_xp", None)
+                    if sx_p is not None and hasattr(sx_p, "ultimo_xp_ganho"):
+                        evento["xp_ganho"] = int(sx_p.ultimo_xp_ganho)
                 if drop.tipo == "arma":
                     evento["arma"] = nova_arma
                 coletados.append(evento)

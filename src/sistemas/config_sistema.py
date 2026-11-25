@@ -14,13 +14,17 @@ from src.sistemas.config_dados import (
     TipoControleConfig,
 )
 from src.sistemas.config_efeitos import calcular_modificadores, ModificadoresGameplay
-from src.sistemas.sistema_conquistas import SistemaConquistas
+from src.sistemas.sistema_conquistas import SistemaConquistas, COTAS_SLOTS_FIRMWARE
 
 SCHEMA_VERSION_ATUAL = 2
 
 ARMAS_LOADOUT_SLOT1 = {"chave_manutencao", "bastao_choque"}
 ARMAS_LOADOUT_SLOT2 = {"pistola", "smg_compacta"}
 ARMAS_LOADOUT_INICIAIS = {"chave_manutencao", "pistola"}
+
+
+CORES_MIRA_VALIDAS = ("ciano", "branco", "ouro", "verde", "magenta")
+ESCALAS_MIRA_VALIDAS = (1.0, 1.25, 1.5)
 
 
 class GerenciadorConfiguracoes:
@@ -40,8 +44,38 @@ class GerenciadorConfiguracoes:
         self.sistema_conquistas: SistemaConquistas = SistemaConquistas()
         self.estatisticas: dict[str, Any] = self._criar_estatisticas_padrao()
         self.tutorial_visto: bool = False
+        self.preferencias_mira: dict[str, Any] = {"cor": "ciano", "escala": 1.0}
 
         self._inicializar_padroes()
+
+    @staticmethod
+    def _normalizar_preferencias_mira(raw: Any) -> dict[str, Any]:
+        cor = "ciano"
+        escala = 1.0
+        if isinstance(raw, dict):
+            c_raw = str(raw.get("cor", "ciano")).strip().lower()
+            if c_raw in CORES_MIRA_VALIDAS:
+                cor = c_raw
+            try:
+                esc_val = float(raw.get("escala", 1.0))
+                escala = min(ESCALAS_MIRA_VALIDAS, key=lambda v: abs(v - esc_val))
+            except (TypeError, ValueError):
+                escala = 1.0
+        return {"cor": cor, "escala": escala}
+
+    def definir_preferencias_mira(self, cor: Optional[str] = None, escala: Optional[float] = None) -> dict[str, Any]:
+        """Atualiza preferências puramente estéticas da mira sem afetar configs de gameplay."""
+        atual = self._normalizar_preferencias_mira(getattr(self, "preferencias_mira", None))
+        if cor is not None and str(cor).strip().lower() in CORES_MIRA_VALIDAS:
+            atual["cor"] = str(cor).strip().lower()
+        if escala is not None:
+            try:
+                esc_f = float(escala)
+                atual["escala"] = min(ESCALAS_MIRA_VALIDAS, key=lambda v: abs(v - esc_f))
+            except (TypeError, ValueError):
+                pass
+        self.preferencias_mira = atual
+        return dict(atual)
 
     def marcar_tutorial_visto(self, visto: bool = True) -> None:
         """Marca o tutorial como visto (ou reseta) no estado persistido."""
@@ -69,15 +103,19 @@ class GerenciadorConfiguracoes:
             self.sistema_configs[cid] = cdef.valor_padrao
 
     def _resetar_para_v2_limpo(self) -> None:
-        """Reinicializa todo o estado para os defaults limpos do schema v2."""
+        """Reinicializa todo o estado para os defaults limpos do schema v2 preservando referências ativas."""
         self.desbloqueadas = set()
         self.ativas = {}
         self.sistema_configs = {}
         self.loadout = {"slot1": "chave_manutencao", "slot2": "pistola"}
         self.ultimos_conflitos_resolvidos = []
-        self.sistema_conquistas = SistemaConquistas()
+        if hasattr(self, "sistema_conquistas") and hasattr(self.sistema_conquistas, "resetar"):
+            self.sistema_conquistas.resetar()
+        else:
+            self.sistema_conquistas = SistemaConquistas()
         self.estatisticas = self._criar_estatisticas_padrao()
         self.tutorial_visto = False
+        self.preferencias_mira = {"cor": "ciano", "escala": 1.0}
         self._inicializar_padroes()
 
     def sincronizar_recompensas_conquistas(self) -> None:
@@ -255,6 +293,77 @@ class GerenciadorConfiguracoes:
             if self.is_desbloqueada(cid)
         ]
 
+    def contar_configs_nao_neutras(
+        self,
+        ativas_override: Optional[dict[str, Any]] = None,
+    ) -> int:
+        """Conta quantas configurações de gameplay desbloqueadas estão fora do padrão neutro."""
+        fonte = ativas_override if ativas_override is not None else self.ativas
+        total = 0
+        for cid, cdef in CONFIGURACOES_GAMEPLAY.items():
+            if not self.is_desbloqueada(cid):
+                continue
+            val = fonte.get(cid, cdef.valor_padrao)
+            if val != cdef.valor_padrao:
+                total += 1
+        return total
+
+    def simular_definir_valor_com_conflitos(
+        self,
+        config_id: str,
+        valor: Any,
+    ) -> dict[str, Any]:
+        """
+        Simula alteração de configuração + auto-reversão por incompativel_com,
+        retornando impacto na cota 2-4-6 de Firmware em ordem inversa (Slot 3 -> 2 -> 1).
+        """
+        n_atual = self.contar_configs_nao_neutras()
+        resultado: dict[str, Any] = {
+            "valido": False,
+            "n_antes": n_atual,
+            "n_depois": n_atual,
+            "conflitos": [],
+            "chips_desativados": [],
+        }
+        if config_id not in CONFIGURACOES_GAMEPLAY or not self.is_desbloqueada(config_id):
+            return resultado
+
+        cdef = CONFIGURACOES_GAMEPLAY[config_id]
+        valido, val_norm = self._validar_valor_config(cdef, valor)
+        if not valido:
+            return resultado
+
+        opcao = cdef.opcoes.get(str(val_norm))
+        if opcao and opcao.desbloqueada_por and ":" in opcao.desbloqueada_por:
+            tipo, rid = opcao.desbloqueada_por.split(":", 1)
+            if not self.sistema_conquistas.possui_recompensa(tipo, rid):
+                return resultado
+
+        ativas_sim = dict(self.ativas)
+        ativas_sim[config_id] = val_norm
+        conflitos: list[tuple[str, str]] = []
+        if opcao and opcao.incompativel_com:
+            for cid_conf, val_conf in opcao.incompativel_com:
+                if cid_conf in CONFIGURACOES_GAMEPLAY and ativas_sim.get(cid_conf) == val_conf:
+                    val_neutro = CONFIGURACOES_GAMEPLAY[cid_conf].valor_padrao
+                    ativas_sim[cid_conf] = val_neutro
+                    conflitos.append((cid_conf, str(val_neutro)))
+
+        n_depois = self.contar_configs_nao_neutras(ativas_sim)
+        equipados = list(getattr(self.sistema_conquistas, "modificadores_equipados", []))
+        chips_desativados: list[tuple[str, int, int]] = []
+        for slot_idx in (2, 1, 0):
+            if slot_idx < len(equipados) and slot_idx < len(COTAS_SLOTS_FIRMWARE):
+                cota = int(COTAS_SLOTS_FIRMWARE[slot_idx])
+                if n_atual >= cota > n_depois:
+                    chips_desativados.append((equipados[slot_idx], slot_idx + 1, cota))
+
+        resultado["valido"] = True
+        resultado["n_depois"] = n_depois
+        resultado["conflitos"] = conflitos
+        resultado["chips_desativados"] = chips_desativados
+        return resultado
+
     def definir_loadout(self, slot: str, arma_id: str) -> bool:
         """Define a arma equipada no Slot 1 ou Slot 2 validando desbloqueio."""
         if slot == "slot1" and arma_id in ARMAS_LOADOUT_SLOT1:
@@ -369,6 +478,7 @@ class GerenciadorConfiguracoes:
             },
             "progresso_conquistas": self.sistema_conquistas.to_dict(),
             "tutorial_visto": bool(getattr(self, "tutorial_visto", False)),
+            "preferencias_mira": self._normalizar_preferencias_mira(getattr(self, "preferencias_mira", None)),
         }
 
     def from_dict(self, dados: dict) -> bool:
@@ -482,6 +592,7 @@ class GerenciadorConfiguracoes:
             self.estatisticas = temp_estatisticas
             self.sistema_conquistas = temp_conquistas
             self.tutorial_visto = bool(dados.get("tutorial_visto", False))
+            self.preferencias_mira = self._normalizar_preferencias_mira(dados.get("preferencias_mira"))
             self.ultimos_conflitos_resolvidos = []
             return True
 
