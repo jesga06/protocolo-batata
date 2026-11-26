@@ -2,6 +2,7 @@ name: Build Portable Executables
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -49,184 +50,13 @@ jobs:
         run: |
           python -m PyInstaller --noconfirm --clean --onefile --windowed --name ProtocoloBatata --paths "." --add-data "assets${{ matrix.sep }}assets" --exclude-module PIL --exclude-module tkinter --exclude-module unittest --exclude-module pydoc --exclude-module test --exclude-module xmlrpc src/main.py
 
+      - name: Package macOS app
+        if: matrix.os == 'macos-latest'
+        run: ditto -c -k --sequesterRsrc --keepParent dist/ProtocoloBatata.app dist/ProtocoloBatata-macOS.zip
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
           path: dist/
           retention-days: 30
-
-  draft-release:
-    name: Create release draft
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      copilot-requests: write
-      contents: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: release-assets
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Install GitHub Copilot CLI
-        run: npm install --global @github/copilot
-
-      - name: Calculate semantic version
-        id: version
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          import re
-          import subprocess
-          import tomllib
-
-          semver = re.compile(r"^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
-
-          def run(*args):
-              return subprocess.check_output(args, text=True).strip()
-
-          releases = json.loads(run(
-              "gh", "release", "list", "--limit", "100",
-              "--json", "tagName,isDraft,isPrerelease",
-          ))
-          draft_tags = {
-              release["tagName"] for release in releases if release["isDraft"]
-          }
-          stable_tags = [
-              release["tagName"]
-              for release in releases
-              if not release["isDraft"]
-              and not release["isPrerelease"]
-              and semver.fullmatch(release["tagName"])
-          ]
-
-          with open("pyproject.toml", "rb") as project_file:
-              project_version = tomllib.load(project_file)["project"]["version"]
-          project_match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", project_version)
-          if not project_match:
-              raise SystemExit(f"pyproject.toml version is not semantic: {project_version}")
-
-          if stable_tags:
-              baseline = max(
-                  stable_tags,
-                  key=lambda tag: tuple(map(int, semver.fullmatch(tag).groups())),
-              )
-              major, minor, patch = map(int, semver.fullmatch(baseline).groups())
-          else:
-              major, minor, patch = map(int, project_match.groups())
-              describe_args = ["git", "describe", "--tags", "--abbrev=0"]
-              for tag in sorted(draft_tags):
-                  describe_args.extend(["--exclude", tag])
-              try:
-                  baseline = run(*describe_args)
-              except subprocess.CalledProcessError:
-                  baseline = ""
-
-          git_range = f"{baseline}..HEAD" if baseline else "HEAD"
-          commits = run("git", "log", "--format=%s%n%b%x00", git_range).split("\0")
-          bump = None
-          for commit in commits:
-              lines = commit.strip().splitlines()
-              if not lines:
-                  continue
-              subject = lines[0]
-              body = "\n".join(lines[1:])
-              if (
-                  re.match(r"^[a-zA-Z]+(?:\([^)]+\))?!:", subject)
-                  or re.search(r"^BREAKING CHANGE:", body, re.MULTILINE)
-                  or re.search(r"^BREAKING-CHANGE:", body, re.MULTILINE)
-              ):
-                  bump = "major"
-                  break
-              if re.match(r"^feat(?:\([^)]+\))?:", subject):
-                  bump = "minor"
-              elif bump != "minor" and re.match(r"^(fix|perf)(?:\([^)]+\))?:", subject):
-                  bump = "patch"
-
-          if bump is None:
-              raise SystemExit("No user-facing feat, fix, perf, or breaking-change commits found.")
-
-          if bump == "major":
-              major, minor, patch = major + 1, 0, 0
-          elif bump == "minor":
-              major, minor, patch = major, minor + 1, 0
-          else:
-              major, minor, patch = major, minor, patch + 1
-
-          version = f"{major}.{minor}.{patch}"
-          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-              output.write(f"version={version}\n")
-              output.write(f"baseline={baseline}\n")
-          print(f"Draft release version: v{version}")
-          PY
-
-      - name: Generate user-facing release notes with Copilot
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          BASELINE_TAG: ${{ steps.version.outputs.baseline }}
-        run: |
-          if [ -n "$BASELINE_TAG" ]; then
-            range="$BASELINE_TAG..HEAD"
-          else
-            range="HEAD"
-          fi
-          prompt=$(cat <<EOF
-          Write release notes for the users of this game, based only on changes in git range '$range'.
-          Inspect the actual code changes as needed. Include ONLY changes players can actually notice or use.
-          Exclude implementation details, internal refactors, tests, documentation, build/CI work, and anything
-          that does not change the player's experience. Do not infer or promise effects that are not evident
-          in the code. Use plain, simple, non-technical English, with at most 5 short bullets. No version
-          number, commit hashes, technical terms, or generic filler. Start with '## Novidades'.
-          Write the notes to release-notes.md.
-          EOF
-          )
-          copilot -p "$prompt" --allow-tool='shell(git:*)' --allow-tool=write --no-ask-user
-          test -s release-notes.md
-
-      - name: Prepare uniquely named release assets
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          assets = Path("release-assets")
-          upload_assets = assets / "upload"
-          upload_assets.mkdir()
-          for platform, artifact in (
-              ("Windows", "ProtocoloBatata-Windows"),
-              ("Linux", "ProtocoloBatata-Linux"),
-              ("macOS", "ProtocoloBatata-macOS"),
-          ):
-              matches = list((assets / artifact).glob("ProtocoloBatata*"))
-              if len(matches) != 1 or not matches[0].is_file():
-                  raise SystemExit(f"Expected one executable in {artifact}; found {matches}")
-              suffix = matches[0].suffix
-              matches[0].rename(upload_assets / f"ProtocoloBatata-{platform}{suffix}")
-          PY
-
-      - name: Create GitHub release draft
-        uses: softprops/action-gh-release@v2
-        with:
-          token: ${{ github.token }}
-          tag_name: v${{ steps.version.outputs.version }}
-          name: Protocolo Batata v${{ steps.version.outputs.version }}
-          target_commitish: ${{ github.sha }}
-          body_path: release-notes.md
-          draft: true
-          prerelease: false
-          fail_on_unmatched_files: true
-          files: release-assets/upload/ProtocoloBatata-*
