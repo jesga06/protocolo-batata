@@ -28,6 +28,7 @@ from src.sistemas.efeitos_combate import GerenciadorEfeitosCombate, ContextoComb
 from src.ui.hud import HUD
 from src.ui.banner_dicas import BannerDica
 from src.ui.modal_level_up import ModalLevelUp
+from src.utils.fontes import carregar_fonte_sans, carregar_fonte_mono
 from src.utils.traducao import t as tr
 from src.ui.modal_overclock import ModalOverclock
 from src.ui.menu_configs import MenuConfigs
@@ -158,34 +159,34 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         self.partida_registrada = False
         self.estatisticas_partida_resultado = {}
 
-        # Cache de fontes para alta performance (escala nativa 1280x720 + monospace Cyber-Office + DPI nativo)
+        # Cache de fontes para alta performance (escala nativa 1280x720 + OPPO Sans / JetBrains Mono NL embutidas)
         self._fontes_spec = {
-            "slots": ("DejaVu Sans Mono", 10, True),
-            "municao": ("DejaVu Sans Mono", 11, True),
-            "tempo": ("DejaVu Sans Mono", 14, True),
-            "abates": ("DejaVu Sans Mono", 12, True),
-            "buff": ("Arial", 11, True),
-            "timer": ("Arial", 11, True),
-            "toast": ("Arial", 14, True),
-            "grace_banner": ("Arial", 18, True),
-            "fps": ("DejaVu Sans Mono", 12, True),
-            "tit_vit": ("Arial", 30, True),
-            "sub_vit": ("Arial", 16, False),
-            "stat_label": ("Arial", 16, False),
-            "stat_val": ("Arial", 16, True),
-            "stat_destaque": ("Arial", 24, True),
-            "btn": ("Arial", 16, True),
-            "btn_sub": ("Arial", 15, False),
-            "tit_pausa": ("Arial", 40, True),
-            "sub_pausa": ("Arial", 20, True),
-            "tit_go": ("Arial", 42, True),
-            "sub_go": ("Arial", 18, False),
-            "stat_go": ("Arial", 18, True),
-            "prompt_go": ("Arial", 16, True),
+            "slots": ("mono", 10, True),
+            "municao": ("mono", 11, True),
+            "tempo": ("mono", 14, True),
+            "abates": ("mono", 12, True),
+            "buff": ("sans", 11, True),
+            "timer": ("sans", 11, True),
+            "toast": ("sans", 14, True),
+            "grace_banner": ("sans", 18, True),
+            "fps": ("mono", 12, True),
+            "tit_vit": ("sans", 30, True),
+            "sub_vit": ("sans", 16, False),
+            "stat_label": ("sans", 16, False),
+            "stat_val": ("sans", 16, True),
+            "stat_destaque": ("sans", 24, True),
+            "btn": ("sans", 16, True),
+            "btn_sub": ("sans", 15, False),
+            "tit_pausa": ("sans", 40, True),
+            "sub_pausa": ("sans", 20, True),
+            "tit_go": ("sans", 42, True),
+            "sub_go": ("sans", 18, False),
+            "stat_go": ("sans", 18, True),
+            "prompt_go": ("sans", 16, True),
         }
         self._fontes = {
-            k: pygame.font.SysFont(nome, tam, bold=bold)
-            for k, (nome, tam, bold) in self._fontes_spec.items()
+            k: (carregar_fonte_mono(tam, bold=bold) if fam == "mono" else carregar_fonte_sans(tam, bold=bold))
+            for k, (fam, tam, bold) in self._fontes_spec.items()
         }
         self._fontes_nativas_cache: dict[tuple[str, int], pygame.font.Font] = {}
         self._fonte_toast = self._fontes["toast"]

@@ -14,6 +14,7 @@ from src.utils.constantes import (
     BRANCO, CINZA_FUNDO, VERMELHO_HP, VERDE_CURA,
     AMARELO_XP, AZUL_CIANO, DOURADO, LARANJA_ALERTA, ROXO_ACENTO,
 )
+from src.utils.fontes import carregar_fonte_sans, carregar_fonte_mono
 from src.utils.math_utils import clamp
 from src.sistemas.config_dados import CONFIGURACOES_GAMEPLAY
 from src.sistemas.efeitos_combate import obter_bandas_vsync_y
@@ -88,14 +89,14 @@ class GameplayRenderMixin:
         """Retorna fonte em DPI nativo cacheada por (chave, px_size) sem alocação por frame."""
         if abs(scale - 1.0) < 1e-4:
             return self._fontes[chave]
-        nome, tam_logico, bold = self._fontes_spec[chave]
+        familia, tam_logico, bold = self._fontes_spec[chave]
         px = max(8, int(round(tam_logico * scale)))
         cache_k = (chave, px)
         if cache_k not in self._fontes_nativas_cache:
-            try:
-                self._fontes_nativas_cache[cache_k] = pygame.font.SysFont(nome, px, bold=bold)
-            except Exception:
-                self._fontes_nativas_cache[cache_k] = pygame.font.Font(None, px)
+            if familia == "mono" or "mono" in str(familia).lower():
+                self._fontes_nativas_cache[cache_k] = carregar_fonte_mono(px, bold=bold)
+            else:
+                self._fontes_nativas_cache[cache_k] = carregar_fonte_sans(px, bold=bold)
         return self._fontes_nativas_cache[cache_k]
 
     def _escalar_surf_nativa(self, surf: pygame.Surface | None, w: int, h: int) -> pygame.Surface | None:

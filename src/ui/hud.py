@@ -13,6 +13,7 @@ from src.utils.constantes import (
     SMG_ZONA_IDEAL_MIN, SMG_ZONA_IDEAL_MAX,
 )
 from src.utils.math_utils import clamp
+from src.utils.fontes import carregar_fonte_sans, carregar_fonte_mono
 from src.utils.traducao import t
 from src.sistemas.conquistas_dados import (
     CHIPS_FIRMWARE,
@@ -90,14 +91,10 @@ def _quebrar_texto_hud(fonte: pygame.font.Font, texto: str, max_largura: int, ma
 
 
 def _criar_fonte(nomes: tuple[str, ...], tamanho: int, bold: bool = False) -> pygame.font.Font:
-    for nome in nomes:
-        try:
-            f = pygame.font.SysFont(nome, tamanho, bold=bold)
-            if f is not None:
-                return f
-        except Exception:
-            continue
-    return pygame.font.Font(None, tamanho)
+    eh_mono = any("mono" in n.lower() or "consolas" in n.lower() or "courier" in n.lower() for n in nomes)
+    if eh_mono:
+        return carregar_fonte_mono(tamanho, bold=bold)
+    return carregar_fonte_sans(tamanho, bold=bold)
 
 
 class HUD:
@@ -138,8 +135,10 @@ class HUD:
         px = max(8, int(round(float(tamanho_logico) * float(scale))))
         chave = (familia, px, bool(bold))
         if chave not in self._fontes_nativas:
-            nomes = ("DejaVu Sans Mono", "Consolas", "Courier New", "Arial") if familia == "mono" else ("DejaVu Sans", "Arial")
-            self._fontes_nativas[chave] = _criar_fonte(nomes, px, bold=bold)
+            if familia == "mono":
+                self._fontes_nativas[chave] = carregar_fonte_mono(px, bold=bool(bold))
+            else:
+                self._fontes_nativas[chave] = carregar_fonte_sans(px, bold=bool(bold))
         return self._fontes_nativas[chave]
 
     def _obter_painel_translucido(self, w: int, h: int, raio: int = 5) -> pygame.Surface:

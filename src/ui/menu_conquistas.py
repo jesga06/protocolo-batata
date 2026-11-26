@@ -24,6 +24,7 @@ from src.utils.constantes import (
     BRANCO,
     SAVE_FILE_PATH,
 )
+from src.utils.fontes import carregar_fonte_sans, carregar_fonte_mono
 from src.utils.math_utils import clamp
 from src.utils.traducao import t
 
@@ -44,14 +45,10 @@ FILTROS_CONQUISTAS = ("Todas", "Contínuas", "Únicas", "Fixadas")
 
 
 def _criar_fonte(nomes: tuple[str, ...], tamanho: int, bold: bool = False) -> pygame.font.Font:
-    for nome in nomes:
-        try:
-            f = pygame.font.SysFont(nome, tamanho, bold=bold)
-            if f is not None:
-                return f
-        except Exception:
-            continue
-    return pygame.font.Font(None, tamanho)
+    eh_mono = any("mono" in n.lower() or "consolas" in n.lower() or "courier" in n.lower() for n in nomes)
+    if eh_mono:
+        return carregar_fonte_mono(tamanho, bold=bold)
+    return carregar_fonte_sans(tamanho, bold=bold)
 
 
 class MenuConquistas:
