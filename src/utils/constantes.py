@@ -478,17 +478,17 @@ ASSET_PATHS = {
     "sfx_btn_click": "audio/sfx/btn_click.wav",
 
     # Música
-    "musica_fase": "audio/musica/heavy is the bit.wav",
+    "musica_fase": "audio/musica/8bits-control.ogg",
     "musica_boss": "audio/musica/geladeira tsunami.wav",
-    "musica_menu": "audio/musica/8bits-control.wav",
-    "musica_anticipation": "audio/musica/8bits-anticipation.wav",
-    "musica_anticipation_muffled": "audio/musica/8bits-anticipation-muffled.wav",
-    "musica_hold": "audio/musica/8bits-hold.wav",
-    "musica_hold_muffled": "audio/musica/8bits-hold-muffled.wav",
-    "musica_assault_intro": "audio/musica/8bits-assault-intro.wav",
-    "musica_assault_intro_muffled": "audio/musica/8bits-assault-intro-muffled.wav",
-    "musica_assault": "audio/musica/8bits-assault.wav",
-    "musica_assault_muffled": "audio/musica/8bits-assault-muffled.wav",
+    "musica_menu": "audio/musica/8bits-control.ogg",
+    "musica_anticipation": "audio/musica/8bits-anticipation.ogg",
+    "musica_anticipation_muffled": "audio/musica/8bits-anticipation-muffled.ogg",
+    "musica_hold": "audio/musica/8bits-hold.ogg",
+    "musica_hold_muffled": "audio/musica/8bits-hold-muffled.ogg",
+    "musica_assault_intro": "audio/musica/8bits-assault-intro.ogg",
+    "musica_assault_intro_muffled": "audio/musica/8bits-assault-intro-muffled.ogg",
+    "musica_assault": "audio/musica/8bits-assault.ogg",
+    "musica_assault_muffled": "audio/musica/8bits-assault-muffled.ogg",
 }
 
 # =============================================================================

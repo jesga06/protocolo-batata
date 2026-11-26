@@ -98,9 +98,19 @@ class TestAssetsExistenciaEDimensoes(unittest.TestCase):
 
         musica_path = obter_caminho_asset("musica_fase")
         self.assertTrue(os.path.isfile(musica_path), "Música da fase não encontrada!")
-        with wave.open(musica_path, "r") as wav_file:
-            self.assertEqual(wav_file.getframerate(), 44100)
-            self.assertGreater(wav_file.getnframes() / 44100, 3.0, "Música deve ter mais de 3 segundos de duração!")
+        if musica_path.endswith(".wav"):
+            with wave.open(musica_path, "r") as wav_file:
+                self.assertEqual(wav_file.getframerate(), 44100)
+                self.assertGreater(wav_file.getnframes() / 44100, 3.0, "Música deve ter mais de 3 segundos de duração!")
+        else:
+            with open(musica_path, "rb") as f_ogg:
+                self.assertEqual(f_ogg.read(4), b"OggS", "Música da fase em .ogg deve possuir cabeçalho OggS válido!")
+            self.assertGreater(os.path.getsize(musica_path), 100_000, "Música .ogg inesperadamente pequena!")
+
+        boss_path = obter_caminho_asset("musica_boss")
+        self.assertTrue(os.path.isfile(boss_path), "Música do boss não encontrada!")
+        with wave.open(boss_path, "r") as wav_file:
+            self.assertGreater(wav_file.getnframes() / float(wav_file.getframerate()), 3.0)
 
 
 class TestConstantesEConfiguracoes(unittest.TestCase):
