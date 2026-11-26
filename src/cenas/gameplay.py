@@ -148,6 +148,8 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
 
         # Métricas de partida e condição de vitória
         self.tempo_sobrevivencia = 0.0
+        self.tempo_real_partida = 0.0
+        self.velocidade_alterada_na_partida = False
         self.tempo_15fps_acumulado = 0.0
         self.abates = 0
         self.pontos = 0
@@ -200,6 +202,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         self.shake_intensidade: float = 0.0
         self.shake_timer: float = 0.0
         self.arena_freeze_timer: float = 0.0
+        self.nightcore_freeze_timer: float = 0.0
         self.hitstop_timer: float = 0.0
         self.auto_fire_toggle_ativo: bool = False
         self._ultimo_vsync_ativo: bool | None = None
@@ -469,6 +472,10 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         self.jogador.exposed_mult = 1.45 if parry_ef == "pulso_emp" else 1.25
         self.jogador.dash_protocolo = str(getattr(mods, "dash_protocolo", "padrao"))
         self.jogador.dash_rastro = str(getattr(mods, "dash_rastro", "padrao"))
+        self.jogador.dash_cooldown_mult_config = float(getattr(mods, "dash_cooldown_mult", 1.0))
+        self.jogador.cadencia_movimento_continuo_mult = float(getattr(mods, "cadencia_movimento_continuo_mult", 1.0))
+        if abs(float(getattr(mods, "velocidade_jogo_mult", 1.0)) - 1.0) >= 1e-3:
+            self.velocidade_alterada_na_partida = True
         if self.jogador.dash_protocolo == "propulsor_instavel":
             self.jogador.dash_cargas_max = 2
             self.jogador.dash_sem_iframes = True
@@ -718,11 +725,17 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                 if val_fps in ("15", "30", "45"):
                     max_dt_loop = max(DT_CLAMP_MAX, min(0.10, 1.25 / float(int(val_fps))))
             dt = min(dt, max_dt_loop)
-        self._ultimo_dt_draw = max(1e-4, float(dt))
+        dt_real = float(dt)
+        self._ultimo_dt_draw = max(1e-4, dt_real)
 
-        # Atualiza rampa suave de volume do gerenciador de áudio
+        mods_frame = self.config_sistema.obter_modificadores() if hasattr(self, "config_sistema") and self.config_sistema else None
+        vel_jogo_mult = float(getattr(mods_frame, "velocidade_jogo_mult", 1.0)) if mods_frame is not None else 1.0
+        if abs(vel_jogo_mult - 1.0) >= 1e-3:
+            self.velocidade_alterada_na_partida = True
+
+        # Atualiza rampa suave de volume do gerenciador de áudio (tempo real)
         if hasattr(self, "sistema_audio") and self.sistema_audio is not None:
-            self.sistema_audio.atualizar(dt)
+            self.sistema_audio.atualizar(dt_real)
 
         # Atualiza a máquina de estados da música dinâmica (inclusive pausado / modais / game over / hitstop)
         if hasattr(self, "sistema_musica") and self.sistema_musica is not None:
@@ -754,9 +767,10 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
             self.sistema_musica.atualizar(
                 tempo_sobrevivencia=self.tempo_sobrevivencia,
                 abafado=musica_abafada,
-                dt=dt,
+                dt=dt_real,
                 trava_assault=possui_elite_agora,
                 pausar_transicao=pausar_transicao,
+                velocidade_jogo_mult=vel_jogo_mult,
             )
 
         # Atualiza cooldown de reabertura do menu para evitar input bleed (C / ESC)
@@ -932,16 +946,17 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         # =========================================================================
         # 1. ATUALIZAÇÃO DO JOGADOR, CUTSCENE E INPUTS
         # =========================================================================
-        # Grace period de 10s antes da Cutscene do Chefe Final
+        # Grace period de 10s antes da Cutscene do Chefe Final (tempo real)
         if self.boss_grace_period_ativo and not self.boss_cutscene_ativa:
-            self.boss_grace_timer = max(0.0, self.boss_grace_timer - dt)
+            self.boss_grace_timer = max(0.0, self.boss_grace_timer - dt_real)
             if self.boss_grace_timer <= 0.0:
                 self.boss_grace_period_ativo = False
                 self.iniciar_boss_cutscene()
 
         # Processamento da Cutscene do Chefe Final (Whiteout c/ Slow-Mo -> Blackout -> Música Fade-In -> Subida do Boss)
+        whiteout_scale = 1.0
         if self.boss_cutscene_ativa:
-            self.boss_cutscene_timer += dt
+            self.boss_cutscene_timer += dt_real
             if self.boss_cutscene_fase == "whiteout":
                 prog_whiteout = clamp(self.boss_cutscene_timer / 2.0, 0.0, 1.0)
                 self.overlay_cutscene_cor = (255, 255, 255)
@@ -969,6 +984,7 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                     self.shake_timer = 0.0
                     self.shake_intensidade = 0.0
                     self.arena_freeze_timer = 0.0
+                    self.nightcore_freeze_timer = 0.0
                     self.hitstop_timer = 0.0
                     self.aura_cura_timer = 0.0
                     self.buffer_tiro = 0.0
@@ -983,8 +999,8 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                     self.jogador.y = self.altura_arena / 2.0 - self.jogador.altura / 2.0
                     self.camera.follow(self.jogador, suavizacao=1.0)
                 else:
-                    # Durante o fade-out branco, o jogo continua rodando mas desacelera progressivamente até zerar
-                    dt = dt * max(0.0, 1.0 - prog_whiteout)
+                    # Durante o fade-out branco, apenas a simulação desacelera progressivamente até zerar
+                    whiteout_scale = max(0.0, 1.0 - prog_whiteout)
             elif self.boss_cutscene_fase == "blackout":
                 self.overlay_cutscene_cor = (0, 0, 0)
                 self.overlay_cutscene_alpha = 255
@@ -1028,14 +1044,39 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                     self.overlay_cutscene_alpha = 0.0
 
         cutscene_congelada = self.boss_cutscene_ativa and self.boss_cutscene_fase != "whiteout"
-
         timer_congelado = getattr(self.menu_debug, "timer_congelado", False) if hasattr(self, "menu_debug") else False
+
+        # Atualiza temporizador de Screen Shake (tempo real)
+        if self.shake_timer > 0.0:
+            self.shake_timer = max(0.0, self.shake_timer - dt_real)
+            if self.shake_timer == 0.0:
+                self.shake_intensidade = 0.0
+
+        # Atualiza e limpa toasts de coleta (tempo real, flui durante hitstop)
+        for t in self.toasts_coleta:
+            t["tempo"] -= dt_real
+            t["y"] -= 22.0 * dt_real
+        self.toasts_coleta = [t for t in self.toasts_coleta if t["tempo"] > 0]
+
+        # Atualiza fila de banners estilo Steam de conquistas/desbloqueios (tempo real)
+        if getattr(self, "banners_desbloqueio", None):
+            for b in self.banners_desbloqueio:
+                b["tempo"] -= dt_real
+            self.banners_desbloqueio = [b for b in self.banners_desbloqueio if b["tempo"] > 0.0]
+
+        # Hitstop (Parry acerto/erro): estritamente em tempo real (dt_real), antes de tempo_sobrevivencia e do sub-stepping
+        if getattr(self, "hitstop_timer", 0.0) > 0.0:
+            self.sistema_particulas.update(dt_real)
+            self.hitstop_timer = max(0.0, self.hitstop_timer - dt_real)
+            return
+
+        # Conquista 15 FPS ("monge_tibetano") e relógio real da partida avançam em dt_real (1x por frame)
         if not timer_congelado and not cutscene_congelada:
-            self.tempo_sobrevivencia += dt
+            self.tempo_real_partida = getattr(self, "tempo_real_partida", 0.0) + dt_real
             if getattr(self, "sistema_conquistas", None) is not None and getattr(self.jogador, "vivo", True):
                 val_fps_15 = str(self.config_sistema.obter_valor("fps_cap")).strip() if hasattr(self, "config_sistema") and self.config_sistema else ""
                 if val_fps_15 == "15":
-                    self.tempo_15fps_acumulado = getattr(self, "tempo_15fps_acumulado", 0.0) + dt
+                    self.tempo_15fps_acumulado = getattr(self, "tempo_15fps_acumulado", 0.0) + dt_real
                 else:
                     self.tempo_15fps_acumulado = 0.0
                 notifs_15 = self.sistema_conquistas.atualizar_progresso_15fps(self.tempo_15fps_acumulado)
@@ -1045,31 +1086,77 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                         self.gerenciador_config.sincronizar_recompensas_conquistas()
                         self.gerenciador_config.salvar_arquivo()
 
-        # Atualiza temporizador de Screen Shake
-        if self.shake_timer > 0.0:
-            self.shake_timer = max(0.0, self.shake_timer - dt)
-            if self.shake_timer == 0.0:
-                self.shake_intensidade = 0.0
+        # Freeze do Parry 200% (Protocolo: Nightcore): 0,6s em tempo real
+        if getattr(self, "nightcore_freeze_timer", 0.0) > 0.0:
+            self.nightcore_freeze_timer = max(0.0, self.nightcore_freeze_timer - dt_real)
 
-        # Atualiza sistema de partículas
+        # Registro de posição real de latencia_ping (1x por frame em dt_real)
+        efeitos_frame = self._obter_efeitos_combate() if hasattr(self, "_obter_efeitos_combate") else getattr(self, "efeitos_combate", None)
+        if efeitos_frame is not None and hasattr(efeitos_frame, "obter_efeito"):
+            ef_ping_frame = efeitos_frame.obter_efeito("latencia_ping")
+            if ef_ping_frame is not None and hasattr(ef_ping_frame, "registrar_posicao_real") and self.jogador is not None:
+                ef_ping_frame.registrar_posicao_real(
+                    self.jogador.x + self.jogador.largura * 0.5,
+                    self.jogador.y + self.jogador.altura * 0.5,
+                    dt_real,
+                )
+
+        # Leitura única de FFT do Boss (1x por frame em dt_real)
+        bass_energy_frame = 0.0
+        if (
+            self.chefe_final is not None
+            and self.chefe_final.vivo
+            and hasattr(self, "analisador_fft_boss")
+            and self.analisador_fft_boss is not None
+        ):
+            pos_ms = -1
+            try:
+                if pygame.mixer.get_init():
+                    pos_ms = pygame.mixer.music.get_pos()
+            except Exception:
+                pos_ms = -1
+            if pos_ms is None or pos_ms < 0:
+                pos_ms = self.tempo_sobrevivencia * 1000.0
+            bass_energy_frame = self.analisador_fft_boss.obter_energia_grave(float(pos_ms), dt=dt_real)
+
+        # Sub-stepping seguro para dt_sim (mantém cada passo <= DT_CLAMP_MAX mesmo em 200% + 15 FPS)
+        dt_sim_total = max(0.0, dt_real * vel_jogo_mult * whiteout_scale)
+        n_substeps = max(1, int(math.ceil(dt_sim_total / max(1e-4, float(DT_CLAMP_MAX))))) if dt_sim_total > float(DT_CLAMP_MAX) + 1e-6 else 1
+        dt_step = dt_sim_total / float(n_substeps)
+        dt_real_step = dt_real / float(n_substeps)
+
+        for idx_sub in range(n_substeps):
+            self._executar_passo_simulacao(
+                dt=dt_step,
+                dt_real_step=dt_real_step,
+                dt_real_frame=dt_real,
+                mods=mods_frame,
+                vel_jogo_mult=vel_jogo_mult,
+                cutscene_congelada=cutscene_congelada,
+                timer_congelado=timer_congelado,
+                permitir_eventos_borda=(idx_sub == 0),
+                bass_energy_frame=bass_energy_frame,
+            )
+            if self.vitoria or self.game_over or getattr(self, "hitstop_timer", 0.0) > 0.0:
+                break
+
+    def _executar_passo_simulacao(
+        self,
+        dt: float,
+        dt_real_step: float,
+        dt_real_frame: float,
+        mods,
+        vel_jogo_mult: float,
+        cutscene_congelada: bool,
+        timer_congelado: bool,
+        permitir_eventos_borda: bool,
+        bass_energy_frame: float,
+    ) -> None:
+        if not timer_congelado and not cutscene_congelada:
+            self.tempo_sobrevivencia += dt
+
+        # Atualiza sistema de partículas (em tempo de simulação)
         self.sistema_particulas.update(dt)
-
-        # Atualiza e limpa toasts de coleta (mantém toasts e partículas fluindo durante hitstop)
-        for t in self.toasts_coleta:
-            t["tempo"] -= dt
-            t["y"] -= 22.0 * dt
-        self.toasts_coleta = [t for t in self.toasts_coleta if t["tempo"] > 0]
-
-        # Atualiza fila de banners estilo Steam de conquistas/desbloqueios
-        if getattr(self, "banners_desbloqueio", None):
-            for b in self.banners_desbloqueio:
-                b["tempo"] -= dt
-            self.banners_desbloqueio = [b for b in self.banners_desbloqueio if b["tempo"] > 0.0]
-
-        # Hitstop (0.08s no parry): pausa física da simulação mantendo partículas, shake e áudio ativos
-        if getattr(self, "hitstop_timer", 0.0) > 0.0:
-            self.hitstop_timer = max(0.0, self.hitstop_timer - dt)
-            return
 
         # Processamento de disparos de eco (Multithreading Overclock)
         if not cutscene_congelada:
@@ -1124,8 +1211,18 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
 
         crit_chance, crit_mult = 0.0, 2.0
         if not cutscene_congelada:
+            teclado_sub = self.teclado
+            if not permitir_eventos_borda and self.teclado is not None:
+                class _TecladoSemBorda:
+                    def __init__(self, base):
+                        self._base = base
+                    def key_down(self, *_args, **_kwargs):
+                        return False
+                    def __getattr__(self, nome):
+                        return getattr(self._base, nome)
+                teclado_sub = _TecladoSemBorda(self.teclado)
             self.jogador.processar_input(
-                self.teclado,
+                teclado_sub,
                 self.mouse,
                 dt,
                 config_sistema=self.config_sistema,
@@ -1208,6 +1305,8 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                 mods,
                 hitbox_mult,
                 mult_dano_buff,
+                permitir_eventos_borda=permitir_eventos_borda,
+                dt_real_ping=dt_real_frame,
             )
 
         # Atualiza o tempo de vida dos efeitos visuais de Melee e pulso de ASSAULT_INTRO
@@ -1392,10 +1491,13 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
                     else 0
                 )
                 if self.chefe_final is None and not self.boss_cutscene_ativa and not self.boss_grace_period_ativo:
+                    qtd_elites_spawn = len(getattr(self.spawner, "bosses_spawnados_indices", set()))
                     if getattr(self.jogador, "nivel", 1) >= nivel_max and getattr(self, "tempo_sobrevivencia", 0.0) >= 185.0:
-                        self.iniciar_boss_grace_period()
+                        if vel_jogo_mult <= 1.001 or qtd_elites_spawn >= MINIBOSS_CICLOS_RUN or ciclos_concluidos >= MINIBOSS_CICLOS_RUN:
+                            self.iniciar_boss_grace_period()
                     elif not possui_elite and (ciclos_concluidos >= MINIBOSS_CICLOS_RUN or getattr(self.spawner, "tempo_elite", 0.0) >= 195.0):
-                        self.iniciar_boss_grace_period()
+                        if vel_jogo_mult >= 0.999 or getattr(self, "tempo_sobrevivencia", 0.0) >= 150.0 or getattr(self.jogador, "nivel", 1) >= 10:
+                            self.iniciar_boss_grace_period()
 
         # =========================================================================
         # 4. FÍSICA DOS PROJÉTEIS
@@ -1414,7 +1516,11 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         val_ilum = str(self.config_sistema.obter_valor("iluminacao")).lower() in ("ligado", "true", "1") if hasattr(self, "config_sistema") and self.config_sistema else False
         mult_dano_inim_base = getattr(mods, "dano_inimigos_mult", 1.0) if mods else 1.0
 
-        pular_ia_inimigos = getattr(self.jogador, "stutter_freeze_timer", 0.0) > 0.0 or self.arena_freeze_timer > 0.0
+        pular_ia_inimigos = (
+            getattr(self.jogador, "stutter_freeze_timer", 0.0) > 0.0
+            or self.arena_freeze_timer > 0.0
+            or getattr(self, "nightcore_freeze_timer", 0.0) > 0.0
+        )
 
         for inimigo in self.inimigos:
             if inimigo == self.chefe_final:
@@ -1544,18 +1650,13 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
             and (not self.boss_cutscene_ativa or (self.boss_cutscene_fase == "musica_in" and self.chefe_final.estado == "intro"))
         )
         if _boss_pode_atualizar and (not pular_ia_inimigos or self.chefe_final.estado == "intro"):
-            bass_energy = 0.0
-            if hasattr(self, "analisador_fft_boss") and self.analisador_fft_boss is not None:
-                pos_ms = -1
-                try:
-                    if pygame.mixer.get_init():
-                        pos_ms = pygame.mixer.music.get_pos()
-                except Exception:
-                    pos_ms = -1
-                if pos_ms is None or pos_ms < 0:
-                    pos_ms = self.tempo_sobrevivencia * 1000.0
-                bass_energy = self.analisador_fft_boss.obter_energia_grave(float(pos_ms), dt=dt)
-            self.chefe_final.update(dt, (centro_jogador_x, centro_jogador_y), limite_arena=(self.largura_arena, self.altura_arena), bass_energy=bass_energy)
+            self.chefe_final.update(
+                dt,
+                (centro_jogador_x, centro_jogador_y),
+                limite_arena=(self.largura_arena, self.altura_arena),
+                bass_energy=bass_energy_frame,
+                dt_real=dt_real_step,
+            )
             novos_tiros_boss = self.chefe_final.obter_projeteis_pendentes()
             if novos_tiros_boss:
                 self.projeteis.extend(novos_tiros_boss)
@@ -1648,7 +1749,14 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
         is_boss_lutando = (self.chefe_final is not None and self.chefe_final.vivo)
         mult_drops = getattr(mods, "drops_valor_mult", 1.0) if mods else 1.0
         mult_xp = getattr(mods, "xp_ganho_mult", 1.0) if mods else 1.0
-        self.sistema_drops.update(dt, pausar_despawn=is_boss_lutando)
+        despawn_real_mult = float(getattr(mods, "drops_despawn_real_mult", 0.0)) if mods else 0.0
+        dt_despawn_drop = (dt_real_step * despawn_real_mult) if despawn_real_mult > 0.0 else dt
+        self.sistema_drops.update(
+            dt,
+            pausar_despawn=is_boss_lutando,
+            dt_despawn=dt_despawn_drop,
+            dt_pickup=dt_real_step,
+        )
         eventos_coleta = self.sistema_drops.coletar_jogador(
             self.jogador,
             mult_valor_drop=mult_drops,
@@ -1848,11 +1956,13 @@ class GameplayScene(GameplayCombateMixin, GameplayRenderMixin, BaseScene):
             abates=self.abates,
             pontos=score_final,
             vitoria=vitoria,
-            dano_causado=self.dano_total_causado
+            dano_causado=self.dano_total_causado,
+            tempo_real=getattr(self, "tempo_real_partida", self.tempo_sobrevivencia),
         )
         self.estatisticas_partida_resultado = {
             "score_final": score_final,
             "mult_dif": mult_dif,
+            "tempo_real": getattr(self, "tempo_real_partida", self.tempo_sobrevivencia),
             "novo_recorde_pontos": resultado.get("novo_recorde_pontos", False),
             "novo_recorde_tempo": resultado.get("novo_recorde_tempo", False)
         }

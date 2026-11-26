@@ -388,12 +388,14 @@ class GerenciadorConfiguracoes:
         abates: int,
         pontos: int,
         vitoria: bool = False,
-        dano_causado: int = 0
+        dano_causado: int = 0,
+        tempo_real: float = None
     ) -> dict:
         """
         Registra o resultado de uma partida concluída (derrota ou vitória),
         atualiza recordes históricos e persiste em disco.
         """
+        tempo_real_ef = float(tempo if tempo_real is None else tempo_real)
         novo_recorde_pontos = pontos > self.estatisticas.get("high_score", 0)
         novo_recorde_tempo = tempo > self.estatisticas.get("melhor_tempo", 0.0)
 
@@ -409,9 +411,13 @@ class GerenciadorConfiguracoes:
         if novo_recorde_tempo:
             self.estatisticas["melhor_tempo"] = float(tempo)
 
+        if tempo_real_ef > self.estatisticas.get("melhor_tempo_real", 0.0):
+            self.estatisticas["melhor_tempo_real"] = float(tempo_real_ef)
+
         historico = self.estatisticas.setdefault("historico", [])
         registro = {
             "tempo": round(float(tempo), 2),
+            "tempo_real": round(tempo_real_ef, 2),
             "abates": int(abates),
             "pontos": int(pontos),
             "vitoria": bool(vitoria),
