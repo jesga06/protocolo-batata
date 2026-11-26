@@ -1,7 +1,7 @@
 {
   "_meta": {
     "categoria": "configs_catalogo",
-    "descricao": "Catálogo completo das 29 configurações de gameplay e 3 configurações de sistema (nomes, rótulos, benefícios, sacrifícios e flavor texts).",
+    "descricao": "Catálogo completo das 30 configurações de gameplay e 3 configurações de sistema (nomes, rótulos, benefícios, sacrifícios e flavor texts).",
     "placeholders_disponiveis": {}
   },
   "entradas": {
@@ -1748,6 +1748,131 @@
     "mira_oculta__opt_ligado__flavor": {
       "texto": "Não dá pra errar se você não tem onde mirar.",
       "contexto": "Flavor text da opção 'ligado' da config 'mira_oculta'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__nome": {
+      "texto": "Velocidade do Jogo",
+      "contexto": "Nome da configuração 'velocidade_jogo' (categoria Experimental) no Menu de Configurações e Level Up.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_50%__label": {
+      "texto": "50%",
+      "contexto": "Rótulo da opção '50%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_50%__buff": {
+      "texto": "O jogo roda na metade da velocidade.",
+      "contexto": "Texto de benefício da opção '50%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_50%__nerf": {
+      "texto": "Ganho de XP reduzido em 20%. Drops somem 50% mais rápido em tempo real e o cooldown do Dash aumenta em 30%.",
+      "contexto": "Texto de sacrifício da opção '50%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_50%__flavor": {
+      "texto": "Gameplay de vovó.",
+      "contexto": "Flavor text da opção '50%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_75%__label": {
+      "texto": "75%",
+      "contexto": "Rótulo da opção '75%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_75%__buff": {
+      "texto": "O jogo roda 25% mais devagar.",
+      "contexto": "Texto de benefício da opção '75%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_75%__nerf": {
+      "texto": "Ganho de XP reduzido em 10%. Drops somem 25% mais rápido em tempo real.",
+      "contexto": "Texto de sacrifício da opção '75%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_75%__flavor": {
+      "texto": "Isso não vai resolver seu skill issue.",
+      "contexto": "Flavor text da opção '75%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_100%__label": {
+      "texto": "Padrão",
+      "contexto": "Rótulo da opção '100%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_100%__buff": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de benefício da opção '100%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_100%__nerf": {
+      "texto": "Nenhum.",
+      "contexto": "Texto de sacrifício da opção '100%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_100%__flavor": {
+      "texto": "A cada segundo, um segundo passa. Revolucionário.",
+      "contexto": "Flavor text da opção '100%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_125%__label": {
+      "texto": "125%",
+      "contexto": "Rótulo da opção '125%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_125%__buff": {
+      "texto": "Ganho de XP aumentado em 15%. Enquanto você se move sem parar, todas as armas ganham +15% de cadência.",
+      "contexto": "Texto de benefício da opção '125%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_125%__nerf": {
+      "texto": "O jogo roda 25% mais rápido.",
+      "contexto": "Texto de sacrifício da opção '125%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_125%__flavor": {
+      "texto": "O jogo padrão não produz dopamina o suficiente?",
+      "contexto": "Flavor text da opção '125%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_150%__label": {
+      "texto": "150%",
+      "contexto": "Rótulo da opção '150%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_150%__buff": {
+      "texto": "Ganho de XP aumentado em 25%. Cada abate reduz o cooldown do Dash e do Parry em 0,2s.",
+      "contexto": "Texto de benefício da opção '150%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_150%__nerf": {
+      "texto": "O jogo roda 50% mais rápido.",
+      "contexto": "Texto de sacrifício da opção '150%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_150%__flavor": {
+      "texto": "Jogando na mesma velocidade que assiste as aulas gravadas da faculdade.",
+      "contexto": "Flavor text da opção '150%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_200%__label": {
+      "texto": "200%",
+      "contexto": "Rótulo da opção '200%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_200%__buff": {
+      "texto": "Ganho de XP aumentado em 40%. Cada abate reduz o cooldown do Dash e do Parry em 0,35s. Acertar um Parry congela todos os inimigos por 0,6s reais e empurra os que estiverem perto.",
+      "contexto": "Texto de benefício da opção '200%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_200%__nerf": {
+      "texto": "O jogo roda no dobro da velocidade. Errar um Parry dobra o cooldown dele.",
+      "contexto": "Texto de sacrifício da opção '200%' da config 'velocidade_jogo'.",
+      "placeholders": {}
+    },
+    "velocidade_jogo__opt_200%__flavor": {
+      "texto": "Protocolo: Nightcore",
+      "contexto": "Flavor text da opção '200%' da config 'velocidade_jogo'.",
       "placeholders": {}
     },
     "volume_master__nome": {

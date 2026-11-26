@@ -404,6 +404,7 @@ class GeladeiraTsunami(InimigoBase):
             return
 
         self._bass_energy_atual = float(kwargs.get("bass_energy", 0.0))
+        dt_real = float(kwargs.get("dt_real", dt))
 
         # Atualiza flash visual de dano e cooldown de contato
         if self.flash_timer > 0.0:
@@ -415,21 +416,22 @@ class GeladeiraTsunami(InimigoBase):
             return
 
         # Atualiza partículas de explosão ativas
+        dt_part = dt_real if self.estado == ESTADO_MORTE else dt
         if self.particulas_explosao:
             for part in self.particulas_explosao:
-                part["tempo"] -= dt
-                part["x"] += part["vx"] * dt
-                part["y"] += part["vy"] * dt
+                part["tempo"] -= dt_part
+                part["x"] += part["vx"] * dt_part
+                part["y"] += part["vy"] * dt_part
             self.particulas_explosao = [p for p in self.particulas_explosao if p["tempo"] > 0.0]
 
-        # FSM: ESTADO_INTRO
+        # FSM: ESTADO_INTRO (tempo real para sincronia com fade-in da música e leitura do balão)
         if self.estado == ESTADO_INTRO:
-            self._update_intro(dt)
+            self._update_intro(dt_real)
             return
 
-        # FSM: ESTADO_MORTE
+        # FSM: ESTADO_MORTE (tempo real para cascata cinematográfica de explosões)
         if self.estado == ESTADO_MORTE:
-            self._update_morte(dt)
+            self._update_morte(dt_real)
             return
 
         # Verifica mudança de fase com base no HP atual

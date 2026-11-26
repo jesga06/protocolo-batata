@@ -301,6 +301,14 @@ class GameplayCombateMixin:
         self._parry_streak_timestamps = []
         self.hitstop_timer = max(getattr(self, "hitstop_timer", 0.0), 0.20)
         self.aplicar_shake(7.0, 0.22)
+        ger_cfg = self._obter_gerenciador_config()
+        mods_whiff = ger_cfg.obter_modificadores() if (ger_cfg is not None and hasattr(ger_cfg, "obter_modificadores")) else None
+        if mods_whiff is not None and getattr(mods_whiff, "parry_nightcore_ativo", False):
+            arma_m = self._obter_arma_melee() if hasattr(self, "_obter_arma_melee") else None
+            if arma_m is not None and hasattr(arma_m, "tempo_recarga_restante"):
+                arma_m.tempo_recarga_restante = float(arma_m.tempo_recarga_restante) * 2.0
+                if hasattr(arma_m, "ultimo_parry_cd_total"):
+                    arma_m.ultimo_parry_cd_total = max(float(arma_m.ultimo_parry_cd_total), float(arma_m.tempo_recarga_restante))
         if hasattr(self, "sistema_audio") and self.sistema_audio is not None and hasattr(self.sistema_audio, "tocar_parry_whiff"):
             self.sistema_audio.tocar_parry_whiff()
         if hasattr(self, "jogador") and self.jogador is not None:
@@ -420,6 +428,29 @@ class GameplayCombateMixin:
         pitch_clang = 1.5 if max_stage >= 3 else (1.25 if max_stage == 2 else 1.0)
 
         self.hitstop_timer = max(getattr(self, "hitstop_timer", 0.0), 0.18 if eh_pesado else 0.10)
+        if mods is not None and getattr(mods, "parry_nightcore_ativo", False):
+            # Protocolo: Nightcore (200%) — congela todos os inimigos por 0,6s REAIS e empurra próximos
+            self.nightcore_freeze_timer = max(getattr(self, "nightcore_freeze_timer", 0.0), 0.6)
+            if hasattr(self, "sistema_particulas") and self.sistema_particulas is not None:
+                self.sistema_particulas.emitir_onda_choque(cx, cy, raio_max=190.0, cor=(168, 85, 247))
+            for inim in list(getattr(self, "inimigos", [])):
+                if not getattr(inim, "vivo", True) or getattr(inim, "em_fase", False):
+                    continue
+                if getattr(inim, "is_boss", False) or inim is getattr(self, "chefe_final", None):
+                    continue
+                icx = inim.x + getattr(inim, "largura", 28) / 2.0
+                icy = inim.y + getattr(inim, "altura", 28) / 2.0
+                if distancia(cx, cy, icx, icy) <= 190.0:
+                    dx_n, dy_n = vetor_direcao(cx, cy, icx, icy)
+                    if dx_n == 0.0 and dy_n == 0.0:
+                        dx_n = 1.0
+                    if hasattr(inim, "aplicar_knockback"):
+                        inim.aplicar_knockback(dx_n, dy_n, 420.0)
+                    else:
+                        inim.x += dx_n * 48.0
+                        inim.y += dy_n * 48.0
+                    if hasattr(self, "_clamp_entidade_arena"):
+                        self._clamp_entidade_arena(inim)
         self.aplicar_shake(12.0 if eh_pesado else 8.0, 0.25 if eh_pesado else 0.20)
         if hasattr(self, "sistema_audio") and self.sistema_audio is not None:
             self.sistema_audio.tocar_parry_clang(pitch_mult=pitch_clang)
@@ -884,6 +915,10 @@ class GameplayCombateMixin:
 
         self.abates += 1
         self.pontos += getattr(inim, "score_valor", 100)
+        if mods is not None:
+            red_cd_abate = float(getattr(mods, "abate_reducao_cd_dash_parry", 0.0))
+            if red_cd_abate > 0.0 and hasattr(self.jogador, "reduzir_cooldown_dash_e_parry"):
+                self.jogador.reduzir_cooldown_dash_e_parry(red_cd_abate)
         arma_slot2 = getattr(self.jogador, "arma_pistola", None)
         if arma_slot2 is not None and hasattr(arma_slot2, "ventilar_calor") and getattr(arma_slot2, "em_zona_ideal", False):
             arma_slot2.ventilar_calor(0.5)
@@ -1411,6 +1446,8 @@ class GameplayCombateMixin:
         mods,
         hitbox_mult: float,
         mult_dano_buff: float,
+        permitir_eventos_borda: bool = True,
+        dt_real_ping: float = None,
     ) -> tuple[float, float, float, float]:
         """Processa pulso overdrive, mira, auto-fire, latencia_ping, dash, parry, armas contínuas/balísticas e BIOS dual-wield."""
         centro_jogador_x = self.jogador.x + self.jogador.largura / 2.0
@@ -1476,7 +1513,7 @@ class GameplayCombateMixin:
             self.jogador.mira_y = mouse_mundo_y
 
             kb_down = bool(
-                self.teclado is not None and hasattr(self.teclado, "key_down") and (
+                permitir_eventos_borda and self.teclado is not None and hasattr(self.teclado, "key_down") and (
                     self.teclado.key_down("SPACE") or self.teclado.key_down("f") or
                     self.teclado.key_down("F") or self.teclado.key_down("ENTER")
                 )
@@ -1494,7 +1531,7 @@ class GameplayCombateMixin:
             self._ultimo_mouse_mundo = (mouse_mundo_x, mouse_mundo_y)
             self.jogador.mira_x = mouse_mundo_x
             self.jogador.mira_y = mouse_mundo_y
-            btn1_down = bool(self.mouse.button_down(1)) if (self.mouse is not None and hasattr(self.mouse, "button_down")) else False
+            btn1_down = bool(permitir_eventos_borda and self.mouse.button_down(1)) if (self.mouse is not None and hasattr(self.mouse, "button_down")) else False
             if self.mouse is not None and hasattr(self.mouse, "button_pressed"):
                 btn1_pressed = bool(self.mouse.button_pressed(1))
             elif self.mouse is not None and hasattr(self.mouse, "get_pressed_buttons"):
@@ -1513,7 +1550,7 @@ class GameplayCombateMixin:
                     btn1_down = False
 
         # Toggle de Auto-Fire na tecla 'F' quando auto_fire == "ligado"
-        if not is_uma_mao and not autofire_desligado and self.teclado is not None and hasattr(self.teclado, "key_down"):
+        if permitir_eventos_borda and not is_uma_mao and not autofire_desligado and self.teclado is not None and hasattr(self.teclado, "key_down"):
             if self.teclado.key_down("f") or self.teclado.key_down("F"):
                 self.auto_fire_toggle_ativo = not getattr(self, "auto_fire_toggle_ativo", False)
                 self.toasts_coleta.append({
@@ -1586,9 +1623,10 @@ class GameplayCombateMixin:
             if getattr(arma_melee_slot1, "parry_ativo", False) and self.jogador.vivo:
                 self._processar_parry_ativo(arma_melee_slot1, centro_jogador_x, centro_jogador_y)
 
-        # Consome ações atrasadas por latencia_ping (~80ms)
-        if efeito_ping is not None and self.jogador.vivo:
-            for acao in efeito_ping.consumir_acoes_prontas(dt):
+        # Consome ações atrasadas por latencia_ping (~80ms em tempo real, 1x por frame)
+        if efeito_ping is not None and self.jogador.vivo and permitir_eventos_borda:
+            dt_ping_ef = float(dt if dt_real_ping is None else dt_real_ping)
+            for acao in efeito_ping.consumir_acoes_prontas(dt_ping_ef):
                 tipo_ac = acao.get("tipo")
                 pl = acao.get("payload") or {}
                 if tipo_ac == "dash":
@@ -1634,7 +1672,7 @@ class GameplayCombateMixin:
                         )
 
         # Dash Direcional Permanente: SPACE/LSHIFT no modo padrão; LSHIFT em uma_mao
-        if self.jogador.vivo and self.teclado is not None and hasattr(self.teclado, "key_down"):
+        if permitir_eventos_borda and self.jogador.vivo and self.teclado is not None and hasattr(self.teclado, "key_down"):
             dash_press = bool(
                 self.teclado.key_down("LSHIFT")
                 if is_uma_mao
@@ -1753,7 +1791,7 @@ class GameplayCombateMixin:
                         )
 
         # Parry Rápido exclusivo (sem trocar de arma): tecla 'E' ou Botão Direito (RMB)
-        if self.jogador.vivo and arma_melee_slot1 is not None and hasattr(arma_melee_slot1, "pode_atirar") and arma_melee_slot1.pode_atirar():
+        if permitir_eventos_borda and self.jogador.vivo and arma_melee_slot1 is not None and hasattr(arma_melee_slot1, "pode_atirar") and arma_melee_slot1.pode_atirar():
             tecla_e_down = bool(
                 self.teclado is not None and hasattr(self.teclado, "key_down") and (
                     self.teclado.key_down("e") or self.teclado.key_down("E")

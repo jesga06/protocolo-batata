@@ -70,6 +70,14 @@ class ModificadoresGameplay:
     modo_wireframe: bool = False
     mira_oculta_homing: bool = False
 
+    # Velocidade do Jogo (30ª config — Experimental)
+    velocidade_jogo_mult: float = 1.0
+    drops_despawn_real_mult: float = 0.0
+    dash_cooldown_mult: float = 1.0
+    cadencia_movimento_continuo_mult: float = 1.0
+    abate_reducao_cd_dash_parry: float = 0.0
+    parry_nightcore_ativo: bool = False
+
 
 def calcular_modificadores(
     configs_desbloqueadas: Union[set, list, tuple],
@@ -220,5 +228,19 @@ def calcular_modificadores(
             mods.modo_wireframe = mods.modo_wireframe or bool(mod_dict["modo_wireframe"])
         if "mira_oculta_homing" in mod_dict:
             mods.mira_oculta_homing = mods.mira_oculta_homing or bool(mod_dict["mira_oculta_homing"])
+
+        # 9. Velocidade do Jogo
+        if "velocidade_jogo_mult" in mod_dict:
+            mods.velocidade_jogo_mult *= float(mod_dict["velocidade_jogo_mult"])
+        if "drops_despawn_real_mult" in mod_dict:
+            mods.drops_despawn_real_mult = max(mods.drops_despawn_real_mult, float(mod_dict["drops_despawn_real_mult"]))
+        if "dash_cooldown_mult" in mod_dict:
+            mods.dash_cooldown_mult *= float(mod_dict["dash_cooldown_mult"])
+        if "cadencia_movimento_continuo_mult" in mod_dict:
+            mods.cadencia_movimento_continuo_mult *= float(mod_dict["cadencia_movimento_continuo_mult"])
+        if "abate_reducao_cd_dash_parry" in mod_dict:
+            mods.abate_reducao_cd_dash_parry = max(mods.abate_reducao_cd_dash_parry, float(mod_dict["abate_reducao_cd_dash_parry"]))
+        if "parry_nightcore_ativo" in mod_dict:
+            mods.parry_nightcore_ativo = mods.parry_nightcore_ativo or bool(mod_dict["parry_nightcore_ativo"])
 
     return mods

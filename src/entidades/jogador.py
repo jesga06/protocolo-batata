@@ -136,6 +136,9 @@ class Jogador:
         self.dash_cargas_max: int = 1
         self.dash_cargas_atuais: int = 1
         self.dash_recarga_mult: float = 1.0
+        self.dash_cooldown_mult_config: float = 1.0
+        self.cadencia_movimento_continuo_mult: float = 1.0
+        self.em_movimento_real: bool = False
         self.dash_sem_iframes: bool = False
         self.dash_alcance_mult: float = 1.0
         self.enraizado_timer: float = 0.0
@@ -177,6 +180,22 @@ class Jogador:
             return True
         return False
 
+    def _calcular_dash_cooldown_efetivo(self) -> float:
+        mult_cfg = max(0.1, float(getattr(self, "dash_cooldown_mult_config", 1.0)))
+        mult_rec = max(0.1, float(getattr(self, "dash_recarga_mult", 1.0)))
+        return float(DASH_COOLDOWN) * mult_cfg / mult_rec
+
+    def reduzir_cooldown_dash_e_parry(self, segundos: float) -> None:
+        """Reduz cooldown do Dash e do Parry (Slot 1) em segundos (configs 150%/200%)."""
+        red = max(0.0, float(segundos))
+        if red <= 0.0:
+            return
+        if getattr(self, "dash_cooldown_restante", 0.0) > 0.0:
+            self.dash_cooldown_restante = max(0.0, self.dash_cooldown_restante - red)
+        armas_j = getattr(self, "armas", None) or []
+        if armas_j and hasattr(armas_j[0], "tempo_recarga_restante"):
+            armas_j[0].tempo_recarga_restante = max(0.0, float(armas_j[0].tempo_recarga_restante) - red)
+
     def iniciar_dash(self, dx: float, dy: float, mods=None) -> bool:
         """
         Aciona o Dash direcional permanente se desbloqueado e fora de cooldown.
@@ -192,12 +211,12 @@ class Jogador:
                 return False
             self.dash_cargas_atuais -= 1
             if self.dash_cooldown_restante <= 0.0:
-                self.dash_cooldown_restante = float(DASH_COOLDOWN) / max(0.1, float(getattr(self, "dash_recarga_mult", 1.0)))
+                self.dash_cooldown_restante = self._calcular_dash_cooldown_efetivo()
         else:
             if self.dash_cooldown_restante > 0.0:
                 return False
             self.dash_cargas_atuais = 0
-            self.dash_cooldown_restante = float(DASH_COOLDOWN) / max(0.1, float(getattr(self, "dash_recarga_mult", 1.0)))
+            self.dash_cooldown_restante = self._calcular_dash_cooldown_efetivo()
 
         ndx, ndy = normalizar_vetor(float(dx), float(dy))
         if ndx == 0.0 and ndy == 0.0:
@@ -613,6 +632,8 @@ class Jogador:
 
         # Atualiza posição com velocidade por segundo (ou impulso de Dash direcional ativo)
         dt_pos = max(0.0, float(dt))
+        x_antes_mov = self.x
+        y_antes_mov = self.y
         if getattr(self, "enraizado_timer", 0.0) > 0.0:
             dx = 0.0
             dy = 0.0
@@ -638,6 +659,8 @@ class Jogador:
         max_y = max(0.0, float(limite_arena[1]) - self.altura)
         self.x = clamp(self.x, 0.0, max_x)
         self.y = clamp(self.y, 0.0, max_y)
+        desloc_sq = (self.x - x_antes_mov) ** 2 + (self.y - y_antes_mov) ** 2
+        self.em_movimento_real = (desloc_sq > 0.25) or (self.dash_ativo_timer > 0.0)
 
         # Movimento secundário contínuo dirigido por dt (walk bob senoidal e tilt de strafe ±5°)
         if self.andando_frame:
@@ -937,11 +960,11 @@ class Jogador:
             if self.dash_cooldown_restante <= 0.0 and self.dash_cargas_atuais < self.dash_cargas_max:
                 self.dash_cargas_atuais += 1
                 if self.dash_cargas_atuais < self.dash_cargas_max:
-                    self.dash_cooldown_restante = float(DASH_COOLDOWN) / max(0.1, float(getattr(self, "dash_recarga_mult", 1.0)))
+                    self.dash_cooldown_restante = self._calcular_dash_cooldown_efetivo()
         elif getattr(self, "dash_cargas_atuais", 1) < getattr(self, "dash_cargas_max", 1):
             self.dash_cargas_atuais += 1
             if self.dash_cargas_atuais < self.dash_cargas_max:
-                self.dash_cooldown_restante = float(DASH_COOLDOWN) / max(0.1, float(getattr(self, "dash_recarga_mult", 1.0)))
+                self.dash_cooldown_restante = self._calcular_dash_cooldown_efetivo()
 
         if getattr(self, "motion_blur_ghosting", False):
             self._rastro_timer = getattr(self, "_rastro_timer", 0.0) + dt
@@ -997,11 +1020,17 @@ class Jogador:
                 self.timer_sem_atirar_refrig = 0.0
                 self.pulso_frio_pronto = True
 
+        mult_mov_cont = (
+            float(getattr(self, "cadencia_movimento_continuo_mult", 1.0))
+            if getattr(self, "em_movimento_real", False)
+            else 1.0
+        )
         mult_cadencia = (
             mult_refrigeracao
             * (1.08 if self.buff_cadencia_timer > 0.0 else 1.0)
             * float(getattr(self, "mult_cadencia_efeitos", 1.0))
             * float(getattr(self, "mult_cadencia_vsync", 1.0))
+            * mult_mov_cont
         )
         dt_armas = dt * mult_cadencia
 

@@ -606,7 +606,10 @@ class EfeitoLatenciaPing(EfeitoCombate):
             getattr(_const, "LATENCIA_PING_ATRASO_SEGUNDOS", 0.080)
         )
         self._fila_acoes: deque[dict] = deque()
-        self._historico_pos: deque[tuple[float, float]] = deque(maxlen=12)
+        self._historico_pos: deque[tuple[float, float, float]] = deque(maxlen=64)
+        self._relogio_hitbox: float = 0.0
+        self._janela_hitbox_s: float = 0.20
+        self._hitbox_registrada_externamente: bool = False
         self._ecos_pendentes: list[dict] = []
 
     def agendar_acao(
@@ -634,19 +637,36 @@ class EfeitoLatenciaPing(EfeitoCombate):
             prontas.append(self._fila_acoes.popleft())
         return prontas
 
+    def registrar_posicao_real(self, cx: float, cy: float, dt_real: float) -> None:
+        """Registra posição do jogador em janela temporal real (independente de FPS/sub-stepping)."""
+        self._hitbox_registrada_externamente = True
+        self._relogio_hitbox += max(0.0, float(dt_real))
+        self._historico_pos.append((self._relogio_hitbox, float(cx), float(cy)))
+        limite = self._relogio_hitbox - self._janela_hitbox_s
+        while len(self._historico_pos) > 1 and self._historico_pos[0][0] < limite:
+            self._historico_pos.popleft()
+
     def obter_pos_hitbox_atrasada(
         self, fallback: Optional[tuple[float, float]] = None
     ) -> Optional[tuple[float, float]]:
         if not self._historico_pos:
             return fallback
-        return self._historico_pos[0]
+        entrada = self._historico_pos[0]
+        if len(entrada) == 3:
+            return (entrada[1], entrada[2])
+        return entrada
 
     def ao_tick(self, ctx: ContextoCombate, dt: float) -> None:
         dt = float(dt)
-        if ctx.jogador is not None:
+        if ctx.jogador is not None and not self._hitbox_registrada_externamente:
             cx = getattr(ctx.jogador, "x", 0.0) + getattr(ctx.jogador, "largura", 32) * 0.5
             cy = getattr(ctx.jogador, "y", 0.0) + getattr(ctx.jogador, "altura", 32) * 0.5
-            self._historico_pos.append((cx, cy))
+            self._relogio_hitbox += max(0.0, dt)
+            self._historico_pos.append((self._relogio_hitbox, float(cx), float(cy)))
+            limite = self._relogio_hitbox - self._janela_hitbox_s
+            while len(self._historico_pos) > 1 and self._historico_pos[0][0] < limite:
+                self._historico_pos.popleft()
+        self._hitbox_registrada_externamente = False
 
         restantes: list[dict] = []
         for eco in self._ecos_pendentes:
@@ -802,8 +822,9 @@ class EfeitoDashProtocolo(EfeitoCombate):
             ctx.jogador.dash_sem_iframes = True
         elif self.modo == "rollback_estado" and ctx.jogador is not None:
             self._amostra_timer += dt
-            if self._amostra_timer >= 0.10 or not self.snapshots:
-                self._amostra_timer = 0.0
+            if not self.snapshots or self._amostra_timer >= 0.10:
+                if self._amostra_timer >= 0.10:
+                    self._amostra_timer = max(0.0, self._amostra_timer - 0.10)
                 self.snapshots.append(
                     (
                         float(getattr(ctx.jogador, "x", 0.0)),

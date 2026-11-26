@@ -225,7 +225,7 @@
       }
     },
     "configs_gameplay_beneficio_sacrificio": {
-      "texto": "São 29 Configurações de Gameplay combinando Benefícios e Sacrifícios; ative várias para desafios extras.",
+      "texto": "São 30 Configurações de Gameplay combinando Benefícios e Sacrifícios; ative várias para desafios extras.",
       "contexto": "BannerDica — dica sobre o sistema de Configurações após desbloquear ao menos uma.",
       "placeholders": {},
       "condicoes": {

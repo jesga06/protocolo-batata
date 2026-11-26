@@ -341,7 +341,7 @@ DROP_ALTURA = 42
 # 10. CATÁLOGO COMPLETO DE CONFIGURAÇÕES (SSOT: src.sistemas.config_dados)
 # =============================================================================
 
-TOTAL_CONFIGS_GAMEPLAY = 29
+TOTAL_CONFIGS_GAMEPLAY = 30
 LATENCIA_PING_ATRASO_SEGUNDOS = 0.080
 LATENCIA_PING_ATRASO_S = LATENCIA_PING_ATRASO_SEGUNDOS
 SAVE_SCHEMA_VERSION = 2
@@ -449,6 +449,7 @@ ASSET_PATHS = {
     "icon_screen_shake": "ui/icones_configs/icon_screen_shake.png",
     "icon_suavizacao_camera": "ui/icones_configs/icon_suavizacao_camera.png",
     "icon_velocidade_inimigos": "ui/icones_configs/icon_velocidade_inimigos.png",
+    "icon_velocidade_jogo": "ui/icones_configs/icon_velocidade_jogo.png",
     "icon_vida_inimigos": "ui/icones_configs/icon_vida_inimigos.png",
     "icon_volume_master": "ui/icones_configs/icon_volume_master.png",
     "icon_volume_musica": "ui/icones_configs/icon_volume_musica.png",

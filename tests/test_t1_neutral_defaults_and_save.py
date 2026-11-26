@@ -46,8 +46,8 @@ class TestNeutralDefaultStateAndSave(unittest.TestCase):
         self._tmpdir.cleanup()
 
     def test_all_20_gameplay_configs_have_empty_neutral_modifiers(self):
-        """Verifica que cada uma das 29 configs possui modificadores vazios ({}) no valor padrão."""
-        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 29, "Devem existir exatamente 29 configurações de gameplay.")
+        """Verifica que cada uma das 30 configs possui modificadores vazios ({}) no valor padrão."""
+        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 30, "Devem existir exatamente 30 configurações de gameplay.")
 
         for cid, cdef in CONFIGURACOES_GAMEPLAY.items():
             val_padrao = str(cdef.valor_padrao)

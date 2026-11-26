@@ -660,6 +660,49 @@
       "texto": "Pressione [ENTER] para Jogar Novamente ou [ESC] para o Menu",
       "contexto": "Instrução inferior no overlay de Game Over.",
       "placeholders": {}
+    },
+    "hud_tempo_jogo_lbl": {
+      "texto": "JOGO",
+      "contexto": "Prefixo curto do relógio simulado no HUD quando a Velocidade do Jogo difere de 100%.",
+      "placeholders": {}
+    },
+    "hud_tempo_real_lbl": {
+      "texto": "REAL",
+      "contexto": "Prefixo curto do relógio em tempo real no HUD quando a Velocidade do Jogo difere de 100%.",
+      "placeholders": {}
+    },
+    "hud_vel_badge": {
+      "texto": "{pct}%",
+      "contexto": "Badge percentual da Velocidade do Jogo ativa na barra de telemetria do HUD.",
+      "placeholders": {
+        "pct": "int"
+      }
+    },
+    "vitoria_stat_tempo_jogo": {
+      "texto": "Tempo de Jogo:",
+      "contexto": "Rótulo do tempo simulado no quadro de estatísticas da Vitória com velocidade alterada.",
+      "placeholders": {}
+    },
+    "vitoria_stat_tempo_real": {
+      "texto": "Tempo Real:",
+      "contexto": "Rótulo do tempo real no quadro de estatísticas da Vitória com velocidade alterada.",
+      "placeholders": {}
+    },
+    "gameover_tempo_jogo_parte": {
+      "texto": "Tempo de Jogo: {min:02d}:{seg:02d}",
+      "contexto": "Parte do tempo simulado na linha de relógio duplo do Game Over.",
+      "placeholders": {
+        "min": "int",
+        "seg": "int"
+      }
+    },
+    "gameover_tempo_real_parte": {
+      "texto": "Tempo Real: {min:02d}:{seg:02d}",
+      "contexto": "Parte do tempo real na linha de relógio duplo do Game Over.",
+      "placeholders": {
+        "min": "int",
+        "seg": "int"
+      }
     }
   }
 }

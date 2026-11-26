@@ -58,6 +58,7 @@ class ItemDrop:
         self.tempo_scavenger = float(tempo_scavenger)
         self.tempo_decorrido = 0.0
         self.tempo_despawn = 0.0
+        self.tempo_pickup = 0.0
 
         self.subtipo = str(subtipo)
         self.rotulo = str(rotulo)
@@ -80,14 +81,22 @@ class ItemDrop:
         """Retorna True se o item estiver no chão há pelo menos 10.0s e ainda estiver ativo."""
         return self.ativo and not self.coletado and (self.tempo_decorrido >= self.tempo_scavenger)
 
-    def update(self, dt: float, pausar_despawn: bool = False):
+    def update(
+        self,
+        dt: float,
+        pausar_despawn: bool = False,
+        dt_despawn: float = None,
+        dt_pickup: float = None,
+    ):
         """Atualiza o tempo de vida do drop e desativa quando expira (a menos que o despawn esteja pausado)."""
         if not self.ativo or self.coletado:
             return
 
         self.tempo_decorrido += dt
+        self.tempo_pickup += dt if dt_pickup is None else float(dt_pickup)
         if not pausar_despawn:
-            self.tempo_despawn += dt
+            passo_despawn = dt if dt_despawn is None else float(dt_despawn)
+            self.tempo_despawn += passo_despawn
             if self.tempo_despawn >= self.tempo_vida:
                 self.ativo = False
 

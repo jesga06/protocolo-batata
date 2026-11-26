@@ -83,7 +83,7 @@ class TestUIRenderV2(unittest.TestCase):
         self.assertIn("depurador_escritorio", sc.fixadas)
 
     def test_04_menu_configs_28_e_conflitos(self):
-        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 29)
+        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 30)
         cfg = GerenciadorConfiguracoes()
         cfg.desbloquear_config("dash_protocolo", via_conquista=True)
         cfg.desbloquear_config("dash_rastro", via_conquista=True)

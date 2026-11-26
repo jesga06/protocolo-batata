@@ -101,6 +101,8 @@ class SistemaMusica:
         self._ultimo_tick: float = 0.0
         self._ciclo_assault_iniciado: bool = False
         self._hold_restantes: int = 0
+        self._anticipation_restantes: int = 0
+        self._velocidade_jogo_mult: float = 1.0
         self._evento_assault_intro_pendente: bool = False
         self.ciclos_assault_concluidos: int = 0
         self._relogio_headless: float = 0.0
@@ -258,9 +260,15 @@ class SistemaMusica:
         return False
 
     def _ao_entrar_estado(self, estado_anterior: str, novo_estado: str) -> None:
-        if novo_estado == self.ESTADO_ASSAULT_INTRO:
+        if novo_estado == self.ESTADO_ANTICIPATION:
+            if estado_anterior != self.ESTADO_ANTICIPATION:
+                self._anticipation_restantes = 1 if self._velocidade_jogo_mult < 0.999 else 0
+            else:
+                self._anticipation_restantes = max(0, self._anticipation_restantes - 1)
+        elif novo_estado == self.ESTADO_ASSAULT_INTRO:
             self._ciclo_assault_iniciado = True
             self._hold_restantes = 0
+            self._anticipation_restantes = 0
             if estado_anterior != self.ESTADO_ASSAULT_INTRO:
                 self._evento_assault_intro_pendente = True
         elif novo_estado == self.ESTADO_HOLD and self._ciclo_assault_iniciado:
@@ -318,6 +326,7 @@ class SistemaMusica:
         self._abafado_alvo = False
         self._ciclo_assault_iniciado = False
         self._hold_restantes = 0
+        self._anticipation_restantes = 0
         self._evento_assault_intro_pendente = False
         self.ciclos_assault_concluidos = 0
         self._relogio_headless = 0.0
@@ -336,6 +345,7 @@ class SistemaMusica:
         self._abafado_alvo = False
         self._ciclo_assault_iniciado = False
         self._hold_restantes = 0
+        self._anticipation_restantes = 0
         self._evento_assault_intro_pendente = False
         self.ciclos_assault_concluidos = 0
         self._relogio_headless = 0.0
@@ -349,9 +359,18 @@ class SistemaMusica:
     ) -> str:
         if pausar_transicao:
             return self.estado
+        vel = float(getattr(self, "_velocidade_jogo_mult", 1.0))
+        vel_padrao = abs(vel - 1.0) < 1e-3
         if self.estado == self.ESTADO_ANTICIPATION:
-            return self.ESTADO_HOLD
+            if vel_padrao:
+                return self.ESTADO_HOLD
+            if vel < 1.0 and self._anticipation_restantes > 0:
+                return self.ESTADO_ANTICIPATION
+            return self.ESTADO_ASSAULT_INTRO
         if self.estado == self.ESTADO_HOLD:
+            if not vel_padrao:
+                # Se a velocidade foi alterada durante HOLD, sai direto para ASSAULT_INTRO
+                return self.ESTADO_ASSAULT_INTRO
             if self._ciclo_assault_iniciado:
                 return self.ESTADO_HOLD if self._hold_restantes > 0 else self.ESTADO_ASSAULT_INTRO
             if tempo_sobrevivencia >= self._tempo_assault:
@@ -383,11 +402,24 @@ class SistemaMusica:
         dt: Optional[float] = None,
         trava_assault: bool = False,
         pausar_transicao: bool = False,
+        velocidade_jogo_mult: float = 1.0,
     ) -> None:
         """
         Atualiza o cross-blend normal/abafado e gerencia o enfileiramento gapless
         entre frases musicais durante o gameplay.
         """
+        try:
+            vel_nova = max(0.1, float(velocidade_jogo_mult))
+        except (ValueError, TypeError):
+            vel_nova = 1.0
+        vel_ant = float(getattr(self, "_velocidade_jogo_mult", 1.0))
+        self._velocidade_jogo_mult = vel_nova
+        if self.estado == self.ESTADO_ANTICIPATION:
+            if vel_ant >= 0.999 and vel_nova < 0.999 and self._anticipation_restantes == 0:
+                self._anticipation_restantes = 1
+            elif vel_nova >= 0.999:
+                self._anticipation_restantes = 0
+
         if self.estado not in self._ESTADOS_GAMEPLAY:
             return
 

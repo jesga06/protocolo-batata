@@ -28,10 +28,10 @@ class TestConfigCatalogAndStructure(unittest.TestCase):
     """Testa a integridade do catálogo e definições de configurações."""
 
     def test_all_25_configs_cataloged(self):
-        """Verifica a presença exata de 29 configs de gameplay e 3 sistêmicas de áudio (32 total)."""
-        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 29)
+        """Verifica a presença exata de 30 configs de gameplay e 3 sistêmicas de áudio (33 total)."""
+        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 30)
         self.assertEqual(len(CONFIGURACOES_SISTEMA), 3)
-        self.assertEqual(len(TODAS_CONFIGURACOES), 32)
+        self.assertEqual(len(TODAS_CONFIGURACOES), 33)
 
         # Verifica configs de sistema de áudio e ausência de stubs S4/S5
         self.assertIn("volume_master", CONFIGURACOES_SISTEMA)
@@ -150,7 +150,7 @@ class TestConfigManager(unittest.TestCase):
         # Inicialmente tudo está bloqueado
         self.assertFalse(manager.is_desbloqueada("fps_cap"))
         self.assertEqual(len(manager.obter_desbloqueadas()), 0)
-        self.assertEqual(len(manager.obter_bloqueadas()), 26)
+        self.assertEqual(len(manager.obter_bloqueadas()), 27)
 
         # Tentativa de alterar config bloqueada falha
         self.assertFalse(manager.definir_valor("fps_cap", "15"))

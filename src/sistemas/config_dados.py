@@ -1,7 +1,7 @@
 """
 Catálogo e Definições de Dados do Sistema de Configurações — Protocolo: Batata
 SSOT: CONFIGURACOES.md
-Define todas as 29 configurações de gameplay desbloqueáveis e as 3 configurações de sistema (32 no total).
+Define todas as 30 configurações de gameplay desbloqueáveis e as 3 configurações de sistema (33 no total).
 """
 
 from dataclasses import dataclass, field
@@ -1042,6 +1042,88 @@ CONFIGURACOES_GAMEPLAY: dict[str, ConfiguracaoDef] = {
                 nerf_text=t("configs_catalogo", "mira_oculta__opt_ligado__nerf"),
                 buff_text=t("configs_catalogo", "mira_oculta__opt_ligado__buff"),
                 incompativel_com=[("keybinds", "uma_mao")],
+            ),
+        },
+    ),
+
+    # 30. Velocidade do Jogo (Experimental)
+    "velocidade_jogo": ConfiguracaoDef(
+        id="velocidade_jogo",
+        nome=t("configs_catalogo", "velocidade_jogo__nome"),
+        categoria=CategoriaConfig.EXPERIMENTAL,
+        tipo=TipoControleConfig.GRUPO,
+        valor_padrao="100%",
+        ordem=30,
+        opcoes={
+            "50%": OpcaoConfig(
+                id="50%",
+                label=t("configs_catalogo", "velocidade_jogo__opt_50%__label"),
+                modificadores={
+                    "velocidade_jogo_mult": 0.50,
+                    "xp_ganho_mult": 0.80,
+                    "drops_despawn_real_mult": 1.50,
+                    "dash_cooldown_mult": 1.30,
+                },
+                flavor_text=t("configs_catalogo", "velocidade_jogo__opt_50%__flavor"),
+                nerf_text=t("configs_catalogo", "velocidade_jogo__opt_50%__nerf"),
+                buff_text=t("configs_catalogo", "velocidade_jogo__opt_50%__buff"),
+            ),
+            "75%": OpcaoConfig(
+                id="75%",
+                label=t("configs_catalogo", "velocidade_jogo__opt_75%__label"),
+                modificadores={
+                    "velocidade_jogo_mult": 0.75,
+                    "xp_ganho_mult": 0.90,
+                    "drops_despawn_real_mult": 1.25,
+                },
+                flavor_text=t("configs_catalogo", "velocidade_jogo__opt_75%__flavor"),
+                nerf_text=t("configs_catalogo", "velocidade_jogo__opt_75%__nerf"),
+                buff_text=t("configs_catalogo", "velocidade_jogo__opt_75%__buff"),
+            ),
+            "100%": OpcaoConfig(
+                id="100%",
+                label=t("configs_catalogo", "velocidade_jogo__opt_100%__label"),
+                modificadores={},
+                flavor_text=t("configs_catalogo", "velocidade_jogo__opt_100%__flavor"),
+                nerf_text=t("configs_catalogo", "velocidade_jogo__opt_100%__nerf"),
+                buff_text=t("configs_catalogo", "velocidade_jogo__opt_100%__buff"),
+            ),
+            "125%": OpcaoConfig(
+                id="125%",
+                label=t("configs_catalogo", "velocidade_jogo__opt_125%__label"),
+                modificadores={
+                    "velocidade_jogo_mult": 1.25,
+                    "xp_ganho_mult": 1.15,
+                    "cadencia_movimento_continuo_mult": 1.15,
+                },
+                flavor_text=t("configs_catalogo", "velocidade_jogo__opt_125%__flavor"),
+                nerf_text=t("configs_catalogo", "velocidade_jogo__opt_125%__nerf"),
+                buff_text=t("configs_catalogo", "velocidade_jogo__opt_125%__buff"),
+            ),
+            "150%": OpcaoConfig(
+                id="150%",
+                label=t("configs_catalogo", "velocidade_jogo__opt_150%__label"),
+                modificadores={
+                    "velocidade_jogo_mult": 1.50,
+                    "xp_ganho_mult": 1.25,
+                    "abate_reducao_cd_dash_parry": 0.20,
+                },
+                flavor_text=t("configs_catalogo", "velocidade_jogo__opt_150%__flavor"),
+                nerf_text=t("configs_catalogo", "velocidade_jogo__opt_150%__nerf"),
+                buff_text=t("configs_catalogo", "velocidade_jogo__opt_150%__buff"),
+            ),
+            "200%": OpcaoConfig(
+                id="200%",
+                label=t("configs_catalogo", "velocidade_jogo__opt_200%__label"),
+                modificadores={
+                    "velocidade_jogo_mult": 2.00,
+                    "xp_ganho_mult": 1.40,
+                    "abate_reducao_cd_dash_parry": 0.35,
+                    "parry_nightcore_ativo": True,
+                },
+                flavor_text=t("configs_catalogo", "velocidade_jogo__opt_200%__flavor"),
+                nerf_text=t("configs_catalogo", "velocidade_jogo__opt_200%__nerf"),
+                buff_text=t("configs_catalogo", "velocidade_jogo__opt_200%__buff"),
             ),
         },
     ),
