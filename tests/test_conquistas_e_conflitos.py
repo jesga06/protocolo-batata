@@ -15,7 +15,7 @@ from src.sistemas.conquistas_dados import (
 
 class TestConquistasEConflitos(unittest.TestCase):
     def test_catalogo_28_configs_e_regra_r1(self):
-        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 29)
+        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 30)
         self.assertEqual(len(CONFIGURACOES_SISTEMA), 3)
         self.assertEqual(len(CHIPS_FIRMWARE), 8)
         self.assertEqual(len(CONQUISTAS_CONTINUAS), 5)
