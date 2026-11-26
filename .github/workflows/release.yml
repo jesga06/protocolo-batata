@@ -7,15 +7,8 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: Build release artifacts
-    uses: ./.github/workflows/build.yml
-    permissions:
-      contents: read
-
   draft-release:
     name: Create release draft
-    needs: build
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -27,9 +20,30 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Find successful build for this commit
+        id: build-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=$(gh run list \
+            --workflow build.yml \
+            --commit "$GITHUB_SHA" \
+            --status success \
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId // empty')
+          if [ -z "$run_id" ]; then
+            echo "::error::No successful Build Portable Executables run found for $GITHUB_SHA. Run that workflow for this commit first."
+            exit 1
+          fi
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.build-run.outputs.run_id }}
           path: release-assets
 
       - name: Set up Node.js
