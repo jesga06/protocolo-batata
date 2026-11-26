@@ -191,7 +191,7 @@ jobs:
           Exclude implementation details, internal refactors, tests, documentation, build/CI work, and anything
           that does not change the player's experience. Do not infer or promise effects that are not evident
           in the code. Use plain, simple, non-technical English, with at most 5 short bullets. No version
-          number, commit hashes, technical terms, or generic filler. Start with '## What's new'.
+          number, commit hashes, technical terms, or generic filler. Start with '## Novidades'.
           Write the notes to release-notes.md.
           EOF
           )
