@@ -1189,35 +1189,113 @@ class GameplayRenderMixin:
                     screen.blit(sombra_b, (badge_rect.x + sh_o, badge_rect.y + sh_o))
                     screen.blit(badge_surf, badge_rect)
 
-            # 2. Faixa compacta de telemetria no topo central (y=6..26 lógico, 340x20 px)
+            # 2. Faixa compacta de telemetria no topo central (y=6..26 lógico; expande dinamicamente sob Velocidade do Jogo != 100%)
             minutos = int(self.tempo_sobrevivencia // 60)
             segundos = int(self.tempo_sobrevivencia % 60)
             texto_tempo = f"{minutos:02d}:{segundos:02d}"
             texto_abates = t("ui_geral", "hud_abates", abates=self.abates)
             texto_pontos = t("ui_geral", "hud_pontos", pontos=self.pontos)
 
+            ger_cfg_vel = getattr(self, "gerenciador_config", None) or getattr(self, "config_sistema", None)
+            mods_vel = ger_cfg_vel.obter_modificadores() if (ger_cfg_vel is not None and hasattr(ger_cfg_vel, "obter_modificadores")) else None
+            vel_mult_hud = float(getattr(mods_vel, "velocidade_jogo_mult", 1.0)) if mods_vel is not None else 1.0
+            tempo_real_val = float(getattr(self, "tempo_real_partida", self.tempo_sobrevivencia))
+            mostrar_relogio_duplo = bool(
+                getattr(self, "velocidade_alterada_na_partida", False)
+                or abs(vel_mult_hud - 1.0) >= 1e-3
+                or abs(self.tempo_sobrevivencia - tempo_real_val) >= 0.5
+            )
+
             centro_tela_x = ox + vw // 2
-            pill_w = px_s(340)
             pill_h = px_s(20)
-            pill_x = centro_tela_x - pill_w // 2
             pill_y = px_y(6)
             raio_pill = max(2, int(round(4 * s)))
-            if self._hud_stats_pill_surf is None or self._hud_stats_pill_surf.get_size() != (pill_w, pill_h):
-                self._hud_stats_pill_surf = pygame.Surface((pill_w, pill_h), pygame.SRCALPHA)
-                pygame.draw.rect(self._hud_stats_pill_surf, (11, 14, 23, 220), (0, 0, pill_w, pill_h), border_radius=raio_pill)
-            screen.blit(self._hud_stats_pill_surf, (pill_x, pill_y))
             pulso_intro = float(getattr(self, "pulso_assault_intro_timer", 0.0))
             cor_borda_pill = cor_ouro if (pulso_intro > 0.0 and int(pulso_intro * 10) % 2 == 0) else cor_borda_sutil
-            pygame.draw.rect(screen, cor_borda_pill, (pill_x, pill_y, pill_w, pill_h), width=max(1, int(round(s))), border_radius=raio_pill)
 
-            cy_pill = pill_y + pill_h // 2
-            tempo_surf = self._obter_fonte("tempo", s).render(texto_tempo, True, BRANCO)
             abates_surf = self._obter_fonte("abates", s).render(texto_abates, True, cor_ouro)
             pontos_surf = self._obter_fonte("abates", s).render(texto_pontos, True, (226, 232, 240))
 
-            screen.blit(tempo_surf, tempo_surf.get_rect(left=pill_x + max(6, int(round(14 * s))), centery=cy_pill))
-            screen.blit(abates_surf, abates_surf.get_rect(centerx=centro_tela_x + int(round(4 * s)), centery=cy_pill))
-            screen.blit(pontos_surf, pontos_surf.get_rect(right=pill_x + pill_w - max(6, int(round(12 * s))), centery=cy_pill))
+            if not mostrar_relogio_duplo:
+                pill_w = px_s(340)
+                pill_x = centro_tela_x - pill_w // 2
+                if self._hud_stats_pill_surf is None or self._hud_stats_pill_surf.get_size() != (pill_w, pill_h):
+                    self._hud_stats_pill_surf = pygame.Surface((pill_w, pill_h), pygame.SRCALPHA)
+                    pygame.draw.rect(self._hud_stats_pill_surf, (11, 14, 23, 220), (0, 0, pill_w, pill_h), border_radius=raio_pill)
+                screen.blit(self._hud_stats_pill_surf, (pill_x, pill_y))
+                pygame.draw.rect(screen, cor_borda_pill, (pill_x, pill_y, pill_w, pill_h), width=max(1, int(round(s))), border_radius=raio_pill)
+
+                cy_pill = pill_y + pill_h // 2
+                tempo_surf = self._obter_fonte("tempo", s).render(texto_tempo, True, BRANCO)
+                screen.blit(tempo_surf, tempo_surf.get_rect(left=pill_x + max(6, int(round(14 * s))), centery=cy_pill))
+                screen.blit(abates_surf, abates_surf.get_rect(centerx=centro_tela_x + int(round(4 * s)), centery=cy_pill))
+                screen.blit(pontos_surf, pontos_surf.get_rect(right=pill_x + pill_w - max(6, int(round(12 * s))), centery=cy_pill))
+            else:
+                pct_vel = int(round(vel_mult_hud * 100.0))
+                if pct_vel < 100:
+                    cor_borda_badge, cor_txt_badge = (34, 211, 238), (34, 211, 238)
+                elif pct_vel >= 200:
+                    cor_borda_badge, cor_txt_badge = (168, 85, 247), (233, 213, 255)
+                elif pct_vel > 100:
+                    cor_borda_badge, cor_txt_badge = (245, 158, 11), (245, 158, 11)
+                else:
+                    cor_borda_badge, cor_txt_badge = cor_borda_sutil, (226, 232, 240)
+
+                fonte_lbl_hud = self._obter_fonte("slots", s)
+                fonte_tempo_hud = self._obter_fonte("tempo", s)
+                badge_surf = fonte_lbl_hud.render(t("ui_geral", "hud_vel_badge", pct=pct_vel), True, cor_txt_badge)
+                badge_pad = max(4, int(round(5 * s)))
+                badge_w = badge_surf.get_width() + 2 * badge_pad
+                badge_h = max(12, pill_h - max(4, int(round(4 * s))))
+
+                min_r = int(tempo_real_val // 60)
+                seg_r = int(tempo_real_val % 60)
+                lbl_jogo_surf = fonte_lbl_hud.render(t("ui_geral", "hud_tempo_jogo_lbl"), True, (148, 163, 184))
+                val_jogo_surf = fonte_tempo_hud.render(texto_tempo, True, BRANCO)
+                lbl_real_surf = fonte_lbl_hud.render(t("ui_geral", "hud_tempo_real_lbl"), True, (148, 163, 184))
+                val_real_surf = fonte_tempo_hud.render(f"{min_r:02d}:{seg_r:02d}", True, (34, 211, 238))
+
+                pad_x = max(8, int(round(12 * s)))
+                gap = max(6, int(round(9 * s)))
+                inner_gap = max(3, int(round(4 * s)))
+                bloco_jogo_w = lbl_jogo_surf.get_width() + inner_gap + val_jogo_surf.get_width()
+                bloco_real_w = lbl_real_surf.get_width() + inner_gap + val_real_surf.get_width()
+                total_w = (
+                    pad_x * 2 + badge_w + gap + bloco_jogo_w + gap + 1 + gap + bloco_real_w
+                    + gap * 2 + abates_surf.get_width() + gap * 2 + pontos_surf.get_width()
+                )
+                pill_w = max(px_s(340), min(px_s(760), total_w))
+                pill_x = centro_tela_x - pill_w // 2
+
+                if self._hud_stats_pill_surf is None or self._hud_stats_pill_surf.get_size() != (pill_w, pill_h):
+                    self._hud_stats_pill_surf = pygame.Surface((pill_w, pill_h), pygame.SRCALPHA)
+                    pygame.draw.rect(self._hud_stats_pill_surf, (11, 14, 23, 220), (0, 0, pill_w, pill_h), border_radius=raio_pill)
+                screen.blit(self._hud_stats_pill_surf, (pill_x, pill_y))
+                pygame.draw.rect(screen, cor_borda_pill, (pill_x, pill_y, pill_w, pill_h), width=max(1, int(round(s))), border_radius=raio_pill)
+
+                cy_pill = pill_y + pill_h // 2
+                cur_x = pill_x + pad_x
+                b_rect = pygame.Rect(cur_x, cy_pill - badge_h // 2, badge_w, badge_h)
+                pygame.draw.rect(screen, (30, 41, 59), b_rect, border_radius=max(2, int(round(3 * s))))
+                pygame.draw.rect(screen, cor_borda_badge, b_rect, width=max(1, int(round(s))), border_radius=max(2, int(round(3 * s))))
+                screen.blit(badge_surf, badge_surf.get_rect(center=b_rect.center))
+                cur_x += badge_w + gap
+
+                screen.blit(lbl_jogo_surf, lbl_jogo_surf.get_rect(left=cur_x, centery=cy_pill))
+                cur_x += lbl_jogo_surf.get_width() + inner_gap
+                screen.blit(val_jogo_surf, val_jogo_surf.get_rect(left=cur_x, centery=cy_pill))
+                cur_x += val_jogo_surf.get_width() + gap
+
+                pygame.draw.line(screen, cor_borda_sutil, (cur_x, pill_y + max(3, int(round(4 * s)))), (cur_x, pill_y + pill_h - max(3, int(round(4 * s)))), width=max(1, int(round(s))))
+                cur_x += 1 + gap
+
+                screen.blit(lbl_real_surf, lbl_real_surf.get_rect(left=cur_x, centery=cy_pill))
+                cur_x += lbl_real_surf.get_width() + inner_gap
+                screen.blit(val_real_surf, val_real_surf.get_rect(left=cur_x, centery=cy_pill))
+                cur_x += val_real_surf.get_width() + gap * 2
+
+                screen.blit(abates_surf, abates_surf.get_rect(left=cur_x, centery=cy_pill))
+                screen.blit(pontos_surf, pontos_surf.get_rect(right=pill_x + pill_w - pad_x, centery=cy_pill))
 
             # 3. Barra compacta de Progresso de XP (Top-Center: y=30..41 lógico, 420x11 px)
             if hasattr(self, "hud") and self.hud is not None:
@@ -1522,24 +1600,53 @@ class GameplayRenderMixin:
         fonte_stat_val = self._obter_fonte("stat_val", s)
         fonte_stat_destaque = self._obter_fonte("stat_destaque", s)
 
-        stats_data = [
-            (t("ui_geral", "vitoria_stat_tempo"), tempo_str, DOURADO),
-            (t("ui_geral", "vitoria_stat_abates"), f"{self.abates}", AMARELO_XP),
-            (t("ui_geral", "vitoria_stat_dano"), f"{self.dano_total_causado:,}", (255, 100, 100)),
-            (
-                t("ui_geral", "vitoria_stat_configs"),
-                t("ui_geral", "vitoria_stat_configs_val", desbloqueadas=len(self.gerenciador_config.desbloqueadas), total_configs=len(CONFIGURACOES_GAMEPLAY)),
-                AZUL_CIANO,
-            ),
-            (
-                t("ui_geral", "vitoria_stat_mult"),
-                t("ui_geral", "vitoria_stat_mult_val", mult=self.estatisticas_partida_resultado.get("mult_dif", 1.0)),
-                (180, 210, 240),
-            ),
-        ]
-
-        start_y = oy + 145
-        step_y = 34
+        tempo_real_vit = float(
+            self.estatisticas_partida_resultado.get("tempo_real", getattr(self, "tempo_real_partida", self.tempo_sobrevivencia))
+        )
+        exibir_duplo_vit = bool(
+            getattr(self, "velocidade_alterada_na_partida", False)
+            or abs(self.tempo_sobrevivencia - tempo_real_vit) >= 0.5
+        )
+        if exibir_duplo_vit:
+            min_r = int(tempo_real_vit // 60)
+            seg_r = int(tempo_real_vit % 60)
+            tempo_real_str = t("ui_geral", "vitoria_tempo_valor", min=min_r, seg=seg_r, tempo_str=f"{tempo_real_vit:.1f}")
+            stats_data = [
+                (t("ui_geral", "vitoria_stat_tempo_jogo"), tempo_str, DOURADO),
+                (t("ui_geral", "vitoria_stat_tempo_real"), tempo_real_str, (34, 211, 238)),
+                (t("ui_geral", "vitoria_stat_abates"), f"{self.abates}", AMARELO_XP),
+                (t("ui_geral", "vitoria_stat_dano"), f"{self.dano_total_causado:,}", (255, 100, 100)),
+                (
+                    t("ui_geral", "vitoria_stat_configs"),
+                    t("ui_geral", "vitoria_stat_configs_val", desbloqueadas=len(self.gerenciador_config.desbloqueadas), total_configs=len(CONFIGURACOES_GAMEPLAY)),
+                    AZUL_CIANO,
+                ),
+                (
+                    t("ui_geral", "vitoria_stat_mult"),
+                    t("ui_geral", "vitoria_stat_mult_val", mult=self.estatisticas_partida_resultado.get("mult_dif", 1.0)),
+                    (180, 210, 240),
+                ),
+            ]
+            start_y = oy + 142
+            step_y = 28
+        else:
+            stats_data = [
+                (t("ui_geral", "vitoria_stat_tempo"), tempo_str, DOURADO),
+                (t("ui_geral", "vitoria_stat_abates"), f"{self.abates}", AMARELO_XP),
+                (t("ui_geral", "vitoria_stat_dano"), f"{self.dano_total_causado:,}", (255, 100, 100)),
+                (
+                    t("ui_geral", "vitoria_stat_configs"),
+                    t("ui_geral", "vitoria_stat_configs_val", desbloqueadas=len(self.gerenciador_config.desbloqueadas), total_configs=len(CONFIGURACOES_GAMEPLAY)),
+                    AZUL_CIANO,
+                ),
+                (
+                    t("ui_geral", "vitoria_stat_mult"),
+                    t("ui_geral", "vitoria_stat_mult_val", mult=self.estatisticas_partida_resultado.get("mult_dif", 1.0)),
+                    (180, 210, 240),
+                ),
+            ]
+            start_y = oy + 145
+            step_y = 34
         for i, (label, val_str, cor_val) in enumerate(stats_data):
             cur_y = px_y(start_y + i * step_y)
             lbl_surf = fonte_stat_label.render(label, True, (180, 195, 215))
@@ -1692,8 +1799,28 @@ class GameplayRenderMixin:
         pygame.draw.rect(screen, (28, 15, 20), quadro_rect, border_radius=max(4, int(round(8 * s))))
         pygame.draw.rect(screen, (80, 40, 50), quadro_rect, width=max(1, int(round(s))), border_radius=max(4, int(round(8 * s))))
 
-        tempo_surf = fonte_stat.render(t("ui_geral", "gameover_tempo", min=minutos, seg=segundos), True, BRANCO)
-        screen.blit(tempo_surf, tempo_surf.get_rect(centerx=cx_tela, top=px_y(oy + 242)))
+        tempo_real_go = float(
+            self.estatisticas_partida_resultado.get("tempo_real", getattr(self, "tempo_real_partida", self.tempo_sobrevivencia))
+        )
+        exibir_duplo_go = bool(
+            getattr(self, "velocidade_alterada_na_partida", False)
+            or abs(self.tempo_sobrevivencia - tempo_real_go) >= 0.5
+        )
+        if exibir_duplo_go:
+            min_r = int(tempo_real_go // 60)
+            seg_r = int(tempo_real_go % 60)
+            s_jogo = fonte_stat.render(t("ui_geral", "gameover_tempo_jogo_parte", min=minutos, seg=segundos), True, BRANCO)
+            s_sep = fonte_stat.render("  |  ", True, (148, 163, 184))
+            s_real = fonte_stat.render(t("ui_geral", "gameover_tempo_real_parte", min=min_r, seg=seg_r), True, (34, 211, 238))
+            larg_tot = s_jogo.get_width() + s_sep.get_width() + s_real.get_width()
+            tx_go = cx_tela - larg_tot // 2
+            ty_go = px_y(oy + 242)
+            screen.blit(s_jogo, (tx_go, ty_go))
+            screen.blit(s_sep, (tx_go + s_jogo.get_width(), ty_go))
+            screen.blit(s_real, (tx_go + s_jogo.get_width() + s_sep.get_width(), ty_go))
+        else:
+            tempo_surf = fonte_stat.render(t("ui_geral", "gameover_tempo", min=minutos, seg=segundos), True, BRANCO)
+            screen.blit(tempo_surf, tempo_surf.get_rect(centerx=cx_tela, top=px_y(oy + 242)))
 
         abates_surf = fonte_stat.render(t("ui_geral", "gameover_abates", abates=self.abates), True, AMARELO_XP)
         screen.blit(abates_surf, abates_surf.get_rect(centerx=cx_tela, top=px_y(oy + 278)))
