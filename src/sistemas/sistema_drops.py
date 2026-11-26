@@ -341,11 +341,22 @@ class SistemaDrops:
             self._adicionar_drop(drop)
         return criados
 
-    def update(self, dt: float, pausar_despawn: bool = False):
+    def update(
+        self,
+        dt: float,
+        pausar_despawn: bool = False,
+        dt_despawn: float = None,
+        dt_pickup: float = None,
+    ):
         """Atualiza timers de todos os drops e remove expirados."""
         self.cooldown_caixa_atual = max(0.0, self.cooldown_caixa_atual - dt)
         for drop in self.drops:
-            drop.update(dt, pausar_despawn=pausar_despawn)
+            drop.update(
+                dt,
+                pausar_despawn=pausar_despawn,
+                dt_despawn=dt_despawn,
+                dt_pickup=dt_pickup,
+            )
 
         self.drops = [d for d in self.drops if d.ativo and not d.coletado]
 
@@ -372,7 +383,7 @@ class SistemaDrops:
         for drop in self.drops:
             if not drop.ativo or drop.coletado:
                 continue
-            if getattr(drop, "pickup_cooldown", 0.0) > 0.0 and drop.tempo_decorrido < drop.pickup_cooldown:
+            if getattr(drop, "pickup_cooldown", 0.0) > 0.0 and getattr(drop, "tempo_pickup", drop.tempo_decorrido) < drop.pickup_cooldown:
                 continue
 
             if colisao_aabb(j_x, j_y, j_w, j_h, drop.x, drop.y, drop.largura, drop.altura):
