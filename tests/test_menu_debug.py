@@ -163,7 +163,7 @@ class TestMenuDebugAndWeapons(unittest.TestCase):
         # 8. Ação Desbloquear Todas Configurações
         self.debug_menu.indice_foco = 11
         self.debug_menu._executar_acao_selecionada()
-        self.assertEqual(len(self.cena.config_sistema.desbloqueadas), 28)
+        self.assertEqual(len(self.cena.config_sistema.desbloqueadas), 29)
 
     def test_debug_menu_spawn_drops_and_enemies(self):
         """Testa geração de drops e inimigos nas coordenadas do mundo com centro alinhado."""

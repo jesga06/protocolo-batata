@@ -43,7 +43,7 @@ class TestIntegracaoCoreV2(unittest.TestCase):
         self.assertEqual(C.GELADEIRA_TSUNAMI_HP, 48000)
         self.assertAlmostEqual(C.MUSICA_LOOKAHEAD_SEGUNDOS, 0.50)
         self.assertAlmostEqual(C.LATENCIA_PING_ATRASO_S, 0.08)
-        self.assertEqual(C.TOTAL_CONFIGS_GAMEPLAY, 29)
+        self.assertEqual(C.TOTAL_CONFIGS_GAMEPLAY, 30)
         self.assertEqual(C.MINIBOSS_CICLOS_RUN, 2)
         self.assertEqual(C.MINIBOSS_ESCALA_HP_CICLOS, (1.0, 1.35, 1.50))
 

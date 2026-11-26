@@ -172,11 +172,11 @@ class TestPlaytestFixesUI(unittest.TestCase):
         self.assertIn("impressora", inim_ids)
         self.assertIn("ninja", inim_ids)
 
-        # Destravar todas as 29 configs
+        # Destravar todas as 30 configs
         dbg.indice_foco = 11
         dbg._executar_acao_selecionada()
         self.assertTrue(all(cfg.is_desbloqueada(cid) for cid in CONFIGURACOES_GAMEPLAY))
-        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 29)
+        self.assertEqual(len(CONFIGURACOES_GAMEPLAY), 30)
 
         # Destravar todas conquistas & firmware
         dbg.indice_foco = 17
@@ -189,7 +189,7 @@ class TestPlaytestFixesUI(unittest.TestCase):
         self.assertNotIn("50 parries", junto)
         self.assertNotIn("23 configs", junto)
         self.assertIn("15 parries", junto)
-        self.assertIn("29 configurações", junto)
+        self.assertIn("30 configurações", junto)
 
         from src.cenas.tutorial import TutorialScene
         tut = TutorialScene.__new__(TutorialScene)
