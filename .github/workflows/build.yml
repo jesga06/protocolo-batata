@@ -204,6 +204,8 @@ jobs:
           from pathlib import Path
 
           assets = Path("release-assets")
+          upload_assets = assets / "upload"
+          upload_assets.mkdir()
           for platform, artifact in (
               ("Windows", "ProtocoloBatata-Windows"),
               ("Linux", "ProtocoloBatata-Linux"),
@@ -213,7 +215,7 @@ jobs:
               if len(matches) != 1 or not matches[0].is_file():
                   raise SystemExit(f"Expected one executable in {artifact}; found {matches}")
               suffix = matches[0].suffix
-              matches[0].rename(assets / f"ProtocoloBatata-{platform}{suffix}")
+              matches[0].rename(upload_assets / f"ProtocoloBatata-{platform}{suffix}")
           PY
 
       - name: Create GitHub release draft
@@ -227,4 +229,4 @@ jobs:
           draft: true
           prerelease: false
           fail_on_unmatched_files: true
-          files: release-assets/ProtocoloBatata-*
+          files: release-assets/upload/ProtocoloBatata-*
